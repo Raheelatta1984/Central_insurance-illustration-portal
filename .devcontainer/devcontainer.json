@@ -1,0 +1,11 @@
+{
+  "name": "C# .NET 10 Cloud Environment",
+  "image": "://microsoft.com",
+  "features": {
+    "ghcr.io/devcontainers/features/postgres:1": {
+      "version": "latest"
+    }
+  },
+  "forwardPorts":,
+  "postCreateCommand": "dotnet --version"
+}
