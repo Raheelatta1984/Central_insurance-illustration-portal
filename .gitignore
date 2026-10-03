@@ -1,0 +1,9 @@
+# generated / regenerable
+backlog/long-tail.jsonl
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
