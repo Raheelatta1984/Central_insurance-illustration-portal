@@ -1,0 +1,32 @@
+{
+  "name": "central-insurance-illustration-portal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AI-native Insurance ERP: unit-linked, takaful, group finance, micro-duration cover",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --reporter=dot",
+    "test:watch": "vitest",
+    "build:ui": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build": "npm run build:ui && npm run build:server",
+    "start": "node dist-server/server/main.js",
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "fleet": "node tools/fleet.mjs --limit=5",
+    "backlog": "node tools/generate-backlog.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}
