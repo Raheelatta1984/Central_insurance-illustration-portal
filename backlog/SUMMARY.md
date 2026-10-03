@@ -1,10 +1,10 @@
 # Backlog summary
 
-Generated: 2026-10-03T21:50:47.047Z
+Generated: 2026-10-03T22:14:53.861Z
 
-- **Critical path (v1):** 1,854 chunks
-- **Long tail generated:** 17,160 chunks (cap `--long-tail=20000`)
-- **Total in this build:** 19,014 chunks
+- **Critical path (v1):** 1,870 chunks
+- **Long tail generated:** 17,316 chunks (cap `--long-tail=30000`)
+- **Total in this build:** 19,186 chunks
 
 ## The matrix
 
@@ -22,7 +22,7 @@ the backlog is a reservoir, the fleet is a faucet.
 
 | Module | Chunks |
 | --- | --- |
-| PLAT — Platform services | 83 |
+| PLAT — Platform services | 99 |
 | PARTY — Party and Customer 360 | 83 |
 | PROD — Product factory | 111 |
 | QUOT — Quotation and illustration | 83 |
@@ -49,7 +49,7 @@ the backlog is a reservoir, the fleet is a faucet.
 
 | Module | Chunks |
 | --- | --- |
-| PLAT — Platform services | 780 |
+| PLAT — Platform services | 936 |
 | PARTY — Party and Customer 360 | 780 |
 | PROD — Product factory | 780 |
 | QUOT — Quotation and illustration | 780 |

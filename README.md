@@ -2,7 +2,7 @@
 
 **An AI-native Insurance ERP** — life, medical, general, group, travel, unit-linked and **takaful** — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance), the API server and the operator console are implemented, typechecked, tested (88 cases) and building — and 691 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining critical path stays honestly open.
+> **Status: the money spine runs.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance), the API server and the operator console are implemented, typechecked, tested (88 cases) and building — and 972 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 898 critical-path chunks stay honestly open.
 
 ```bash
 npm install

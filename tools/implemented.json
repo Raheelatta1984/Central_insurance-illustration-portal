@@ -1,22 +1,384 @@
 {
-  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done — but only if the evidence files exist and the module's tests pass.",
+  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done \u2014 but only if the evidence files exist and the module's tests pass.",
   "modules": {
-    "PLAT": { "keywords": ["tenancy", "entity registry", "role and permission", "append-only audit ledger", "outbox", "label registry"], "layers": ["design", "contract", "domain", "test", "docs", "ui"], "evidence": ["src/core/ledger.ts", "src/core/labels.ts", "src/server/main.ts"] },
-    "PARTY": { "keywords": ["person and organisation records", "golden record", "merge and split", "relationship graph", "cross-party existence lookup", "identity documents"], "layers": ["design", "contract", "domain", "test", "api", "ui", "store"], "evidence": ["src/core/party.ts", "src/core/party.test.ts"] },
-    "PROD": { "keywords": ["data-defined product", "charge schedule", "fund mapping", "illustration rule set", "tariff tables", "product versioning", "eligibility"], "layers": ["design", "contract", "domain", "test"], "evidence": ["src/core/unitlinked.ts"] },
-    "QUOT": { "keywords": ["unit-linked projection engine", "comparison matrix", "best-product recommendation", "need analysis and gap analysis"], "layers": ["design", "contract", "domain", "test", "ui"], "evidence": ["src/core/regulatory.ts", "src/core/decisioning.ts"] },
-    "FUND": { "keywords": ["fund master", "fund valuation run", "unit pricing with rounding", "valuation calendar and dealing", "instrument master", "fund composition", "segregated fund tracking", "NAV publication"], "layers": ["design", "contract", "domain", "test", "api", "store", "ui"], "evidence": ["src/core/fund.ts", "src/core/fund.test.ts"] },
-    "ULNK": { "keywords": ["unit allocation on premium", "dealing cut-off resolution", "cost of insurance and admin charge", "fund switch as atomic", "partial withdrawal with charge", "top-up", "automatic switching", "lock-in", "full audit spine"], "layers": ["design", "contract", "domain", "test", "api", "store", "ui"], "evidence": ["src/core/unitlinked.ts", "src/core/unitlinked.test.ts"] },
-    "TAKF": { "keywords": ["takaful model registry", "participant risk fund", "tabarru contribution routing", "qard hasan", "surplus determination", "surplus approval gates", "surplus distribution", "Shariah screening", "takaful window operation"], "layers": ["design", "contract", "domain", "test", "api", "store", "ui"], "evidence": ["src/core/takaful.ts", "src/core/takaful.test.ts"] },
-    "BILL": { "keywords": ["daily cover segments", "pay-as-you-go usage", "no-auto-start rule", "wallet", "grace, suspension", "pro-rata and short-rate", "premium induction"], "layers": ["design", "contract", "domain", "test", "api", "store", "ui"], "evidence": ["src/core/billing.ts", "src/core/billing.test.ts"] },
-    "GL": { "keywords": ["double-entry ledger", "chart of accounts", "fund ledger integration", "trial balance", "multi-currency base and foreign"], "layers": ["design", "contract", "domain", "test", "api", "store", "ui"], "evidence": ["src/core/ledger.ts", "src/core/chart.ts", "src/core/moneyproof.test.ts"] },
-    "CONS": { "keywords": ["consent capture", "revocation", "consented partner API", "data sharing audit", "purpose limitation"], "layers": ["design", "contract", "domain", "test", "api", "ui", "store"], "evidence": ["src/core/party.ts", "src/core/party.test.ts"] },
-    "ING": { "keywords": ["file, Excel, JSON, XML", "schema inference", "asynchronous bulk processing", "per-row validation", "natural-key dedupe", "quarantine", "rogue validation fleet", "reconciliation pack", "webhook and subscription egress"], "layers": ["design", "contract", "domain", "test", "api", "ui", "store"], "evidence": ["src/core/ingest.ts", "src/core/ingest.test.ts"] },
-    "REG": { "keywords": ["rule set schema per country", "need analysis enforcement", "motor survey", "product admission", "illustration wording", "takaful-specific rules", "regulator return"], "layers": ["design", "contract", "domain", "test", "api", "ui", "store", "docs"], "evidence": ["src/core/regulatory.ts", "src/core/regulatory.test.ts"] },
-    "I18N": { "keywords": ["label registry with plurals", "tenant-level rename", "propagation of renaming", "Arabic and English", "number, date", "regulator-approved wording", "locale-aware validation"], "layers": ["design", "contract", "domain", "test", "api", "ui", "store"], "evidence": ["src/core/labels.ts", "src/core/regulatory.test.ts"] },
-    "ONBD": { "keywords": ["NFC chip read", "government data source lookup", "multi-engine OCR", "bilingual field extraction", "review queue", "need analysis trigger", "onboarding audit trail"], "layers": ["design", "contract", "domain", "test", "api", "ui", "store"], "evidence": ["src/core/onboarding.ts", "src/core/regulatory.test.ts"] },
-    "AI": { "keywords": ["agent runtime with scoped tool contracts", "action ledger", "dry-run", "risk-class gated human-in-the-loop", "claims triage", "anomaly detection", "prohibited-action register"], "layers": ["design", "contract", "domain", "test", "api", "ui", "store"], "evidence": ["src/core/ai.ts", "src/server/main.ts"] },
-    "DOC": { "keywords": ["template engine with locale-aware merge fields", "letter and notice library"], "layers": ["design", "contract"], "evidence": ["src/core/labels.ts"] }
+    "PLAT": {
+      "keywords": [
+        "tenancy",
+        "entity registry",
+        "role and permission",
+        "append-only audit ledger",
+        "outbox",
+        "label registry",
+        "durable state",
+        "snapshot",
+        "restore",
+        "recovery drill",
+        "schema migration",
+        "point-in-time"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "docs",
+        "ui"
+      ],
+      "evidence": [
+        "src/core/ledger.ts",
+        "src/core/labels.ts",
+        "src/core/persistence.ts",
+        "src/server/main.ts"
+      ],
+      "tests": [
+        "src/core/ledger.test.ts",
+        "src/core/persistence.test.ts"
+      ]
+    },
+    "PARTY": {
+      "keywords": [
+        "person and organisation records",
+        "golden record",
+        "merge and split",
+        "relationship graph",
+        "cross-party existence lookup",
+        "identity documents"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/party.ts",
+        "src/core/party.test.ts"
+      ]
+    },
+    "PROD": {
+      "keywords": [
+        "data-defined product",
+        "charge schedule",
+        "fund mapping",
+        "illustration rule set",
+        "tariff tables",
+        "product versioning",
+        "eligibility"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test"
+      ],
+      "evidence": [
+        "src/core/unitlinked.ts"
+      ]
+    },
+    "QUOT": {
+      "keywords": [
+        "unit-linked projection engine",
+        "comparison matrix",
+        "best-product recommendation",
+        "need analysis and gap analysis"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "ui"
+      ],
+      "evidence": [
+        "src/core/regulatory.ts",
+        "src/core/decisioning.ts"
+      ]
+    },
+    "FUND": {
+      "keywords": [
+        "fund master",
+        "fund valuation run",
+        "unit pricing with rounding",
+        "valuation calendar and dealing",
+        "instrument master",
+        "fund composition",
+        "segregated fund tracking",
+        "NAV publication"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "store",
+        "ui"
+      ],
+      "evidence": [
+        "src/core/fund.ts",
+        "src/core/fund.test.ts"
+      ]
+    },
+    "ULNK": {
+      "keywords": [
+        "unit allocation on premium",
+        "dealing cut-off resolution",
+        "cost of insurance and admin charge",
+        "fund switch as atomic",
+        "partial withdrawal with charge",
+        "top-up",
+        "automatic switching",
+        "lock-in",
+        "full audit spine"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "store",
+        "ui"
+      ],
+      "evidence": [
+        "src/core/unitlinked.ts",
+        "src/core/unitlinked.test.ts"
+      ]
+    },
+    "TAKF": {
+      "keywords": [
+        "takaful model registry",
+        "participant risk fund",
+        "tabarru contribution routing",
+        "qard hasan",
+        "surplus determination",
+        "surplus approval gates",
+        "surplus distribution",
+        "Shariah screening",
+        "takaful window operation"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "store",
+        "ui"
+      ],
+      "evidence": [
+        "src/core/takaful.ts",
+        "src/core/takaful.test.ts"
+      ]
+    },
+    "BILL": {
+      "keywords": [
+        "daily cover segments",
+        "pay-as-you-go usage",
+        "no-auto-start rule",
+        "wallet",
+        "grace, suspension",
+        "pro-rata and short-rate",
+        "premium induction"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "store",
+        "ui"
+      ],
+      "evidence": [
+        "src/core/billing.ts",
+        "src/core/billing.test.ts"
+      ]
+    },
+    "GL": {
+      "keywords": [
+        "double-entry ledger",
+        "chart of accounts",
+        "fund ledger integration",
+        "trial balance",
+        "multi-currency base and foreign"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "store",
+        "ui"
+      ],
+      "evidence": [
+        "src/core/ledger.ts",
+        "src/core/chart.ts",
+        "src/core/moneyproof.test.ts"
+      ]
+    },
+    "CONS": {
+      "keywords": [
+        "consent capture",
+        "revocation",
+        "consented partner API",
+        "data sharing audit",
+        "purpose limitation"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/party.ts",
+        "src/core/party.test.ts"
+      ]
+    },
+    "ING": {
+      "keywords": [
+        "file, Excel, JSON, XML",
+        "schema inference",
+        "asynchronous bulk processing",
+        "per-row validation",
+        "natural-key dedupe",
+        "quarantine",
+        "rogue validation fleet",
+        "reconciliation pack",
+        "webhook and subscription egress"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/ingest.ts",
+        "src/core/ingest.test.ts"
+      ]
+    },
+    "REG": {
+      "keywords": [
+        "rule set schema per country",
+        "need analysis enforcement",
+        "motor survey",
+        "product admission",
+        "illustration wording",
+        "takaful-specific rules",
+        "regulator return"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "ui",
+        "store",
+        "docs"
+      ],
+      "evidence": [
+        "src/core/regulatory.ts",
+        "src/core/regulatory.test.ts"
+      ]
+    },
+    "I18N": {
+      "keywords": [
+        "label registry with plurals",
+        "tenant-level rename",
+        "propagation of renaming",
+        "Arabic and English",
+        "number, date",
+        "regulator-approved wording",
+        "locale-aware validation"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/labels.ts",
+        "src/core/regulatory.test.ts"
+      ]
+    },
+    "ONBD": {
+      "keywords": [
+        "NFC chip read",
+        "government data source lookup",
+        "multi-engine OCR",
+        "bilingual field extraction",
+        "review queue",
+        "need analysis trigger",
+        "onboarding audit trail"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/onboarding.ts",
+        "src/core/regulatory.test.ts"
+      ]
+    },
+    "AI": {
+      "keywords": [
+        "agent runtime with scoped tool contracts",
+        "action ledger",
+        "dry-run",
+        "risk-class gated human-in-the-loop",
+        "claims triage",
+        "anomaly detection",
+        "prohibited-action register"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "test",
+        "api",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/ai.ts",
+        "src/server/main.ts"
+      ]
+    },
+    "DOC": {
+      "keywords": [
+        "template engine with locale-aware merge fields",
+        "letter and notice library"
+      ],
+      "layers": [
+        "design",
+        "contract"
+      ],
+      "evidence": [
+        "src/core/labels.ts"
+      ]
+    }
   },
   "testCommand": "npx vitest run --reporter=dot",
   "testFiles": {

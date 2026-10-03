@@ -41,4 +41,4 @@
 
 ## How the fleet proves its own claims
 
-`node tools/fleet.mjs` claims a backlog chunk only when (a) its module is implemented, (b) its capability text matches something actually built, and (c) the evidence files exist and the module's test file passes. Everything else stays open — currently **691 chunks done, 1,163 still open** on the critical path alone. The ledger at `ledger/runs.jsonl` records every claimed chunk with its evidence and simulated cost, one row per chunk, and `backlog/status.jsonl` is the machine-readable state.
+`node tools/fleet.mjs` claims a backlog chunk only when (a) its module is implemented, (b) its capability text matches something actually built, and (c) the evidence files exist and the module's test file passes. Everything else stays open — currently **972 chunks done, 898 still open** on the critical path alone (1,870 chunks). The ledger at `ledger/runs.jsonl` records every claimed chunk with its evidence and simulated cost, one row per chunk, and `backlog/status.jsonl` is the machine-readable state.

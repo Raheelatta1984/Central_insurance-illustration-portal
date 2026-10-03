@@ -37,6 +37,8 @@ const MODULES = [
     'secret and key management with rotation',
     'environment parity and infrastructure as code',
     'label registry with per-tenant overrides and RTL',
+    'durable state: canonical bigint-safe snapshot, fingerprinted restore and schema migration',
+    'point-in-time recovery drill that proves restored books agree with the live books',
   ]},
   { code: 'PARTY', name: 'Party and Customer 360', path: 'packages/party', capabilities: [
     'person and organisation records with roles',
