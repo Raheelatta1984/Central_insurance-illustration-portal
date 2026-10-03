@@ -119,6 +119,11 @@ export class Ledger {
       // that is how money disappears.
       const sameShape = existing.entityId === entry.entityId
         && existing.source === entry.source
+        && existing.sourceRef === entry.sourceRef
+        && existing.at === entry.at
+        && existing.fundId === entry.fundId
+        && existing.reverses === entry.reverses
+        && existing.description === entry.description
         && existing.postings.length === entry.postings.length
         && existing.postings.every((p, i) => {
           const q = entry.postings[i]!;
@@ -152,6 +157,12 @@ export class Ledger {
   }
 
   journal(id: string): JournalEntry | undefined { return this.byId.get(id); }
+
+  /** Every journal in posting order — used by the durability layer to snapshot the books. */
+  allJournals(): JournalEntry[] { return [...this.entries]; }
+
+  /** Every registered FX rate, oldest first. */
+  fxRates(): FxRate[] { return [...this.fx]; }
 
   /** All entries touching an entity, in posting order. */
   entriesFor(entityId: string, filter?: { fundId?: string; accountId?: string }): JournalEntry[] {

@@ -10,7 +10,7 @@ import type { WorldSnapshot } from '../core/demo';
 
 type Tab =
   | 'overview' | 'policyholder' | 'decisions' | 'cover' | 'funds' | 'takaful'
-  | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels';
+  | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
 
 const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'overview', label: 'Overview', icon: '◈' },
@@ -26,6 +26,7 @@ const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'ai', label: 'AI ledger', icon: '✳' },
   { id: 'ledger', label: 'Books', icon: '∑' },
   { id: 'labels', label: 'Labels & rename', icon: '⌘' },
+  { id: 'durability', label: 'Durability', icon: '⟲' },
 ];
 
 async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {
@@ -518,6 +519,7 @@ function App() {
       case 'ai': return <AiLedger data={data} />;
       case 'ledger': return <Books data={data} />;
       case 'labels': return <Labels data={data} />;
+      case 'durability': return <Durability />;
       default: return null;
     }
   }, [data, tab]);
@@ -551,6 +553,93 @@ function App() {
         {error && <div className="errorBox">{error}</div>}
         {body ?? <div className="loading">Loading the world…</div>}
       </main>
+    </div>
+  );
+}
+
+
+interface StateSummary {
+  ledgerSchemaVersion: number; takenAt: string; fingerprint: string;
+  accounts: number; journals: number; fxRates: number; bytes: number;
+}
+interface DrillResult {
+  ok: boolean; fingerprint: string; fingerprintStable: boolean;
+  journals: number; restoredJournals: number; bytes: number; restoreMs: number;
+  balances: Array<{ entityId: string; balanced: boolean; trialBalanceAgrees: boolean; accounts: number }>;
+}
+
+/** Durability: seal the books, write them to text, read them back, rebuild and compare. */
+function Durability() {
+  const [summary, setSummary] = useState<StateSummary | null>(null);
+  const [drill, setDrill] = useState<DrillResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<StateSummary>('/state').then(setSummary).catch((e: unknown) => setError(String(e)));
+  }, []);
+
+  const runDrill = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setDrill(await api<DrillResult>('/state/drill', 'POST'));
+      setSummary(await api<StateSummary>('/state'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid">
+      <Card title="Snapshot of the books" subtitle="Canonical codec: bigints survive JSON, keys are sorted, the payload is fingerprinted">
+        {summary ? (
+          <>
+            <div className="stat"><span>Ledger schema</span><b>v{summary.ledgerSchemaVersion}</b></div>
+            <div className="stat"><span>Accounts</span><b>{summary.accounts}</b></div>
+            <div className="stat"><span>Journals</span><b>{summary.journals}</b></div>
+            <div className="stat"><span>FX rates</span><b>{summary.fxRates}</b></div>
+            <div className="stat"><span>Snapshot size</span><b>{(summary.bytes / 1024).toFixed(1)} KB</b></div>
+            <div className="stat"><span>Fingerprint</span><b className="small">{summary.fingerprint}</b></div>
+            <div className="stat"><span>Taken at</span><b className="small">{summary.takenAt}</b></div>
+          </>
+        ) : <p className="muted">Loading the snapshot…</p>}
+      </Card>
+
+      <Card title="Durability drill" subtitle="Seal → text → parse → open → rebuild in a fresh ledger → compare">
+        <p className="muted small">
+          Restoring re-posts every journal through the normal ledger path, so an unbalanced or
+          fund-crossing journal in the payload throws instead of being written into fresh books.
+        </p>
+        <div className="row">
+          <button onClick={runDrill} disabled={busy}>{busy ? 'Running…' : 'Run durability drill'}</button>
+        </div>
+        {error && <div className="errorBox">{error}</div>}
+        {drill && (
+          <>
+            <div className="stat"><span>Result</span><b>{drill.ok ? <Pill tone="ok">books restore exactly</Pill> : <Pill tone="bad">mismatch</Pill>}</b></div>
+            <div className="stat"><span>Fingerprint stable</span><b>{drill.fingerprintStable ? <Pill tone="ok">same bytes</Pill> : <Pill tone="warn">not stable</Pill>}</b></div>
+            <div className="stat"><span>Journals restored</span><b>{drill.restoredJournals} of {drill.journals}</b></div>
+            <div className="stat"><span>Snapshot size</span><b>{(drill.bytes / 1024).toFixed(1)} KB</b></div>
+            <div className="stat"><span>Restore time</span><b>{drill.restoreMs} ms</b></div>
+            <table>
+              <thead><tr><th>Entity</th><th>Accounts</th><th>Balanced</th><th>Trial balance matches</th></tr></thead>
+              <tbody>
+                {drill.balances.map((b) => (
+                  <tr key={b.entityId}>
+                    <td>{b.entityId}</td>
+                    <td>{b.accounts}</td>
+                    <td>{b.balanced ? 'yes' : 'no'}</td>
+                    <td>{b.trialBalanceAgrees ? 'yes' : 'no'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </Card>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
+import { exportLedger, importLedger, open, seal, snapshotText, LEDGER_SCHEMA_VERSION } from '../core/persistence.js';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -208,6 +209,55 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
         ...(role === 'board' ? { boardApproval: { endorsed: true, by, at: w.asOf } } : {}),
       });
       json(res, 200, { id: proposal.id, approvals: proposal.approvals, blockers: proposal.blockers, ready: proposal.ready });
+      return true;
+    }
+
+    case 'GET /state': {
+      const state1 = exportLedger(state.world.ledger);
+      const snap = seal(state1, { schemaVersion: LEDGER_SCHEMA_VERSION, takenAt: new Date().toISOString() });
+      const text = snapshotText(snap);
+      json(res, 200, {
+        ledgerSchemaVersion: LEDGER_SCHEMA_VERSION,
+        takenAt: snap.takenAt,
+        fingerprint: snap.fingerprint,
+        accounts: state1.accounts.length,
+        journals: state1.journals.length,
+        fxRates: state1.fx.length,
+        bytes: text.length,
+      });
+      return true;
+    }
+
+    case 'POST /state/drill': {
+      // Durability drill: seal the books, write them to text, read them back, rebuild a fresh
+      // ledger from that text, and prove the rebuilt books agree with the live ones.
+      const before = exportLedger(state.world.ledger);
+      const started = Date.now();
+      const snap = seal(before, { schemaVersion: LEDGER_SCHEMA_VERSION, takenAt: new Date().toISOString() });
+      const text = snapshotText(snap);
+      const parsed = JSON.parse(text);
+      const restoredState = open(parsed, { expectSchema: LEDGER_SCHEMA_VERSION }) as typeof before;
+      const restored = importLedger(restoredState);
+      const entities = [...new Set(before.accounts.map((a) => a.entityId))];
+      const balances = entities.map((entityId) => {
+        const live = state.world.ledger.trialBalance(entityId);
+        const rebuilt = restored.trialBalance(entityId);
+        const agree = live.length === rebuilt.length && live.every((row, i) => {
+          const other = rebuilt[i]!;
+          return row.account.id === other.account.id && row.balance.minor === other.balance.minor;
+        });
+        return { entityId, balanced: restored.proof(entityId).balanced, trialBalanceAgrees: agree, accounts: live.length };
+      });
+      json(res, 200, {
+        ok: balances.every((b) => b.balanced && b.trialBalanceAgrees),
+        fingerprint: snap.fingerprint,
+        fingerprintStable: seal(before, { schemaVersion: LEDGER_SCHEMA_VERSION, takenAt: snap.takenAt }).fingerprint === snap.fingerprint,
+        journals: before.journals.length,
+        restoredJournals: restored.allJournals().length,
+        bytes: text.length,
+        restoreMs: Date.now() - started,
+        balances,
+      });
       return true;
     }
 
