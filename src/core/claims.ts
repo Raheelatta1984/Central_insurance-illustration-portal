@@ -158,6 +158,7 @@ export class ClaimsEngine implements ReplayableRegister {
   private replayInner(action: RegisterAction, input: Record<string, never>): void {
     switch (action.kind) {
       case 'register-claim': this.register(input as never); return;
+      case 'triage-claim': this.triage(String(input['claimId']), input as never); return;
       case 'set-reserve': this.setReserve(String(input['claimId']), input as never); return;
       case 'approve-claim': this.approve(String(input['claimId']), input as never); return;
       case 'settle-claim': this.settle(String(input['claimId']), input as never); return;
@@ -250,6 +251,10 @@ export class ClaimsEngine implements ReplayableRegister {
     const suggestion = decision === 'accept'
       ? { reserveSuggestion: this.suggestReserve(claim) }
       : {};
+    // Triage moves the claim's status, and the status is what a return counts: an exhibit that reads
+    // open claims reads the number this decision put there. An untriaged replay would report a claim
+    // as still registered and produce a return that does not tie.
+    this.did('triage-claim', claim.reportedAt, '', { claimId: claim.id, ...input });
     return { decision, reasons, ...suggestion };
   }
 
@@ -289,6 +294,14 @@ export class ClaimsEngine implements ReplayableRegister {
 
   /** Approval is a permission check, not a payment: the money moves at settlement. */
   approve(claimId: string, input: { amount: Money; at: string; by: string; role: string; isAi?: boolean }): Claim {
+    const approved = this.approveInner(claimId, input);
+    // The approval posts nothing and still changes the claim: it becomes approved for an amount, and
+    // an exhibit that counts approved claims counts this one.
+    this.did('approve-claim', input.at, '', { claimId, ...input });
+    return approved;
+  }
+
+  private approveInner(claimId: string, input: { amount: Money; at: string; by: string; role: string; isAi?: boolean }): Claim {
     const claim = this.assertOpen(claimId, 'approve');
     const authority = this.authority.find((a) => a.role === input.role);
     if (!authority) throw new ClaimsError(`unknown authority ${input.role}`);

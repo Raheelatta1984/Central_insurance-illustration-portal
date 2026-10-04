@@ -315,10 +315,26 @@ export interface BooksTimeline {
 export function openBooksTimeline(target: RegisterBundle, books: LedgerState): BooksTimeline {
   // The payload is the books in the order they were recorded, so a mark is an index into it.
   const pending = [...books.journals];
+  // The chart travels with the journals. An engine that defines an account and posts nothing to it —
+  // the group consolidator defines the group's own accounts — leaves a book that is one account
+  // short, and the check would call that a failed restore when it is a missing account definition.
+  const known = new Set(target.ledger.listAccounts().map((a) => a.id));
+  const defineMissing = (): number => {
+    let defined = 0;
+    for (const account of books.accounts) {
+      if (known.has(account.id)) continue;
+      target.ledger.defineAccount(account);
+      known.add(account.id);
+      defined += 1;
+    }
+    return defined;
+  };
   let next = 0;
   let posted = 0;
   const timeline: BooksTimeline = {
     advanceToCount(count: number): number {
+      // accounts first: a journal cannot be posted to an account the books do not hold yet
+      defineMissing();
       let landed = 0;
       while (next < pending.length && next < count) {
         const journal = pending[next]!;
@@ -333,6 +349,7 @@ export function openBooksTimeline(target: RegisterBundle, books: LedgerState): B
     get posted() { return posted; },
     settle() {
       timeline.advanceToCount(books.journals.length);
+      defineMissing();
       const reference = importLedger(books, { verify: false });
       const entities = [...new Set(books.accounts.map((a) => a.entityId))];
       const disagreeing: string[] = [];
