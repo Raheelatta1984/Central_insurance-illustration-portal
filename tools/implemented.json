@@ -495,7 +495,11 @@
         "filing window and late filing",
         "submission supersession",
         "acknowledgement tracking",
-        "submission log as evidence"
+        "submission log as evidence",
+        "regulatory and actuarial reporting extracts",
+        "uae rule enforcement and evidence",
+        "uae wording and disclaimer generation",
+        "uae regulator return and submission"
       ],
       "layers": [
         "design",
