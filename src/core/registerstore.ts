@@ -20,6 +20,7 @@
  */
 import { Ledger } from './ledger.js';
 import { LedgerState, importLedger } from './persistence.js';
+import { RegisterAction, ReplayContext, ReplayableRegister } from './actionlog.js';
 import { Money } from './money.js';
 import { ExtractEngine, ExtractKind, ExtractPeriod, IssuedExtract } from './extracts.js';
 import { PlacementFacts, UaeRuleBook } from './uae.js';
@@ -32,7 +33,7 @@ import {
 export class RegisterStoreError extends Error {}
 
 /** Schema 1 is "the books only". Schema 2 is the books plus the reporting registers. */
-export const REPORTING_SCHEMA_VERSION = 2;
+export const REPORTING_SCHEMA_VERSION = 3;
 
 /** The registers this store holds, named so a restore can say what it is about to put back. */
 export const REGISTER_NAMES = ['extracts', 'decisions', 'letters', 'filings'] as const;
@@ -91,6 +92,12 @@ export interface FilingRecord {
 }
 
 export interface ReportingState {
+  /**
+   * Every money-moving action the registers took, in the order they took them, each one tagged with
+   * the register it belongs to and the journal it posted. This is what lets a restart put the
+   * registers back the way they were rather than only the rows they ended up holding.
+   */
+  readonly actions: readonly RegisterAction[];
   readonly conventional: {
     readonly extracts: readonly ExtractRecord[];
     readonly decisions: readonly DecisionRecord[];
@@ -191,6 +198,12 @@ export const REPORTING_MIGRATIONS: readonly Migration[] = [
       outbox: payload?.outbox ?? [],
     }),
   },
+  {
+    from: 2,
+    to: 3,
+    describe: 'every register action the store holds, so a restart can put the registers back and not only their rows',
+    apply: (payload: any) => ({ ...payload, actions: payload.actions ?? [] }),
+  },
 ];
 
 /* ------------------------------------------------------------------ export */
@@ -216,6 +229,8 @@ const filingRecord = (s: ReturnType<SubmissionRegister['submissions']>[number]):
 
 export interface RegisterBundle {
   readonly ledger: Ledger;
+  /** The registers that can say what they did and do it again. Optional: a bundle without them still exports its rows. */
+  readonly registers?: readonly ReplayableRegister[];
   readonly extracts: ExtractEngine;
   readonly takafulExtracts: ExtractEngine;
   readonly rules: UaeRuleBook;
@@ -226,6 +241,7 @@ export interface RegisterBundle {
 
 export function exportReporting(world: RegisterBundle): ReportingState {
   return {
+    actions: (world.registers ?? []).flatMap((r) => r.actionLog()),
     conventional: {
       extracts: world.extracts.list().map(extractRecord),
       decisions: world.rules.decisions().map((d) => ({
@@ -334,12 +350,30 @@ export function openBooksTimeline(target: RegisterBundle, books: LedgerState): B
           }
         }
       }
+      // The fixpoint: not just the balances, every journal. A replay that arrives at the same
+      // totals through different entries has not reproduced the books, and the store is here to
+      // notice that rather than to round it away.
+      const rebuiltJournals = target.ledger.allJournals();
+      if (rebuiltJournals.length !== books.journals.length) {
+        disagreeing.push(`${rebuiltJournals.length} journal(s) in the rebuilt books, ${books.journals.length} in the snapshot`);
+      } else {
+        for (const [i, expected] of books.journals.entries()) {
+          const got = rebuiltJournals[i]!;
+          const same = got.id === expected.id && got.source === expected.source
+            && got.postings.length === expected.postings.length
+            && got.postings.every((posting, j) => {
+              const want = expected.postings[j]!;
+              return posting.accountId === want.accountId && posting.side === want.side && posting.amount.minor === want.amount.minor;
+            });
+          if (!same) disagreeing.push(`journal ${i + 1}: the snapshot has ${expected.id}, the rebuilt books hold ${got.id}`);
+        }
+      }
       const journals = target.ledger.allJournals().length;
       return {
         agree: disagreeing.length === 0,
         journals,
         detail: disagreeing.length === 0
-          ? `the books came back with ${journals} journal(s), ${posted} of them posted by the restore as it replayed the registers, and every entity's trial balance is the one the snapshot had`
+          ? `the books came back journal for journal: ${journals} journal(s), ${posted} of them posted by the restore as it replayed the registers, every posting the same and every entity's trial balance the one the snapshot had`
           : `the books did not come back the same: ${disagreeing.slice(0, 3).join('; ')}`,
       };
     },
@@ -350,6 +384,7 @@ export function openBooksTimeline(target: RegisterBundle, books: LedgerState): B
 /* ------------------------------------------------------------------ restore */
 
 export interface RestoreReport {
+  readonly actions: { expected: number; replayed: number; skipped: number; disagreements: readonly string[] };
   readonly extracts: { expected: number; restored: number; fingerprintsAgree: boolean; duplicates: number };
   readonly decisions: { expected: number; restored: number; agree: number; disagreements: readonly string[] };
   readonly letters: { expected: number; restored: number; fingerprintsAgree: boolean };
@@ -363,72 +398,217 @@ export interface RestoreReport {
 }
 
 /**
- * Replay the registers into a fresh world. Every record is put back through the engine that made it
- * and the answer is compared, so a restore is a proof rather than a copy: if a return no longer
- * reproduces, a decision no longer follows from its facts, or a letter no longer regenerates, the
- * report says which one and the restore is not declared good.
+ * Replay the registers into a fresh world, in the order the world lived them.
+ *
+ * Everything the store holds is placed on one timeline and put back in that order: the actions the
+ * registers took, then the returns they issued, each at the point in the books where it belongs.
+ * The order matters more than it looks. A return issued on Monday is measured against the books and
+ * the registers as they stood on Monday; replay every action first and then every return, and the
+ * Monday return is handed a register that has already seen Tuesday, so it refuses — and the restore
+ * would be blaming the return for being right at the time.
+ *
+ * So this is a merge, not two passes. An action's mark is the journal it posted; a return's mark is
+ * how far the books had got when it was issued. Where the two are the same number, the action comes
+ * first: the journal that mark counts is the one the action posted, and the return was issued after
+ * it. The books are advanced to the mark of each item before it is replayed, which is what makes the
+ * whole thing reproducible rather than approximately reproducible.
+ *
+ * A restore is a proof and not a copy: a return must reproduce its fingerprint, an action must post
+ * the journal it posted the first time (checked journal for journal at the end), a rule decision must
+ * follow again from the facts it was decided on, and a letter must regenerate from its own facts.
+ * Anything that does not is named, and the restore is not declared good.
  */
 export function restoreReporting(
   state: ReportingState,
   target: RegisterBundle,
-  options: { readonly outbox?: readonly OutboxEntry[]; readonly books?: BooksTimeline } = {},
+  options: {
+    readonly outbox?: readonly OutboxEntry[];
+    readonly books?: BooksTimeline;
+    /** The registers to replay into. Defaults to the ones the bundle carries. */
+    readonly registers?: readonly ReplayableRegister[];
+  } = {},
 ): RestoreReport {
   const disagreements: string[] = [];
-  // Every record is replayed against the books as they stood when it was made, which is what the
-  // mark it carries is for. A record from before the marks existed has no mark, and then the books
-  // are taken as far as they go: better a restore that says it could not be exact than one that
-  // quietly measures an old return against today's books.
+  const replays: string[] = [];
+
+  // Where the books have to be before each item is replayed. Without a timeline the caller has
+  // supplied the books some other way (a fresh world, or a test), and the marks are not used.
   const at = (count: number | undefined): void => {
     if (!options.books) return;
     options.books.advanceToCount(count ?? Number.MAX_SAFE_INTEGER);
   };
-  const replays: string[] = [];
 
-  // Returns: issue them in order so supersessions land the same way round. The register is asked for
-  // the return and answers with what it now holds; the fingerprint it gives back is compared with
-  // the one on the snapshot record, so the check is on the content of the return rather than the
-  // number of rows. A register that already holds the identical return says so, and that is not a
-  // disagreement — it is the same return, and the report calls it a duplicate rather than a loss.
+  const registerByName = new Map<string, ReplayableRegister>();
+  for (const register of options.registers ?? target.registers ?? []) registerByName.set(register.engineName, register);
+  const homeOf = (engine: string): ReplayableRegister | undefined => {
+    // the window's registers live on the window's bundle slots; names are unique, so one map is enough
+    return registerByName.get(engine);
+  };
+
+  /* ---------------------------------------------------------------- the timeline */
+
+  interface Timed {
+    readonly mark: number;
+    /** Actions before returns at the same mark, as the world lived them. */
+    readonly phase: 0 | 1;
+    readonly order: number;
+    readonly label: string;
+    readonly run: () => void;
+  }
+  const timeline: Timed[] = [];
+  let order = 0;
+
+  const actionDisagreements: string[] = [];
+  let actionsReplayed = 0;
+  let actionsSkipped = 0;
+  const asKey = (a: RegisterAction): string => `${a.engine}|${a.kind}|${a.at}|${a.journalId}|${toJson(a.input)}`;
+  const alreadyTaken = new Set<string>();
+  for (const register of registerByName.values()) for (const a of register.actionLog()) alreadyTaken.add(asKey(a));
+  const replayContext: ReplayContext = { register: (name: string) => homeOf(name) };
+
+  for (const action of state.actions ?? []) {
+    if (alreadyTaken.has(asKey(action))) {
+      actionsSkipped += 1;
+      replays.push(`${action.engine} ${action.kind} at ${action.at} → already taken here, left alone`);
+      continue;
+    }
+    const register = homeOf(action.engine);
+    if (!register) {
+      actionDisagreements.push(`${action.engine} took a ${action.kind} at ${action.at} and there is no ${action.engine} register here to take it again`);
+      continue;
+    }
+    timeline.push({
+      mark: action.mark,
+      phase: 0,
+      order: order++,
+      label: `${action.engine} ${action.kind}`,
+      run: () => {
+        // the books go back to just before the action: the journal this mark counts is the one the
+        // action is about to post, and an action that reads a balance must read the balance it read
+        if (options.books) options.books.advanceToCount(Math.max(0, action.mark - 1));
+        try {
+          register.replay(action, replayContext);
+          actionsReplayed += 1;
+          replays.push(`${action.engine} ${action.kind} at ${action.at} → ${action.journalId || 'no journal'}${action.journalId && target.ledger.journal(action.journalId) ? ', journal reproduced' : ''}`);
+        } catch (err) {
+          actionDisagreements.push(`${action.engine} ${action.kind} at ${action.at}: ${String((err as Error).message)}`);
+          replays.push(`${action.engine} ${action.kind} at ${action.at} → refused: ${String((err as Error).message)}`);
+        }
+      },
+    });
+  }
+
+  /* ---------------------------------------------------------------- the returns */
+
   let duplicates = 0;
   const replayExtract = (
-    register: {
-      issue: (input: {
-        kind: ExtractKind; period: ExtractPeriod; asOf: string; counterparty?: string; by: string; at: string;
-        changesSummary?: string; allowDifferences?: boolean; approvedBy?: string;
-      }) => { created: boolean; extract: { id: string; fingerprint: string; version: number } };
-    },
+    register: ExtractEngine,
     record: ExtractRecord,
     label: string,
+    mark: number,
   ): void => {
-    try {
-      at(record.booksThrough);
-      const issued = register.issue({
-        kind: record.kind, period: record.period, asOf: record.asOf, by: record.by, at: record.at,
-        ...(record.counterparty ? { counterparty: record.counterparty } : {}),
-        ...(record.changesSummary ? { changesSummary: record.changesSummary } : {}),
-        ...(record.approvedBy ? { allowDifferences: true, approvedBy: record.approvedBy } : {}),
-      });
-      if (issued.extract.fingerprint !== record.fingerprint) {
-        disagreements.push(`${record.id}: ${label} register gave back ${issued.extract.id} with a different fingerprint (${issued.extract.fingerprint} vs ${record.fingerprint})`);
-        replays.push(`${label} extract ${record.id} → ${issued.extract.id}, different content`);
-        return;
-      }
-      // the version is part of a return's identity: v1 and v7 with the same wording are still two
-      // different records, and a snapshot that remembers the wrong one is not reproduced
-      if (issued.extract.version !== record.version) {
-        disagreements.push(`${record.id}: the register holds it as version ${issued.extract.version}, the snapshot says ${record.version}`);
-        replays.push(`${label} extract ${record.id} → ${issued.extract.id}, wrong version`);
-        return;
-      }
-      if (!issued.created) duplicates += 1;
-      replays.push(`${label} extract ${record.id} → ${issued.extract.id}${issued.created ? '' : ' (already held, identical)'}`);
-    } catch (err) {
-      disagreements.push(`${record.id}: ${String((err as Error).message)}`);
-      replays.push(`${label} extract ${record.id} → refused: ${String((err as Error).message)}`);
-    }
+    timeline.push({
+      mark,
+      phase: 1,
+      order: order++,
+      label: `${label} extract ${record.id}`,
+      run: () => {
+        at(mark);
+        // a return the register already holds, fingerprinted the same and on the same version, is
+        // the same return: re-issuing it into a world that has already traded would measure it
+        // against books that have moved on and call that a failure of the return
+        const held = register.list().find((e) => e.id === record.id);
+        if (held && held.fingerprint === record.fingerprint && held.version === record.version) {
+          duplicates += 1;
+          replays.push(`${label} extract ${record.id} → already held here, identical`);
+          return;
+        }
+        try {
+          const issued = register.issue({
+            kind: record.kind, period: record.period, asOf: record.asOf, by: record.by, at: record.at,
+            ...(record.counterparty ? { counterparty: record.counterparty } : {}),
+            ...(record.changesSummary ? { changesSummary: record.changesSummary } : {}),
+            ...(record.approvedBy ? { allowDifferences: true, approvedBy: record.approvedBy } : {}),
+          });
+          if (issued.extract.fingerprint !== record.fingerprint) {
+            disagreements.push(`${record.id}: ${label} register gave back ${issued.extract.id} with a different fingerprint (${issued.extract.fingerprint} vs ${record.fingerprint})`);
+            replays.push(`${label} extract ${record.id} → ${issued.extract.id}, different content`);
+            return;
+          }
+          // the version is part of a return's identity: v1 and v7 with the same wording are still
+          // two different records, and a snapshot that remembers the wrong one is not reproduced
+          if (issued.extract.version !== record.version) {
+            disagreements.push(`${record.id}: the register holds it as version ${issued.extract.version}, the snapshot says ${record.version}`);
+            replays.push(`${label} extract ${record.id} → ${issued.extract.id}, wrong version`);
+            return;
+          }
+          if (!issued.created) duplicates += 1;
+          replays.push(`${label} extract ${record.id} → ${issued.extract.id}${issued.created ? '' : ' (already held, identical)'}`);
+        } catch (err) {
+          disagreements.push(`${record.id}: ${String((err as Error).message)}`);
+          replays.push(`${label} extract ${record.id} → refused: ${String((err as Error).message)}`);
+        }
+      },
+    });
   };
-  for (const record of state.conventional.extracts) replayExtract(target.extracts, record, 'conventional');
-  for (const record of state.takaful.extracts) replayExtract(target.takafulExtracts, record, 'takaful');
+  for (const record of state.conventional.extracts) replayExtract(target.extracts, record, 'conventional', record.booksThrough ?? Number.MAX_SAFE_INTEGER);
+  for (const record of state.takaful.extracts) replayExtract(target.takafulExtracts, record, 'takaful', record.booksThrough ?? Number.MAX_SAFE_INTEGER);
+
+  /* ------------------------------------------------- the returns that went out */
+
+  const filingDisagreements: string[] = [];
+  let duplicatesFiled = 0;
+  const replayFiling = (record: FilingRecord, register: SubmissionRegister, mark: number): void => {
+    timeline.push({
+      mark,
+      phase: 1,
+      order: order++,
+      label: `filing ${record.reference}`,
+      run: () => {
+        at(mark);
+        const existing = register.submissions().find((s) => s.pack.extractId === record.pack.extractId
+          && s.pack.returnCode === record.pack.returnCode
+          && s.period.from === record.pack.period.from && s.period.to === record.pack.period.to);
+        try {
+          const filed = existing ?? register.file({
+            pack: record.pack, at: record.at, by: record.by,
+            ...(record.lateApprovedBy ? { lateApprovedBy: record.lateApprovedBy } : {}),
+            ...(record.lateReason ? { lateReason: record.lateReason } : {}),
+            ...(record.resubmissionOf ? { resubmissionOf: record.resubmissionOf } : {}),
+          });
+          if (existing) duplicatesFiled += 1;
+          // put the answer back on it, unless that answer is already recorded
+          if (record.acknowledgedAt && register.submission(filed.id).status !== 'acknowledged') {
+            register.acknowledge(filed.id, {
+              at: record.acknowledgedAt, by: record.acknowledgedBy ?? 'compliance/records',
+              supervisorReference: record.supervisorReference ?? '',
+            });
+          }
+          if (record.rejectedAt && register.submission(filed.id).status !== 'rejected') {
+            register.reject(filed.id, {
+              at: record.rejectedAt, by: record.rejectedBy ?? 'compliance/records',
+              reason: record.rejectionReason ?? 'restored from the store',
+            });
+          }
+          replays.push(`filing ${record.reference} → ${filed.id} (${register.submission(filed.id).status})`);
+        } catch (err) {
+          filingDisagreements.push(`${record.reference}: ${String((err as Error).message)}`);
+          replays.push(`filing ${record.reference} → refused: ${String((err as Error).message)}`);
+        }
+      },
+    });
+  };
+  for (const record of state.conventional.filings) replayFiling(record, target.submissions, record.booksThrough ?? Number.MAX_SAFE_INTEGER);
+  for (const record of state.takaful.filings) replayFiling(record, target.takafulSubmissions, record.booksThrough ?? Number.MAX_SAFE_INTEGER);
+
+  /* ---------------------------------------------------------------- run it */
+
+  timeline.sort((a, b) => (a.mark - b.mark) || (a.phase - b.phase) || (a.order - b.order));
+  for (const item of timeline) item.run();
+
+  // the books, all the way to the end, then checked journal for journal
+  at(Number.MAX_SAFE_INTEGER);
+  disagreements.push(...actionDisagreements, ...filingDisagreements);
 
   const restoredExtracts = target.extracts.list().length + target.takafulExtracts.list().length;
   const expectedExtracts = state.conventional.extracts.length + state.takaful.extracts.length;
@@ -451,6 +631,8 @@ export function restoreReporting(
     if (missing.length > 0) disagreements.push(`${missing.length} return(s) on the snapshot are not in the rebuilt register: ${missing.slice(0, 3).join(', ')}`);
     if (extra.length > 0) disagreements.push(`${extra.length} return(s) in the rebuilt register are not on the snapshot: ${extra.slice(0, 3).join(', ')}`);
   }
+
+  /* ------------------------------------------------------- decisions and letters */
 
   // Rule decisions: replay the facts and check the same answer comes back. A decision the register
   // already holds is not taken twice — a restore may run against a world that is partly there, and a
@@ -486,60 +668,10 @@ export function restoreReporting(
   }
   const lettersAgree = state.conventional.letters.every((record) =>
     target.wording.documents().some((d) => d.id === record.id && d.fingerprint === record.fingerprint));
+  void skippedDecisions;
 
-  // Filings: file them again, then put the answers back on them.
-  let skippedFilings = 0;
-  for (const record of state.conventional.filings) {
-    const existing = target.submissions.submissions().find((s) => s.pack.extractId === record.pack.extractId
-      && s.pack.returnCode === record.pack.returnCode
-      && s.period.from === record.pack.period.from && s.period.to === record.pack.period.to);
-    try {
-      at(record.booksThrough);
-      const filed = existing ?? target.submissions.file({
-        pack: record.pack, at: record.at, by: record.by,
-        ...(record.lateApprovedBy ? { lateApprovedBy: record.lateApprovedBy } : {}),
-        ...(record.lateReason ? { lateReason: record.lateReason } : {}),
-        ...(record.resubmissionOf ? { resubmissionOf: record.resubmissionOf } : {}),
-      });
-      if (existing) skippedFilings += 1;
-      // put the answer back on it, unless that answer is already recorded
-      if (record.acknowledgedAt && target.submissions.submission(filed.id).status !== 'acknowledged') {
-        target.submissions.acknowledge(filed.id, {
-          at: record.acknowledgedAt, by: record.acknowledgedBy ?? 'compliance/records',
-          supervisorReference: record.supervisorReference ?? '',
-        });
-      }
-      if (record.rejectedAt && target.submissions.submission(filed.id).status !== 'rejected') {
-        target.submissions.reject(filed.id, {
-          at: record.rejectedAt, by: record.rejectedBy ?? 'compliance/records',
-          reason: record.rejectionReason ?? 'restored from the store',
-        });
-      }
-    } catch (err) {
-      disagreements.push(`${record.reference}: ${String((err as Error).message)}`);
-    }
-  }
-  void skippedDecisions; void skippedFilings;
-  for (const record of state.takaful.filings) {
-    const existing = target.takafulSubmissions.submissions().find((s) => s.pack.extractId === record.pack.extractId
-      && s.pack.returnCode === record.pack.returnCode);
-    try {
-      at(record.booksThrough ?? undefined);
-      const filed = existing ?? target.takafulSubmissions.file({
-        pack: record.pack, at: record.at, by: record.by,
-        ...(record.lateApprovedBy ? { lateApprovedBy: record.lateApprovedBy } : {}),
-        ...(record.lateReason ? { lateReason: record.lateReason } : {}),
-      });
-      if (record.acknowledgedAt && target.takafulSubmissions.submission(filed.id).status !== 'acknowledged') {
-        target.takafulSubmissions.acknowledge(filed.id, {
-          at: record.acknowledgedAt, by: record.acknowledgedBy ?? 'compliance/records',
-          supervisorReference: record.supervisorReference ?? '',
-        });
-      }
-    } catch (err) {
-      disagreements.push(`${record.reference}: ${String((err as Error).message)}`);
-    }
-  }
+  /* ---------------------------------------------------------------------- verdict */
+
   const restoredFilings = target.submissions.submissions().length + target.takafulSubmissions.submissions().length;
   const expectedFilings = state.conventional.filings.length + state.takaful.filings.length;
   const statusesAgree = expectedFilings === restoredFilings
@@ -553,15 +685,26 @@ export function restoreReporting(
   if (settled && !settled.agree) disagreements.push(settled.detail);
   const ok = disagreements.length === 0 && fingerprintsAgree && lettersAgree && statusesAgree && books.agree && outbox.intact;
   return {
+    actions: {
+      expected: (state.actions ?? []).length,
+      replayed: actionsReplayed,
+      skipped: actionsSkipped,
+      disagreements: Object.freeze(actionDisagreements),
+    },
     books,
     extracts: { expected: expectedExtracts, restored: restoredExtracts, fingerprintsAgree, duplicates },
-    decisions: { expected: state.conventional.decisions.length, restored: new Set(state.conventional.decisions.map((d) => d.facts.subject)).size, agree: decisionAgreements, disagreements: Object.freeze(disagreements.filter((d) => /^UAE-RULE/.test(d))) },
+    decisions: {
+      expected: state.conventional.decisions.length,
+      restored: new Set(state.conventional.decisions.map((d) => d.facts.subject)).size,
+      agree: decisionAgreements,
+      disagreements: Object.freeze(disagreements.filter((d) => /^UAE-RULE/.test(d))),
+    },
     letters: { expected: state.conventional.letters.length, restored: target.wording.documents().length, fingerprintsAgree: lettersAgree },
     filings: { expected: expectedFilings, restored: restoredFilings, statusesAgree },
     outbox,
     ok,
     detail: ok
-      ? `every register replayed: ${expectedExtracts} extract(s)${duplicates > 0 ? ` (${duplicates} already held, identical)` : ''}, ${state.conventional.decisions.length} decision(s), ${state.conventional.letters.length} letter(s) and ${expectedFilings} filing(s) came back the same${settled ? `, the books were replayed with them (${books.posted} journal(s) posted by the restore)` : ''}, and the outbox chains from the beginning`
+      ? `every register replayed: ${actionsReplayed} action(s) taken again${duplicatesFiled > 0 ? ` (${duplicatesFiled} filing(s) already there)` : ''} and ${expectedExtracts} extract(s)${duplicates > 0 ? ` (${duplicates} already held, identical)` : ''}, ${state.conventional.decisions.length} decision(s), ${state.conventional.letters.length} letter(s) and ${expectedFilings} filing(s) came back the same${settled ? ', the books were replayed with them' : ''}, and the outbox chains from the beginning`
       : `the restore did not reproduce: ${disagreements.slice(0, 3).join('; ')}${disagreements.length > 3 ? ` and ${disagreements.length - 3} more` : ''}${disagreements.length === 0 ? ' the counts disagree and no record was named — see the replay log' : ''}`,
     replays,
   };
@@ -570,10 +713,11 @@ export function restoreReporting(
 /** What a store owes its reader, written on the face of every snapshot. */
 export const REGISTER_STORE_LIMITATION =
   'The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; '
-  + 'the outbox proves nothing was dropped between snapshots, and every record remembers how far the books had got when it was made, so it '
-  + 'is re-proved against the books of its own moment. Two limits are stated rather than papered over: it is not yet a database (no '
-  + 'transactional write, no concurrent-reader isolation, no incremental streaming of the outbox), and a return whose figures came from a '
-  + 'register the store does not carry yet — a catastrophe recovery, say — is reported as one it could not re-prove rather than quietly '
-  + 'let through. Carrying those inputs is its own chunk.';
+  + 'the outbox proves nothing was dropped between snapshots; every record remembers how far the books had got when it was made and is '
+  + 're-proved against the books of its own moment; and the registers carry the actions they took, so a restart puts them back by taking '
+  + 'those actions again, checked journal for journal. Two limits are stated rather than papered over: it is not yet a database (no '
+  + 'transactional write, no concurrent-reader isolation, no incremental streaming of the outbox), and an action that posts no journal — a '
+  + 'cash call, a free reinstatement — is anchored by the number of journals the books held when it happened, which places it in the right '
+  + 'window but cannot order two such actions that land inside the same journal.';
 
 export type { Money };

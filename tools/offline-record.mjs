@@ -103,9 +103,6 @@ await direct('POST', '/reinsurance/security/call', {
    a reload gives a clean view and stops one failed click from cascading into the rest. */
 const script = [
   ['Overview', []],
-  // the register drill is a proof about the world it was run against, so it is recorded while the
-  // world is the seeded one — the moment the session hands the store a world it can re-prove
-  ['Durability', ['Run durability drill', 'Rebuild every register from the snapshot']],
   ['Policyholder', []],
   ['Decision theatre', ['Price the switch', 'Price the withdrawal']],
   ['Cover control', ['Stop cover', 'Advance the clock one day', 'Start cover now', 'Advance the clock one day']],
@@ -122,7 +119,10 @@ const script = [
   ['AI ledger', ['Approve', 'Execute']],   // Execute only renders once a human has approved the action
   ['Books', []],
   ['Labels & rename', []],
-  ['Durability', []],
+  // The register drill runs at the end of the session, once the desk has traded: the store carries
+  // the actions the registers took, so a restore is green whatever was pressed before it — and this
+  // recording shows the harder case rather than the easier one.
+  ['Durability', ['Run durability drill', 'Rebuild every register from the snapshot']],
   ['Tour', ['Start the tour']],
 ];
 

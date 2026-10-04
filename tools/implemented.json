@@ -503,7 +503,10 @@
         "register persistence and restore",
         "snapshot migration",
         "outbox hash chain",
-        "idempotent restore"
+        "idempotent restore",
+        "the registers replay their own actions",
+        "journal-for-journal restore",
+        "one timeline for the restart"
       ],
       "layers": [
         "design",
@@ -533,7 +536,8 @@
         "src/core/submission.ts",
         "src/core/submission.test.ts",
         "src/core/registerstore.ts",
-        "src/core/registerstore.test.ts"
+        "src/core/registerstore.test.ts",
+        "src/core/actionlog.ts"
       ]
     }
   },

@@ -1791,6 +1791,7 @@ type RegisterSummary = {
 
 type RegisterDrill = {
   ok: boolean; detail: string; fingerprint: string; schemaVersion: number; bytes: number; restoreMs: number;
+  actions: { expected: number; replayed: number; skipped: number; disagreements: string[] };
   books: { posted: number; agree: boolean; detail: string };
   replays: string[];
   registers: {
@@ -1838,6 +1839,7 @@ function RegisterStore() {
         <>
           <div className="stat"><span>Result</span><b>{drill.ok ? <Pill tone="ok">every register replayed</Pill> : <Pill tone="bad">did not reproduce</Pill>}</b></div>
           <div className="stat"><span>Restore time</span><b>{drill.restoreMs} ms</b></div>
+          <div className="stat"><span>Actions taken again</span><b>{drill.actions.replayed} replayed · {drill.actions.skipped} already here</b></div>
           <div className="stat"><span>Books under the registers</span><b>{drill.books.agree ? <Pill tone="ok">replayed with them</Pill> : <Pill tone="bad">did not come back the same</Pill>}</b></div>
           <p className="small">{drill.detail}</p>
           <p className="muted small">{drill.books.detail}</p>

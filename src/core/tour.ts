@@ -219,7 +219,7 @@ export const TOUR: TourStep[] = [
     expect: [
       'The restore reports the same journals and the same balances, in milliseconds.',
       'The fingerprint is stable across runs, so a tampered payload would be caught.',
-      'Every reporting register replays: each return keeps its fingerprint, each rule decision follows again from its own facts, each letter regenerates from its own facts, and each filing carries the answer it got — with the outbox chaining from the beginning.',
+      'Every reporting register replays: each return keeps its fingerprint, each rule decision follows again from its own facts, each letter regenerates from its own facts, and each filing carries the answer it got — with the outbox chaining from the beginning.', 'The actions the registers took come back too: the catastrophe recovery is claimed again through the reinsurance register and posts the same journal, and the books return journal for journal, not just to the same totals.',
     ],
     api: ['GET /api/state', 'POST /api/state/drill', 'GET /api/state/registers', 'POST /api/state/registers/drill'],
   },

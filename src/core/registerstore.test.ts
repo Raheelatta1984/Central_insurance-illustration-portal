@@ -38,6 +38,7 @@ function fresh() {
 const bundle = (world: ReturnType<typeof live> | ReturnType<typeof fresh>): RegisterBundle => ({
   ledger: world.ledger, extracts: world.extracts, takafulExtracts: world.takafulExtracts,
   rules: world.rules, wording: world.wording, submissions: world.submissions, takafulSubmissions: world.takafulSubmissions,
+  registers: world.registers,
 });
 
 describe('what the store keeps', () => {
@@ -152,7 +153,7 @@ describe('a restart', () => {
 
   it('says which register failed rather than declaring a bad restore good', () => {
     const state = exportReporting(bundle(live()));
-    const tampered = JSON.parse(JSON.stringify(state)) as ReportingState;
+    const tampered = structuredClone(state) as ReportingState;
     // a return that claims a version it cannot have: replayed, the register issues it as v1
     (tampered.conventional.extracts[0] as { version: number }).version = 7;
     const report = restoreReporting(tampered, bundle(fresh()));
@@ -169,7 +170,7 @@ describe('a restart', () => {
     const state = exportReporting(bundle(live()));
     // the same return twice on the snapshot: the register refuses to hold two identical returns,
     // which is right — the restore must not call that a missing record
-    const doubled = JSON.parse(JSON.stringify(state)) as ReportingState;
+    const doubled = structuredClone(state) as ReportingState;
     (doubled.conventional.extracts as ExtractRecord[]).push({ ...doubled.conventional.extracts[0]! });
     const report = restoreReporting(doubled, bundle(fresh()));
     expect(report.extracts.duplicates).toBe(1);
@@ -177,12 +178,12 @@ describe('a restart', () => {
     expect(report.detail).toContain('1 already held, identical');
     // and the report names every record it met, in order, so a restore can be read line by line
     expect(report.replays.length).toBeGreaterThanOrEqual(doubled.conventional.extracts.length);
-    expect(report.replays[0]).toContain(doubled.conventional.extracts[0]!.id);
+    expect(report.replays.some((line) => line.includes(doubled.conventional.extracts[0]!.id))).toBe(true);
   });
 
   it('refuses a restore it cannot name, instead of reporting a silent count mismatch', () => {
     const state = exportReporting(bundle(live()));
-    const missing = JSON.parse(JSON.stringify(state)) as ReportingState;
+    const missing = structuredClone(state) as ReportingState;
     // a snapshot that claims a return the register can never reproduce: an extract for a period the
     // books no longer support
     (missing.conventional.extracts[0] as { asOf: string }).asOf = '2019-01-01';
@@ -209,15 +210,18 @@ describe('the books under the registers', () => {
     return world;
   }
 
-  it('refuses a return prepared after a transaction unless that transaction is back in the books', () => {
+  it('cannot re-prove a return prepared after a transaction when the payload carries none of the actions', () => {
     const world = afterTheDayMoved();
-    const state = exportReporting(bundle(world));
-    // replaying the registers on their own: the world has the seeded books but not the recovery, so
-    // the return that carries the recovery in its figures cannot reproduce — and the report says so
-    const bare = restoreReporting(state, bundle(fresh()));
-    expect(bare.ok).toBe(false);
-    expect(bare.detail).toContain('did not reproduce');
-    expect(bare.replays.some((line) => line.includes('different content'))).toBe(true);
+    const full = exportReporting(bundle(world));
+    // a payload written before the actions were carried: the returns are there, the recovery that
+    // moved the figures is not, so the last return cannot reproduce — and the report says which one
+    const bare = { ...structuredClone(full), actions: [] } as ReportingState;
+    expect(bare.conventional.extracts[0]!.booksThrough).toBeGreaterThan(0);
+    const report = restoreReporting(bare, bundle(fresh()));
+    expect(report.ok).toBe(false);
+    expect(report.actions.expected).toBe(0);
+    expect(report.detail).toContain('did not reproduce');
+    expect(report.replays.some((line) => line.includes('different content') || line.includes('refused'))).toBe(true);
   });
 
   it('proves each return against the books of the moment it was issued', () => {
@@ -242,25 +246,73 @@ describe('the books under the registers', () => {
     const books = openBooksTimeline(rebuilt, exportLedger(world.ledger));
     const report = restoreReporting(state, rebuilt, { books });
     expect(report.books.agree).toBe(true);
-    expect(report.books.posted).toBeGreaterThan(0);
-    expect(report.books.detail).toContain('every entity\'s trial balance is the one the snapshot had');
-    const replayed = report.replays.filter((line) => !line.includes('refused'));
-    expect(replayed.length).toBe(state.conventional.extracts.length + state.takaful.extracts.length - 1);
+    // the action is taken again, so the journal it posts is not replayed off the snapshot: it is
+    // produced by the register itself, which is the stronger proof
+    expect(report.actions.replayed).toBeGreaterThan(0);
+    expect(rebuilt.ledger.journal(state.actions[state.actions.length - 1]!.journalId)).toBeDefined();
+    expect(report.books.detail).toContain('every entity\'s trial balance the one the snapshot had');
+    const replayed = report.replays.filter((line) => line.includes('extract') && !line.includes('refused'));
+    expect(replayed.length).toBe(state.conventional.extracts.length + state.takaful.extracts.length);
   });
 
-  it('names the one return it cannot re-prove, and says what the store would have to carry', () => {
+  it('re-proves a return prepared after the day moved, because it carries what the return was made from', () => {
+    const world = afterTheDayMoved();
+    const state = exportReporting(bundle(world));
+    // the register kept the action, with the journal it posted and the inputs it was given
+    const recovery = state.actions.find((a) => a.kind === 'event-recovery' && (a.input as { eventId?: string }).eventId === 'FLOOD-TEST');
+    expect(recovery).toBeDefined();
+    expect(recovery!.engine).toBe('reinsurance');
+    expect(recovery!.journalId).not.toBe('');
+
+    // replaying into a fresh world: the action is taken again, the return that depends on it comes
+    // back, and the books are reproduced journal for journal
+    const rebuilt = bundle(fresh());
+    const report = restoreReporting(state, rebuilt, { books: openBooksTimeline(rebuilt, exportLedger(world.ledger)) });
+    expect(report.ok).toBe(true);
+    expect(report.actions.replayed + report.actions.skipped).toBe(state.actions.length);
+    expect(report.actions.replayed).toBeGreaterThan(0);
+    expect(report.actions.disagreements).toEqual([]);
+    expect(report.books.agree).toBe(true);
+    expect(rebuilt.ledger.allJournals().length).toBe(world.ledger.allJournals().length);
+    // the last return was the one that could not be re-proved before this: it reproduces now
+    const last = state.conventional.extracts[state.conventional.extracts.length - 1]!;
+    expect(rebuilt.extracts.get(last.id).fingerprint).toBe(last.fingerprint);
+  });
+
+  it('does not take an action twice when the world has already taken it', () => {
     const world = afterTheDayMoved();
     const state = exportReporting(bundle(world));
     const rebuilt = bundle(fresh());
-    const report = restoreReporting(state, rebuilt, { books: openBooksTimeline(rebuilt, exportLedger(world.ledger)) });
-    // the last return was issued after a catastrophe recovery was claimed: its figures come from a
-    // register the store does not carry yet, so it cannot be re-proved — and the restore says which
-    // return and why rather than calling the whole restore good or bad in general
+    const books = openBooksTimeline(rebuilt, exportLedger(world.ledger));
+    const seededInFreshWorld = fresh().registers!.flatMap((r) => r.actionLog()).length;
+    const first = restoreReporting(state, rebuilt, { books });
+    expect(first.actions.replayed + first.actions.skipped).toBe(state.actions.length);
+    expect(first.actions.skipped).toBe(seededInFreshWorld);
+    expect(first.actions.replayed).toBe(state.actions.length - seededInFreshWorld);
+    // a second restore against the same world: every action is already in the register, so the
+    // restore recognises them rather than ceding the same premium twice
+    const second = restoreReporting(state, rebuilt, { books });
+    expect(second.ok).toBe(true);
+    expect(second.actions.replayed).toBe(0);
+    expect(second.actions.skipped).toBe(state.actions.length);
+    expect(rebuilt.ledger.allJournals().length).toBe(world.ledger.allJournals().length);
+  });
+
+  it('names the action that no longer reproduces instead of calling the restore good', () => {
+    const world = afterTheDayMoved();
+    const state = exportReporting(bundle(world));
+    const tampered = structuredClone(state) as ReportingState;
+    // the loss behind the catastrophe recovery is remembered as twice what happened to be claimed
+    const action = (tampered.actions as unknown as Array<{ kind: string; input: Record<string, unknown> }>)
+      .find((a) => a.kind === 'event-recovery' && (a.input['eventId'] as string) === 'FLOOD-TEST')!;
+    expect(action).toBeDefined();
+    (action.input['loss'] as { minor: bigint }).minor = 228_000_000n;
+    const rebuilt = bundle(fresh());
+    const report = restoreReporting(tampered, rebuilt, { books: openBooksTimeline(rebuilt, exportLedger(world.ledger)) });
     expect(report.ok).toBe(false);
-    const last = state.conventional.extracts[state.conventional.extracts.length - 1]!;
-    expect(report.detail).toContain(last.id);
-    expect(report.detail).toContain('do not agree with the books');
-    expect(report.replays.filter((line) => line.includes('refused')).length).toBe(1);
+    // the books give it away: a different recovery means a different journal
+    expect(report.books.agree).toBe(false);
+    expect(report.books.detail).toContain('did not come back the same');
   });
 
   it('says so when the books it is handed are not the books the world already has', () => {
@@ -303,8 +355,9 @@ describe('the envelope', () => {
     const text = snapshotText(booksOnly);
     const parsed = JSON.parse(text);
     const plan = planMigrations(1, REPORTING_SCHEMA_VERSION, REPORTING_MIGRATIONS);
-    expect(plan.length).toBe(1);
+    expect(plan.length).toBe(2);
     expect(plan[0]!.describe).toContain('reporting registers');
+    expect(plan[1]!.describe).toContain('action');
     // the migration runs as part of opening, so a books-only snapshot opens as a valid, empty store
     const migratedSnapshot = { ...booksOnly, schemaVersion: REPORTING_SCHEMA_VERSION };
     void open(parsed, { expectSchema: REPORTING_SCHEMA_VERSION, migrations: REPORTING_MIGRATIONS });
@@ -314,6 +367,9 @@ describe('the envelope', () => {
     const carried = REPORTING_MIGRATIONS[0]!.apply({ ledgerBase: 'AED' });
     expect(carried.reporting.conventional).toEqual({ extracts: [], decisions: [], letters: [], filings: [] });
     expect(carried.reporting.takaful).toEqual({ extracts: [], filings: [] });
+    // and the second link brings the payload up to the schema that carries the registers' actions
+    const v3 = REPORTING_MIGRATIONS[1]!.apply(carried);
+    expect(v3.actions).toEqual([]);
     expect(carried.ledgerBase).toBe('AED');
     // a snapshot written by a codec this build does not speak is refused outright
     const wrongCodec = { ...booksOnly, codecVersion: 99 };

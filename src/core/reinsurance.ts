@@ -20,6 +20,7 @@
  *    (takaful); it is never participant money.
  */
 import { Ledger, posting } from './ledger.js';
+import { captureInput, RegisterAction, ReplayContext, ReplayableRegister } from './actionlog.js';
 import {
   Currency, Money, abs, add, applyBps, applyRatio, compare, formatAmount, isNegative, lte, money, sub, zero,
 } from './money.js';
@@ -336,17 +337,19 @@ function dayAfter(day: string, days: number): string {
 /** The 30-day window every treasury desk watches: security that lapses before it can be replaced. */
 const SECURITY_EXPIRY_WINDOW_DAYS = 30;
 
-export class TreatyRegister {
+export class TreatyRegister implements ReplayableRegister {
   private readonly treaties = new Map<string, Treaty>();
   private readonly cessions: CessionPosting[] = [];
   private readonly accepted = new Map<string, Set<string>>();   // facultative: treatyId -> risk ids
   private readonly schedule = new Map<string, Cession>();       // policyId -> the cession that applies
   private seq = 0;
+  private readonly actions: RegisterAction[] = [];
 
   constructor(
     private readonly ledger: Ledger,
     private readonly entityId: string,
     private readonly currency: Currency,
+    private readonly engineNameIn?: string,
   ) {
     const id = (n: string) => `${entityId}:${n}`;
     this.ledger.defineAccount({ id: id('REINS:CEDED-PREMIUM'), name: 'Ceded premium / contribution (expense)', type: 'expense', entityId, currency });
@@ -358,6 +361,60 @@ export class TreatyRegister {
     this.ledger.defineAccount({ id: id('COLLATERAL:CASH'), name: 'Cash held as security (restricted)', type: 'asset', entityId, currency });
     this.ledger.defineAccount({ id: id('RECEIVED-AS-SECURITY'), name: 'Security received from reinsurers, returnable', type: 'liability', entityId, currency });
     this.ledger.defineAccount({ id: id('COLLATERAL:INTEREST'), name: 'Interest earned on cash collateral held', type: 'expense', entityId, currency });
+  }
+
+  /* ------------------------------------------------------------- what this register did */
+
+  get engineName(): string { return this.engineNameIn ?? 'reinsurance'; }
+
+  /**
+   * Every money-moving action this register took, and the journal it posted. The register hands this
+   * to the store; the store replays it to prove a restart lands on the same books.
+   */
+  actionLog(): readonly RegisterAction[] { return this.actions; }
+
+  /**
+   * Take an action again from its own recorded inputs. This is the register being asked to
+   * reproduce itself, so it goes back through the same public method the desk used — not around it.
+   */
+  replay(action: RegisterAction, context?: ReplayContext): void {
+    const input = action.input as Record<string, never>;
+    switch (action.kind) {
+      case 'cede-premium': this.cedePremium(input as never); return;
+      case 'recover-claim': {
+        // A claim recovery is taken against a claims register. The action remembers which one by
+        // name; the replay hands it the register wearing that name in this world, or says it cannot.
+        const named = (action.input['claim'] as { engine?: string } | undefined)?.engine;
+        const claim = named ? context?.register(named) : undefined;
+        if (named && !claim) {
+          throw new ReinsuranceError(`this recovery was taken against the ${named} register and there is no ${named} register here to take it again`);
+        }
+        this.recoverClaim({ ...(action.input as object), ...(claim ? { claim } : {}) } as never);
+        return;
+      }
+      case 'event-recovery': this.recoverEvent(String(input['treatyId']), input as never); return;
+      case 'reinstate': this.reinstate(String(input['treatyId']), input as never); return;
+      case 'open-deposit': this.openDeposit(String(input['treatyId']), input as never); return;
+      case 'settle-deposit': this.settleDeposit(String(input['treatyId']), input as never); return;
+      case 'settle-recovery': this.settleRecovery(input as never); return;
+      case 'hold-security': this.holdSecurity(input as never); return;
+      case 'call-security': this.callSecurity(input as never); return;
+      case 'release-security': this.releaseSecurity(input as never); return;
+      case 'credit-collateral-interest': this.creditCollateralInterest(input as never); return;
+      default: throw new ReinsuranceError(`the register has no action called ${action.kind} to take again`);
+    }
+  }
+
+  /** Record an action and the journal it posted. Called by the actions themselves, never by hand. */
+  private did(kind: string, at: string, journalId: string, input: unknown): void {
+    this.actions.push(Object.freeze({
+      engine: this.engineName,
+      kind,
+      at,
+      journalId,
+      mark: this.ledger.allJournals().length,
+      input: captureInput(input) as Readonly<Record<string, unknown>>,
+    }));
   }
 
   /* ------------------------------------------------------------------ register */
@@ -601,6 +658,7 @@ export class TreatyRegister {
       ...cession, policyId: input.policyId, ref, treatment, premium: input.premium, cededPremium, commission,
       netRetainedPremium, journalId: entry.id, at: input.at,
     };
+    this.did('cede-premium', input.at, entry.id, input);
     this.cessions.push(postingRecord);
     this.schedule.set(input.policyId, cession);
     return postingRecord;
@@ -646,6 +704,7 @@ export class TreatyRegister {
       receivedInto: this.account('RECEIVABLE'),
     });
     this.recoveries.push({ claimId: input.claimId, ref, amount, at: input.at, treatyId: cession.treatyId, recoveryId: recovery.id, treatment: 'risk-transferring', source: 'policy', settled: zero(this.currency) });
+    this.did('recover-claim', input.at, recovery.id, { ...input, claim: { engine: (input.claim as { engineName?: string }).engineName ?? 'claims' } });
     return { amount, shareBps: cession.shareBps, recoveryId: recovery.id };
   }
 
@@ -664,7 +723,7 @@ export class TreatyRegister {
     const amount = applyRatio(input.paid, cession.ceded.minor, cession.sumInsured.minor);
     if (amount.minor === 0n) throw new ReinsuranceError('a recovery amount must be positive');
     const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
-    this.ledger.post({
+    const entry = this.ledger.post({
       id, entityId: this.entityId, at: input.at, source: 'reinsurance', sourceRef: `${input.claimId}/${cession.treatyId}/deposit`,
       description: `${formatAmount(amount)} of ${input.claimId} drawn from the ${cession.treatyId} deposit (deposit accounting)`,
       postings: [
@@ -675,6 +734,7 @@ export class TreatyRegister {
     // A deposit draw is not a receivable: the money was already the reinsurer's, so it is recorded
     // here for the audit trail but never aged and never settled.
     this.recoveries.push({ claimId: input.claimId, ref: input.ref ?? input.claimId, amount, at: input.at, treatyId: cession.treatyId, recoveryId: id, treatment: 'deposit', source: 'deposit', settled: amount });
+    this.did('recover-claim', input.at, entry.id, { ...input, claim: { engine: (input.claim as { engineName?: string }).engineName ?? 'claims' } });
     this.notes.push(`${input.by ?? 'recovery-desk'}: ${formatAmount(amount)} drawn from the ${cession.treatyId} deposit for ${input.claimId} (no income recognised)`);
     return { amount, shareBps: cession.shareBps, recoveryId: id };
   }
@@ -744,6 +804,7 @@ export class TreatyRegister {
         + (treatment === 'deposit' ? ' (deposit accounting: no income recognised)' : ''),
       postings: lines,
     });
+    this.did('event-recovery', input.at, entry.id, { treatyId, ...input });
     this.eventRecoveries.push({ treatyId, eventId: input.eventId, amount, at: input.at, journalId: entry.id });
     this.recoveries.push({
       claimId: input.eventId, ref: input.eventId, amount, at: input.at, treatyId,
@@ -806,6 +867,7 @@ export class TreatyRegister {
       });
       journalId = entry.id;
     }
+    this.did('reinstate', input.at, journalId ?? '', { treatyId, ...input });
     this.consumed.set(treatyId, sub(state.consumed, wanted));
     const record: Reinstatement = {
       treatyId, sequence, restored: wanted, premium, free, at: input.at, available: this.coverState(treatyId).available,
@@ -853,6 +915,7 @@ export class TreatyRegister {
       treatyId, depositPaid: add(current.depositPaid, input.amount), settled: false,
       adjustments: [...current.adjustments, { at: `${input.at}#${instalment}`, kind: 'additional' as const, amount: input.amount, journalId: entry.id }],
     };
+    this.did('open-deposit', input.at, entry.id, { treatyId, amount: input.amount, at: input.at, instalment });
     this.deposits.set(treatyId, { ...next, ...(current.technicalPremium ? { technicalPremium: current.technicalPremium } : {}) });
     this.notes.push(`deposit instalment ${instalment} of ${formatAmount(input.amount)} paid under ${treatyId} (${entry.id})`);
     return this.depositAccount(treatyId);
@@ -892,6 +955,7 @@ export class TreatyRegister {
     if (difference.minor !== 0n) {
       account.adjustments.push({ at: input.at, kind: difference.minor > 0n ? 'additional' : 'return', amount: abs(difference), journalId: entry.id });
     }
+    this.did('settle-deposit', input.at, entry.id, { treatyId, ...input });
     const settled = { ...account, technicalPremium: technical, settled: true, settledAt: input.at };
     this.deposits.set(treatyId, settled);
     this.notes.push(`deposit settled under ${treatyId}: technical ${formatAmount(technical)}, ${difference.minor >= 0n ? 'additional' : 'returned'} ${formatAmount(abs(difference))}`);
@@ -955,6 +1019,7 @@ export class TreatyRegister {
     recovery.settled = add(recovery.settled, amount);
     recovery.settledAt = input.at;
     this.notes.push(`${input.by ?? 'recovery-desk'}: ${formatAmount(amount)} settled on ${recovery.recoveryId} (${entry.id})`);
+    this.did('settle-recovery', input.at, entry.id, { recoveryId: input.recoveryId, at: input.at, ...(input.amount ? { amount: input.amount } : {}), ...(input.by ? { by: input.by } : {}) });
     return { recoveryId: recovery.recoveryId, settled: recovery.settled, outstanding: sub(recovery.amount, recovery.settled), journalId: entry.id };
   }
 
@@ -1514,6 +1579,7 @@ export class TreatyRegister {
       ...(input.treatyId ? { treatyId: input.treatyId } : {}),
       ...(journalId ? { journalId } : {}),
     };
+    this.did('hold-security', input.at, journalId ?? '', input);
     this.securityInstruments.push(instrument);
     this.notes.push(`${by}: ${formatAmount(amount)} of security held from ${input.counterparty} (${input.kind}, ${instrument.reference})`);
     return { ...instrument };
@@ -1552,6 +1618,7 @@ export class TreatyRegister {
       at: input.at, dueBy: dayAfter(day, dueDays), by: input.by ?? 'treasury',
       settled: zero(this.currency), status: 'open', settlements: [],
     };
+    this.did('call-security', input.at, '', input);
     this.cashCalls.push(call);
     this.notes.push(`${call.by}: cash call ${call.id} on ${input.counterparty} for ${formatAmount(amount)}, due ${call.dueBy} — ${call.reason}`);
     return { ...call, settlements: [] };
@@ -1655,6 +1722,7 @@ export class TreatyRegister {
     } else {
       this.notes.push(`${input.by ?? 'treasury'}: ${formatAmount(amount)} of security released to ${instrument.counterparty} — ${input.reason}`);
     }
+    this.did('release-security', input.at, journalId ?? '', input);
     return { instrument: { ...instrument }, released: amount, ...(journalId ? { journalId } : {}) };
   }
 
@@ -1689,6 +1757,7 @@ export class TreatyRegister {
         posting(this.securityLiability(), 'credit', input.amount, base, instrument.counterparty),
       ],
     });
+    this.did('credit-collateral-interest', input.at, entry.id, input);
     instrument.interest = add(instrument.interest, input.amount);
     this.notes.push(`${input.by ?? 'treasury'}: ${formatAmount(input.amount)} of interest credited to ${instrument.counterparty} on ${instrument.reference} (${entry.id})`);
     return { instrument: { ...instrument }, journalId: entry.id };

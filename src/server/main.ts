@@ -269,6 +269,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
         ledger: restarted.ledger, extracts: restarted.extracts, takafulExtracts: restarted.takafulExtracts,
         rules: restarted.rules, wording: restarted.wording,
         submissions: restarted.submissions, takafulSubmissions: restarted.takafulSubmissions,
+        registers: restarted.registers,
       };
       // the books come with the registers: opened as a timeline so each return is replayed against
       // the books as they stood when it was issued, then settled so the end state is compared

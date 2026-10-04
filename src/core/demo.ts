@@ -23,6 +23,7 @@ import { LabelRegistry, Locale } from './labels.js';
 import { applyBps } from './money.js';
 import { AE_PACK, comparisonMatrix, preSaleCheck, QuoteOffer } from './regulatory.js';
 import { REINSURANCE_SEED, TreatyRegister } from './reinsurance.js';
+import { ReplayableRegister } from './actionlog.js';
 import { ExtractEngine, IssuedExtract, formatCell } from './extracts.js';
 import { PlacementFacts, UAE_RULES, UaeRuleBook, ratingRank } from './uae.js';
 import { WordingBook, WordingDocument, WordingFacts } from './wording.js';
@@ -51,6 +52,12 @@ export interface World {
   readonly submissions: SubmissionRegister;  // what was filed with the supervisor, and what came back
   readonly takafulSubmissions: SubmissionRegister;  // the window files its own return, from its own fund
   readonly takafulExtracts: ExtractEngine;   // the window files its own return, from its own fund
+  /**
+   * The registers that can say what they did and do it again. Each keeps the money-moving actions it
+   * took with the journal it posted, and the reporting store replays them on restore — which is how
+   * a restart puts the registers back rather than only the rows they ended up holding.
+   */
+  readonly registers: ReadonlyArray<ReplayableRegister>;
 
   readonly group: GroupConsolidator;
   readonly groupRates: RateTable;
@@ -258,6 +265,7 @@ export function buildWorld(): World {
   claims.approve(ciClaim.id, { amount: money(400_00, currency), at: '2026-08-09T09:00:00+04:00', by: 'agent/claims-triage', role: 'ai-straight-through', isAi: true });
 
   const takafulClaims = new ClaimsEngine(ledger, tkfChart, takafulEntity, currency, {
+    engineName: 'takaful-claims',
     poolSettler: (c, amount, at) => takaful.settlePoolClaim(c, amount, at),
   });
   const tkfClaim = takafulClaims.register({
@@ -316,11 +324,11 @@ export function buildWorld(): World {
      quarter of it, a surplus treaty takes the lines above a 200,000 retention, a catastrophe cover
      stands behind the whole book, and the retakaful operator carries a fifth of the takaful window's
      risk. Every cession is posted, so the books show what was given away and what came back. */
-  const reinsurance = new TreatyRegister(ledger, conventionalEntity, currency);
+  const reinsurance = new TreatyRegister(ledger, conventionalEntity, currency, 'reinsurance');
   for (const treaty of REINSURANCE_SEED) {
     if (treaty.basis === 'conventional') reinsurance.register({ ...treaty, currency });
   }
-  const retakaful = new TreatyRegister(ledger, takafulEntity, currency);
+  const retakaful = new TreatyRegister(ledger, takafulEntity, currency, 'retakaful');
   for (const treaty of REINSURANCE_SEED) {
     if (treaty.basis === 'takaful') retakaful.register({ ...treaty, currency });
   }
@@ -685,7 +693,10 @@ export function buildWorld(): World {
     },
   });
 
+  const registers: ReadonlyArray<ReplayableRegister> = [reinsurance, retakaful, claims, takafulClaims];
+
   return {
+    registers,
     tenant, entities: [
       { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional', currency, regulator: 'CBUAE' },
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },

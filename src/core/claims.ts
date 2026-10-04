@@ -15,6 +15,7 @@
  * money of its own — there is exactly one movement of cash for every claim.
  */
 import { Ledger, posting } from './ledger.js';
+import { captureInput, RegisterAction, ReplayContext, ReplayableRegister } from './actionlog.js';
 import { Money, add, applyBps, compare, formatAmount, gte, isNegative, money, sub, zero } from './money.js';
 
 export type ClaimStatus = 'registered' | 'under-review' | 'approved' | 'settled' | 'declined' | 'withdrawn';
@@ -96,6 +97,8 @@ export interface PoolSettler {
 }
 
 export interface ClaimsOptions {
+  /** Which register this is, in the snapshot's vocabulary: `claims` or `takaful-claims`. */
+  readonly engineName?: string;
   readonly authority?: Authority[];
   readonly notificationGraceDays?: number;
   readonly slaDays?: number;
@@ -105,8 +108,9 @@ export interface ClaimsOptions {
 
 export class ClaimsError extends Error {}
 
-export class ClaimsEngine {
+export class ClaimsEngine implements ReplayableRegister {
   private readonly claims = new Map<string, Claim>();
+  private readonly actions: RegisterAction[] = [];
   private readonly authority: Authority[];
   private readonly grace: number;
   private readonly sla: number;
@@ -121,6 +125,7 @@ export class ClaimsEngine {
     private readonly currency: string,
     options: ClaimsOptions = {},
   ) {
+    this.engineName = options.engineName ?? 'claims';
     this.authority = [...(options.authority ?? DEFAULT_AUTHORITY)];
     this.grace = options.notificationGraceDays ?? 30;
     this.sla = options.slaDays ?? 45;
@@ -129,6 +134,32 @@ export class ClaimsEngine {
   }
 
   /* --------------------------------------------------------------- intake */
+
+  readonly engineName: string;
+
+  /** What this claims register did: claims registered, reserves moved, settlements, recoveries. */
+  actionLog(): readonly RegisterAction[] { return this.actions; }
+
+  replay(action: RegisterAction, _context?: ReplayContext): void {
+    const input = action.input as Record<string, never>;
+    switch (action.kind) {
+      case 'register-claim': this.register(input as never); return;
+      case 'set-reserve': this.setReserve(String(input['claimId']), input as never); return;
+      case 'approve-claim': this.approve(String(input['claimId']), input as never); return;
+      case 'settle-claim': this.settle(String(input['claimId']), input as never); return;
+      case 'recover-claim': this.recover(String(input['claimId']), input as never); return;
+      case 'decline-claim': this.decline(String(input['claimId']), input as never); return;
+      default: throw new ClaimsError(`this claims register has no action called ${action.kind} to take again`);
+    }
+  }
+
+  private did(kind: string, at: string, journalId: string, input: unknown): void {
+    this.actions.push(Object.freeze({
+      engine: this.engineName, kind, at, journalId,
+      mark: this.ledger.allJournals().length,
+      input: captureInput(input) as Readonly<Record<string, unknown>>,
+    }));
+  }
 
   register(input: {
     policyId: string; cause: ClaimCause; lossDate: string; reportedAt: string;
@@ -146,6 +177,7 @@ export class ClaimsEngine {
       }],
     };
     this.claims.set(id, claim);
+    this.did('register-claim', input.reportedAt, '', input);
     return claim;
   }
 
@@ -218,7 +250,7 @@ export class ClaimsEngine {
     const delta = sub(input.amount, claim.reserve);
     if (isNegative(delta)) throw new ClaimsError('a reserve can be reduced only by settling or by an explicit release, never silently');
     if (compare(delta, zero(this.currency)) === 0) return claim;
-    this.post(`reserve ${claim.id}`, claim, input.at, `Increase in claim reserve ${claim.id} by ${formatAmount(delta)}`, [
+    const journalId = this.post(`reserve ${claim.id}`, claim, input.at, `Increase in claim reserve ${claim.id} by ${formatAmount(delta)}`, [
       { accountId: this.chart.claimExpense(), side: 'debit', amount: delta, memo: 'increase in claim reserve' },
       { accountId: this.chart.claimReserve(), side: 'credit', amount: delta, memo: 'claim reserve outstanding' },
     ]);
@@ -227,6 +259,7 @@ export class ClaimsEngine {
       at: input.at, by: input.by, action: 'reserve', amount: delta, isAi: input.isAi ?? false,
       rationale: input.rationale ?? `Reserve set to ${formatAmount(input.amount)}`,
     });
+    this.did('set-reserve', input.at, journalId, { claimId: claim.id, ...input });
     return claim;
   }
 
@@ -311,6 +344,7 @@ export class ClaimsEngine {
     claim.paid = add(claim.paid, input.amount);
     claim.reserve = zero(this.currency);
     claim.status = 'settled';
+    this.did('settle-claim', input.at, journalIds[journalIds.length - 1] ?? '', { claimId: claim.id, ...input });
     return claim;
   }
 
@@ -338,6 +372,7 @@ export class ClaimsEngine {
       at: input.at, by: input.by ?? 'recovery-desk', action: `recovery:${input.type}`, amount: input.amount, isAi: false,
       rationale: `${input.type} recovery recorded on ${journalId}`,
     });
+    this.did('recover-claim', input.at, journalId, { claimId: claim.id, ...input });
     return recovery;
   }
 
@@ -347,6 +382,7 @@ export class ClaimsEngine {
     claim.status = 'declined';
     claim.declinedReason = input.rationale;
     claim.decisions.push({ at: input.at, by: input.by, action: 'decline', isAi: false, rationale: input.rationale });
+    this.did('decline-claim', input.at, '', { claimId: claim.id, ...input });
     return claim;
   }
 
