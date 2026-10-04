@@ -430,9 +430,10 @@ export class TreatyRegister implements ReplayableRegister {
 
   /** Record an action and the journal it posted. Called by the actions themselves, never by hand. */
   private did(kind: string, at: string, journalId: string, input: unknown): void {
-    // an action being taken again is already in the log: recording it again would grow the log on
-    // every restore, and the second copy would carry a mark from a world that had already moved on
-    if (this.replaying) return;
+    // An action taken during a replay is recorded too, and deliberately: the restored world then
+    // carries the same log as the world it came from, so a second restore recognises every action as
+    // already taken instead of taking it again. The mark it records is the journal it just posted,
+    // which is where it belongs.
     this.actions.push(Object.freeze({
       engine: this.engineName,
       kind,

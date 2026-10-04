@@ -168,7 +168,10 @@ export class ClaimsEngine implements ReplayableRegister {
   }
 
   private did(kind: string, at: string, journalId: string, input: unknown): void {
-    if (this.replaying) return;   // an action being taken again is already in the log
+    // An action taken during a replay is recorded too, and deliberately: the restored world then
+    // carries the same log as the world it came from, so a second restore recognises every action as
+    // already taken instead of taking it again. The mark it records is the journal it just posted,
+    // which is where it belongs.
     this.actions.push(Object.freeze({
       engine: this.engineName, kind, at, journalId,
       mark: this.ledger.allJournals().length,
