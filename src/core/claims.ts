@@ -111,6 +111,9 @@ export class ClaimsError extends Error {}
 export class ClaimsEngine implements ReplayableRegister {
   private readonly claims = new Map<string, Claim>();
   private readonly actions: RegisterAction[] = [];
+  /** Set while an action is being taken again: the journal it posted, and whether to record it. */
+  private replayJournalId: string | null = null;
+  private replaying = false;
   private readonly authority: Authority[];
   private readonly grace: number;
   private readonly sla: number;
@@ -142,6 +145,17 @@ export class ClaimsEngine implements ReplayableRegister {
 
   replay(action: RegisterAction, _context?: ReplayContext): void {
     const input = action.input as Record<string, never>;
+    this.replayJournalId = action.journalId || null;
+    this.replaying = true;
+    try {
+      this.replayInner(action, input);
+    } finally {
+      this.replaying = false;
+      this.replayJournalId = null;
+    }
+  }
+
+  private replayInner(action: RegisterAction, input: Record<string, never>): void {
     switch (action.kind) {
       case 'register-claim': this.register(input as never); return;
       case 'set-reserve': this.setReserve(String(input['claimId']), input as never); return;
@@ -154,6 +168,7 @@ export class ClaimsEngine implements ReplayableRegister {
   }
 
   private did(kind: string, at: string, journalId: string, input: unknown): void {
+    if (this.replaying) return;   // an action being taken again is already in the log
     this.actions.push(Object.freeze({
       engine: this.engineName, kind, at, journalId,
       mark: this.ledger.allJournals().length,
@@ -441,7 +456,9 @@ export class ClaimsEngine implements ReplayableRegister {
 
   private post(sourceRef: string, claim: Claim, at: string, description: string, lines: Array<{ accountId: string; side: 'debit' | 'credit'; amount: Money; memo?: string }>): string {
     const entry = this.ledger.post({
-      id: `CL-${this.entityId}-${String(++this.seq).padStart(6, '0')}`,
+      // on a replay the journal comes from the action, not from the counter: the books are being
+      // reproduced, and an id minted afresh would collide with a journal the books already hold
+      id: this.replayJournalId ?? `CL-${this.entityId}-${String(++this.seq).padStart(6, '0')}`,
       entityId: this.entityId, at, source: 'claims', sourceRef, description,
       ...(claim.fundId ? { fundId: claim.fundId } : {}),
       postings: lines.map((l) => posting(l.accountId, l.side, l.amount, this.ledger.toBase(l.amount, this.entityId, at), l.memo)),

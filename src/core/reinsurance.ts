@@ -344,6 +344,9 @@ export class TreatyRegister implements ReplayableRegister {
   private readonly schedule = new Map<string, Cession>();       // policyId -> the cession that applies
   private seq = 0;
   private readonly actions: RegisterAction[] = [];
+  /** Set while an action is being taken again: the journal it posted, and whether to record it. */
+  private replayJournalId: string | null = null;
+  private replaying = false;
 
   constructor(
     private readonly ledger: Ledger,
@@ -379,6 +382,17 @@ export class TreatyRegister implements ReplayableRegister {
    */
   replay(action: RegisterAction, context?: ReplayContext): void {
     const input = action.input as Record<string, never>;
+    this.replayJournalId = action.journalId || null;
+    this.replaying = true;
+    try {
+      this.replayInner(action, input, context);
+    } finally {
+      this.replaying = false;
+      this.replayJournalId = null;
+    }
+  }
+
+  private replayInner(action: RegisterAction, input: Record<string, never>, context?: ReplayContext): void {
     switch (action.kind) {
       case 'cede-premium': this.cedePremium(input as never); return;
       case 'recover-claim': {
@@ -401,12 +415,24 @@ export class TreatyRegister implements ReplayableRegister {
       case 'call-security': this.callSecurity(input as never); return;
       case 'release-security': this.releaseSecurity(input as never); return;
       case 'credit-collateral-interest': this.creditCollateralInterest(input as never); return;
+      case 'accept-facultative': this.acceptFacultative(String(input['treatyId']), String(input['riskId']), input as never); return;
       default: throw new ReinsuranceError(`the register has no action called ${action.kind} to take again`);
     }
   }
 
+  /**
+   * The id the next journal takes. On a replay it is the id the action posted the first time — the
+   * books are being reproduced, not written afresh, so the counter must not be consulted.
+   */
+  private nextJournalId(): string {
+    return this.replayJournalId ?? `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+  }
+
   /** Record an action and the journal it posted. Called by the actions themselves, never by hand. */
   private did(kind: string, at: string, journalId: string, input: unknown): void {
+    // an action being taken again is already in the log: recording it again would grow the log on
+    // every restore, and the second copy would carry a mark from a world that had already moved on
+    if (this.replaying) return;
     this.actions.push(Object.freeze({
       engine: this.engineName,
       kind,
@@ -512,6 +538,10 @@ export class TreatyRegister implements ReplayableRegister {
     set.add(riskId);
     this.accepted.set(treatyId, set);
     this.notes.push(`${input.by} had ${riskId} accepted under ${treatyId} on ${isoDay(input.at)}`);
+    // An acceptance posts no journal and moves no money, and it is still an action of the register:
+    // a cession under a facultative treaty is refused unless the risk was accepted first, so a
+    // restart that cannot put the acceptance back cannot reproduce the cession either.
+    this.did('accept-facultative', input.at, '', { treatyId, riskId, ...input });
     return treaty;
   }
 
@@ -633,7 +663,7 @@ export class TreatyRegister implements ReplayableRegister {
     const netRetainedPremium = add(sub(input.premium, cededPremium), commission);
     const treaty = this.treaty(input.treatyId);
     const treatment: 'risk-transferring' | 'deposit' = treaty.depositAccounted ? 'deposit' : 'risk-transferring';
-    const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+    const id = this.nextJournalId();
     const entry = this.ledger.post({
       id, entityId: this.entityId, at: input.at, source: 'reinsurance',
       sourceRef: `${input.policyId}/${input.treatyId}`,
@@ -722,7 +752,7 @@ export class TreatyRegister implements ReplayableRegister {
     }
     const amount = applyRatio(input.paid, cession.ceded.minor, cession.sumInsured.minor);
     if (amount.minor === 0n) throw new ReinsuranceError('a recovery amount must be positive');
-    const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+    const id = this.nextJournalId();
     const entry = this.ledger.post({
       id, entityId: this.entityId, at: input.at, source: 'reinsurance', sourceRef: `${input.claimId}/${cession.treatyId}/deposit`,
       description: `${formatAmount(amount)} of ${input.claimId} drawn from the ${cession.treatyId} deposit (deposit accounting)`,
@@ -786,7 +816,7 @@ export class TreatyRegister implements ReplayableRegister {
       throw new ReinsuranceError(`the ${formatAmount(input.loss)} loss is inside the ${formatAmount(treaty.attachment!)} attachment point: the treaty does not respond`);
     }
     const treatment: 'risk-transferring' | 'deposit' = treaty.depositAccounted ? 'deposit' : 'risk-transferring';
-    const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+    const id = this.nextJournalId();
     // A risk-transferring treaty earns recovery income. A deposit-accounted one does not recognise
     // income at all: the money comes out of the deposit the reinsurer is holding for us.
     const lines = treatment === 'deposit'
@@ -856,7 +886,7 @@ export class TreatyRegister implements ReplayableRegister {
       : applyRatio(applyBps(treaty.annualPremium!, treaty.reinstatementBps ?? 0), wanted.minor, treaty.limit!.minor);
     let journalId: string | undefined;
     if (premium.minor > 0n) {
-      const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+      const id = this.nextJournalId();
       const entry = this.ledger.post({
         id, entityId: this.entityId, at: input.at, source: 'reinsurance', sourceRef: `${treatyId}/reinstatement-${sequence}`,
         description: `Reinstatement ${sequence} of ${formatAmount(wanted)} cover under ${treatyId} for ${formatAmount(premium)}`,
@@ -902,7 +932,7 @@ export class TreatyRegister implements ReplayableRegister {
     if (current.adjustments.some((a) => a.at === `${input.at}#${instalment}`)) {
       throw new ReinsuranceError(`instalment ${instalment} of the ${treatyId} deposit has already been paid`);
     }
-    const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+    const id = this.nextJournalId();
     const entry = this.ledger.post({
       id, entityId: this.entityId, at: input.at, source: 'reinsurance', sourceRef: `${treatyId}/deposit-${instalment}`,
       description: `Deposit premium instalment ${instalment} of ${formatAmount(input.amount)} under ${treatyId}`,
@@ -936,7 +966,7 @@ export class TreatyRegister implements ReplayableRegister {
     if (input.subjectPremium.currency !== treaty.currency) throw new ReinsuranceError('the subject premium must be in the treaty currency');
     const technical = applyBps(input.subjectPremium, rol);
     const difference = sub(technical, account.depositPaid);
-    const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+    const id = this.nextJournalId();
     const lines = [
       posting(this.account('CEDED-PREMIUM'), 'debit', technical, this.ledger.toBase(technical, this.entityId, input.at), `technical premium at ${rol / 100}% of ${formatAmount(input.subjectPremium)}`),
       posting(this.account('DEPOSIT-PREMIUM'), 'credit', account.depositPaid, this.ledger.toBase(account.depositPaid, this.entityId, input.at), 'deposit premium released'),
@@ -1006,7 +1036,7 @@ export class TreatyRegister implements ReplayableRegister {
     if (compare(amount, outstanding) > 0) {
       throw new ReinsuranceError(`${input.recoveryId} has ${formatAmount(outstanding)} outstanding; ${formatAmount(amount)} cannot be collected against it`);
     }
-    const id = `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`;
+    const id = this.nextJournalId();
     const entry = this.ledger.post({
       id, entityId: this.entityId, at: input.at, source: 'reinsurance', sourceRef: `${recovery.recoveryId}/settlement`,
       description: `${formatAmount(amount)} received from ${this.treaty(recovery.treatyId).counterparty} against recovery ${recovery.recoveryId}`
@@ -1768,7 +1798,7 @@ export class TreatyRegister implements ReplayableRegister {
   private collateralInterest(): string { return `${this.entityId}:COLLATERAL:INTEREST`; }
 
   /** Every journal this engine posts shares one sequence, so ids never collide and always sort. */
-  private journalId(): string { return `RI-${this.entityId}-${String(++this.seq).padStart(6, '0')}`; }
+  private journalId(): string { return this.nextJournalId(); }
 
   private account(suffix: string): string { return `${this.entityId}:REINS:${suffix}`; }
   /** Cash belongs to the entity's chart, not to the reinsurance sub-ledger. */
