@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T08:46:33.984Z",
+  "capturedAt": "2026-10-04T09:35:25.095Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -291,6 +291,1441 @@
             }
           ]
         }
+      }
+    },
+    "GET /api/extracts": {
+      "status": 200,
+      "body": {
+        "asOf": "2026-10-05",
+        "conventional": {
+          "id": "RI-EX-ALK-CONV-00001",
+          "kind": "regulatory-return",
+          "title": "Reinsurance return",
+          "entityId": "ALK-CONV",
+          "basis": "conventional",
+          "jurisdiction": "AE",
+          "counterparty": null,
+          "period": {
+            "from": "2026-01-01",
+            "to": "2026-10-05"
+          },
+          "asOf": "2026-10-05",
+          "preparedBy": "finance/reporting",
+          "version": 1,
+          "fingerprint": "c3859a4d96175c19",
+          "issuedAt": "2026-10-05T17:00:00+04:00",
+          "supersedes": null,
+          "changesSummary": null,
+          "differencesAccepted": null,
+          "tiesToBooks": true,
+          "tables": [
+            {
+              "code": "RS-A",
+              "title": "Premium ceded to reinsurers and retakaful operators",
+              "columns": [
+                "Gross",
+                "Ceded",
+                "Net"
+              ],
+              "source": "The cession register: every cession posted in the period, with its ceded premium and commission.",
+              "rows": [
+                {
+                  "code": "A.1",
+                  "line": "Premium written on risks subject to the treaty programme",
+                  "note": "the premium on the population the treaties actually cover, not the whole book",
+                  "values": [
+                    "16,778.50 AED",
+                    "—",
+                    "16,778.50 AED"
+                  ]
+                },
+                {
+                  "code": "A.2",
+                  "line": "Premium ceded to reinsurers",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "3,819.63 AED",
+                    "-3,819.63 AED"
+                  ]
+                },
+                {
+                  "code": "A.3",
+                  "line": "Reinstatement premium payable",
+                  "note": "no paid reinstatement fell in this period; the first reinstatement of the catastrophe cover is free by treaty",
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.4",
+                  "line": "Deposit premium recognised on settling a deposit-accounted treaty",
+                  "note": "no deposit-accounted period was settled in this period: the deposit stays an asset until it is",
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.5",
+                  "line": "Total ceded premium",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "3,819.63 AED",
+                    "-3,819.63 AED"
+                  ]
+                },
+                {
+                  "code": "A.6",
+                  "line": "Net premium retained before commission",
+                  "note": null,
+                  "values": [
+                    "16,778.50 AED",
+                    "3,819.63 AED",
+                    "12,958.87 AED"
+                  ]
+                },
+                {
+                  "code": "A.7",
+                  "line": "Ceding commission / operator wakalah fee receivable",
+                  "note": "received from reinsurers; it is income, not a deduction from gross premium",
+                  "values": [
+                    "497.94 AED",
+                    "—",
+                    "497.94 AED"
+                  ]
+                },
+                {
+                  "code": "A.8",
+                  "line": "Net premium retained after commission",
+                  "note": null,
+                  "values": [
+                    "16,778.50 AED",
+                    "3,819.63 AED",
+                    "13,456.81 AED"
+                  ]
+                }
+              ],
+              "totals": [
+                "16,778.50 AED",
+                "3,819.63 AED",
+                "13,456.81 AED"
+              ]
+            },
+            {
+              "code": "RS-B",
+              "title": "Claims, recoveries and the reserve",
+              "columns": [
+                "Gross",
+                "Ceded",
+                "Net"
+              ],
+              "source": "The claims module for the gross figures, the recovery register for the ceded ones, and the cession schedule for the share of each reserve.",
+              "rows": [
+                {
+                  "code": "B.1",
+                  "line": "Claims paid in the period on ceded risks",
+                  "note": null,
+                  "values": [
+                    "1,150.00 AED",
+                    "—",
+                    "1,150.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.2",
+                  "line": "Recoveries received from reinsurers in the period",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "450,000.00 AED",
+                    "-450,000.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.3",
+                  "line": "Recoveries still to collect at the reporting date",
+                  "note": "aged against each treaty’s own settlement terms in the reinsurance ageing statement",
+                  "values": [
+                    "—",
+                    "150,287.50 AED",
+                    "-150,287.50 AED"
+                  ]
+                },
+                {
+                  "code": "B.4",
+                  "line": "Outstanding claims reserve on ceded risks at the reporting date",
+                  "note": null,
+                  "values": [
+                    "0.00 AED",
+                    "—",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.5",
+                  "line": "Reinsurers’ share of that reserve",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.6",
+                  "line": "Net outstanding claims reserve",
+                  "note": null,
+                  "values": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                }
+              ],
+              "totals": [
+                "0.00 AED",
+                "600,287.50 AED",
+                "299,712.50 AED"
+              ]
+            },
+            {
+              "code": "RS-C",
+              "title": "Balances with reinsurers and retakaful operators",
+              "columns": [
+                "Receivable",
+                "Payable",
+                "Deposit on account",
+                "Security held",
+                "Net receivable"
+              ],
+              "source": "The recovery register, the cession register, the deposit accounts and the security instruments, each counterparty at a time.",
+              "rows": [
+                {
+                  "code": "C.Al Wathba Re",
+                  "line": "Al Wathba Re",
+                  "note": null,
+                  "values": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "C.Emirates Re",
+                  "line": "Emirates Re",
+                  "note": "security held is 50,000.00 AED short of what the treaties require",
+                  "values": [
+                    "150,000.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "100,000.00 AED",
+                    "150,000.00 AED"
+                  ]
+                },
+                {
+                  "code": "C.Gulf Reinsurance PSC",
+                  "line": "Gulf Reinsurance PSC",
+                  "note": null,
+                  "values": [
+                    "635.44 AED",
+                    "819.63 AED",
+                    "300,000.00 AED",
+                    "1,500.00 AED",
+                    "-184.19 AED"
+                  ]
+                },
+                {
+                  "code": "C.MENA Re",
+                  "line": "MENA Re",
+                  "note": null,
+                  "values": [
+                    "150.00 AED",
+                    "1,500.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "-1,350.00 AED"
+                  ]
+                }
+              ],
+              "totals": [
+                "150,785.44 AED",
+                "2,319.63 AED",
+                "300,000.00 AED",
+                "101,500.00 AED",
+                "148,465.81 AED"
+              ]
+            },
+            {
+              "code": "RS-D",
+              "title": "Deposit-accounted treaties",
+              "columns": [
+                "Deposit paid",
+                "Technical premium",
+                "Adjustment",
+                "Asset remaining"
+              ],
+              "source": "The deposit accounts: premium paid on account is an asset until the period is settled against the real subject premium.",
+              "rows": [
+                {
+                  "code": "D.AGG-SL-DEPOSIT",
+                  "line": "AGG-SL-DEPOSIT",
+                  "note": "still on account: no premium income and no claim expense has been recognised",
+                  "values": [
+                    "300,000.00 AED",
+                    "—",
+                    "300,000.00 AED",
+                    "300,000.00 AED"
+                  ]
+                }
+              ],
+              "totals": [
+                "300,000.00 AED",
+                "—",
+                "300,000.00 AED",
+                "300,000.00 AED"
+              ]
+            }
+          ],
+          "controls": [
+            {
+              "code": "RS-A.5",
+              "what": "Total ceded premium on the return ties to the ceded premium account",
+              "state": "agrees",
+              "detail": "3,819.63 AED agrees with ALK-CONV:REINS:CEDED-PREMIUM"
+            },
+            {
+              "code": "RS-A.7",
+              "what": "Commission on the return ties to the commission account",
+              "state": "agrees",
+              "detail": "497.94 AED agrees with ALK-CONV:REINS:COMMISSION"
+            },
+            {
+              "code": "RS-B.3",
+              "what": "Recoveries still to collect tie to the receivable account once commission due is taken out",
+              "state": "agrees",
+              "detail": "150,287.50 AED agrees with the receivable account less 497.94 AED of commission due"
+            },
+            {
+              "code": "RS-B.4",
+              "what": "The claims the module holds carry the reserves the reserve account holds",
+              "state": "agrees",
+              "detail": "15,000.00 AED of reserve agrees, claim by claim, with the reserve account; 0.00 AED of it sits on risks this return covers and 0.00 AED is the reinsurers' share"
+            },
+            {
+              "code": "RS-C.receivable",
+              "what": "Receivable from reinsurers, every counterparty, ties to the receivable account",
+              "state": "agrees",
+              "detail": "150,785.44 AED agrees with ALK-CONV:REINS:RECEIVABLE"
+            },
+            {
+              "code": "RS-C.payable",
+              "what": "Payable to reinsurers, every counterparty, ties to the payable account",
+              "state": "agrees",
+              "detail": "2,319.63 AED agrees with ALK-CONV:REINS:PAYABLE"
+            },
+            {
+              "code": "RS-C.deposit",
+              "what": "Deposit premium on account, every counterparty, ties to the deposit asset",
+              "state": "agrees",
+              "detail": "300,000.00 AED agrees with ALK-CONV:REINS:DEPOSIT-PREMIUM"
+            },
+            {
+              "code": "RS-C.security",
+              "what": "Cash held as security ties to restricted cash; letters of credit and guarantees are disclosed",
+              "state": "agrees",
+              "detail": "10,000.00 AED of cash security agrees with restricted cash, and 91,500.00 AED of letters of credit, guarantees and withheld premium is counted, disclosed and kept off the balance sheet"
+            }
+          ],
+          "notes": [
+            "Every figure on this return is derived from the reinsurance register and the general ledger; nothing here is re-keyed from a spreadsheet.",
+            "Every control agrees with the books as at the reporting date.",
+            "The receivable includes ceding commission due from each counterparty, which is why it is larger than the recoveries still to collect."
+          ],
+          "limitations": [
+            "Premium here is the premium on risks the treaty programme covers. Total book premium is a different figure and is not reported by this module.",
+            "The reserve is the claims module’s case reserve. No IBNR estimate is computed here: that is the appointed actuary’s model, and this return says so rather than inventing a figure.",
+            "Amounts are in the entity’s reporting currency. Foreign-currency business is translated when the cession is posted, at the rate recorded on that journal."
+          ]
+        },
+        "takaful": {
+          "id": "RI-EX-ALK-TKF-00001",
+          "kind": "regulatory-return",
+          "title": "Retakaful return — participant risk fund",
+          "entityId": "ALK-TKF",
+          "basis": "takaful",
+          "jurisdiction": "AE",
+          "counterparty": null,
+          "period": {
+            "from": "2026-01-01",
+            "to": "2026-10-05"
+          },
+          "asOf": "2026-10-05",
+          "preparedBy": "finance/reporting",
+          "version": 1,
+          "fingerprint": "c46c3f494c31261e",
+          "issuedAt": "2026-10-05T17:00:00+04:00",
+          "supersedes": null,
+          "changesSummary": null,
+          "differencesAccepted": null,
+          "tiesToBooks": true,
+          "tables": [
+            {
+              "code": "RS-A",
+              "title": "Premium ceded to reinsurers and retakaful operators",
+              "columns": [
+                "Gross",
+                "Ceded",
+                "Net"
+              ],
+              "source": "The cession register: every cession posted in the period, with its ceded premium and commission.",
+              "rows": [
+                {
+                  "code": "A.1",
+                  "line": "Premium written on risks subject to the treaty programme",
+                  "note": "the premium on the population the treaties actually cover, not the whole book",
+                  "values": [
+                    "1,800.00 AED",
+                    "—",
+                    "1,800.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.2",
+                  "line": "Premium ceded to reinsurers",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "360.00 AED",
+                    "-360.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.3",
+                  "line": "Reinstatement premium payable",
+                  "note": "no paid reinstatement fell in this period; the first reinstatement of the catastrophe cover is free by treaty",
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.4",
+                  "line": "Deposit premium recognised on settling a deposit-accounted treaty",
+                  "note": "no deposit-accounted period was settled in this period: the deposit stays an asset until it is",
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.5",
+                  "line": "Total ceded premium",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "360.00 AED",
+                    "-360.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.6",
+                  "line": "Net premium retained before commission",
+                  "note": null,
+                  "values": [
+                    "1,800.00 AED",
+                    "360.00 AED",
+                    "1,440.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.7",
+                  "line": "Ceding commission / operator wakalah fee receivable",
+                  "note": "the operator’s wakalah fee, which is not participant money and is not reported as such",
+                  "values": [
+                    "72.00 AED",
+                    "—",
+                    "72.00 AED"
+                  ]
+                },
+                {
+                  "code": "A.8",
+                  "line": "Net premium retained after commission",
+                  "note": null,
+                  "values": [
+                    "1,800.00 AED",
+                    "360.00 AED",
+                    "1,512.00 AED"
+                  ]
+                }
+              ],
+              "totals": [
+                "1,800.00 AED",
+                "360.00 AED",
+                "1,512.00 AED"
+              ]
+            },
+            {
+              "code": "RS-B",
+              "title": "Claims, recoveries and the reserve",
+              "columns": [
+                "Gross",
+                "Ceded",
+                "Net"
+              ],
+              "source": "The claims module for the gross figures, the recovery register for the ceded ones, and the cession schedule for the share of each reserve.",
+              "rows": [
+                {
+                  "code": "B.1",
+                  "line": "Claims paid in the period on ceded risks",
+                  "note": null,
+                  "values": [
+                    "400.00 AED",
+                    "—",
+                    "400.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.2",
+                  "line": "Recoveries received from reinsurers in the period",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.3",
+                  "line": "Recoveries still to collect at the reporting date",
+                  "note": "aged against each treaty’s own settlement terms in the reinsurance ageing statement",
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.4",
+                  "line": "Outstanding claims reserve on ceded risks at the reporting date",
+                  "note": null,
+                  "values": [
+                    "0.00 AED",
+                    "—",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.5",
+                  "line": "Reinsurers’ share of that reserve",
+                  "note": null,
+                  "values": [
+                    "—",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "B.6",
+                  "line": "Net outstanding claims reserve",
+                  "note": null,
+                  "values": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                }
+              ],
+              "totals": [
+                "0.00 AED",
+                "0.00 AED",
+                "0.00 AED"
+              ]
+            },
+            {
+              "code": "RS-C",
+              "title": "Balances with reinsurers and retakaful operators",
+              "columns": [
+                "Receivable",
+                "Payable",
+                "Deposit on account",
+                "Security held",
+                "Net receivable"
+              ],
+              "source": "The recovery register, the cession register, the deposit accounts and the security instruments, each counterparty at a time.",
+              "rows": [
+                {
+                  "code": "C.Takaful Re International",
+                  "line": "Takaful Re International",
+                  "note": null,
+                  "values": [
+                    "72.00 AED",
+                    "360.00 AED",
+                    "0.00 AED",
+                    "90.00 AED",
+                    "-288.00 AED"
+                  ]
+                }
+              ],
+              "totals": [
+                "72.00 AED",
+                "360.00 AED",
+                "0.00 AED",
+                "90.00 AED",
+                "-288.00 AED"
+              ]
+            },
+            {
+              "code": "RS-D",
+              "title": "Deposit-accounted treaties",
+              "columns": [
+                "Deposit paid",
+                "Technical premium",
+                "Adjustment",
+                "Asset remaining"
+              ],
+              "source": "The deposit accounts: premium paid on account is an asset until the period is settled against the real subject premium.",
+              "rows": [],
+              "totals": [
+                "0.00 AED",
+                "—",
+                "0.00 AED",
+                "0.00 AED"
+              ]
+            }
+          ],
+          "controls": [
+            {
+              "code": "RS-A.5",
+              "what": "Total ceded premium on the return ties to the ceded premium account",
+              "state": "agrees",
+              "detail": "360.00 AED agrees with ALK-TKF:REINS:CEDED-PREMIUM"
+            },
+            {
+              "code": "RS-A.7",
+              "what": "Commission on the return ties to the commission account",
+              "state": "agrees",
+              "detail": "72.00 AED agrees with ALK-TKF:REINS:COMMISSION"
+            },
+            {
+              "code": "RS-B.3",
+              "what": "Recoveries still to collect tie to the receivable account once commission due is taken out",
+              "state": "agrees",
+              "detail": "0.00 AED agrees with the receivable account less 72.00 AED of commission due"
+            },
+            {
+              "code": "RS-B.4",
+              "what": "The claims the module holds carry the reserves the reserve account holds",
+              "state": "agrees",
+              "detail": "0.00 AED of reserve agrees, claim by claim, with the reserve account; 0.00 AED of it sits on risks this return covers and 0.00 AED is the reinsurers' share"
+            },
+            {
+              "code": "RS-C.receivable",
+              "what": "Receivable from reinsurers, every counterparty, ties to the receivable account",
+              "state": "agrees",
+              "detail": "72.00 AED agrees with ALK-TKF:REINS:RECEIVABLE"
+            },
+            {
+              "code": "RS-C.payable",
+              "what": "Payable to reinsurers, every counterparty, ties to the payable account",
+              "state": "agrees",
+              "detail": "360.00 AED agrees with ALK-TKF:REINS:PAYABLE"
+            },
+            {
+              "code": "RS-C.deposit",
+              "what": "Deposit premium on account, every counterparty, ties to the deposit asset",
+              "state": "agrees",
+              "detail": "0.00 AED agrees with ALK-TKF:REINS:DEPOSIT-PREMIUM"
+            },
+            {
+              "code": "RS-C.security",
+              "what": "Cash held as security ties to restricted cash; letters of credit and guarantees are disclosed",
+              "state": "agrees",
+              "detail": "90.00 AED of cash security agrees with restricted cash, and 0.00 AED of letters of credit, guarantees and withheld premium is counted, disclosed and kept off the balance sheet"
+            }
+          ],
+          "notes": [
+            "Every figure on this return is derived from the retakaful register and the participant risk fund ledger; participant money is reported in its own fund and never mixed into the operator’s numbers, and the wakalah fee is the operator’s income, shown separately.",
+            "Every control agrees with the books as at the reporting date.",
+            "The receivable includes ceding commission due from each counterparty, which is why it is larger than the recoveries still to collect."
+          ],
+          "limitations": [
+            "Premium here is the premium on risks the treaty programme covers. Total book premium is a different figure and is not reported by this module.",
+            "The reserve is the claims module’s case reserve. No IBNR estimate is computed here: that is the appointed actuary’s model, and this return says so rather than inventing a figure.",
+            "Amounts are in the entity’s reporting currency. Foreign-currency business is translated when the cession is posted, at the rate recorded on that journal."
+          ]
+        },
+        "bordereaux": [
+          {
+            "id": "RI-EX-ALK-CONV-00003",
+            "kind": "treaty-bordereau",
+            "title": "Treaty bordereau — Al Wathba Re",
+            "entityId": "ALK-CONV",
+            "basis": "conventional",
+            "jurisdiction": "AE",
+            "counterparty": "Al Wathba Re",
+            "period": {
+              "from": "2026-01-01",
+              "to": "2026-10-05"
+            },
+            "asOf": "2026-10-05",
+            "preparedBy": "reinsurance/desk",
+            "version": 1,
+            "fingerprint": "c280e814cde2e5f0",
+            "issuedAt": "2026-10-05T17:00:00+04:00",
+            "supersedes": null,
+            "changesSummary": null,
+            "differencesAccepted": null,
+            "tiesToBooks": true,
+            "tables": [
+              {
+                "code": "BD-1",
+                "title": "Cessions in the period",
+                "columns": [
+                  "Sum insured",
+                  "Ceded",
+                  "Premium",
+                  "Ceded premium",
+                  "Commission",
+                  "Net retained"
+                ],
+                "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                "rows": [],
+                "totals": [
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED"
+                ]
+              },
+              {
+                "code": "BD-2",
+                "title": "Recoveries claimed and settled",
+                "columns": [
+                  "Claimed",
+                  "Settled",
+                  "Outstanding",
+                  "Due by"
+                ],
+                "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                "rows": [],
+                "totals": [
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-3",
+                "title": "Security held at the closing date",
+                "columns": [
+                  "Amount",
+                  "Released",
+                  "In force",
+                  "Expires"
+                ],
+                "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                "rows": [],
+                "totals": [
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-4",
+                "title": "Closing balance",
+                "columns": [
+                  "Amount"
+                ],
+                "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                "rows": [
+                  {
+                    "code": "BD.4.1",
+                    "line": "Recoveries still to collect (before commission)",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.2",
+                    "line": "Commission due from the counterparty",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.3",
+                    "line": "Premium payable to the counterparty",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.4",
+                    "line": "Security held against the balance",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.5",
+                    "line": "Requirement, and whether it is covered",
+                    "note": "covered by the security in force",
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "0.00 AED"
+                ]
+              }
+            ],
+            "controls": [
+              {
+                "code": "BD.held",
+                "what": "Security on the bordereau ties to the security statement",
+                "state": "agrees",
+                "detail": "0.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+              },
+              {
+                "code": "BD.recovery",
+                "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                "state": "agrees",
+                "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+              }
+            ],
+            "notes": [
+              "0 cession(s) and 0 recovery/recoveries in the period, sent to Al Wathba Re to reconcile against their own records.",
+              "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+              "Both controls agree."
+            ],
+            "limitations": [
+              "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+              "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+            ]
+          },
+          {
+            "id": "RI-EX-ALK-CONV-00004",
+            "kind": "treaty-bordereau",
+            "title": "Treaty bordereau — Emirates Re",
+            "entityId": "ALK-CONV",
+            "basis": "conventional",
+            "jurisdiction": "AE",
+            "counterparty": "Emirates Re",
+            "period": {
+              "from": "2026-01-01",
+              "to": "2026-10-05"
+            },
+            "asOf": "2026-10-05",
+            "preparedBy": "reinsurance/desk",
+            "version": 1,
+            "fingerprint": "0e1e3f1b58dab6c7",
+            "issuedAt": "2026-10-05T17:00:00+04:00",
+            "supersedes": null,
+            "changesSummary": null,
+            "differencesAccepted": null,
+            "tiesToBooks": true,
+            "tables": [
+              {
+                "code": "BD-1",
+                "title": "Cessions in the period",
+                "columns": [
+                  "Sum insured",
+                  "Ceded",
+                  "Premium",
+                  "Ceded premium",
+                  "Commission",
+                  "Net retained"
+                ],
+                "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                "rows": [],
+                "totals": [
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED"
+                ]
+              },
+              {
+                "code": "BD-2",
+                "title": "Recoveries claimed and settled",
+                "columns": [
+                  "Claimed",
+                  "Settled",
+                  "Outstanding",
+                  "Due by"
+                ],
+                "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                "rows": [
+                  {
+                    "code": "RI-ALK-CONV-000004",
+                    "line": "STORM-ALPHAI · XOL-CAT-5M",
+                    "note": "settled 2026-09-30",
+                    "values": [
+                      "600,000.00 AED",
+                      "450,000.00 AED",
+                      "150,000.00 AED",
+                      "—"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "600,000.00 AED",
+                  "450,000.00 AED",
+                  "150,000.00 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-3",
+                "title": "Security held at the closing date",
+                "columns": [
+                  "Amount",
+                  "Released",
+                  "In force",
+                  "Expires"
+                ],
+                "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                "rows": [
+                  {
+                    "code": "SEC-ALK-CONV-000002",
+                    "line": "letter-of-credit · LC-88213",
+                    "note": "expires 2026-12-31 (disclosed, not posted)",
+                    "values": [
+                      "60,000.00 AED",
+                      "0.00 AED",
+                      "60,000.00 AED",
+                      "—"
+                    ]
+                  },
+                  {
+                    "code": "SEC-ALK-CONV-000003",
+                    "line": "letter-of-credit · LC-77420",
+                    "note": "expires 2026-10-20 (disclosed, not posted)",
+                    "values": [
+                      "30,000.00 AED",
+                      "0.00 AED",
+                      "30,000.00 AED",
+                      "—"
+                    ]
+                  },
+                  {
+                    "code": "SEC-ALK-CONV-000004",
+                    "line": "cash · CASH-SECURITY-2026",
+                    "note": "no expiry: an open instrument",
+                    "values": [
+                      "10,000.00 AED",
+                      "0.00 AED",
+                      "10,000.00 AED",
+                      "—"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "100,000.00 AED",
+                  "0.00 AED",
+                  "100,000.00 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-4",
+                "title": "Closing balance",
+                "columns": [
+                  "Amount"
+                ],
+                "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                "rows": [
+                  {
+                    "code": "BD.4.1",
+                    "line": "Recoveries still to collect (before commission)",
+                    "note": null,
+                    "values": [
+                      "150,000.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.2",
+                    "line": "Commission due from the counterparty",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.3",
+                    "line": "Premium payable to the counterparty",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.4",
+                    "line": "Security held against the balance",
+                    "note": null,
+                    "values": [
+                      "100,000.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.5",
+                    "line": "Requirement, and whether it is covered",
+                    "note": "50,000.00 AED short: called or to be called",
+                    "values": [
+                      "150,000.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "150,000.00 AED"
+                ]
+              }
+            ],
+            "controls": [
+              {
+                "code": "BD.held",
+                "what": "Security on the bordereau ties to the security statement",
+                "state": "agrees",
+                "detail": "100,000.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+              },
+              {
+                "code": "BD.recovery",
+                "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                "state": "agrees",
+                "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+              }
+            ],
+            "notes": [
+              "0 cession(s) and 1 recovery/recoveries in the period, sent to Emirates Re to reconcile against their own records.",
+              "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+              "Both controls agree."
+            ],
+            "limitations": [
+              "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+              "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+            ]
+          },
+          {
+            "id": "RI-EX-ALK-CONV-00005",
+            "kind": "treaty-bordereau",
+            "title": "Treaty bordereau — Gulf Reinsurance PSC",
+            "entityId": "ALK-CONV",
+            "basis": "conventional",
+            "jurisdiction": "AE",
+            "counterparty": "Gulf Reinsurance PSC",
+            "period": {
+              "from": "2026-01-01",
+              "to": "2026-10-05"
+            },
+            "asOf": "2026-10-05",
+            "preparedBy": "reinsurance/desk",
+            "version": 1,
+            "fingerprint": "cb6b6f98a8f2bdbd",
+            "issuedAt": "2026-10-05T17:00:00+04:00",
+            "supersedes": null,
+            "changesSummary": null,
+            "differencesAccepted": null,
+            "tiesToBooks": true,
+            "tables": [
+              {
+                "code": "BD-1",
+                "title": "Cessions in the period",
+                "columns": [
+                  "Sum insured",
+                  "Ceded",
+                  "Premium",
+                  "Ceded premium",
+                  "Commission",
+                  "Net retained"
+                ],
+                "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                "rows": [
+                  {
+                    "code": "RI-ALK-CONV-000001",
+                    "line": "UW-000002 · LIFE-PTY-0002 (QS-25-2026)",
+                    "note": "25% ceded — 25% of every risk is ceded as it is written",
+                    "values": [
+                      "300,000.00 AED",
+                      "75,000.00 AED",
+                      "9,211.50 AED",
+                      "2,302.88 AED",
+                      "345.43 AED",
+                      "7,254.05 AED"
+                    ]
+                  },
+                  {
+                    "code": "RI-ALK-CONV-000003",
+                    "line": "MTR-0441 · MTR-0441 (QS-25-2026)",
+                    "note": "25% ceded — 25% of every risk is ceded as it is written",
+                    "values": [
+                      "250,000.00 AED",
+                      "62,500.00 AED",
+                      "67.00 AED",
+                      "16.75 AED",
+                      "2.51 AED",
+                      "52.76 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "550,000.00 AED",
+                  "137,500.00 AED",
+                  "9,278.50 AED",
+                  "2,319.63 AED",
+                  "347.94 AED",
+                  "7,306.81 AED"
+                ]
+              },
+              {
+                "code": "BD-2",
+                "title": "Recoveries claimed and settled",
+                "columns": [
+                  "Claimed",
+                  "Settled",
+                  "Outstanding",
+                  "Due by"
+                ],
+                "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                "rows": [
+                  {
+                    "code": "REC-CLM-000001-2",
+                    "line": "CLM-000001 · QS-25-2026",
+                    "note": "still to settle",
+                    "values": [
+                      "287.50 AED",
+                      "0.00 AED",
+                      "287.50 AED",
+                      "—"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "287.50 AED",
+                  "0.00 AED",
+                  "287.50 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-3",
+                "title": "Security held at the closing date",
+                "columns": [
+                  "Amount",
+                  "Released",
+                  "In force",
+                  "Expires"
+                ],
+                "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                "rows": [
+                  {
+                    "code": "SEC-ALK-CONV-000001",
+                    "line": "funds-withheld · FUNDS-WITHHELD-Q3",
+                    "note": "no expiry: an open instrument",
+                    "values": [
+                      "1,500.00 AED",
+                      "0.00 AED",
+                      "1,500.00 AED",
+                      "—"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "1,500.00 AED",
+                  "0.00 AED",
+                  "1,500.00 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-4",
+                "title": "Closing balance",
+                "columns": [
+                  "Amount"
+                ],
+                "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                "rows": [
+                  {
+                    "code": "BD.4.1",
+                    "line": "Recoveries still to collect (before commission)",
+                    "note": null,
+                    "values": [
+                      "287.50 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.2",
+                    "line": "Commission due from the counterparty",
+                    "note": null,
+                    "values": [
+                      "347.94 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.3",
+                    "line": "Premium payable to the counterparty",
+                    "note": null,
+                    "values": [
+                      "819.63 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.4",
+                    "line": "Security held against the balance",
+                    "note": null,
+                    "values": [
+                      "1,500.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.5",
+                    "line": "Requirement, and whether it is covered",
+                    "note": "covered by the security in force",
+                    "values": [
+                      "983.39 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "287.50 AED"
+                ]
+              }
+            ],
+            "controls": [
+              {
+                "code": "BD.held",
+                "what": "Security on the bordereau ties to the security statement",
+                "state": "agrees",
+                "detail": "1,500.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+              },
+              {
+                "code": "BD.recovery",
+                "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                "state": "agrees",
+                "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+              }
+            ],
+            "notes": [
+              "2 cession(s) and 1 recovery/recoveries in the period, sent to Gulf Reinsurance PSC to reconcile against their own records.",
+              "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+              "Both controls agree."
+            ],
+            "limitations": [
+              "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+              "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+            ]
+          },
+          {
+            "id": "RI-EX-ALK-CONV-00006",
+            "kind": "treaty-bordereau",
+            "title": "Treaty bordereau — MENA Re",
+            "entityId": "ALK-CONV",
+            "basis": "conventional",
+            "jurisdiction": "AE",
+            "counterparty": "MENA Re",
+            "period": {
+              "from": "2026-01-01",
+              "to": "2026-10-05"
+            },
+            "asOf": "2026-10-05",
+            "preparedBy": "reinsurance/desk",
+            "version": 1,
+            "fingerprint": "a6cecb869ef9cf4f",
+            "issuedAt": "2026-10-05T17:00:00+04:00",
+            "supersedes": null,
+            "changesSummary": null,
+            "differencesAccepted": null,
+            "tiesToBooks": true,
+            "tables": [
+              {
+                "code": "BD-1",
+                "title": "Cessions in the period",
+                "columns": [
+                  "Sum insured",
+                  "Ceded",
+                  "Premium",
+                  "Ceded premium",
+                  "Commission",
+                  "Net retained"
+                ],
+                "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                "rows": [
+                  {
+                    "code": "RI-ALK-CONV-000002",
+                    "line": "UW-000001 · LIFE-PTY-0001 (SURPLUS-10)",
+                    "note": "20% ceded — 200,000.00 AED retained, the next 10 line(s) ceded up to 2,000,000.00 AED",
+                    "values": [
+                      "250,000.00 AED",
+                      "50,000.00 AED",
+                      "7,500.00 AED",
+                      "1,500.00 AED",
+                      "150.00 AED",
+                      "6,150.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "250,000.00 AED",
+                  "50,000.00 AED",
+                  "7,500.00 AED",
+                  "1,500.00 AED",
+                  "150.00 AED",
+                  "6,150.00 AED"
+                ]
+              },
+              {
+                "code": "BD-2",
+                "title": "Recoveries claimed and settled",
+                "columns": [
+                  "Claimed",
+                  "Settled",
+                  "Outstanding",
+                  "Due by"
+                ],
+                "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                "rows": [],
+                "totals": [
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-3",
+                "title": "Security held at the closing date",
+                "columns": [
+                  "Amount",
+                  "Released",
+                  "In force",
+                  "Expires"
+                ],
+                "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                "rows": [],
+                "totals": [
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED",
+                  "—"
+                ]
+              },
+              {
+                "code": "BD-4",
+                "title": "Closing balance",
+                "columns": [
+                  "Amount"
+                ],
+                "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                "rows": [
+                  {
+                    "code": "BD.4.1",
+                    "line": "Recoveries still to collect (before commission)",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.2",
+                    "line": "Commission due from the counterparty",
+                    "note": null,
+                    "values": [
+                      "150.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.3",
+                    "line": "Premium payable to the counterparty",
+                    "note": null,
+                    "values": [
+                      "1,500.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.4",
+                    "line": "Security held against the balance",
+                    "note": null,
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "BD.4.5",
+                    "line": "Requirement, and whether it is covered",
+                    "note": "covered by the security in force",
+                    "values": [
+                      "0.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "0.00 AED"
+                ]
+              }
+            ],
+            "controls": [
+              {
+                "code": "BD.held",
+                "what": "Security on the bordereau ties to the security statement",
+                "state": "agrees",
+                "detail": "0.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+              },
+              {
+                "code": "BD.recovery",
+                "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                "state": "agrees",
+                "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+              }
+            ],
+            "notes": [
+              "1 cession(s) and 0 recovery/recoveries in the period, sent to MENA Re to reconcile against their own records.",
+              "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+              "Both controls agree."
+            ],
+            "limitations": [
+              "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+              "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+            ]
+          }
+        ],
+        "history": [
+          {
+            "id": "RI-EX-ALK-CONV-00001",
+            "version": 1,
+            "issuedAt": "2026-10-05T17:00:00+04:00",
+            "asOf": "2026-10-05",
+            "tiesToBooks": true,
+            "differences": 0
+          }
+        ],
+        "verify": {
+          "id": "RI-EX-ALK-CONV-00001",
+          "fingerprint": "c3859a4d96175c19",
+          "recomputed": "c3859a4d96175c19",
+          "intact": true,
+          "detail": "RI-EX-ALK-CONV-00001 reproduces exactly: the figures it was issued with are the figures the books still produce"
+        },
+        "issued": 8
       }
     },
     "GET /api/group": {
@@ -702,11 +2137,11 @@
             {
               "currency": "AED",
               "debit": {
-                "minor": "1280179418",
+                "minor": "1294179418",
                 "currency": "AED"
               },
               "credit": {
-                "minor": "1280179418",
+                "minor": "1294179418",
                 "currency": "AED"
               }
             }
@@ -1758,12 +3193,12 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T08:46:27.101Z",
-        "fingerprint": "613462fc0ed477a1",
+        "takenAt": "2026-10-04T09:35:18.259Z",
+        "fingerprint": "d118518ad7e605b1",
         "accounts": 168,
-        "journals": 86,
+        "journals": 87,
         "fxRates": 2,
-        "bytes": 88367
+        "bytes": 89049
       }
     },
     "GET /api/underwriting": {
@@ -4817,6 +6252,1438 @@
             }
           }
         },
+        "extracts": {
+          "asOf": "2026-10-05",
+          "conventional": {
+            "id": "RI-EX-ALK-CONV-00001",
+            "kind": "regulatory-return",
+            "title": "Reinsurance return",
+            "entityId": "ALK-CONV",
+            "basis": "conventional",
+            "jurisdiction": "AE",
+            "counterparty": null,
+            "period": {
+              "from": "2026-01-01",
+              "to": "2026-10-05"
+            },
+            "asOf": "2026-10-05",
+            "preparedBy": "finance/reporting",
+            "version": 1,
+            "fingerprint": "c3859a4d96175c19",
+            "issuedAt": "2026-10-05T17:00:00+04:00",
+            "supersedes": null,
+            "changesSummary": null,
+            "differencesAccepted": null,
+            "tiesToBooks": true,
+            "tables": [
+              {
+                "code": "RS-A",
+                "title": "Premium ceded to reinsurers and retakaful operators",
+                "columns": [
+                  "Gross",
+                  "Ceded",
+                  "Net"
+                ],
+                "source": "The cession register: every cession posted in the period, with its ceded premium and commission.",
+                "rows": [
+                  {
+                    "code": "A.1",
+                    "line": "Premium written on risks subject to the treaty programme",
+                    "note": "the premium on the population the treaties actually cover, not the whole book",
+                    "values": [
+                      "16,778.50 AED",
+                      "—",
+                      "16,778.50 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.2",
+                    "line": "Premium ceded to reinsurers",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "3,819.63 AED",
+                      "-3,819.63 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.3",
+                    "line": "Reinstatement premium payable",
+                    "note": "no paid reinstatement fell in this period; the first reinstatement of the catastrophe cover is free by treaty",
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.4",
+                    "line": "Deposit premium recognised on settling a deposit-accounted treaty",
+                    "note": "no deposit-accounted period was settled in this period: the deposit stays an asset until it is",
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.5",
+                    "line": "Total ceded premium",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "3,819.63 AED",
+                      "-3,819.63 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.6",
+                    "line": "Net premium retained before commission",
+                    "note": null,
+                    "values": [
+                      "16,778.50 AED",
+                      "3,819.63 AED",
+                      "12,958.87 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.7",
+                    "line": "Ceding commission / operator wakalah fee receivable",
+                    "note": "received from reinsurers; it is income, not a deduction from gross premium",
+                    "values": [
+                      "497.94 AED",
+                      "—",
+                      "497.94 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.8",
+                    "line": "Net premium retained after commission",
+                    "note": null,
+                    "values": [
+                      "16,778.50 AED",
+                      "3,819.63 AED",
+                      "13,456.81 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "16,778.50 AED",
+                  "3,819.63 AED",
+                  "13,456.81 AED"
+                ]
+              },
+              {
+                "code": "RS-B",
+                "title": "Claims, recoveries and the reserve",
+                "columns": [
+                  "Gross",
+                  "Ceded",
+                  "Net"
+                ],
+                "source": "The claims module for the gross figures, the recovery register for the ceded ones, and the cession schedule for the share of each reserve.",
+                "rows": [
+                  {
+                    "code": "B.1",
+                    "line": "Claims paid in the period on ceded risks",
+                    "note": null,
+                    "values": [
+                      "1,150.00 AED",
+                      "—",
+                      "1,150.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.2",
+                    "line": "Recoveries received from reinsurers in the period",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "450,000.00 AED",
+                      "-450,000.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.3",
+                    "line": "Recoveries still to collect at the reporting date",
+                    "note": "aged against each treaty’s own settlement terms in the reinsurance ageing statement",
+                    "values": [
+                      "—",
+                      "150,287.50 AED",
+                      "-150,287.50 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.4",
+                    "line": "Outstanding claims reserve on ceded risks at the reporting date",
+                    "note": null,
+                    "values": [
+                      "0.00 AED",
+                      "—",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.5",
+                    "line": "Reinsurers’ share of that reserve",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.6",
+                    "line": "Net outstanding claims reserve",
+                    "note": null,
+                    "values": [
+                      "0.00 AED",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "0.00 AED",
+                  "600,287.50 AED",
+                  "299,712.50 AED"
+                ]
+              },
+              {
+                "code": "RS-C",
+                "title": "Balances with reinsurers and retakaful operators",
+                "columns": [
+                  "Receivable",
+                  "Payable",
+                  "Deposit on account",
+                  "Security held",
+                  "Net receivable"
+                ],
+                "source": "The recovery register, the cession register, the deposit accounts and the security instruments, each counterparty at a time.",
+                "rows": [
+                  {
+                    "code": "C.Al Wathba Re",
+                    "line": "Al Wathba Re",
+                    "note": null,
+                    "values": [
+                      "0.00 AED",
+                      "0.00 AED",
+                      "0.00 AED",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "C.Emirates Re",
+                    "line": "Emirates Re",
+                    "note": "security held is 50,000.00 AED short of what the treaties require",
+                    "values": [
+                      "150,000.00 AED",
+                      "0.00 AED",
+                      "0.00 AED",
+                      "100,000.00 AED",
+                      "150,000.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "C.Gulf Reinsurance PSC",
+                    "line": "Gulf Reinsurance PSC",
+                    "note": null,
+                    "values": [
+                      "635.44 AED",
+                      "819.63 AED",
+                      "300,000.00 AED",
+                      "1,500.00 AED",
+                      "-184.19 AED"
+                    ]
+                  },
+                  {
+                    "code": "C.MENA Re",
+                    "line": "MENA Re",
+                    "note": null,
+                    "values": [
+                      "150.00 AED",
+                      "1,500.00 AED",
+                      "0.00 AED",
+                      "0.00 AED",
+                      "-1,350.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "150,785.44 AED",
+                  "2,319.63 AED",
+                  "300,000.00 AED",
+                  "101,500.00 AED",
+                  "148,465.81 AED"
+                ]
+              },
+              {
+                "code": "RS-D",
+                "title": "Deposit-accounted treaties",
+                "columns": [
+                  "Deposit paid",
+                  "Technical premium",
+                  "Adjustment",
+                  "Asset remaining"
+                ],
+                "source": "The deposit accounts: premium paid on account is an asset until the period is settled against the real subject premium.",
+                "rows": [
+                  {
+                    "code": "D.AGG-SL-DEPOSIT",
+                    "line": "AGG-SL-DEPOSIT",
+                    "note": "still on account: no premium income and no claim expense has been recognised",
+                    "values": [
+                      "300,000.00 AED",
+                      "—",
+                      "300,000.00 AED",
+                      "300,000.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "300,000.00 AED",
+                  "—",
+                  "300,000.00 AED",
+                  "300,000.00 AED"
+                ]
+              }
+            ],
+            "controls": [
+              {
+                "code": "RS-A.5",
+                "what": "Total ceded premium on the return ties to the ceded premium account",
+                "state": "agrees",
+                "detail": "3,819.63 AED agrees with ALK-CONV:REINS:CEDED-PREMIUM"
+              },
+              {
+                "code": "RS-A.7",
+                "what": "Commission on the return ties to the commission account",
+                "state": "agrees",
+                "detail": "497.94 AED agrees with ALK-CONV:REINS:COMMISSION"
+              },
+              {
+                "code": "RS-B.3",
+                "what": "Recoveries still to collect tie to the receivable account once commission due is taken out",
+                "state": "agrees",
+                "detail": "150,287.50 AED agrees with the receivable account less 497.94 AED of commission due"
+              },
+              {
+                "code": "RS-B.4",
+                "what": "The claims the module holds carry the reserves the reserve account holds",
+                "state": "agrees",
+                "detail": "15,000.00 AED of reserve agrees, claim by claim, with the reserve account; 0.00 AED of it sits on risks this return covers and 0.00 AED is the reinsurers' share"
+              },
+              {
+                "code": "RS-C.receivable",
+                "what": "Receivable from reinsurers, every counterparty, ties to the receivable account",
+                "state": "agrees",
+                "detail": "150,785.44 AED agrees with ALK-CONV:REINS:RECEIVABLE"
+              },
+              {
+                "code": "RS-C.payable",
+                "what": "Payable to reinsurers, every counterparty, ties to the payable account",
+                "state": "agrees",
+                "detail": "2,319.63 AED agrees with ALK-CONV:REINS:PAYABLE"
+              },
+              {
+                "code": "RS-C.deposit",
+                "what": "Deposit premium on account, every counterparty, ties to the deposit asset",
+                "state": "agrees",
+                "detail": "300,000.00 AED agrees with ALK-CONV:REINS:DEPOSIT-PREMIUM"
+              },
+              {
+                "code": "RS-C.security",
+                "what": "Cash held as security ties to restricted cash; letters of credit and guarantees are disclosed",
+                "state": "agrees",
+                "detail": "10,000.00 AED of cash security agrees with restricted cash, and 91,500.00 AED of letters of credit, guarantees and withheld premium is counted, disclosed and kept off the balance sheet"
+              }
+            ],
+            "notes": [
+              "Every figure on this return is derived from the reinsurance register and the general ledger; nothing here is re-keyed from a spreadsheet.",
+              "Every control agrees with the books as at the reporting date.",
+              "The receivable includes ceding commission due from each counterparty, which is why it is larger than the recoveries still to collect."
+            ],
+            "limitations": [
+              "Premium here is the premium on risks the treaty programme covers. Total book premium is a different figure and is not reported by this module.",
+              "The reserve is the claims module’s case reserve. No IBNR estimate is computed here: that is the appointed actuary’s model, and this return says so rather than inventing a figure.",
+              "Amounts are in the entity’s reporting currency. Foreign-currency business is translated when the cession is posted, at the rate recorded on that journal."
+            ]
+          },
+          "takaful": {
+            "id": "RI-EX-ALK-TKF-00001",
+            "kind": "regulatory-return",
+            "title": "Retakaful return — participant risk fund",
+            "entityId": "ALK-TKF",
+            "basis": "takaful",
+            "jurisdiction": "AE",
+            "counterparty": null,
+            "period": {
+              "from": "2026-01-01",
+              "to": "2026-10-05"
+            },
+            "asOf": "2026-10-05",
+            "preparedBy": "finance/reporting",
+            "version": 1,
+            "fingerprint": "c46c3f494c31261e",
+            "issuedAt": "2026-10-05T17:00:00+04:00",
+            "supersedes": null,
+            "changesSummary": null,
+            "differencesAccepted": null,
+            "tiesToBooks": true,
+            "tables": [
+              {
+                "code": "RS-A",
+                "title": "Premium ceded to reinsurers and retakaful operators",
+                "columns": [
+                  "Gross",
+                  "Ceded",
+                  "Net"
+                ],
+                "source": "The cession register: every cession posted in the period, with its ceded premium and commission.",
+                "rows": [
+                  {
+                    "code": "A.1",
+                    "line": "Premium written on risks subject to the treaty programme",
+                    "note": "the premium on the population the treaties actually cover, not the whole book",
+                    "values": [
+                      "1,800.00 AED",
+                      "—",
+                      "1,800.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.2",
+                    "line": "Premium ceded to reinsurers",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "360.00 AED",
+                      "-360.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.3",
+                    "line": "Reinstatement premium payable",
+                    "note": "no paid reinstatement fell in this period; the first reinstatement of the catastrophe cover is free by treaty",
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.4",
+                    "line": "Deposit premium recognised on settling a deposit-accounted treaty",
+                    "note": "no deposit-accounted period was settled in this period: the deposit stays an asset until it is",
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.5",
+                    "line": "Total ceded premium",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "360.00 AED",
+                      "-360.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.6",
+                    "line": "Net premium retained before commission",
+                    "note": null,
+                    "values": [
+                      "1,800.00 AED",
+                      "360.00 AED",
+                      "1,440.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.7",
+                    "line": "Ceding commission / operator wakalah fee receivable",
+                    "note": "the operator’s wakalah fee, which is not participant money and is not reported as such",
+                    "values": [
+                      "72.00 AED",
+                      "—",
+                      "72.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "A.8",
+                    "line": "Net premium retained after commission",
+                    "note": null,
+                    "values": [
+                      "1,800.00 AED",
+                      "360.00 AED",
+                      "1,512.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "1,800.00 AED",
+                  "360.00 AED",
+                  "1,512.00 AED"
+                ]
+              },
+              {
+                "code": "RS-B",
+                "title": "Claims, recoveries and the reserve",
+                "columns": [
+                  "Gross",
+                  "Ceded",
+                  "Net"
+                ],
+                "source": "The claims module for the gross figures, the recovery register for the ceded ones, and the cession schedule for the share of each reserve.",
+                "rows": [
+                  {
+                    "code": "B.1",
+                    "line": "Claims paid in the period on ceded risks",
+                    "note": null,
+                    "values": [
+                      "400.00 AED",
+                      "—",
+                      "400.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.2",
+                    "line": "Recoveries received from reinsurers in the period",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.3",
+                    "line": "Recoveries still to collect at the reporting date",
+                    "note": "aged against each treaty’s own settlement terms in the reinsurance ageing statement",
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.4",
+                    "line": "Outstanding claims reserve on ceded risks at the reporting date",
+                    "note": null,
+                    "values": [
+                      "0.00 AED",
+                      "—",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.5",
+                    "line": "Reinsurers’ share of that reserve",
+                    "note": null,
+                    "values": [
+                      "—",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  },
+                  {
+                    "code": "B.6",
+                    "line": "Net outstanding claims reserve",
+                    "note": null,
+                    "values": [
+                      "0.00 AED",
+                      "0.00 AED",
+                      "0.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "0.00 AED",
+                  "0.00 AED",
+                  "0.00 AED"
+                ]
+              },
+              {
+                "code": "RS-C",
+                "title": "Balances with reinsurers and retakaful operators",
+                "columns": [
+                  "Receivable",
+                  "Payable",
+                  "Deposit on account",
+                  "Security held",
+                  "Net receivable"
+                ],
+                "source": "The recovery register, the cession register, the deposit accounts and the security instruments, each counterparty at a time.",
+                "rows": [
+                  {
+                    "code": "C.Takaful Re International",
+                    "line": "Takaful Re International",
+                    "note": null,
+                    "values": [
+                      "72.00 AED",
+                      "360.00 AED",
+                      "0.00 AED",
+                      "90.00 AED",
+                      "-288.00 AED"
+                    ]
+                  }
+                ],
+                "totals": [
+                  "72.00 AED",
+                  "360.00 AED",
+                  "0.00 AED",
+                  "90.00 AED",
+                  "-288.00 AED"
+                ]
+              },
+              {
+                "code": "RS-D",
+                "title": "Deposit-accounted treaties",
+                "columns": [
+                  "Deposit paid",
+                  "Technical premium",
+                  "Adjustment",
+                  "Asset remaining"
+                ],
+                "source": "The deposit accounts: premium paid on account is an asset until the period is settled against the real subject premium.",
+                "rows": [],
+                "totals": [
+                  "0.00 AED",
+                  "—",
+                  "0.00 AED",
+                  "0.00 AED"
+                ]
+              }
+            ],
+            "controls": [
+              {
+                "code": "RS-A.5",
+                "what": "Total ceded premium on the return ties to the ceded premium account",
+                "state": "agrees",
+                "detail": "360.00 AED agrees with ALK-TKF:REINS:CEDED-PREMIUM"
+              },
+              {
+                "code": "RS-A.7",
+                "what": "Commission on the return ties to the commission account",
+                "state": "agrees",
+                "detail": "72.00 AED agrees with ALK-TKF:REINS:COMMISSION"
+              },
+              {
+                "code": "RS-B.3",
+                "what": "Recoveries still to collect tie to the receivable account once commission due is taken out",
+                "state": "agrees",
+                "detail": "0.00 AED agrees with the receivable account less 72.00 AED of commission due"
+              },
+              {
+                "code": "RS-B.4",
+                "what": "The claims the module holds carry the reserves the reserve account holds",
+                "state": "agrees",
+                "detail": "0.00 AED of reserve agrees, claim by claim, with the reserve account; 0.00 AED of it sits on risks this return covers and 0.00 AED is the reinsurers' share"
+              },
+              {
+                "code": "RS-C.receivable",
+                "what": "Receivable from reinsurers, every counterparty, ties to the receivable account",
+                "state": "agrees",
+                "detail": "72.00 AED agrees with ALK-TKF:REINS:RECEIVABLE"
+              },
+              {
+                "code": "RS-C.payable",
+                "what": "Payable to reinsurers, every counterparty, ties to the payable account",
+                "state": "agrees",
+                "detail": "360.00 AED agrees with ALK-TKF:REINS:PAYABLE"
+              },
+              {
+                "code": "RS-C.deposit",
+                "what": "Deposit premium on account, every counterparty, ties to the deposit asset",
+                "state": "agrees",
+                "detail": "0.00 AED agrees with ALK-TKF:REINS:DEPOSIT-PREMIUM"
+              },
+              {
+                "code": "RS-C.security",
+                "what": "Cash held as security ties to restricted cash; letters of credit and guarantees are disclosed",
+                "state": "agrees",
+                "detail": "90.00 AED of cash security agrees with restricted cash, and 0.00 AED of letters of credit, guarantees and withheld premium is counted, disclosed and kept off the balance sheet"
+              }
+            ],
+            "notes": [
+              "Every figure on this return is derived from the retakaful register and the participant risk fund ledger; participant money is reported in its own fund and never mixed into the operator’s numbers, and the wakalah fee is the operator’s income, shown separately.",
+              "Every control agrees with the books as at the reporting date.",
+              "The receivable includes ceding commission due from each counterparty, which is why it is larger than the recoveries still to collect."
+            ],
+            "limitations": [
+              "Premium here is the premium on risks the treaty programme covers. Total book premium is a different figure and is not reported by this module.",
+              "The reserve is the claims module’s case reserve. No IBNR estimate is computed here: that is the appointed actuary’s model, and this return says so rather than inventing a figure.",
+              "Amounts are in the entity’s reporting currency. Foreign-currency business is translated when the cession is posted, at the rate recorded on that journal."
+            ]
+          },
+          "bordereaux": [
+            {
+              "id": "RI-EX-ALK-CONV-00003",
+              "kind": "treaty-bordereau",
+              "title": "Treaty bordereau — Al Wathba Re",
+              "entityId": "ALK-CONV",
+              "basis": "conventional",
+              "jurisdiction": "AE",
+              "counterparty": "Al Wathba Re",
+              "period": {
+                "from": "2026-01-01",
+                "to": "2026-10-05"
+              },
+              "asOf": "2026-10-05",
+              "preparedBy": "reinsurance/desk",
+              "version": 1,
+              "fingerprint": "c280e814cde2e5f0",
+              "issuedAt": "2026-10-05T17:00:00+04:00",
+              "supersedes": null,
+              "changesSummary": null,
+              "differencesAccepted": null,
+              "tiesToBooks": true,
+              "tables": [
+                {
+                  "code": "BD-1",
+                  "title": "Cessions in the period",
+                  "columns": [
+                    "Sum insured",
+                    "Ceded",
+                    "Premium",
+                    "Ceded premium",
+                    "Commission",
+                    "Net retained"
+                  ],
+                  "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                  "rows": [],
+                  "totals": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "BD-2",
+                  "title": "Recoveries claimed and settled",
+                  "columns": [
+                    "Claimed",
+                    "Settled",
+                    "Outstanding",
+                    "Due by"
+                  ],
+                  "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                  "rows": [],
+                  "totals": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-3",
+                  "title": "Security held at the closing date",
+                  "columns": [
+                    "Amount",
+                    "Released",
+                    "In force",
+                    "Expires"
+                  ],
+                  "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                  "rows": [],
+                  "totals": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-4",
+                  "title": "Closing balance",
+                  "columns": [
+                    "Amount"
+                  ],
+                  "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                  "rows": [
+                    {
+                      "code": "BD.4.1",
+                      "line": "Recoveries still to collect (before commission)",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.2",
+                      "line": "Commission due from the counterparty",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.3",
+                      "line": "Premium payable to the counterparty",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.4",
+                      "line": "Security held against the balance",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.5",
+                      "line": "Requirement, and whether it is covered",
+                      "note": "covered by the security in force",
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "0.00 AED"
+                  ]
+                }
+              ],
+              "controls": [
+                {
+                  "code": "BD.held",
+                  "what": "Security on the bordereau ties to the security statement",
+                  "state": "agrees",
+                  "detail": "0.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+                },
+                {
+                  "code": "BD.recovery",
+                  "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                  "state": "agrees",
+                  "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+                }
+              ],
+              "notes": [
+                "0 cession(s) and 0 recovery/recoveries in the period, sent to Al Wathba Re to reconcile against their own records.",
+                "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+                "Both controls agree."
+              ],
+              "limitations": [
+                "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+                "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+              ]
+            },
+            {
+              "id": "RI-EX-ALK-CONV-00004",
+              "kind": "treaty-bordereau",
+              "title": "Treaty bordereau — Emirates Re",
+              "entityId": "ALK-CONV",
+              "basis": "conventional",
+              "jurisdiction": "AE",
+              "counterparty": "Emirates Re",
+              "period": {
+                "from": "2026-01-01",
+                "to": "2026-10-05"
+              },
+              "asOf": "2026-10-05",
+              "preparedBy": "reinsurance/desk",
+              "version": 1,
+              "fingerprint": "0e1e3f1b58dab6c7",
+              "issuedAt": "2026-10-05T17:00:00+04:00",
+              "supersedes": null,
+              "changesSummary": null,
+              "differencesAccepted": null,
+              "tiesToBooks": true,
+              "tables": [
+                {
+                  "code": "BD-1",
+                  "title": "Cessions in the period",
+                  "columns": [
+                    "Sum insured",
+                    "Ceded",
+                    "Premium",
+                    "Ceded premium",
+                    "Commission",
+                    "Net retained"
+                  ],
+                  "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                  "rows": [],
+                  "totals": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED"
+                  ]
+                },
+                {
+                  "code": "BD-2",
+                  "title": "Recoveries claimed and settled",
+                  "columns": [
+                    "Claimed",
+                    "Settled",
+                    "Outstanding",
+                    "Due by"
+                  ],
+                  "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                  "rows": [
+                    {
+                      "code": "RI-ALK-CONV-000004",
+                      "line": "STORM-ALPHAI · XOL-CAT-5M",
+                      "note": "settled 2026-09-30",
+                      "values": [
+                        "600,000.00 AED",
+                        "450,000.00 AED",
+                        "150,000.00 AED",
+                        "—"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "600,000.00 AED",
+                    "450,000.00 AED",
+                    "150,000.00 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-3",
+                  "title": "Security held at the closing date",
+                  "columns": [
+                    "Amount",
+                    "Released",
+                    "In force",
+                    "Expires"
+                  ],
+                  "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                  "rows": [
+                    {
+                      "code": "SEC-ALK-CONV-000002",
+                      "line": "letter-of-credit · LC-88213",
+                      "note": "expires 2026-12-31 (disclosed, not posted)",
+                      "values": [
+                        "60,000.00 AED",
+                        "0.00 AED",
+                        "60,000.00 AED",
+                        "—"
+                      ]
+                    },
+                    {
+                      "code": "SEC-ALK-CONV-000003",
+                      "line": "letter-of-credit · LC-77420",
+                      "note": "expires 2026-10-20 (disclosed, not posted)",
+                      "values": [
+                        "30,000.00 AED",
+                        "0.00 AED",
+                        "30,000.00 AED",
+                        "—"
+                      ]
+                    },
+                    {
+                      "code": "SEC-ALK-CONV-000004",
+                      "line": "cash · CASH-SECURITY-2026",
+                      "note": "no expiry: an open instrument",
+                      "values": [
+                        "10,000.00 AED",
+                        "0.00 AED",
+                        "10,000.00 AED",
+                        "—"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "100,000.00 AED",
+                    "0.00 AED",
+                    "100,000.00 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-4",
+                  "title": "Closing balance",
+                  "columns": [
+                    "Amount"
+                  ],
+                  "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                  "rows": [
+                    {
+                      "code": "BD.4.1",
+                      "line": "Recoveries still to collect (before commission)",
+                      "note": null,
+                      "values": [
+                        "150,000.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.2",
+                      "line": "Commission due from the counterparty",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.3",
+                      "line": "Premium payable to the counterparty",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.4",
+                      "line": "Security held against the balance",
+                      "note": null,
+                      "values": [
+                        "100,000.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.5",
+                      "line": "Requirement, and whether it is covered",
+                      "note": "50,000.00 AED short: called or to be called",
+                      "values": [
+                        "150,000.00 AED"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "150,000.00 AED"
+                  ]
+                }
+              ],
+              "controls": [
+                {
+                  "code": "BD.held",
+                  "what": "Security on the bordereau ties to the security statement",
+                  "state": "agrees",
+                  "detail": "100,000.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+                },
+                {
+                  "code": "BD.recovery",
+                  "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                  "state": "agrees",
+                  "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+                }
+              ],
+              "notes": [
+                "0 cession(s) and 1 recovery/recoveries in the period, sent to Emirates Re to reconcile against their own records.",
+                "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+                "Both controls agree."
+              ],
+              "limitations": [
+                "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+                "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+              ]
+            },
+            {
+              "id": "RI-EX-ALK-CONV-00005",
+              "kind": "treaty-bordereau",
+              "title": "Treaty bordereau — Gulf Reinsurance PSC",
+              "entityId": "ALK-CONV",
+              "basis": "conventional",
+              "jurisdiction": "AE",
+              "counterparty": "Gulf Reinsurance PSC",
+              "period": {
+                "from": "2026-01-01",
+                "to": "2026-10-05"
+              },
+              "asOf": "2026-10-05",
+              "preparedBy": "reinsurance/desk",
+              "version": 1,
+              "fingerprint": "cb6b6f98a8f2bdbd",
+              "issuedAt": "2026-10-05T17:00:00+04:00",
+              "supersedes": null,
+              "changesSummary": null,
+              "differencesAccepted": null,
+              "tiesToBooks": true,
+              "tables": [
+                {
+                  "code": "BD-1",
+                  "title": "Cessions in the period",
+                  "columns": [
+                    "Sum insured",
+                    "Ceded",
+                    "Premium",
+                    "Ceded premium",
+                    "Commission",
+                    "Net retained"
+                  ],
+                  "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                  "rows": [
+                    {
+                      "code": "RI-ALK-CONV-000001",
+                      "line": "UW-000002 · LIFE-PTY-0002 (QS-25-2026)",
+                      "note": "25% ceded — 25% of every risk is ceded as it is written",
+                      "values": [
+                        "300,000.00 AED",
+                        "75,000.00 AED",
+                        "9,211.50 AED",
+                        "2,302.88 AED",
+                        "345.43 AED",
+                        "7,254.05 AED"
+                      ]
+                    },
+                    {
+                      "code": "RI-ALK-CONV-000003",
+                      "line": "MTR-0441 · MTR-0441 (QS-25-2026)",
+                      "note": "25% ceded — 25% of every risk is ceded as it is written",
+                      "values": [
+                        "250,000.00 AED",
+                        "62,500.00 AED",
+                        "67.00 AED",
+                        "16.75 AED",
+                        "2.51 AED",
+                        "52.76 AED"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "550,000.00 AED",
+                    "137,500.00 AED",
+                    "9,278.50 AED",
+                    "2,319.63 AED",
+                    "347.94 AED",
+                    "7,306.81 AED"
+                  ]
+                },
+                {
+                  "code": "BD-2",
+                  "title": "Recoveries claimed and settled",
+                  "columns": [
+                    "Claimed",
+                    "Settled",
+                    "Outstanding",
+                    "Due by"
+                  ],
+                  "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                  "rows": [
+                    {
+                      "code": "REC-CLM-000001-2",
+                      "line": "CLM-000001 · QS-25-2026",
+                      "note": "still to settle",
+                      "values": [
+                        "287.50 AED",
+                        "0.00 AED",
+                        "287.50 AED",
+                        "—"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "287.50 AED",
+                    "0.00 AED",
+                    "287.50 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-3",
+                  "title": "Security held at the closing date",
+                  "columns": [
+                    "Amount",
+                    "Released",
+                    "In force",
+                    "Expires"
+                  ],
+                  "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                  "rows": [
+                    {
+                      "code": "SEC-ALK-CONV-000001",
+                      "line": "funds-withheld · FUNDS-WITHHELD-Q3",
+                      "note": "no expiry: an open instrument",
+                      "values": [
+                        "1,500.00 AED",
+                        "0.00 AED",
+                        "1,500.00 AED",
+                        "—"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "1,500.00 AED",
+                    "0.00 AED",
+                    "1,500.00 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-4",
+                  "title": "Closing balance",
+                  "columns": [
+                    "Amount"
+                  ],
+                  "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                  "rows": [
+                    {
+                      "code": "BD.4.1",
+                      "line": "Recoveries still to collect (before commission)",
+                      "note": null,
+                      "values": [
+                        "287.50 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.2",
+                      "line": "Commission due from the counterparty",
+                      "note": null,
+                      "values": [
+                        "347.94 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.3",
+                      "line": "Premium payable to the counterparty",
+                      "note": null,
+                      "values": [
+                        "819.63 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.4",
+                      "line": "Security held against the balance",
+                      "note": null,
+                      "values": [
+                        "1,500.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.5",
+                      "line": "Requirement, and whether it is covered",
+                      "note": "covered by the security in force",
+                      "values": [
+                        "983.39 AED"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "287.50 AED"
+                  ]
+                }
+              ],
+              "controls": [
+                {
+                  "code": "BD.held",
+                  "what": "Security on the bordereau ties to the security statement",
+                  "state": "agrees",
+                  "detail": "1,500.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+                },
+                {
+                  "code": "BD.recovery",
+                  "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                  "state": "agrees",
+                  "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+                }
+              ],
+              "notes": [
+                "2 cession(s) and 1 recovery/recoveries in the period, sent to Gulf Reinsurance PSC to reconcile against their own records.",
+                "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+                "Both controls agree."
+              ],
+              "limitations": [
+                "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+                "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+              ]
+            },
+            {
+              "id": "RI-EX-ALK-CONV-00006",
+              "kind": "treaty-bordereau",
+              "title": "Treaty bordereau — MENA Re",
+              "entityId": "ALK-CONV",
+              "basis": "conventional",
+              "jurisdiction": "AE",
+              "counterparty": "MENA Re",
+              "period": {
+                "from": "2026-01-01",
+                "to": "2026-10-05"
+              },
+              "asOf": "2026-10-05",
+              "preparedBy": "reinsurance/desk",
+              "version": 1,
+              "fingerprint": "a6cecb869ef9cf4f",
+              "issuedAt": "2026-10-05T17:00:00+04:00",
+              "supersedes": null,
+              "changesSummary": null,
+              "differencesAccepted": null,
+              "tiesToBooks": true,
+              "tables": [
+                {
+                  "code": "BD-1",
+                  "title": "Cessions in the period",
+                  "columns": [
+                    "Sum insured",
+                    "Ceded",
+                    "Premium",
+                    "Ceded premium",
+                    "Commission",
+                    "Net retained"
+                  ],
+                  "source": "The cession register, in the order the cessions were posted, with the journal each one produced.",
+                  "rows": [
+                    {
+                      "code": "RI-ALK-CONV-000002",
+                      "line": "UW-000001 · LIFE-PTY-0001 (SURPLUS-10)",
+                      "note": "20% ceded — 200,000.00 AED retained, the next 10 line(s) ceded up to 2,000,000.00 AED",
+                      "values": [
+                        "250,000.00 AED",
+                        "50,000.00 AED",
+                        "7,500.00 AED",
+                        "1,500.00 AED",
+                        "150.00 AED",
+                        "6,150.00 AED"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "250,000.00 AED",
+                    "50,000.00 AED",
+                    "7,500.00 AED",
+                    "1,500.00 AED",
+                    "150.00 AED",
+                    "6,150.00 AED"
+                  ]
+                },
+                {
+                  "code": "BD-2",
+                  "title": "Recoveries claimed and settled",
+                  "columns": [
+                    "Claimed",
+                    "Settled",
+                    "Outstanding",
+                    "Due by"
+                  ],
+                  "source": "The recovery register: one row per recovery, with the terms of the treaty that governs it.",
+                  "rows": [],
+                  "totals": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-3",
+                  "title": "Security held at the closing date",
+                  "columns": [
+                    "Amount",
+                    "Released",
+                    "In force",
+                    "Expires"
+                  ],
+                  "source": "The security instruments held from this counterparty, reported whether or not they are posted to the balance sheet.",
+                  "rows": [],
+                  "totals": [
+                    "0.00 AED",
+                    "0.00 AED",
+                    "0.00 AED",
+                    "—"
+                  ]
+                },
+                {
+                  "code": "BD-4",
+                  "title": "Closing balance",
+                  "columns": [
+                    "Amount"
+                  ],
+                  "source": "The same figures the supervisory return carries for this counterparty, so the desk and the regulator are reading one number.",
+                  "rows": [
+                    {
+                      "code": "BD.4.1",
+                      "line": "Recoveries still to collect (before commission)",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.2",
+                      "line": "Commission due from the counterparty",
+                      "note": null,
+                      "values": [
+                        "150.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.3",
+                      "line": "Premium payable to the counterparty",
+                      "note": null,
+                      "values": [
+                        "1,500.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.4",
+                      "line": "Security held against the balance",
+                      "note": null,
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    },
+                    {
+                      "code": "BD.4.5",
+                      "line": "Requirement, and whether it is covered",
+                      "note": "covered by the security in force",
+                      "values": [
+                        "0.00 AED"
+                      ]
+                    }
+                  ],
+                  "totals": [
+                    "0.00 AED"
+                  ]
+                }
+              ],
+              "controls": [
+                {
+                  "code": "BD.held",
+                  "what": "Security on the bordereau ties to the security statement",
+                  "state": "agrees",
+                  "detail": "0.00 AED held at 2026-10-05, taken from the same instruments the security statement reports"
+                },
+                {
+                  "code": "BD.recovery",
+                  "what": "Recoveries on the bordereau tie to the recovery register for this counterparty",
+                  "state": "agrees",
+                  "detail": "one register, so the bordereau cannot disagree with the ageing statement the credit committee reads"
+                }
+              ],
+              "notes": [
+                "1 cession(s) and 0 recovery/recoveries in the period, sent to MENA Re to reconcile against their own records.",
+                "Totals on this bordereau are the register’s figures; the ledger agrees with the register line by line in the reconciliation statement, so a counterparty query lands on one of two numbers, not three.",
+                "Both controls agree."
+              ],
+              "limitations": [
+                "Written on the treaty terms as agreed. A settlement discount, a cash call agreed outside the treaty or a commutation is reported only once it is posted here.",
+                "Foreign-currency treaties are reported in the entity’s currency at the rate on each journal; the counterparty may see a small difference from its own translation, and the journal date is stated so the difference can be found."
+              ]
+            }
+          ],
+          "history": [
+            {
+              "id": "RI-EX-ALK-CONV-00001",
+              "version": 1,
+              "issuedAt": "2026-10-05T17:00:00+04:00",
+              "asOf": "2026-10-05",
+              "tiesToBooks": true,
+              "differences": 0
+            }
+          ],
+          "verify": {
+            "id": "RI-EX-ALK-CONV-00001",
+            "fingerprint": "c3859a4d96175c19",
+            "recomputed": "c3859a4d96175c19",
+            "intact": true,
+            "detail": "RI-EX-ALK-CONV-00001 reproduces exactly: the figures it was issued with are the figures the books still produce"
+          },
+          "issued": 8
+        },
         "group": {
           "asOf": "2026-10-05",
           "periodStart": "2026-09-01",
@@ -5756,7 +8623,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T08:44:47.108Z"
+        "generatedAt": "2026-10-04T09:33:36.683Z"
       }
     },
     "POST /api/ai/approve": {
@@ -5924,6 +8791,30 @@
         "note": "Cover is charged only for days inside an active start/stop window. Nothing auto-starts unless the segment elected daily renewal."
       }
     },
+    "POST /api/extracts/issue": {
+      "status": 200,
+      "body": {
+        "created": true,
+        "extractId": "RI-EX-ALK-CONV-00007",
+        "version": 2,
+        "supersedes": "RI-EX-ALK-CONV-00001",
+        "fingerprint": "2ac037ddce8f9996",
+        "tiesToBooks": true,
+        "differences": 0,
+        "changesSummary": "FLOOD-3 was claimed and posted after the first extract was prepared; the register and the books agree on the revised figures",
+        "claimedEvent": "FLOOD-3"
+      }
+    },
+    "POST /api/extracts/verify": {
+      "status": 200,
+      "body": {
+        "id": "RI-EX-ALK-CONV-00001",
+        "fingerprint": "c3859a4d96175c19",
+        "recomputed": "c3859a4d96175c19",
+        "intact": true,
+        "detail": "RI-EX-ALK-CONV-00001 reproduces exactly: the figures it was issued with are the figures the books still produce"
+      }
+    },
     "POST /api/group/consolidate": {
       "status": 200,
       "body": {
@@ -6001,7 +8892,7 @@
     "POST /api/ingest/commit": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791103561576",
+        "loadId": "LOAD-1791106492850",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
@@ -6014,7 +8905,7 @@
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791103561576"
+        "loadId": "LOAD-1791106492850"
       }
     },
     "POST /api/onboarding/ocr": {
@@ -6643,16 +9534,9 @@
       }
     },
     "POST /api/reinsurance/security/call": {
-      "status": 200,
+      "status": 409,
       "body": {
-        "callId": "CALL-ALK-CONV-000002",
-        "counterparty": "Emirates Re",
-        "amount": "425,000.00 AED",
-        "shortfallAtRaise": "425,000.00 AED",
-        "reason": "the catastrophe recovery is unsecured beyond the letters of credit in force",
-        "at": "2026-10-05T11:00:00+04:00",
-        "dueBy": "2026-11-04",
-        "status": "open"
+        "error": "Emirates Re already has 50,000.00 AED called and unanswered: calling 50,000.00 AED more would double-count the same shortfall"
       }
     },
     "POST /api/reinsurance/security/call/settle": {
@@ -6715,12 +9599,12 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "8d3767dfbad403b8",
+        "fingerprint": "0e4808c87594c8d8",
         "fingerprintStable": true,
-        "journals": 86,
-        "restoredJournals": 86,
-        "bytes": 88367,
-        "restoreMs": 67,
+        "journals": 87,
+        "restoredJournals": 87,
+        "bytes": 89049,
+        "restoreMs": 40,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -6820,12 +9704,15 @@
     "POST /api/cover/tick": {
       "at": "2026-10-05T10:00:00+04:00"
     },
+    "POST /api/extracts/verify": {
+      "extractId": "RI-EX-ALK-CONV-00001"
+    },
     "POST /api/ingest/commit": {
-      "loadId": "LOAD-1791103561576"
+      "loadId": "LOAD-1791106492850"
     },
     "POST /api/ingest/submit": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791103561576"
+      "loadId": "LOAD-1791106492850"
     },
     "POST /api/onboarding/ocr": {
       "documentType": "emirates-id",

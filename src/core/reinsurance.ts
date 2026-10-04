@@ -63,6 +63,7 @@ export interface Cession {
   readonly treatyId: string;
   readonly kind: TreatyKind;
   readonly basis: Basis;
+  readonly lineOfBusiness: string;         // the book the risk was written in, carried so a report can group by it
   readonly riskId: string;
   readonly sumInsured: Money;
   readonly ceded: Money;                   // sum insured the reinsurer carries
@@ -154,6 +155,7 @@ export interface DepositAccount {
   readonly technicalPremium?: Money;       // the premium the period actually earned (on settlement)
   readonly adjustments: ReadonlyArray<{ at: string; kind: 'additional' | 'return'; amount: Money; journalId: string }>;
   readonly settled: boolean;
+  readonly settledAt?: string;             // the day the period was settled: the day the premium was recognised
   readonly treatment: 'risk-transferring' | 'deposit';
   readonly assetRemaining: Money;          // deposit premium still sitting on the balance sheet
 }
@@ -466,7 +468,7 @@ export class TreatyRegister {
   private readonly reinstatementLog: Reinstatement[] = [];
   private readonly eventRecoveries: Array<{ treatyId: string; eventId: string; amount: Money; at: string; journalId: string }> = [];
   private readonly deposits = new Map<string, {
-    treatyId: string; depositPaid: Money; technicalPremium?: Money; settled: boolean;
+    treatyId: string; depositPaid: Money; technicalPremium?: Money; settled: boolean; settledAt?: string;
     adjustments: Array<{ at: string; kind: 'additional' | 'return'; amount: Money; journalId: string }>;
   }>();
 
@@ -545,8 +547,8 @@ export class TreatyRegister {
     }
     const shareBps = sumInsured.minor === 0n ? 0 : Number((ceded.minor * 10_000n * 100n) / sumInsured.minor) / 100;
     return {
-      treatyId: treaty.id, kind: treaty.kind, basis: treaty.basis, riskId: input.riskId,
-      sumInsured, ceded, retainedAfter: sub(sumInsured, ceded),
+      treatyId: treaty.id, kind: treaty.kind, basis: treaty.basis, lineOfBusiness: input.lineOfBusiness,
+      riskId: input.riskId, sumInsured, ceded, retainedAfter: sub(sumInsured, ceded),
       shareBps: Math.round(shareBps), explanation,
     };
   }
@@ -890,7 +892,7 @@ export class TreatyRegister {
     if (difference.minor !== 0n) {
       account.adjustments.push({ at: input.at, kind: difference.minor > 0n ? 'additional' : 'return', amount: abs(difference), journalId: entry.id });
     }
-    const settled = { ...account, technicalPremium: technical, settled: true };
+    const settled = { ...account, technicalPremium: technical, settled: true, settledAt: input.at };
     this.deposits.set(treatyId, settled);
     this.notes.push(`deposit settled under ${treatyId}: technical ${formatAmount(technical)}, ${difference.minor >= 0n ? 'additional' : 'returned'} ${formatAmount(abs(difference))}`);
     return this.depositAccount(treatyId);
@@ -903,6 +905,7 @@ export class TreatyRegister {
       treatyId,
       depositPaid: account?.depositPaid ?? zero(this.currency),
       ...(account?.technicalPremium ? { technicalPremium: account.technicalPremium } : {}),
+      ...(account?.settledAt ? { settledAt: account.settledAt } : {}),
       adjustments: account?.adjustments ?? [],
       settled: account?.settled ?? false,
       treatment: this.accountingTreatment(treatyId),

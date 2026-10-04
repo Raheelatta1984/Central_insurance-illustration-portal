@@ -77,6 +77,12 @@ await page.waitForSelector('nav button');
 await sleep(1200);
 
 await direct('GET', '/reinsurance/security');
+await direct('GET', '/extracts');
+const issued = grab.get('GET /api/extracts')?.body;
+await direct('POST', '/extracts/verify', issued ? { extractId: issued.conventional.id } : {});
+await direct('POST', '/reinsurance/security/call', {
+  counterparty: 'Emirates Re', reason: 'the catastrophe recovery is unsecured beyond the letters of credit in force',
+});
 
 /* Walk every module and press the things a customer would press. Real button labels, taken from
    the console itself. Each tab starts on a freshly loaded page: the world lives on the server, so
@@ -91,7 +97,7 @@ const script = [
   ['Group finance', ['Run the consolidation']],
   ['Underwriting', ['Ask the AI agent to decide']],
   ['Claims', ['Ask the AI to approve 25,000.00', 'Register a new claim']],
-  ['Reinsurance', ['Place a risk facultatively', 'Cede a further risk', 'Claim the reinsurance recovery', 'Claim a catastrophe event', 'Reinstate the catastrophe cover', 'Pay a deposit instalment', 'Settle the deposit premium', 'Settle the outstanding recovery', 'Answer the outstanding cash call', 'Release the security we no longer need', 'Credit the interest on their cash']],
+  ['Reinsurance', ['Place a risk facultatively', 'Cede a further risk', 'Claim the reinsurance recovery', 'Claim a catastrophe event', 'Reinstate the catastrophe cover', 'Pay a deposit instalment', 'Settle the deposit premium', 'Settle the outstanding recovery', 'Answer the outstanding cash call', 'Release the security we no longer need', 'Credit the interest on their cash', 'Reissue the return after a later event']],
   ['Onboarding', []],
   ['Ingestion', ['Validate & reconcile', 'Commit the accepted rows']],
   ['Parties & consent', ['Ask with consent', 'Ask without consent']],
@@ -119,6 +125,11 @@ for (const [tab, actions] of script) {
     console.log(`   FAILED on ${tab}: ${String(err).split('\n')[0]}`);
   }
 }
+
+/* The console settles the deposit on the Reinsurance tab, and that settlement is what brings the
+   recognised premium into the return — so ask for the return once more, after the presses, so the
+   recorded draft is the one an operator would see standing at the desk this afternoon. */
+await direct('GET', '/extracts');
 
 /* Some responses are only reachable by asking the API directly — a refusal, for instance, which
    the console renders as an error card. Mirror exactly what the console sends. */

@@ -474,7 +474,12 @@
         "reinstatement premium",
         "deposit accounting",
         "cash call and collateral",
-        "security valuation"
+        "security valuation",
+        "regulatory return filing",
+        "actuarial exhibits",
+        "treaty bordereaux",
+        "extract issue and verify",
+        "deposit premium recognition"
       ],
       "layers": [
         "design",
@@ -493,7 +498,10 @@
         "src/server/main.ts",
         "src/ui/main.tsx",
         "README.md",
-        "docs/07-TOUR.md"
+        "docs/07-TOUR.md",
+        "src/core/extracts.ts",
+        "src/core/extracts.test.ts",
+        "src/core/demo.ts"
       ]
     }
   },

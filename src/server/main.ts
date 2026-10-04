@@ -8,7 +8,7 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
-import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot } from '../core/demo.js';
+import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot } from '../core/demo.js';
 import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { ocrDocument } from '../core/onboarding.js';
@@ -224,6 +224,46 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     case 'GET /reinsurance': {
       // Exactly the shape the console renders, so the two can never drift apart.
       json(res, 200, reinsuranceSnapshot(state.world));
+      return true;
+    }
+
+    case 'GET /extracts': {
+      // The issued returns, the actuary's exhibits and the bordereaux, exactly as they were issued.
+      json(res, 200, extractSnapshot(state.world));
+      return true;
+    }
+
+    case 'POST /extracts/issue': {
+      // A later transaction moves the figures, and the return is issued again: the previous version is
+      // kept, the new one says what changed, and nothing is quietly rewritten.
+      const year = { from: `${state.world.asOf.slice(0, 4)}-01-01`, to: state.world.asOf };
+      const eventId = String(payload['eventId'] ?? `FLOOD-${state.world.reinsurance.eventRecoveryList().length + 1}`);
+      let claimedEvent: string | null = null;
+      if (payload['event'] !== false) {
+        state.world.reinsurance.recoverEvent('XOL-CAT-5M', {
+          eventId, loss: parseAmount(String(payload['loss'] ?? '1,140,000.00'), 'AED'),
+          at: `${state.world.asOf}T13:00:00+04:00`, by: 'catastrophe-desk',
+        });
+        claimedEvent = eventId;
+      }
+      const result = state.world.extracts.issue({
+        kind: 'regulatory-return', period: year, asOf: state.world.asOf,
+        by: String(payload['by'] ?? 'finance/reporting'), at: `${state.world.asOf}T17:45:00+04:00`,
+        changesSummary: String(payload['changesSummary'] ?? `${claimedEvent ?? 'a later transaction'} was claimed and posted after the first extract was prepared; the register and the books agree on the revised figures`),
+      });
+      json(res, 200, {
+        created: result.created, extractId: result.extract.id, version: result.extract.version,
+        supersedes: result.extract.supersedes, fingerprint: result.extract.fingerprint,
+        tiesToBooks: result.extract.tiesToBooks,
+        differences: result.extract.controls.filter((c) => c.state === 'difference').length,
+        changesSummary: result.extract.changesSummary, claimedEvent,
+      });
+      return true;
+    }
+
+    case 'POST /extracts/verify': {
+      const id = String(payload['extractId'] ?? extractSnapshot(state.world).conventional.id);
+      json(res, 200, state.world.extracts.verify(id));
       return true;
     }
 

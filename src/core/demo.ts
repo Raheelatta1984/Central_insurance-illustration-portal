@@ -23,6 +23,7 @@ import { LabelRegistry, Locale } from './labels.js';
 import { applyBps } from './money.js';
 import { AE_PACK, comparisonMatrix, preSaleCheck, QuoteOffer } from './regulatory.js';
 import { REINSURANCE_SEED, TreatyRegister } from './reinsurance.js';
+import { ExtractEngine, IssuedExtract, formatCell } from './extracts.js';
 import { IngestionFabric } from './ingest.js';
 import { AgentRuntime } from './ai.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
@@ -41,6 +42,8 @@ export interface World {
   readonly underwriting: UnderwritingEngine;
   readonly reinsurance: TreatyRegister;      // conventional treaties
   readonly retakaful: TreatyRegister;        // the takaful window's own treaties, kept apart
+  readonly extracts: ExtractEngine;          // regulatory, actuarial and bordereau extracts, issued and kept
+  readonly takafulExtracts: ExtractEngine;   // the window files its own return, from its own fund
 
   readonly group: GroupConsolidator;
   readonly groupRates: RateTable;
@@ -309,6 +312,16 @@ export function buildWorld(): World {
   for (const treaty of REINSURANCE_SEED) {
     if (treaty.basis === 'takaful') retakaful.register({ ...treaty, currency });
   }
+  // Regulatory and actuarial reporting. The window gets its own engine, so a return filed for the
+  // participant risk fund can never report a dirham of the operator's money.
+  const extracts = new ExtractEngine({
+    ledger, entityId: conventionalEntity, currency, basis: 'conventional', jurisdiction: 'AE',
+    register: reinsurance, claims,
+  });
+  const takafulExtracts = new ExtractEngine({
+    ledger, entityId: takafulEntity, currency, basis: 'takaful', jurisdiction: 'AE',
+    register: retakaful, claims: takafulClaims,
+  });
 
   const ratedDecision = underwriting.decisionFor(ratedApp.id)!;
   const cleanDecision = underwriting.decisionFor(cleanApp.id)!;
@@ -569,6 +582,7 @@ export function buildWorld(): World {
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
     ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, reinsurance, retakaful,
+    extracts, takafulExtracts,
     group, groupRates, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
@@ -871,6 +885,55 @@ export function reinsuranceSnapshot(w: World) {
   };
 }
 
+/**
+ * The reporting view: one issued return per entity (the year to date), the actuary's exhibits, and a
+ * bordereau per counterparty — prepared live and then issued, so the console shows an issued document
+ * rather than a draft that would be rebuilt differently the next time it is opened.
+ */
+export function extractSnapshot(w: World) {
+  const year = { from: `${w.asOf.slice(0, 4)}-01-01`, to: w.asOf };
+  // Reading the world must never issue anything twice: a reporting view that mutated the register every
+  // time it was opened would be a reporting view nobody could trust. The first read issues; every read
+  // after that returns exactly what was issued.
+  const ensure = (engine: ExtractEngine, kind: 'regulatory-return' | 'actuarial-exhibits' | 'treaty-bordereau', by: string, counterparty?: string) => {
+    const already = engine.history(kind, year, counterparty).at(-1);
+    if (already) return engine.get(already.id);
+    return engine.issue({
+      kind, period: year, asOf: w.asOf, by, at: `${w.asOf}T17:00:00+04:00`,
+      ...(counterparty ? { counterparty } : {}),
+    }).extract;
+  };
+  const conventionalReturn = ensure(w.extracts, 'regulatory-return', 'finance/reporting');
+  const takafulReturn = ensure(w.takafulExtracts, 'regulatory-return', 'finance/takaful');
+  ensure(w.extracts, 'actuarial-exhibits', 'actuarial');
+  ensure(w.takafulExtracts, 'actuarial-exhibits', 'actuarial');
+  const counterparties = [...new Set(w.reinsurance.list().map((t) => t.counterparty))].sort();
+  const bordereaux = counterparties.map((counterparty) => ensure(w.extracts, 'treaty-bordereau', 'reinsurance/desk', counterparty));
+
+  const shape = (e: IssuedExtract) => ({
+    id: e.id, kind: e.kind, title: e.title, entityId: e.entityId, basis: e.basis, jurisdiction: e.jurisdiction,
+    counterparty: e.counterparty ?? null, period: e.period, asOf: e.asOf, preparedBy: e.preparedBy,
+    version: e.version, fingerprint: e.fingerprint, issuedAt: e.issuedAt, supersedes: e.supersedes,
+    changesSummary: e.changesSummary, differencesAccepted: e.differencesAccepted, tiesToBooks: e.tiesToBooks,
+    tables: e.tables.map((t) => ({
+      code: t.code, title: t.title, columns: [...t.columns], source: t.source,
+      rows: t.rows.map((r) => ({ code: r.code, line: r.line, note: r.note ?? null, values: r.values.map((v) => formatCell(v)) })),
+      totals: t.totals ? t.totals.map((v) => formatCell(v)) : null,
+    })),
+    controls: e.controls.map((c) => ({ code: c.code, what: c.what, state: c.state, detail: c.detail })),
+    notes: [...e.notes], limitations: [...e.limitations],
+  });
+  return {
+    asOf: w.asOf,
+    conventional: shape(conventionalReturn),
+    takaful: shape(takafulReturn),
+    bordereaux: bordereaux.map(shape),
+    history: w.extracts.history('regulatory-return', year).map((h) => ({ id: h.id, version: h.version, issuedAt: h.issuedAt, asOf: h.asOf, tiesToBooks: h.tiesToBooks, differences: h.differences })),
+    verify: w.extracts.verify(conventionalReturn.id),
+    issued: w.extracts.list().length + w.takafulExtracts.list().length,
+  };
+}
+
 export function worldSnapshot(w: World) {
   const latest = DAYS[DAYS.length - 1]!;
   const asOf = w.asOf;
@@ -1010,6 +1073,7 @@ export function worldSnapshot(w: World) {
     },
     underwriting: underwritingSnapshot(w.underwriting, asOf),
     reinsurance: reinsuranceSnapshot(w),
+    extracts: extractSnapshot(w),
     group: groupSnapshot(w, false),
     claims: claimsSnapshot(w.claims, asOf),
     takafulClaims: claimsSnapshot(w.takafulClaims, asOf),

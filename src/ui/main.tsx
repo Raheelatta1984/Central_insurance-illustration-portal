@@ -995,6 +995,63 @@ const statusTone = (status: string): 'ok' | 'warn' | 'bad' | 'info' =>
 /* --------------------------------------------------------------- reinsurance */
 
 type ReinsuranceView = WorldSnapshot['reinsurance'];
+type ExtractView = WorldSnapshot['extracts'];
+type IssuedExtractView = ExtractView['conventional'];
+
+/** One issued extract: its tables, its controls, its notes and what it does not claim to know. */
+function ExtractCard({ view, title, subtitle }: { view: IssuedExtractView; title: string; subtitle: string }) {
+  const [open, setOpen] = useState<string | null>(view.tables[0]?.code ?? null);
+  const table = view.tables.find((t) => t.code === open);
+  return (
+    <Card title={title} subtitle={subtitle} wide>
+      <div className="row">
+        <div className="stat"><span>Extract</span><b className="small">{view.id} v{view.version}</b></div>
+        <div className="stat"><span>Period</span><b className="small">{view.period.from} → {view.period.to}</b></div>
+        <div className="stat"><span>Prepared by</span><b className="small">{view.preparedBy}</b></div>
+        <div className="stat"><span>Issued</span><b className="small">{view.issuedAt.slice(0, 10)}</b></div>
+        <div className="stat"><span>Ties to the books</span><b>{view.tiesToBooks ? <Pill tone="ok">every control agrees</Pill> : <Pill tone="bad">difference accepted</Pill>}</b></div>
+        <div className="stat"><span>Fingerprint</span><b className="small">{view.fingerprint.slice(0, 16)}…</b></div>
+      </div>
+      {view.supersedes && (
+        <p className="small muted">Supersedes {view.supersedes}. Why: {view.changesSummary}</p>
+      )}
+      {view.differencesAccepted && (
+        <p className="small bad">Difference accepted by {view.differencesAccepted.by}: {view.differencesAccepted.reason}</p>
+      )}
+      <div className="row">
+        {view.tables.map((t) => (
+          <button key={t.code} disabled={t.code === open} onClick={() => setOpen(t.code)}>{t.code} · {t.title.split(' ').slice(0, 3).join(' ')}</button>
+        ))}
+      </div>
+      {table && (
+        <>
+          <p className="small muted">{table.title} — {table.source}</p>
+          <Table
+            head={['Line', ...table.columns]}
+            rows={table.rows.map((r) => [
+              <span key={r.code}><span className="muted small">{r.code}</span> {r.line}{r.note ? <span className="muted small"> — {r.note}</span> : null}</span>,
+              ...r.values,
+            ])}
+            empty="No lines on this schedule."
+          />
+          {table.totals && (
+            <p className="small"><b>Totals</b>: {table.totals.join(' · ')}</p>
+          )}
+        </>
+      )}
+      <Table
+        head={['Control', 'What it proves', 'State', 'Detail']}
+        rows={view.controls.map((c) => [
+          <span className="muted small">{c.code}</span>, c.what,
+          c.state === 'agrees' ? <Pill tone="ok">agrees</Pill> : c.state === 'difference' ? <Pill tone="bad">difference</Pill> : <Pill tone="info">informational</Pill>,
+          c.detail,
+        ])}
+      />
+      {view.notes.map((n, i) => <p className="small muted" key={i}>{n}</p>)}
+      <div className="stat"><span>What it does not claim to know</span><b className="small">{view.limitations.join(' · ')}</b></div>
+    </Card>
+  );
+}
 type ReinsuranceBook = ReinsuranceView['conventional'];
 
 const TreatyTable: React.FC<{ book: ReinsuranceBook; title: string; subtitle: string }> = ({ book, title, subtitle }) => (
@@ -1036,6 +1093,7 @@ const TreatyTable: React.FC<{ book: ReinsuranceBook; title: string; subtitle: st
 
 function Reinsurance({ data }: { data: WorldSnapshot }) {
   const [view, setView] = useState<ReinsuranceView>(data.reinsurance);
+  const [extracts, setExtracts] = useState<ExtractView>(data.extracts);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1048,9 +1106,13 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
       const result = await api<Record<string, unknown>>(path, 'POST', body);
       setNote(`${label}: ${JSON.stringify(result)}`);
       setView(await api<ReinsuranceView>('/reinsurance'));
+      setExtracts(await api<ExtractView>('/extracts'));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      try { setView(await api<ReinsuranceView>('/reinsurance')); } catch { /* the error says it all */ }
+      try {
+        setView(await api<ReinsuranceView>('/reinsurance'));
+        setExtracts(await api<ExtractView>('/extracts'));
+      } catch { /* the error says it all */ }
     } finally { setBusy(null); }
   };
 
@@ -1075,6 +1137,7 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
           <button disabled={busy !== null} onClick={() => call('Answer the outstanding cash call', '/reinsurance/security/call/settle')}>Answer the outstanding cash call</button>
           <button disabled={busy !== null} onClick={() => call('Release the security we no longer need', '/reinsurance/security/release')}>Release the security we no longer need</button>
           <button disabled={busy !== null} onClick={() => call('Credit the interest the reinsurer earns on its cash', '/reinsurance/security/interest')}>Credit the interest on their cash</button>
+          <button disabled={busy !== null} onClick={() => call('Issue the return again after a later transaction', '/extracts/issue')}>Reissue the return after a later event</button>
         </div>
         {note && <p className="small">{note}</p>}
         {error && <p className="bad small">{error}</p>}
@@ -1217,6 +1280,40 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
           security liability, and the reconciliation above proves both halves. A letter of credit is relied on and
           disclosed — never posted as if it were cash.
         </p>
+      </Card>
+
+      <ExtractCard
+        view={extracts.conventional}
+        title="The supervisory return, issued"
+        subtitle="Every figure derived from the register and the books — and a return that does not tie to the books cannot be issued at all"
+      />
+      <ExtractCard
+        view={extracts.takaful}
+        title="The window files its own return"
+        subtitle="Participant risk money reported in its own fund, in its own entity — never inside the operator's numbers"
+      />
+
+      <Card title="Treaty bordereaux, ready to send" subtitle="What each counterparty reconciles its own records against, closing balance and all" wide>
+        <Table
+          head={['Counterparty', 'Extract', 'Version', 'Cessions', 'Recoveries claimed', 'Still outstanding', 'Closing balance', 'Ties to the books']}
+          rows={extracts.bordereaux.map((b) => {
+            const table = (code: string) => b.tables.find((t) => t.code === code)!;
+            return [
+              b.counterparty ?? '—',
+              <span className="muted small" key={b.id}>{b.id}</span>,
+              `v${b.version}`,
+              String(table('BD-1').rows.length),
+              table('BD-2').totals?.[0] ?? '—',
+              table('BD-2').totals?.[2] ?? '—',
+              table('BD-4').totals?.[0] ?? '—',
+              b.tiesToBooks ? <Pill tone="ok">agrees</Pill> : <Pill tone="bad">difference</Pill>,
+            ];
+          })}
+          empty="No counterparties: there is nothing to send."
+        />
+        <div className="stat"><span>Extracts issued across the group</span><b>{extracts.issued}</b></div>
+        <div className="stat"><span>Version history of this return</span><b className="small">{extracts.history.map((h) => `v${h.version} ${h.id} (${h.issuedAt.slice(0, 10)})`).join(' · ')}</b></div>
+        <div className="stat"><span>Re-verification of what was issued</span><b className="small">{extracts.verify.detail}</b></div>
       </Card>
 
       <Card title="Recoveries from reinsurers" subtitle="Owed to us, not in the bank — the receivable is the proof">

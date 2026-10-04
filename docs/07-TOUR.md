@@ -203,7 +203,7 @@ Triage decides straight-through, referral or decline; a reserve is a booked liab
 
 **Tab:** Reinsurance · **5 minutes**
 
-An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, and the security behind every counterparty's promise measured against what it owes us.
+An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty's promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary's exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.
 
 **Do this**
 
@@ -218,6 +218,10 @@ An insurer that keeps every risk whole is one bad quarter from ruin. This is the
 - Press "Answer the outstanding cash call": the shortfall is called, then answered, and the cover goes to 100.00% with the cash posted to restricted cash.
 - Press "Release the security we no longer need": the surplus goes back, the payable returns to the books, and the release is journaled.
 - Press "Credit the interest on their cash": interest earned on a counterparty's cash is theirs, and it is carried as more of what we owe them — a retakaful treaty refuses interest altogether.
+- Read "The supervisory return, issued": four schedules built from the register, eight controls each tied to a ledger account, and the issued fingerprint. A return that does not tie to the books cannot be issued at all.
+- Open the actuary's exhibits and find the line that says what they do not claim to know: no IBNR, no discounting, no unexpired premium the ledger does not hold.
+- Read "The window files its own return": the participant risk fund reports its own retakaful, in its own entity, with the wakalah fee shown as the operator's income rather than mixed in.
+- Press "Reissue the return after a later event": a catastrophe is claimed, the figures move, and version 2 is issued against version 1 with the reason written down — nothing is quietly rewritten.
 
 **You should see**
 
@@ -226,8 +230,10 @@ An insurer that keeps every risk whole is one bad quarter from ruin. This is the
 - A deposit-accounted treaty recognises no premium income and no claim expense at all — the balance sheet carries it until settlement.
 - Cash security and withheld premium appear as restricted cash and as security owed back; a letter of credit is disclosed and never posted as cash.
 - The cash call asks for the shortfall and nothing more, and a second call for the same gap is refused while the first is unanswered.
+- Each bordereau closes on the same figures the return carries for that counterparty, so a query lands on one number rather than three.
+- An issued extract reproduces exactly when it is recomputed; once later transactions move the books, the old extract stays as issued and says so.
 
-*Endpoints: GET /api/reinsurance · GET /api/reinsurance/security · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover · POST /api/reinsurance/event · POST /api/reinsurance/reinstate · POST /api/reinsurance/deposit · POST /api/reinsurance/deposit/settle · POST /api/reinsurance/settle · POST /api/reinsurance/security/hold · POST /api/reinsurance/security/call · POST /api/reinsurance/security/call/settle · POST /api/reinsurance/security/release · POST /api/reinsurance/security/interest*
+*Endpoints: GET /api/reinsurance · GET /api/reinsurance/security · GET /api/extracts · POST /api/extracts/issue · POST /api/extracts/verify · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover · POST /api/reinsurance/event · POST /api/reinsurance/reinstate · POST /api/reinsurance/deposit · POST /api/reinsurance/deposit/settle · POST /api/reinsurance/settle · POST /api/reinsurance/security/hold · POST /api/reinsurance/security/call · POST /api/reinsurance/security/call/settle · POST /api/reinsurance/security/release · POST /api/reinsurance/security/interest*
 
 ## 11. 00:53 — Prove the books can be restored
 

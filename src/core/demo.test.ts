@@ -3,7 +3,7 @@
  * These tests guard the journeys the console shows and the numbers the API returns.
  */
 import { describe, expect, it } from 'vitest';
-import { buildWorld, claimsSnapshot, groupSnapshot, reinsuranceSnapshot, underwritingSnapshot, worldSnapshot } from './demo.js';
+import { buildWorld, claimsSnapshot, extractSnapshot, groupSnapshot, reinsuranceSnapshot, underwritingSnapshot, worldSnapshot } from './demo.js';
 import { money } from './money.js';
 import { AE_PACK } from './regulatory.js';
 
@@ -531,6 +531,112 @@ describe('the console can render every view the API serves', () => {
     expect(w.ledger.balance('ALK-TKF:COLLATERAL:CASH').minor).toBe(90_00n);
     const entry = w.ledger.entriesFor('ALK-TKF', { fundId: 'PRF' }).find((e) => e.source === 'reinsurance')!;
     expect(entry.entityId).toBe('ALK-TKF');
+  });
+
+  it('reporting extracts: the return ties to the books, the exhibits state their limits, the bordereaux close per counterparty', () => {
+    const w = buildWorld();
+    const view = extractSnapshot(w);
+    const r = view.conventional;
+
+    expect(r.id).toBe('RI-EX-ALK-CONV-00001');
+    expect(r.version).toBe(1);
+    expect(r.tiesToBooks).toBe(true);
+    expect(r.differencesAccepted).toBeNull();
+    expect(r.controls.every((c) => c.state === 'agrees')).toBe(true);
+    expect(r.controls.map((c) => c.code)).toEqual(['RS-A.5', 'RS-A.7', 'RS-B.3', 'RS-B.4', 'RS-C.receivable', 'RS-C.payable', 'RS-C.deposit', 'RS-C.security']);
+    expect(r.tables.map((t) => t.code)).toEqual(['RS-A', 'RS-B', 'RS-C', 'RS-D']);
+    expect(r.period).toEqual({ from: '2026-01-01', to: '2026-10-05' });
+
+    // The return carries the same figures the rest of the console has been showing all along.
+    const rowOf = (table: string, code: string) => r.tables.find((t) => t.code === table)!.rows.find((x) => x.code === code)!;
+    expect(rowOf('RS-A', 'A.1').values[0]).toBe('16,778.50 AED');
+    expect(rowOf('RS-A', 'A.2').values[1]).toBe('3,819.63 AED');
+    expect(rowOf('RS-A', 'A.7').values[0]).toBe('497.94 AED');
+    expect(rowOf('RS-A', 'A.8').values[2]).toBe('13,456.81 AED');
+    // The deposit-accounted period was settled in the console flow in the recorded run, but the world the
+    // tests build has it open: A.4 is nil, and A.5 is the ceded premium alone.
+    expect(rowOf('RS-A', 'A.4').values[1]).toBe('0.00 AED');
+    expect(rowOf('RS-A', 'A.5').values[1]).toBe('3,819.63 AED');
+    expect(rowOf('RS-B', 'B.2').values[1]).toBe('450,000.00 AED');
+    expect(rowOf('RS-B', 'B.3').values[1]).toBe('150,287.50 AED');
+    expect(rowOf('RS-C', 'C.Emirates Re').values[0]).toBe('150,000.00 AED');
+    expect(rowOf('RS-C', 'C.Gulf Reinsurance PSC').values[0]).toBe('635.44 AED');     // 347.94 quota-share commission + 287.50 recovery
+    expect(rowOf('RS-C', 'C.Gulf Reinsurance PSC').values[1]).toBe('819.63 AED');     // ceded premium less the 1,500 withheld as security
+    expect(rowOf('RS-D', 'D.AGG-SL-DEPOSIT').values[3]).toBe('300,000.00 AED');
+    expect(r.tables.find((t) => t.code === 'RS-C')!.totals).toEqual(['150,785.44 AED', '2,319.63 AED', '300,000.00 AED', '101,500.00 AED', '148,465.81 AED']);
+    expect(r.limitations.join(' ')).toMatch(/No IBNR estimate is computed here/);
+
+    // The actuary's exhibits: ratios are shown as percentages, and the run-off is the claims log.
+    const exhibits = w.extracts.list().find((e) => e.kind === 'actuarial-exhibits')!;
+    const loss = exhibits.tables.find((t) => t.code === 'AE-3')!;
+    expect(loss.columns).toContain('Loss ratio (gross)');
+    expect(loss.totals!.some((cell) => cell !== null && 'ratioBps' in cell)).toBe(true);
+    expect(exhibits.limitations.some((l) => l.includes('No discounting'))).toBe(true);
+
+    // The window files from its own fund: 360.00 ceded of the 1,800.00 tabarru, 72.00 wakalah fee.
+    const t = view.takaful;
+    expect(t.title).toMatch(/Retakaful return — participant risk fund/);
+    expect(t.tiesToBooks).toBe(true);
+    expect(t.tables.find((x) => x.code === 'RS-A')!.rows.find((x) => x.code === 'A.2')!.values[1]).toBe('360.00 AED');
+    expect(t.tables.find((x) => x.code === 'RS-A')!.rows.find((x) => x.code === 'A.7')!.values[0]).toBe('72.00 AED');
+    expect(t.notes.join(' ')).toMatch(/participant money is reported in its own fund/);
+
+    // One bordereau per counterparty, each closing on the same figures the return carries.
+    expect(view.bordereaux.map((b) => b.counterparty)).toEqual(['Al Wathba Re', 'Emirates Re', 'Gulf Reinsurance PSC', 'MENA Re']);
+    const emirates = view.bordereaux.find((b) => b.counterparty === 'Emirates Re')!;
+    expect(emirates.tiesToBooks).toBe(true);
+    expect(emirates.tables.find((x) => x.code === 'BD-2')!.rows).toHaveLength(1);
+    const closing = emirates.tables.find((x) => x.code === 'BD-4')!;
+    expect(closing.rows.find((x) => x.code === 'BD.4.1')!.values[0]).toBe('150,000.00 AED');
+    expect(closing.rows.find((x) => x.code === 'BD.4.5')!.note).toMatch(/short/);
+    expect(closing.rows.find((x) => x.code === 'BD.4.5')!.values[0]).toBe('150,000.00 AED');
+
+    expect(view.history).toHaveLength(1);
+    expect(view.history[0]!.version).toBe(1);
+    expect(view.issued).toBe(8);                       // 2 returns + 2 exhibits + 4 bordereaux
+    expect(view.verify.intact).toBe(true);
+    expect(view.verify.detail).toMatch(/reproduces exactly/);
+  });
+
+  it('an issued return cannot be rewritten: a later event issues a second version, and the first stays', () => {
+    const w = buildWorld();
+    const first = extractSnapshot(w).conventional;
+    expect(first.version).toBe(1);
+    const year = { from: '2026-01-01', to: '2026-10-05' };
+
+    const reissued = w.extracts.issue({
+      kind: 'regulatory-return', period: year, asOf: '2026-10-05', by: 'finance/reporting', at: '2026-10-05T18:00:00+04:00',
+    });
+    expect(reissued.created).toBe(false);                       // nothing changed: the same extract comes back
+    expect(reissued.extract.id).toBe(first.id);
+
+    const event = w.reinsurance.recoverEvent('XOL-CAT-5M', {
+      eventId: 'FLOOD-2', loss: money(1_140_000_00, 'AED'), at: '2026-10-05T13:00:00+04:00', by: 'catastrophe-desk',
+    });
+    expect(event.amount.minor).toBe(140_000_00n);
+    // The figures have moved, so the same period can no longer be reissued in silence.
+    expect(() => w.extracts.issue({
+      kind: 'regulatory-return', period: year, asOf: '2026-10-05', by: 'finance/reporting', at: '2026-10-05T18:05:00+04:00',
+      changesSummary: 'a later entry',
+    })).toThrow(/say what changed and why before superseding a return/);
+    const v2 = w.extracts.issue({
+      kind: 'regulatory-return', period: year, asOf: '2026-10-05', by: 'finance/reporting', at: '2026-10-05T18:10:00+04:00',
+      changesSummary: 'FLOOD-2 was claimed and posted after the first extract was prepared; the register and the books agree on the revised figures',
+    });
+    expect(v2.created).toBe(true);
+    expect(v2.extract.version).toBe(2);
+    expect(v2.extract.supersedes).toBe(first.id);
+    expect(v2.extract.tiesToBooks).toBe(true);
+    // The issued v1 figures are money in the engine; the console snapshot formats them for the screen.
+    const figure = (draft: { tables: readonly { code: string; rows: readonly { code: string; values: readonly unknown[] }[] }[] }) => {
+      const cell = draft.tables.find((t) => t.code === 'RS-B')!.rows.find((x) => x.code === 'B.3')!.values[1] as { minor: bigint };
+      return cell.minor;
+    };
+    expect(figure(w.extracts.get(first.id))).toBe(150_287_50n);
+    expect(figure(v2.extract)).toBe(290_287_50n);                // the original 150,000 plus the new 140,000
+    expect(w.extracts.history('regulatory-return', year).map((h) => h.version)).toEqual([1, 2]);
+    expect(w.extracts.verify(first.id).intact).toBe(false);      // the old one no longer reproduces, and says why
+    expect(w.extracts.verify(first.id).detail).toMatch(/no longer reproduces/);
   });
 
   it('reinsurance: the ageing and reconciliation fields the console reads are all present', () => {
