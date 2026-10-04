@@ -10,7 +10,7 @@ import type { WorldSnapshot } from '../core/demo';
 
 type Tab =
   | 'overview' | 'policyholder' | 'decisions' | 'cover' | 'funds' | 'takaful'
-  | 'underwriting' | 'claims' | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
+  | 'group' | 'underwriting' | 'claims' | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
 
 const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'overview', label: 'Overview', icon: '◈' },
@@ -19,6 +19,7 @@ const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'cover', label: 'Cover control', icon: '⏻' },
   { id: 'funds', label: 'Funds & NAV', icon: '≣' },
   { id: 'takaful', label: 'Takaful', icon: '☾' },
+  { id: 'group', label: 'Group finance', icon: '⌂' },
   { id: 'underwriting', label: 'Underwriting', icon: '⚖' },
   { id: 'claims', label: 'Claims', icon: '✚' },
   { id: 'onboarding', label: 'Onboarding', icon: '⛨' },
@@ -514,6 +515,7 @@ function App() {
       case 'cover': return <Cover data={data} />;
       case 'funds': return <Funds data={data} />;
       case 'takaful': return <Takaful data={data} />;
+      case 'group': return <GroupFinance data={data} />;
       case 'underwriting': return <Underwriting data={data} />;
       case 'claims': return <Claims data={data} />;
       case 'onboarding': return <Onboarding data={data} />;
@@ -563,6 +565,170 @@ function App() {
 
 
 
+
+
+/* ----------------------------------------------------------- group finance */
+
+type GroupView = WorldSnapshot['group'];
+
+/** Group finance: translation at three rates, eliminations, minority interest, one balance sheet. */
+function GroupFinance({ data }: { data: WorldSnapshot }) {
+  const [view, setView] = useState<GroupView>(data.group);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { setView(data.group); }, [data]);
+
+  const run = async () => {
+    setBusy(true); setError(null); setNote(null);
+    try {
+      const result = await api<Record<string, unknown>>('/group/consolidate', 'POST');
+      setNote(JSON.stringify(result, null, 1));
+      setView(await api<GroupView>('/group'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid">
+      <Card title="Consolidated position" subtitle={`${view.entities.length} entities in ${view.groupCurrency}, period ${view.periodStart} → ${view.asOf}`}>
+        <div className="stat"><span>Assets</span><b>{view.group.totals.assets}</b></div>
+        <div className="stat"><span>Liabilities</span><b>{view.group.totals.liabilities}</b></div>
+        <div className="stat"><span>Net assets</span><b>{view.group.netAssets}</b></div>
+        <div className="stat"><span>Equity</span><b>{view.group.totals.equity}</b></div>
+        <div className="stat"><span>of which translation reserve</span><b>{view.group.totals.translationReserve}</b></div>
+        <div className="stat"><span>Result</span><b>{view.group.totals.income} − {view.group.totals.expense}</b></div>
+        <div className="stat"><span>Attribution</span><b>owners {view.group.attribution.owners} · minority {view.group.attribution.minority}</b></div>
+        <div className="stat"><span>Balance</span><b>{view.group.balanced ? <Pill tone="ok">ties out</Pill> : <Pill tone="bad">difference {view.group.difference}</Pill>}</b></div>
+      </Card>
+
+      <Card title="Entities" subtitle="Three rates per entity: closing for the balance sheet, average for the result, historical for equity">
+        <table>
+          <thead><tr><th>Entity</th><th>Currency</th><th>Owned</th><th>Net assets</th><th>Result</th><th>Translation reserve</th></tr></thead>
+          <tbody>
+            {view.entities.map((e) => (
+              <tr key={e.entityId}>
+                <td>{e.name}</td>
+                <td>{e.functionalCurrency}</td>
+                <td>{e.ownershipPct}%</td>
+                <td>{e.netAssets}</td>
+                <td>{e.income}</td>
+                <td>{e.translationReserve}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <ul className="list">
+          {view.entities.map((e) => (
+            <li key={e.entityId} className="small">{e.entityId} — closing {e.closingRate}; average {e.averageRate}</li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card title="Intercompany" subtitle="Eliminated where the two books agree, called out where they do not" wide>
+        {view.intercompany.balances.length === 0 && view.intercompany.incomeAndExpense.length === 0 && <p className="muted">No intercompany positions between these entities.</p>}
+        {view.intercompany.balances.length > 0 && (
+          <table>
+            <thead><tr><th>Receivable in</th><th>Payable in</th><th>Receivable</th><th>Payable</th><th>Eliminated</th><th>Difference</th></tr></thead>
+            <tbody>
+              {view.intercompany.balances.map((b, i) => (
+                <tr key={i}>
+                  <td>{b.receivableEntity}</td>
+                  <td>{b.payableEntity}</td>
+                  <td>{b.receivable}</td>
+                  <td>{b.payable}</td>
+                  <td>{b.eliminated}</td>
+                  <td>{b.direction === 'agrees' ? '—' : <span className="warnText">{b.differenceAbs} in transit ({b.direction})</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {view.intercompany.incomeAndExpense.length > 0 && (
+          <table>
+            <thead><tr><th>Earning entity</th><th>Charged entity</th><th>Income</th><th>Expense</th><th>Eliminated</th></tr></thead>
+            <tbody>
+              {view.intercompany.incomeAndExpense.map((p, i) => (
+                <tr key={i}>
+                  <td>{p.earningEntity}</td>
+                  <td>{p.chargedEntity}</td>
+                  <td>{p.income}</td>
+                  <td>{p.expense}</td>
+                  <td>{p.eliminated}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
+      <Card title="Minority interests" subtitle="The group never claims a subsidiary it does not wholly own">
+        {view.nci.length === 0 ? <p className="muted">Every entity is wholly owned.</p> : (
+          <table>
+            <thead><tr><th>Entity</th><th>Owned</th><th>Minority</th><th>Their share of net assets</th></tr></thead>
+            <tbody>
+              {view.nci.map((n) => (
+                <tr key={n.entityId}>
+                  <td>{n.entityId}</td>
+                  <td>{n.ownershipPct}%</td>
+                  <td>{n.minorityPct}%</td>
+                  <td>{n.shareOfNetAssets}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
+      <Card title="Checks" subtitle="What an auditor would ask for, answered on the spot">
+        <table>
+          <thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
+          <tbody>
+            {view.group.checks.map((c) => (
+              <tr key={c.check}>
+                <td>{c.check}</td>
+                <td>{c.ok ? <Pill tone="ok">pass</Pill> : <Pill tone="warn">look</Pill>}</td>
+                <td className="small">{c.detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="row">
+          <button onClick={run} disabled={busy}>{busy ? 'Consolidating…' : 'Run the consolidation'}</button>
+          <span className="muted small">Runs it again and posts nothing new — consolidation is idempotent by journal id.</span>
+        </div>
+        {note && <div className="code">{note}</div>}
+        {error && <div className="errorBox">{error}</div>}
+      </Card>
+
+      <Card title="Consolidated trial balance" subtitle="Read back from the group ledger, mirrors and all" wide>
+        <table>
+          <thead><tr><th>Group account</th><th>Type</th><th>Amount</th></tr></thead>
+          <tbody>
+            {view.group.trialBalance.map((l) => (
+              <tr key={l.accountId}>
+                <td className="small">{l.accountId}</td>
+                <td>{l.type}</td>
+                <td>{l.amount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      {view.eliminations.notes.length > 0 && (
+        <Card title="What the consolidation did" wide>
+          <ul className="list">{view.eliminations.notes.map((n, i) => <li key={i} className="small">{n}</li>)}</ul>
+          <p className="muted small">Eliminated {view.eliminations.matched} · in transit {view.eliminations.inTransit} · {view.eliminations.journals.length} group journal(s)</p>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 /* ----------------------------------------------------------- underwriting */
 

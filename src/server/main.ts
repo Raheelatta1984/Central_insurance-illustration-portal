@@ -8,7 +8,7 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
-import { buildWorld, worldSnapshot, World } from '../core/demo.js';
+import { buildWorld, worldSnapshot, World, groupSnapshot } from '../core/demo.js';
 import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { ocrDocument } from '../core/onboarding.js';
@@ -214,6 +214,29 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       const loadId = String(payload['loadId'] ?? '');
       const record = state.world.ingest.commit(loadId, new Date().toISOString());
       json(res, 200, { loadId, committed: record.committed, committedKeys: record.committedKeys.length, duplicates: record.duplicatesSuppressed });
+      return true;
+    }
+
+    case 'GET /group': {
+      const report = groupSnapshot(state.world, false);
+      json(res, 200, report);
+      return true;
+    }
+
+    case 'POST /group/consolidate': {
+      const report = groupSnapshot(state.world, true);
+      json(res, 200, {
+        ok: report.group.balanced,
+        asOf: report.asOf,
+        groupCurrency: report.groupCurrency,
+        journals: report.eliminations.journals,
+        eliminations: { matched: report.eliminations.matched, inTransit: report.eliminations.inTransit, notes: report.eliminations.notes },
+        nci: report.nci,
+        totals: report.group.totals,
+        netAssets: report.group.netAssets,
+        attribution: report.group.attribution,
+        checks: report.group.checks,
+      });
       return true;
     }
 

@@ -23,6 +23,40 @@ export interface Chart {
   claimExpense(): string;
   claimReserve(): string;
   claimRecovery(): string;
+  icReceivable(counterparty: string): string;
+  icPayable(counterparty: string): string;
+  icIncome(counterparty: string): string;
+  icExpense(counterparty: string): string;
+}
+
+/** Intercompany account suffixes, shared by the chart, the engines and the consolidator. */
+export const IC = {
+  receivable: (counterparty: string) => `IC:RECV:${counterparty}`,
+  payable: (counterparty: string) => `IC:PAY:${counterparty}`,
+  income: (counterparty: string) => `IC:INCOME:${counterparty}`,
+  expense: (counterparty: string) => `IC:EXPENSE:${counterparty}`,
+} as const;
+
+/**
+ * Intercompany accounts are per counterparty, so a balance can always be attributed to whoever
+ * owes it. Without that, an elimination is guesswork.
+ */
+export function defineIntercompany(ledger: Ledger, entityId: string, currency: string, counterparties: string[]): void {
+  for (const cp of counterparties) {
+    const want = (suffix: string) => `${entityId}:${suffix}`;
+    if (!ledger.hasAccount(want(IC.receivable(cp)))) {
+      ledger.defineAccount({ id: want(IC.receivable(cp)), name: `Intercompany receivable — ${cp}`, type: 'asset', entityId, currency });
+    }
+    if (!ledger.hasAccount(want(IC.payable(cp)))) {
+      ledger.defineAccount({ id: want(IC.payable(cp)), name: `Intercompany payable — ${cp}`, type: 'liability', entityId, currency });
+    }
+    if (!ledger.hasAccount(want(IC.income(cp)))) {
+      ledger.defineAccount({ id: want(IC.income(cp)), name: `Intercompany income — ${cp}`, type: 'income', entityId, currency });
+    }
+    if (!ledger.hasAccount(want(IC.expense(cp)))) {
+      ledger.defineAccount({ id: want(IC.expense(cp)), name: `Intercompany expense — ${cp}`, type: 'expense', entityId, currency });
+    }
+  }
 }
 
 export function buildChart(ledger: Ledger, entityId: string, currency: string, funds: string[]): Chart {
@@ -60,5 +94,9 @@ export function buildChart(ledger: Ledger, entityId: string, currency: string, f
     claimExpense: () => id('CLAIM-EXPENSE'),
     claimReserve: () => id('CLAIM-RESERVE'),
     claimRecovery: () => id('CLAIM-RECOVERY'),
+    icReceivable: (counterparty: string) => id(IC.receivable(counterparty)),
+    icPayable: (counterparty: string) => id(IC.payable(counterparty)),
+    icIncome: (counterparty: string) => id(IC.income(counterparty)),
+    icExpense: (counterparty: string) => id(IC.expense(counterparty)),
   };
 }

@@ -131,3 +131,65 @@ describe('underwriting in the demo world', () => {
     expect(snapshot.underwriting.exposure.find((e) => e.partyId === 'PTY-0001')?.totalSumAssured).toMatch(/250,000.00/);
   });
 });
+
+describe('group finance in the demo world', () => {
+  it('consolidates three entities in two currencies into one balanced group balance sheet', () => {
+    const w = buildWorld();
+    const report = w.group.consolidate({ asOf: w.asOf, periodStart: w.groupPeriodStart });
+    expect(report.entities.map((e) => e.entityId)).toEqual(['ALK-CONV', 'ALK-TKF', 'ALK-MY']);
+    expect(report.group.balanced).toBe(true);
+    expect(report.group.difference.minor).toBe(0n);
+    expect(report.group.totals.translationReserve.minor).not.toBe(0n);   // the ringgit entity creates one
+    expect(w.ledger.proof('GRP').balanced).toBe(true);
+    expect(report.group.checks.every((c) => c.check !== 'consolidated balance sheet balances' || c.ok)).toBe(true);
+  });
+
+  it('states the 30% minority share of the Malaysian subsidiary', () => {
+    const w = buildWorld();
+    const report = w.group.consolidate({ asOf: w.asOf, periodStart: w.groupPeriodStart });
+    const nci = report.nci.find((n) => n.entityId === 'ALK-MY')!;
+    expect(nci.minorityPct).toBe(30);
+    const malaysia = report.entities.find((e) => e.entityId === 'ALK-MY')!;
+    expect(nci.shareOfNetAssets.minor).toBe((malaysia.netAssets.minor * 30n) / 100n);
+    expect(report.group.attribution.minority.minor).toBe(nci.shareOfNetAssets.minor);
+  });
+
+  it('shows an intercompany balance that agrees and one that does not', () => {
+    const w = buildWorld();
+    const report = w.group.consolidate({ asOf: w.asOf, periodStart: w.groupPeriodStart });
+    const withTakaful = report.intercompany.balances.find((b) => b.payableEntity === 'ALK-TKF')!;
+    expect(withTakaful.difference.minor).toBe(0n);
+    expect(withTakaful.eliminated.minor).toBe(2_500_00n);
+
+    const withMalaysia = report.intercompany.balances.find((b) => b.payableEntity === 'ALK-MY')!;
+    // The payable (MYR 20,000 at closing) is larger than the receivable (AED 4,600), so the
+    // difference is negative; the in-transit figure is the absolute value.
+    expect(withMalaysia.difference.minor).toBeLessThan(0n);
+    expect(report.eliminations.inTransit.minor).toBe(-withMalaysia.difference.minor);
+    expect(report.eliminations.notes.some((n) => n.includes('in transit'))).toBe(true);
+  });
+
+  it('leaves the entity books exactly as they were', () => {
+    const w = buildWorld();
+    const before = {
+      conv: w.ledger.entriesFor(w.conventionalEntity).length,
+      tkf: w.ledger.entriesFor(w.takafulEntity).length,
+      my: w.ledger.entriesFor(w.malaysiaEntity).length,
+      cash: w.ledger.balance(`${w.malaysiaEntity}:CASH`).minor,
+    };
+    w.group.consolidate({ asOf: w.asOf, periodStart: w.groupPeriodStart });
+    expect(w.ledger.entriesFor(w.conventionalEntity).length).toBe(before.conv);
+    expect(w.ledger.entriesFor(w.takafulEntity).length).toBe(before.tkf);
+    expect(w.ledger.entriesFor(w.malaysiaEntity).length).toBe(before.my);
+    expect(w.ledger.balance(`${w.malaysiaEntity}:CASH`).minor).toBe(before.cash);
+  });
+
+  it('renders the group panel inside the console snapshot', () => {
+    const snapshot = worldSnapshot(buildWorld());
+    expect(snapshot.group.entities).toHaveLength(3);
+    expect(snapshot.group.group.balanced).toBe(true);
+    expect(snapshot.group.group.trialBalance.length).toBeGreaterThan(3);
+    expect(snapshot.group.nci[0]!.shareOfNetAssets).toMatch(/AED/);
+    expect(snapshot.group.eliminations.notes.length).toBeGreaterThan(0);
+  });
+});

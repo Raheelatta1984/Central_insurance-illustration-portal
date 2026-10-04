@@ -200,25 +200,36 @@
     },
     "GL": {
       "keywords": [
-        "double-entry ledger",
-        "chart of accounts",
-        "fund ledger integration",
+        "group finance",
+        "consolidat",
+        "translation",
+        "closing rate",
+        "average rate",
+        "historical rate",
+        "intercompany",
+        "elimination",
+        "minority",
+        "non-controlling",
         "trial balance",
-        "multi-currency base and foreign"
+        "multi-entity",
+        "multi-currency",
+        "cta"
       ],
       "layers": [
         "design",
         "contract",
         "domain",
-        "test",
         "api",
-        "store",
-        "ui"
+        "test",
+        "docs",
+        "ui",
+        "store"
       ],
       "evidence": [
-        "src/core/ledger.ts",
+        "src/core/groupfinance.ts",
         "src/core/chart.ts",
-        "src/core/moneyproof.test.ts"
+        "src/server/main.ts",
+        "src/ui/main.tsx"
       ]
     },
     "CONS": {
@@ -462,7 +473,7 @@
     "ULNK": "src/core/unitlinked.test.ts",
     "TAKF": "src/core/takaful.test.ts",
     "BILL": "src/core/billing.test.ts",
-    "GL": "src/core/moneyproof.test.ts",
+    "GL": "src/core/groupfinance.test.ts",
     "CONS": "src/core/party.test.ts",
     "ING": "src/core/ingest.test.ts",
     "REG": "src/core/regulatory.test.ts",

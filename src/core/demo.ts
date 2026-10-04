@@ -7,11 +7,12 @@
  * Everything the UI and the tests read comes from here, so the console and the tests can never
  * disagree about what the platform does.
  */
-import { Ledger } from './ledger.js';
-import { buildChart } from './chart.js';
+import { Ledger, posting } from './ledger.js';
+import { buildChart, defineIntercompany } from './chart.js';
 import { ClaimsEngine } from './claims.js';
 import { ProductRules, RiskProfile, UnderwritingEngine } from './underwriting.js';
-import { Money, money, zero, formatAmount, toDecimalString } from './money.js';
+import { DatedFx, GroupConsolidator, RateTable, ConsolidatedReport } from './groupfinance.js';
+import { Money, money, zero, formatAmount, toDecimalString, abs as absMoney } from './money.js';
 import { unitsFromDecimal, unitsToDecimal } from './units.js';
 import { NavEngine, singlePriceFund, FundDef } from './fund.js';
 import { DEFAULT_CHARGES, UnitLinkedEngine, PolicyMeta } from './unitlinked.js';
@@ -36,6 +37,8 @@ export interface World {
   readonly claims: ClaimsEngine;
   readonly takafulClaims: ClaimsEngine;
   readonly underwriting: UnderwritingEngine;
+  readonly group: GroupConsolidator;
+  readonly groupRates: RateTable;
   readonly parties: PartyRegistry;
   readonly labels: LabelRegistry;
   readonly ingest: IngestionFabric;
@@ -44,6 +47,8 @@ export interface World {
   readonly asOf: string;
   readonly conventionalEntity: string;
   readonly takafulEntity: string;
+  readonly malaysiaEntity: string;
+  readonly groupPeriodStart: string;
   readonly consentId: string;
   readonly onboarding: { readonly chip: ExtractionResult; readonly ocr: ExtractionResult };
   readonly quotes: QuoteOffer[];
@@ -62,8 +67,13 @@ export function buildWorld(): World {
   const takafulEntity = 'ALK-TKF';
   const convFunds = ['FGLOBAL', 'FBAL'];
   const tkfFunds = ['TKF-EQ'];
+  const malaysiaEntity = 'ALK-MY';
   const convChart = buildChart(ledger, conventionalEntity, currency, convFunds);
   const tkfChart = buildChart(ledger, takafulEntity, currency, [...tkfFunds, 'PRF', 'PIF', 'OPF']);
+  const myChart = buildChart(ledger, malaysiaEntity, 'MYR', []);
+  defineIntercompany(ledger, conventionalEntity, currency, [takafulEntity, malaysiaEntity]);
+  defineIntercompany(ledger, takafulEntity, currency, [conventionalEntity]);
+  defineIntercompany(ledger, malaysiaEntity, 'MYR', [conventionalEntity]);
 
   const nav = new NavEngine();
   nav.defineInstrument({ id: 'EMAAR', name: 'Emaar Properties', assetClass: 'equity', isin: 'AEE000301011', shariahScreened: true });
@@ -253,6 +263,70 @@ export function buildWorld(): World {
   });
   underwriting.decide(aiApp.id, { at: '2026-10-01T10:00:05+04:00', by: 'agent/quote-bot', isAi: true });
 
+  /* A Malaysian subsidiary, reporting in ringgit, and the intercompany charges between the three
+     entities — including one that the two books do not agree on, so the consolidation has to show
+     it as in transit instead of pretending it evens out. Foreign postings carry their base amount,
+     which is the ledger's own discipline. */
+  ledger.post({
+    id: 'MY-J-1', entityId: malaysiaEntity, at: '2026-09-12T09:00:00+08:00', recordedAt: '2026-09-12T09:00:00+08:00',
+    source: 'unitlinked', sourceRef: 'MY-POL-1001', description: 'Contribution received MYR 200,000.00',
+    postings: [
+      posting(myChart.cash(), 'debit', money(200_000_00, 'MYR'), money(164_000_00, currency)),
+      posting(myChart.premiumIncome(), 'credit', money(200_000_00, 'MYR'), money(164_000_00, currency)),
+    ],
+  });
+  ledger.post({
+    id: 'MY-J-2', entityId: malaysiaEntity, at: '2026-09-20T09:00:00+08:00', recordedAt: '2026-09-20T09:00:00+08:00',
+    source: 'groupfinance', sourceRef: 'IC-MY-1', description: 'Intercompany management fee to the conventional carrier',
+    postings: [
+      posting(myChart.icExpense(conventionalEntity), 'debit', money(20_000_00, 'MYR'), money(16_400_00, currency)),
+      posting(myChart.icPayable(conventionalEntity), 'credit', money(20_000_00, 'MYR'), money(16_400_00, currency)),
+    ],
+  });
+  ledger.post({
+    id: 'CONV-J-IC-1', entityId: conventionalEntity, at: '2026-09-20T09:00:00+04:00', recordedAt: '2026-09-20T09:00:00+04:00',
+    source: 'groupfinance', sourceRef: 'IC-MY-1', description: 'Intercompany management fee receivable from the Malaysian subsidiary',
+    postings: [
+      // Deliberately short of the payable: the group must show the gap, not hide it.
+      posting(convChart.icReceivable(malaysiaEntity), 'debit', money(4_600_00, currency)),
+      posting(convChart.icIncome(malaysiaEntity), 'credit', money(4_600_00, currency)),
+    ],
+  });
+  ledger.post({
+    id: 'CONV-J-IC-2', entityId: conventionalEntity, at: '2026-09-25T09:00:00+04:00', recordedAt: '2026-09-25T09:00:00+04:00',
+    source: 'groupfinance', sourceRef: 'IC-TKF-1', description: 'Management fee receivable from the takaful window',
+    postings: [
+      posting(convChart.icReceivable(takafulEntity), 'debit', money(2_500_00, currency)),
+      posting(convChart.icIncome(takafulEntity), 'credit', money(2_500_00, currency)),
+    ],
+  });
+  ledger.post({
+    id: 'TKF-J-IC-1', entityId: takafulEntity, at: '2026-09-25T09:00:00+04:00', recordedAt: '2026-09-25T09:00:00+04:00',
+    source: 'groupfinance', sourceRef: 'IC-TKF-1', description: 'Management fee payable to the conventional carrier',
+    postings: [
+      posting(tkfChart.icExpense(conventionalEntity), 'debit', money(2_500_00, currency)),
+      posting(tkfChart.icPayable(conventionalEntity), 'credit', money(2_500_00, currency)),
+    ],
+  });
+
+  /* Group finance: three entities, two currencies, one set of books at the top. The rate table is
+     dated, because a consolidation needs a closing rate, an average rate and historical rates. */
+  const groupRates = new RateTable(currency, [
+    { from: 'MYR', to: 'AED', numerator: 84n, denominator: 100n, asOf: '2026-09-01' },
+    { from: 'MYR', to: 'AED', numerator: 82n, denominator: 100n, asOf: '2026-09-30' },
+    { from: 'USD', to: 'AED', numerator: 367n, denominator: 100n, asOf: '2026-09-01' },
+  ] as DatedFx[]);
+  const group = new GroupConsolidator(ledger, {
+    groupCurrency: currency, groupEntityId: 'GRP',
+    entities: [
+      { entityId: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', functionalCurrency: currency, ownershipPct: 100, chart: convChart },
+      { entityId: takafulEntity, name: 'Al Khaleej Takaful Window', functionalCurrency: currency, ownershipPct: 100, chart: tkfChart },
+      { entityId: malaysiaEntity, name: 'Al Khaleej Malaysia (subsidiary)', functionalCurrency: 'MYR', ownershipPct: 70, chart: myChart },
+    ],
+    rates: groupRates,
+  });
+  group.consolidate({ asOf: '2026-10-05', periodStart: '2026-09-01' });
+
 
   const parties = new PartyRegistry(tenant.id);
   const ahmed: Party = {
@@ -357,9 +431,9 @@ export function buildWorld(): World {
       { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional', currency, regulator: 'CBUAE' },
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
-    ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, parties, labels, ingest, ai,
+    ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, group, groupRates, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
-    asOf: '2026-10-05', conventionalEntity, takafulEntity,
+    asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
   };
 }
@@ -409,6 +483,60 @@ function underwritingView(engine: UnderwritingEngine, asOf: string) {
       };
     }),
     asOf,
+  };
+}
+
+/** The consolidation, in the shape the console and the API read. */
+export function groupSnapshot(w: World, post: boolean) {
+  const report = w.group.consolidate({ asOf: w.asOf, periodStart: w.groupPeriodStart, post });
+  return {
+    asOf: report.asOf,
+    periodStart: report.periodStart,
+    groupCurrency: report.groupCurrency,
+    entities: report.entities.map((e) => ({
+      entityId: e.entityId, name: e.name, functionalCurrency: e.functionalCurrency, ownershipPct: e.ownershipPct,
+      netAssets: formatAmount(e.netAssets), income: formatAmount(e.income), translationReserve: formatAmount(e.cta),
+      closingRate: e.closingRate, averageRate: e.averageRate, accounts: e.lines.length,
+    })),
+    intercompany: {
+      balances: report.intercompany.balances.map((b) => ({
+        receivableEntity: b.receivableEntity, payableEntity: b.payableEntity,
+        receivable: formatAmount(b.receivable), payable: formatAmount(b.payable),
+        eliminated: formatAmount(b.eliminated), difference: formatAmount(b.difference),
+        differenceAbs: formatAmount(absMoney(b.difference)),
+        direction: b.difference.minor === 0n ? 'agrees' : (b.difference.minor > 0n ? 'receivable larger' : 'payable larger'),
+      })),
+      incomeAndExpense: report.intercompany.incomeAndExpense.map((p) => ({
+        earningEntity: p.earningEntity, chargedEntity: p.chargedEntity,
+        income: formatAmount(p.income), expense: formatAmount(p.expense),
+        eliminated: formatAmount(p.eliminated), difference: formatAmount(p.difference),
+      })),
+    },
+    nci: report.nci.map((n) => ({ ...n, shareOfNetAssets: formatAmount(n.shareOfNetAssets) })),
+    eliminations: {
+      journals: [...report.eliminations.journals],
+      matched: formatAmount(report.eliminations.matched),
+      inTransit: formatAmount(report.eliminations.inTransit),
+      notes: [...report.eliminations.notes],
+    },
+    group: {
+      totals: {
+        assets: formatAmount(report.group.totals.assets),
+        liabilities: formatAmount(report.group.totals.liabilities),
+        equity: formatAmount(report.group.totals.equity),
+        income: formatAmount(report.group.totals.income),
+        expense: formatAmount(report.group.totals.expense),
+        translationReserve: formatAmount(report.group.totals.translationReserve),
+      },
+      netAssets: formatAmount(report.group.netAssets),
+      balanced: report.group.balanced,
+      difference: formatAmount(report.group.difference),
+      checks: report.group.checks.map((c) => ({ ...c })),
+      attribution: { owners: formatAmount(report.group.attribution.owners), minority: formatAmount(report.group.attribution.minority) },
+      trialBalance: report.group.trialBalance.map((l) => ({
+        accountId: l.accountId, name: l.name, type: l.type, amount: formatAmount(l.amount),
+      })),
+    },
   };
 }
 
@@ -579,6 +707,7 @@ export function worldSnapshot(w: World) {
       comparison: comparisonMatrix(w.quotes).map((c) => ({ ...c, premiumLabel: formatAmount(money(BigInt(c.premium) * 100n, 'AED')), scorePct: Math.round(c.score * 100) })),
     },
     underwriting: underwritingView(w.underwriting, asOf),
+    group: groupSnapshot(w, false),
     claims: claimView(w.claims, asOf),
     takafulClaims: claimView(w.takafulClaims, asOf),
     ledger: {
