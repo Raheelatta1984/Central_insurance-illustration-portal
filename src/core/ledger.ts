@@ -59,6 +59,8 @@ export class Ledger {
     return account;
   }
 
+  hasAccount(id: string): boolean { return this.accounts.has(id); }
+
   account(id: string): Account {
     const a = this.accounts.get(id);
     if (!a) throw new LedgerError(`unknown account ${id}`);

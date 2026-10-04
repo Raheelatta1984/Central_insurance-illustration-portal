@@ -20,6 +20,9 @@ export interface Chart {
   fundAsset(): string;
   operatorFund(): string;
   qard(): string;
+  claimExpense(): string;
+  claimReserve(): string;
+  claimRecovery(): string;
 }
 
 export function buildChart(ledger: Ledger, entityId: string, currency: string, funds: string[]): Chart {
@@ -31,6 +34,9 @@ export function buildChart(ledger: Ledger, entityId: string, currency: string, f
     ledger.defineAccount({ id: id(`FEE:${code}`), name: `Fee income — ${code}`, type: 'income', entityId, currency });
   }
   ledger.defineAccount({ id: id('OPERATOR-FUND'), name: 'Operator fund (shareholder)', type: 'equity', entityId, currency });
+  ledger.defineAccount({ id: id('CLAIM-EXPENSE'), name: 'Claim expense (including reserve movement)', type: 'expense', entityId, currency });
+  ledger.defineAccount({ id: id('CLAIM-RESERVE'), name: 'Claim reserve (outstanding)', type: 'liability', entityId, currency });
+  ledger.defineAccount({ id: id('CLAIM-RECOVERY'), name: 'Claim recovery income', type: 'income', entityId, currency });
   ledger.defineAccount({ id: id('QARD'), name: 'Qard hasan receivable from participants', type: 'asset', entityId, currency });
   for (const f of funds) {
     const fid = `${entityId}:${f}`;
@@ -51,5 +57,8 @@ export function buildChart(ledger: Ledger, entityId: string, currency: string, f
     fundAsset: () => id('CASH'),
     operatorFund: () => id('OPERATOR-FUND'),
     qard: () => id('QARD'),
+    claimExpense: () => id('CLAIM-EXPENSE'),
+    claimReserve: () => id('CLAIM-RESERVE'),
+    claimRecovery: () => id('CLAIM-RECOVERY'),
   };
 }

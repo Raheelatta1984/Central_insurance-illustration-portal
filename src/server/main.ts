@@ -13,6 +13,8 @@ import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
+import { ClaimsEngine, ClaimCause } from '../core/claims.js';
+import { parseAmount } from '../core/money.js';
 import { exportLedger, importLedger, open, seal, snapshotText, LEDGER_SCHEMA_VERSION } from '../core/persistence.js';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -27,6 +29,31 @@ const MIME: Record<string, string> = {
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.map': 'application/json',
 };
+
+/** The claims view used by the API. Kept here so the console and `/api/claims` cannot drift. */
+function claimViewForServer(engine: ClaimsEngine, asOf: string) {
+  const position = engine.position();
+  return {
+    position: {
+      reserved: formatAmount(position.reserved), expenseIncurred: formatAmount(position.expenseIncurred),
+      paidCash: formatAmount(position.paidCash), recovered: formatAmount(position.recovered),
+      netCost: formatAmount(position.netCost), openClaims: position.openClaims,
+    },
+    authority: engine.authorityTable().map((a) => ({ role: a.role, limit: formatAmount(a.limit), limitMinor: a.limit.minor.toString(), isAi: a.isAi })),
+    overdue: engine.overdue(asOf).map((c) => ({ id: c.id, policyId: c.policyId, cause: c.cause, reportedAt: c.reportedAt, status: c.status })),
+    list: engine.list().map((c) => ({
+      id: c.id, policyId: c.policyId, cause: c.cause, status: c.status, lossDate: c.lossDate, reportedAt: c.reportedAt,
+      description: c.description, fundId: c.fundId ?? null, declinedReason: c.declinedReason ?? null,
+      reserve: formatAmount(c.reserve), paid: formatAmount(c.paid), netCost: formatAmount(engine.netCost(c.id)),
+      approved: engine.approvedAmount(c.id) ? formatAmount(engine.approvedAmount(c.id)!) : null,
+      recoveries: c.recoveries.map((r) => ({ type: r.type, amount: formatAmount(r.amount), at: r.at, journalId: r.journalId })),
+      decisions: c.decisions.map((d) => ({
+        at: d.at, by: d.by, action: d.action, isAi: d.isAi, rationale: d.rationale,
+        amount: d.amount ? formatAmount(d.amount) : null,
+      })),
+    })),
+  };
+}
 
 function json(res: ServerResponse, status: number, body: unknown): void {
   const text = JSON.stringify(body, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
@@ -187,6 +214,64 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       const loadId = String(payload['loadId'] ?? '');
       const record = state.world.ingest.commit(loadId, new Date().toISOString());
       json(res, 200, { loadId, committed: record.committed, committedKeys: record.committedKeys.length, duplicates: record.duplicatesSuppressed });
+      return true;
+    }
+
+    case 'GET /claims': {
+      json(res, 200, {
+        conventional: claimViewForServer(state.world.claims, state.world.asOf),
+        takaful: claimViewForServer(state.world.takafulClaims, state.world.asOf),
+      });
+      return true;
+    }
+
+    case 'POST /claims/register': {
+      const claim = state.world.claims.register({
+        policyId: String(payload['policyId'] ?? 'UL-000123'),
+        cause: (String(payload['cause'] ?? 'medical') as ClaimCause),
+        lossDate: String(payload['lossDate'] ?? '2026-09-28'),
+        reportedAt: String(payload['reportedAt'] ?? '2026-09-30'),
+        description: String(payload['description'] ?? 'Registered from the console'),
+      });
+      const triage = state.world.claims.triage(claim.id, {
+        coverInForce: true, exclusionsApplied: [], daysLate: 2, fraudSignals: 0,
+      });
+      json(res, 200, {
+        id: claim.id,
+        status: state.world.claims.claim(claim.id).status,
+        triage: {
+          decision: triage.decision, reasons: triage.reasons,
+          reserveSuggestion: triage.reserveSuggestion ? formatAmount(triage.reserveSuggestion) : null,
+        },
+        claim: claimViewForServer(state.world.claims, state.world.asOf).list.at(-1),
+      });
+      return true;
+    }
+
+    case 'POST /claims/approve': {
+      const claimId = String(payload['claimId']);
+      const amount = parseAmount(String(payload['amount'] ?? '250.00'), 'AED');
+      const claim = state.world.claims.approve(claimId, {
+        amount, at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`),
+        by: String(payload['by'] ?? 'console'), role: String(payload['role'] ?? 'claims-officer'),
+        isAi: payload['isAi'] === undefined ? undefined : Boolean(payload['isAi']),
+      });
+      json(res, 200, { id: claim.id, status: claim.status, approved: formatAmount(state.world.claims.approvedAmount(claimId) ?? amount) });
+      return true;
+    }
+
+    case 'POST /claims/settle': {
+      const claimId = String(payload['claimId']);
+      const approved = state.world.claims.approvedAmount(claimId);
+      if (!approved) { json(res, 409, { error: `claim ${claimId} has no approval to settle` }); return true; }
+      const claim = state.world.claims.settle(claimId, {
+        amount: approved, at: String(payload['at'] ?? `${state.world.asOf}T12:00:00+04:00`), by: String(payload['by'] ?? 'finance-ops'),
+      });
+      json(res, 200, {
+        id: claim.id, status: claim.status, paid: formatAmount(claim.paid),
+        decisions: claim.decisions.slice(-1).map((d) => ({ action: d.action, rationale: d.rationale })),
+        position: claimViewForServer(state.world.claims, state.world.asOf).position,
+      });
       return true;
     }
 

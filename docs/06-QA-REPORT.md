@@ -18,6 +18,8 @@
 | Regulatory packs | `src/core/regulatory.test.ts` — motor survey and comparison gates, health need-analysis block, consent requirement, non-resident exception flag, UAE vs Malaysia takaful differences, explained comparison ranking | pass |
 | Labels and renaming | `src/core/regulatory.test.ts` — per-scope renaming, Arabic fallback chain, coverage reporting, export | pass |
 | Onboarding | `src/core/regulatory.test.ts` — chip read, government lookup, OCR consensus with review queue, transliteration that never invents a name, gating before product suggestion | pass |
+| Claims | `src/core/claims.test.ts` — triage accept/refer/decline with reasons, reserve movements booked as expense against a liability, refusal of a silent reserve reduction, authority limits enforced for humans and AI separately, settlement above and below reserve, double-settlement refusal, salvage and reinsurance as their own income, overdue detection against a service standard, takaful pool settlement with one cash movement and automatic qard hasan when the pool is short | pass |
+| The demo world itself | `src/core/demo.test.ts` — both entity books balance, the seeded claim journey reaches "settled" with a recovery, the AI approval sits inside its limit, the pool claim leaves the participants' risk fund, and the console snapshot renders every panel it promises | pass |
 | Durability | `src/core/persistence.test.ts` — bigint/Date/Map/Set codec, byte-stability under key-order changes, fingerprint determinism and tamper detection, codec-version refusal, schema migration planning and application, ledger snapshot/restore round trip, restore refuses unbalanced books and reused journal ids | pass |
 | **Money proof** | `src/core/moneyproof.test.ts` — a simulated book of 40 policies over five valuation days: books balance, every policy reproduces from its transaction log, fund units equal the sum of holdings, a fresh valuation reconciles (units × price + residual = NAV), policy value agrees on independent recomputation, no negative units, charge income ties to the transaction log | pass |
 | Two engines, one ledger | `src/core/moneyproof.test.ts` — unit-linked and takaful journals on a shared ledger stay distinct and both books balance | pass |
@@ -35,10 +37,10 @@
 ## What is deliberately not covered yet
 
 - Persistence: the domain runs in memory; Postgres schemas, migrations and the outbox are Phase 0/1 backlog chunks (open, and honestly reported as open by `tools/fleet.mjs`).
-- Claims, reinsurance, underwriting, group consolidation and the warehouse are designed and backlogged, not yet implemented.
+- Reinsurance, underwriting, group consolidation and the warehouse are designed and backlogged, not yet implemented. Claims landed on 2026-10-04 (`src/core/claims.ts`).
 - Country packs beyond AE and MY; locales beyond en/ar.
 - Load and performance testing at book scale (the money proof runs 40 policies; a 10,000-policy run is a Phase 1 gate).
 
 ## How the fleet proves its own claims
 
-`node tools/fleet.mjs` claims a backlog chunk only when (a) its module is implemented, (b) its capability text matches something actually built, and (c) the evidence files exist and the module's test file passes. Everything else stays open — currently **972 chunks done, 898 still open** on the critical path alone (1,870 chunks). The ledger at `ledger/runs.jsonl` records every claimed chunk with its evidence and simulated cost, one row per chunk, and `backlog/status.jsonl` is the machine-readable state.
+`node tools/fleet.mjs` claims a backlog chunk only when (a) its module is implemented, (b) its capability text matches something actually built, and (c) the evidence files exist and the module's test file passes. Everything else stays open — currently **1029 chunks done, 841 still open** on the critical path alone (1870 chunks). The ledger at `ledger/runs.jsonl` records every claimed chunk with its evidence and simulated cost, one row per chunk, and `backlog/status.jsonl` is the machine-readable state.

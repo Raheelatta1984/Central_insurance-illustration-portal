@@ -108,10 +108,17 @@ export class TakafulEngine {
     return `${this.chart.entityId}:${fund}:PARTICIPANTS`;
   }
 
+  /** Idempotent: calling it twice, or after the chart already defined the pools, is a no-op. */
   ensurePoolAccounts(funds: string[]): void {
     for (const f of funds) {
-      this.ledger.defineAccount({ id: `${this.entityId}:${f}:INVESTMENTS`, name: `Pool investments — ${f}`, type: 'asset', entityId: this.entityId, fundId: f, currency: this.currency });
-      this.ledger.defineAccount({ id: `${this.entityId}:${f}:PARTICIPANTS`, name: `Pool balance — ${f}`, type: 'liability', entityId: this.entityId, fundId: f, currency: this.currency });
+      const investments = `${this.entityId}:${f}:INVESTMENTS`;
+      if (!this.ledger.hasAccount(investments)) {
+        this.ledger.defineAccount({ id: investments, name: `Pool investments — ${f}`, type: 'asset', entityId: this.entityId, fundId: f, currency: this.currency });
+      }
+      const participants = `${this.entityId}:${f}:PARTICIPANTS`;
+      if (!this.ledger.hasAccount(participants)) {
+        this.ledger.defineAccount({ id: participants, name: `Pool balance — ${f}`, type: 'liability', entityId: this.entityId, fundId: f, currency: this.currency });
+      }
     }
   }
 
@@ -145,6 +152,24 @@ export class TakafulEngine {
       ]));
     }
     return { fromFund, ...(qard ? { qard } : {}), journalIds: ids };
+  }
+
+  /**
+   * Spend from the participants' risk fund on behalf of the claims engine, so a takaful claim
+   * touches cash exactly once and never also posts a conventional claim expense. The claims
+   * engine keeps the workflow; the pool keeps the money.
+   */
+  settlePoolClaim(claim: { id: string; fundId?: string }, amount: Money, at: string): { journalIds: string[]; poolId: string; fromPool: Money; qardIssued?: Money } {
+    if (claim.fundId && claim.fundId !== RISK_FUND) {
+      throw new TakafulError(`a claim on pool ${claim.fundId} cannot be paid from the risk fund; only ${RISK_FUND} carries risk`);
+    }
+    const result = this.payClaim({ claimId: claim.id, amount, at });
+    return {
+      journalIds: result.journalIds,
+      poolId: RISK_FUND,
+      fromPool: result.fromFund,
+      ...(result.qard ? { qardIssued: result.qard.amount } : {}),
+    };
   }
 
   qardOutstanding(): Money {

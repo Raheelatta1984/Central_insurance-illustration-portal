@@ -9,6 +9,7 @@
  */
 import { Ledger } from './ledger.js';
 import { buildChart } from './chart.js';
+import { ClaimsEngine } from './claims.js';
 import { Money, money, zero, formatAmount, toDecimalString } from './money.js';
 import { unitsFromDecimal, unitsToDecimal } from './units.js';
 import { NavEngine, singlePriceFund, FundDef } from './fund.js';
@@ -31,6 +32,8 @@ export interface World {
   readonly unitLinked: UnitLinkedEngine;
   readonly billing: BillingEngine;
   readonly takaful: TakafulEngine;
+  readonly claims: ClaimsEngine;
+  readonly takafulClaims: ClaimsEngine;
   readonly parties: PartyRegistry;
   readonly labels: LabelRegistry;
   readonly ingest: IngestionFabric;
@@ -172,6 +175,38 @@ export function buildWorld(): World {
   takaful.contribute({ policyId: 'TK-9402', contribution: money(3000_00, currency), at: '2026-10-03T09:00:00+04:00', config: tkfConfig });
   takaful.repayQard({ qardId: (takaful.listQards()[0]?.id ?? 'TKF-QARD-000001'), amount: money(2000n, currency), at: '2026-10-03T15:00:00+04:00' });
 
+  /* Claims. The live claim is routed through the same pool settler the takaful engine exposes,
+     so a takaful claim keeps the workflow here and the money in the participants' risk fund. */
+  const claims = new ClaimsEngine(ledger, convChart, conventionalEntity, currency);
+  const motorClaim = claims.register({
+    policyId: 'MTR-0441', cause: 'motor', lossDate: '2026-09-18', reportedAt: '2026-09-19',
+    description: 'Rear-end collision on Sheikh Zayed Road; third-party report and photos attached',
+  });
+  claims.triage(motorClaim.id, { coverInForce: true, exclusionsApplied: [], daysLate: 1, fraudSignals: 0 });
+  claims.setReserve(motorClaim.id, { amount: money(1200_00, currency), at: '2026-09-20T09:30:00+04:00', by: 'reserving-desk' });
+  claims.approve(motorClaim.id, { amount: money(1150_00, currency), at: '2026-09-24T11:00:00+04:00', by: 'Fatima Al Zaabi', role: 'claims-officer' });
+  claims.settle(motorClaim.id, { amount: money(1150_00, currency), at: '2026-09-26T10:00:00+04:00', by: 'finance-ops' });
+  claims.recover(motorClaim.id, { type: 'salvage', amount: money(180_00, currency), at: '2026-10-01T09:00:00+04:00' });
+
+  const ciClaim = claims.register({
+    policyId: 'UL-000123', cause: 'critical-illness', lossDate: '2026-08-03', reportedAt: '2026-08-05',
+    description: 'Critical illness notified; medical evidence requested from the treating hospital',
+  });
+  claims.triage(ciClaim.id, { coverInForce: true, exclusionsApplied: [], daysLate: 2, fraudSignals: 1 });
+  claims.setReserve(ciClaim.id, { amount: money(15000_00, currency), at: '2026-08-08T09:00:00+04:00', by: 'claims-manager', rationale: 'Reserve set from the severity table pending medical evidence' });
+  claims.approve(ciClaim.id, { amount: money(400_00, currency), at: '2026-08-09T09:00:00+04:00', by: 'agent/claims-triage', role: 'ai-straight-through', isAi: true });
+
+  const takafulClaims = new ClaimsEngine(ledger, tkfChart, takafulEntity, currency, {
+    poolSettler: (c, amount, at) => takaful.settlePoolClaim(c, amount, at),
+  });
+  const tkfClaim = takafulClaims.register({
+    policyId: 'TK-9001', cause: 'medical', lossDate: '2026-09-28', reportedAt: '2026-09-29', fundId: 'PRF',
+    description: 'Hospital admission for a participant; discharge summary and invoice attached',
+  });
+  takafulClaims.triage(tkfClaim.id, { coverInForce: true, exclusionsApplied: [], daysLate: 1, fraudSignals: 0 });
+  takafulClaims.approve(tkfClaim.id, { amount: money(400_00, currency), at: '2026-10-01T09:00:00+04:00', by: 'agent/claims-triage', role: 'ai-straight-through', isAi: true });
+  takafulClaims.settle(tkfClaim.id, { amount: money(400_00, currency), at: '2026-10-02T12:00:00+04:00', by: 'finance-ops' });
+
   const parties = new PartyRegistry(tenant.id);
   const ahmed: Party = {
     id: 'PTY-0001', kind: 'person', names: { en: 'Ahmed Al Mansoori', ar: 'أحمد المنصوري' }, dateOfBirth: '1985-04-12',
@@ -275,7 +310,7 @@ export function buildWorld(): World {
       { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional', currency, regulator: 'CBUAE' },
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
-    ledger, nav, unitLinked, billing, takaful, parties, labels, ingest, ai,
+    ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity,
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
@@ -283,6 +318,35 @@ export function buildWorld(): World {
 }
 
 /* ------------------------------------------------------------ projections */
+
+/* ------------------------------------------------------------ claims views */
+
+function claimView(engine: ClaimsEngine, asOf: string) {
+  const position = engine.position();
+  return {
+    position: {
+      reserved: formatAmount(position.reserved),
+      expenseIncurred: formatAmount(position.expenseIncurred),
+      paidCash: formatAmount(position.paidCash),
+      recovered: formatAmount(position.recovered),
+      netCost: formatAmount(position.netCost),
+      openClaims: position.openClaims,
+    },
+    authority: engine.authorityTable().map((a) => ({ role: a.role, limit: formatAmount(a.limit), limitMinor: a.limit.minor.toString(), isAi: a.isAi })),
+    overdue: engine.overdue(asOf).map((c) => ({ id: c.id, policyId: c.policyId, cause: c.cause, reportedAt: c.reportedAt, status: c.status })),
+    list: engine.list().map((c) => ({
+      id: c.id, policyId: c.policyId, cause: c.cause, status: c.status, lossDate: c.lossDate, reportedAt: c.reportedAt,
+      description: c.description, fundId: c.fundId ?? null, declinedReason: c.declinedReason ?? null,
+      reserve: formatAmount(c.reserve), paid: formatAmount(c.paid), netCost: formatAmount(engine.netCost(c.id)),
+      approved: engine.approvedAmount(c.id) ? formatAmount(engine.approvedAmount(c.id)!) : null,
+      recoveries: c.recoveries.map((r) => ({ type: r.type, amount: formatAmount(r.amount), at: r.at, journalId: r.journalId })),
+      decisions: c.decisions.map((d) => ({
+        at: d.at, by: d.by, action: d.action, isAi: d.isAi, rationale: d.rationale,
+        amount: d.amount ? formatAmount(d.amount) : null,
+      })),
+    })),
+  };
+}
 
 export function worldSnapshot(w: World) {
   const latest = DAYS[DAYS.length - 1]!;
@@ -421,6 +485,8 @@ export function worldSnapshot(w: World) {
       preSaleHealthBlocked: preSaleCheck(AE_PACK, { productLine: 'medical', hasNeedAnalysis: false, hasNeedId: false, surveyCompleted: false, comparisonPresented: false, customerIsResident: true, consentCaptured: true }),
       comparison: comparisonMatrix(w.quotes).map((c) => ({ ...c, premiumLabel: formatAmount(money(BigInt(c.premium) * 100n, 'AED')), scorePct: Math.round(c.score * 100) })),
     },
+    claims: claimView(w.claims, asOf),
+    takafulClaims: claimView(w.takafulClaims, asOf),
     ledger: {
       proof: w.ledger.proof(w.conventionalEntity),
       proofTakaful: w.ledger.proof(w.takafulEntity),

@@ -2,7 +2,7 @@
 
 **An AI-native Insurance ERP** — life, medical, general, group, travel, unit-linked and **takaful** — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance), the API server and the operator console are implemented, typechecked, tested (88 cases) and building — and 972 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 898 critical-path chunks stay honestly open.
+> **Status: the money spine runs.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance), the API server and the operator console are implemented, typechecked, tested (109 cases) and building — and 1029 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 841 critical-path chunks stay honestly open.
 
 ```bash
 npm install
@@ -62,12 +62,13 @@ node tools/generate-backlog.mjs --long-tail=99999999   # open the tap fully (lar
 | Surface | What it does |
 | --- | --- |
 | Console, Policyholder tab | Live fund value, penetration of units into underlying instruments with market prices, and the full transaction log with the dealing rule that priced each movement |
+| Console, Claims | Triage decides straight-through, referral or decline; reserves are booked movements, not notes; approvals are checked against a real authority table (an AI agent is capped below any human); settlement releases the reserve, recoveries are posted as their own income and the position is read back from the ledger. In the takaful window the same workflow is wired to the participants' risk fund, so a pooled claim moves cash exactly once |
 | Console, Decision theatre | "Switch today" and "withdraw today" priced with the live engine, plus labelled projection envelopes for the suggested portfolio — an illustration, never advice |
 | Console, Cover control | Start/stop cover, see that nothing restarts by itself, advance the clock and watch only the days inside an active window get charged |
 | Console, Takaful | Participant risk fund, investment fund and operator fund balances, qard hasan, and the surplus run blocked until the actuary, the Shariah Committee and the board have all signed |
 | Console, Onboarding / Ingestion / Parties / Regulatory / AI / Books / Labels | Chip and OCR onboarding with a review queue, any-shape file ingestion with quarantine and reconciliation, consented cross-party lookup with an access log, pre-sale gates and a motor comparison matrix, the agent action ledger with prohibited actions refused, the double-entry books with their balance proof, and per-scope renaming for the takaful window |
 | Console, Durability tab | Seals the books into a canonical, fingerprinted snapshot and runs a live restore drill — rebuild a fresh ledger from the text and prove the trial balances agree |
-| API | `GET /api/health`, `/world`, `/ledger/proof`, `/units`, `/state`; `POST /api/state/drill`, `/preview/switch`, `/preview/withdrawal`, `/cover/start`, `/cover/stop`, `/cover/tick`, `/pre-sale`, `/onboarding/ocr`, `/partner/lookup`, `/ai/approve`, `/ai/execute`, `/ingest/submit`, `/ingest/commit`, `/takaful/approve`, `/reset` |
+| API | `GET /api/health`, `/world`, `/ledger/proof`, `/units`, `/state`, `/claims`; `POST /api/state/drill`, `/claims/register`, `/claims/approve`, `/claims/settle`, `/preview/switch`, `/preview/withdrawal`, `/cover/start`, `/cover/stop`, `/cover/tick`, `/pre-sale`, `/onboarding/ocr`, `/partner/lookup`, `/ai/approve`, `/ai/execute`, `/ingest/submit`, `/ingest/commit`, `/takaful/approve`, `/reset` |
 
 ## Contributing / working here
 

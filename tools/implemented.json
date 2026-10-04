@@ -378,6 +378,38 @@
       "evidence": [
         "src/core/labels.ts"
       ]
+    },
+    "CLM": {
+      "keywords": [
+        "claim",
+        "triage",
+        "reserve",
+        "settlement",
+        "salvage",
+        "subrogation",
+        "recovery",
+        "authority",
+        "straight-through",
+        "service standard",
+        "sla",
+        "fraud"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "api",
+        "test",
+        "docs",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/claims.ts",
+        "src/core/takaful.ts",
+        "src/server/main.ts",
+        "src/ui/main.tsx"
+      ]
     }
   },
   "testCommand": "npx vitest run --reporter=dot",
@@ -397,6 +429,7 @@
     "I18N": "src/core/regulatory.test.ts",
     "ONBD": "src/core/regulatory.test.ts",
     "AI": "src/core/moneyproof.test.ts",
-    "DOC": "src/core/regulatory.test.ts"
+    "DOC": "src/core/regulatory.test.ts",
+    "CLM": "src/core/claims.test.ts"
   }
 }

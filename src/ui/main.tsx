@@ -10,7 +10,7 @@ import type { WorldSnapshot } from '../core/demo';
 
 type Tab =
   | 'overview' | 'policyholder' | 'decisions' | 'cover' | 'funds' | 'takaful'
-  | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
+  | 'claims' | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
 
 const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'overview', label: 'Overview', icon: '◈' },
@@ -19,6 +19,7 @@ const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'cover', label: 'Cover control', icon: '⏻' },
   { id: 'funds', label: 'Funds & NAV', icon: '≣' },
   { id: 'takaful', label: 'Takaful', icon: '☾' },
+  { id: 'claims', label: 'Claims', icon: '✚' },
   { id: 'onboarding', label: 'Onboarding', icon: '⛨' },
   { id: 'ingest', label: 'Ingestion', icon: '⇥' },
   { id: 'parties', label: 'Parties & consent', icon: '⚖' },
@@ -512,6 +513,7 @@ function App() {
       case 'cover': return <Cover data={data} />;
       case 'funds': return <Funds data={data} />;
       case 'takaful': return <Takaful data={data} />;
+      case 'claims': return <Claims data={data} />;
       case 'onboarding': return <Onboarding data={data} />;
       case 'ingest': return <Ingest data={data} />;
       case 'parties': return <Parties data={data} />;
@@ -557,6 +559,192 @@ function App() {
   );
 }
 
+
+
+/* ---------------------------------------------------------------- claims */
+
+type ClaimView = WorldSnapshot['claims'];
+type ClaimRow = ClaimView['list'][number];
+
+const statusTone = (status: string): 'ok' | 'warn' | 'bad' | 'info' =>
+  status === 'settled' ? 'ok' : status === 'declined' ? 'bad' : status === 'approved' ? 'info' : 'warn';
+
+/** Claims: the register, the money at stake, who may approve what, and a live journey. */
+function Claims({ data }: { data: WorldSnapshot }) {
+  const [view, setView] = useState<ClaimView>(data.claims);
+  const [takaful, setTakaful] = useState<ClaimView>(data.takafulClaims);
+  const [open, setOpen] = useState<string | null>(data.claims.list.at(-1)?.id ?? null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setView(data.claims);
+    setTakaful(data.takafulClaims);
+    setOpen(data.claims.list.at(-1)?.id ?? null);
+  }, [data]);
+
+  const call = async (label: string, path: string, body?: unknown) => {
+    setBusy(label);
+    setError(null);
+    setNote(null);
+    try {
+      const result = await api<Record<string, unknown>>(path, 'POST', body);
+      setNote(`${label}: ${JSON.stringify(result)}`);
+      const refreshed = await api<{ conventional: ClaimView; takaful: ClaimView }>('/claims');
+      setView(refreshed.conventional);
+      setTakaful(refreshed.takaful);
+      if (typeof result['id'] === 'string') setOpen(result['id']);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      // The engine refuses illegal moves with a sentence a human can read; reload so the
+      // console still shows the truth of the book.
+      try {
+        const refreshed = await api<{ conventional: ClaimView; takaful: ClaimView }>('/claims');
+        setView(refreshed.conventional);
+        setTakaful(refreshed.takaful);
+      } catch { /* the error already explains the situation */ }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const selected = view.list.find((c) => c.id === open) ?? view.list.at(-1);
+  const journey = selected ? journeyNote(selected) : null;
+
+  return (
+    <div className="grid">
+      <Card title="Claims position" subtitle="Balances read from the ledger, not from the claim objects">
+        <div className="stat"><span>Reserved (open cases)</span><b>{view.position.reserved}</b></div>
+        <div className="stat"><span>Expense incurred</span><b>{view.position.expenseIncurred}</b></div>
+        <div className="stat"><span>Cash paid to claimants</span><b>{view.position.paidCash}</b></div>
+        <div className="stat"><span>Recoveries</span><b>{view.position.recovered}</b></div>
+        <div className="stat"><span>Net cost</span><b>{view.position.netCost}</b></div>
+        <div className="stat"><span>Open claims</span><b>{view.position.openClaims}</b></div>
+      </Card>
+
+      <Card title="Who may approve what" subtitle="An AI agent is held below the straight-through limit, in code">
+        <table>
+          <thead><tr><th>Authority</th><th>Limit</th><th>Kind</th></tr></thead>
+          <tbody>
+            {view.authority.map((a) => (
+              <tr key={a.role}>
+                <td>{a.role}</td>
+                <td>{a.limit}</td>
+                <td>{a.isAi ? <Pill tone="warn">AI agent</Pill> : <Pill tone="info">human</Pill>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="muted small">Try approving more than {view.authority.find((a) => a.isAi)?.limit} as the AI: the engine refuses and says why.</p>
+      </Card>
+
+      {view.overdue.length > 0 && (
+        <Card title="Beyond the service standard" subtitle="Approved and unsettled counts as open" wide>
+          <ul className="list">
+            {view.overdue.map((c) => <li key={c.id}>{c.id} · {c.policyId} · {c.cause} · reported {c.reportedAt} · {c.status}</li>)}
+          </ul>
+        </Card>
+      )}
+
+      <Card title="Register" subtitle={`${view.list.length} claim(s) with the conventional carrier, ${takaful.list.length} in the takaful window`} wide>
+        <table>
+          <thead><tr><th>Claim</th><th>Policy</th><th>Cause</th><th>Loss date</th><th>Status</th><th>Reserve</th><th>Approved</th><th>Paid</th><th>Net cost</th><th></th></tr></thead>
+          <tbody>
+            {view.list.map((c) => (
+              <tr key={c.id}>
+                <td>{c.id}</td>
+                <td>{c.policyId}</td>
+                <td>{c.cause}</td>
+                <td>{c.lossDate}</td>
+                <td><Pill tone={statusTone(c.status)}>{c.status}</Pill></td>
+                <td>{c.reserve}</td>
+                <td>{c.approved ?? '—'}</td>
+                <td>{c.paid}</td>
+                <td>{c.netCost}</td>
+                <td><button className="ghost" onClick={() => setOpen(c.id)}>timeline</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      {selected && (
+        <Card title={`Timeline — ${selected.id}`} subtitle={selected.description} wide>
+          {journey && <div className={journey.tone === 'bad' ? 'errorBox' : 'warnBox'}>{journey.text}</div>}
+          <table>
+            <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Amount</th><th>Why</th></tr></thead>
+            <tbody>
+              {selected.decisions.map((d, i) => (
+                <tr key={i}>
+                  <td className="small">{d.at}</td>
+                  <td>{d.by} {d.isAi ? <Pill tone="warn">AI</Pill> : null}</td>
+                  <td>{d.action}</td>
+                  <td>{d.amount ?? '—'}</td>
+                  <td className="small">{d.rationale}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {selected.recoveries.length > 0 && (
+            <ul className="list">
+              {selected.recoveries.map((r) => <li key={r.journalId}>{r.type} recovery {r.amount} on {r.at} — journal {r.journalId}</li>)}
+            </ul>
+          )}
+          <div className="row">
+            <button disabled={busy !== null || selected.status === 'settled' || !selected.approved}
+              onClick={() => call('settle', '/claims/settle', { claimId: selected.id })}>
+              {busy === 'settle' ? 'Settling…' : `Settle ${selected.approved ?? ''}`}
+            </button>
+            <button className="ghost" disabled={busy !== null || selected.status === 'settled'}
+              onClick={() => call('AI approval above the limit', '/claims/approve', { claimId: selected.id, amount: '25000.00', role: 'ai-straight-through', by: 'agent/claims-triage', isAi: true })}>
+              Ask the AI to approve 25,000.00
+            </button>
+            <button className="ghost" disabled={busy !== null}
+              onClick={() => call('register + triage', '/claims/register', { policyId: 'MTR-0441', cause: 'motor', lossDate: '2026-10-01', reportedAt: '2026-10-02', description: 'Windscreen damage reported from the console' })}>
+              Register a new claim
+            </button>
+          </div>
+        </Card>
+      )}
+
+      <Card title="Takaful window" subtitle="Paid from the participants' risk fund, with qard hasan if the pool is short" wide>
+        <div className="stat"><span>Pool claims paid</span><b>{takaful.position.paidCash}</b></div>
+        <div className="stat"><span>Open claims</span><b>{takaful.position.openClaims}</b></div>
+        <div className="stat"><span>Where the money went</span><b className="small">the participants' risk fund, not the operator's claim expense — the Takaful tab shows the pool balances</b></div>
+        <table>
+          <thead><tr><th>Claim</th><th>Policy</th><th>Pool</th><th>Status</th><th>Paid</th><th>Last step</th></tr></thead>
+          <tbody>
+            {takaful.list.map((c) => (
+              <tr key={c.id}>
+                <td>{c.id}</td>
+                <td>{c.policyId}</td>
+                <td>{c.fundId ?? '—'}</td>
+                <td><Pill tone={statusTone(c.status)}>{c.status}</Pill></td>
+                <td>{c.paid}</td>
+                <td className="small">{c.decisions.at(-1)?.rationale}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      {note && <Card title="Last call" wide><div className="code">{note}</div></Card>}
+      {error && <Card title="Refused" wide><div className="errorBox">{error}</div><p className="muted small">The refusal is the feature: the engine will not let an unauthorised amount through, and it tells you which limit bit.</p></Card>}
+    </div>
+  );
+}
+
+/** A one-line reading of where a claim stands, in the order the workflow forces. */
+function journeyNote(claim: ClaimRow): { text: string; tone: 'ok' | 'warn' | 'bad' } {
+  const actions = claim.decisions.map((d) => d.action);
+  if (claim.status === 'declined') return { text: `Declined — ${claim.declinedReason ?? 'see the timeline'}`, tone: 'bad' };
+  if (claim.status === 'settled') return { text: `Settled for ${claim.paid}; recoveries of ${claim.recoveries.reduce((sum, r) => sum + Number(r.amount.replace(/[^0-9.]/g, '')), 0).toFixed(2)} brought the net cost to ${claim.netCost}.`, tone: 'ok' };
+  if (claim.status === 'approved') return { text: `Approved for ${claim.approved} and waiting on settlement. Every day it waits, it shows in the service-standard list.`, tone: 'warn' };
+  if (actions.includes('triage:refer')) return { text: 'Referred by triage: a human must read this one before money moves.', tone: 'warn' };
+  if (actions.includes('triage:accept')) return { text: 'Triaged as acceptable — reserve it, then approve within the right authority.', tone: 'warn' };
+  return { text: 'Registered. Triage decides whether it goes straight through, to a human, or out.', tone: 'warn' };
+}
 
 interface StateSummary {
   ledgerSchemaVersion: number; takenAt: string; fingerprint: string;
