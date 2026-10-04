@@ -131,13 +131,17 @@ const MODULES = [
       await sleep(2000);
     } },
   { id: 'reinsurance', label: 'Reinsurance', tour: '00:48',
-    blurb: 'Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover and a retakaful treaty for the takaful window — ceded premium, commission and recoveries posted to the books, with participant-money segregation enforced in code.',
+    blurb: 'Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss, and a retakaful treaty for the takaful window — all posted to the books, with participant-money segregation enforced in code.',
     async script(page) {
       await page.mouse.wheel(0, 900); await sleep(1200);
       await clickText(page, 'Place a risk facultatively', { optional: true });
       await sleep(2200);
       await clickText(page, 'Claim the reinsurance recovery', { optional: true });
+      await sleep(2000);
+      await clickText(page, 'Claim a catastrophe event', { optional: true });
       await sleep(2200);
+      await clickText(page, 'Reinstate the catastrophe cover', { optional: true });
+      await sleep(2000);
     } },
   { id: 'durability', label: 'Durability', tour: '00:53',
     blurb: 'Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — a restore drill, not a promise.',
@@ -193,6 +197,7 @@ const ffmpeg = (() => {
   // guaranteed output and mp4 is the bonus).
   const candidates = [
     resolve(process.env.HOME ?? '/home/user', '.local/bin/ffmpeg'),
+    resolve(process.env.HOME ?? '/home/user', 'tools-bin/ffmpeg'),   // survives a sandbox restore, unlike ~/.local
     '/usr/bin/ffmpeg',
     '/usr/local/bin/ffmpeg',
   ];

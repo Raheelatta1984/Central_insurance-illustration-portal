@@ -332,12 +332,17 @@ describe('the console can render every view the API serves', () => {
     const view = reinsuranceSnapshot(w);
     expect(view.recoveries).toHaveLength(1);
     expect(view.recoveries[0]!.amount).toBe('287.50 AED');
-    expect(view.conventional.recoveries).toBe('287.50 AED');
+    // One policy recovery and one catastrophe recovery, both from Emirates Re.
+    expect(view.events).toHaveLength(1);
+    expect(view.events[0]!.eventId).toBe('STORM-ALPHAI');
+    expect(view.events[0]!.amount).toBe('600,000.00 AED');
+    expect(view.conventional.recoveries).toBe('600,287.50 AED');
     // Commission due plus recoveries due: the account a finance team reconciles against.
-    expect(w.ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(785_44n);
+    expect(w.ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(600_785_44n);
+    // Ceded premium is the cessions only: the deposit-accounted instalments are an asset, not an expense.
     expect(w.ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(3_819_63n);
     expect(w.ledger.balance('ALK-CONV:REINS:COMMISSION').minor).toBe(497_94n);
-    expect(view.conventional.recoverable).toBe('785.44 AED');
+    expect(view.conventional.recoverable).toBe('600,785.44 AED');
   });
 
   it('reinsurance: the fields the Reinsurance tab reads are all present, for both books', () => {
@@ -360,5 +365,67 @@ describe('the console can render every view the API serves', () => {
         expect(Object.keys(c), `cession.${key}`).toContain(key);
       }
     }
+  });
+
+  it('a catastrophe is recovered from the layer, the cover is reinstated, and both are on the record', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    const xol = view.conventional.treaties.find((t) => t.treatyId === 'XOL-CAT-5M')!;
+    expect(xol.kind).toBe('excess-of-loss');
+    expect(xol.limit).toBe('5,000,000.00 AED');
+    expect(xol.consumed).toBe('0.00 AED');       // 600,000 was paid, then reinstated
+    expect(xol.available).toBe('5,000,000.00 AED');
+    expect(xol.reinstatementsUsed).toBe(1);
+    expect(xol.reinstatementsLeft).toBe(1);
+    expect(xol.exhausted).toBe(false);
+
+    const first = view.conventional.reinstatements[0]!;
+    expect(first.sequence).toBe(1);
+    expect(first.free).toBe(true);               // the first reinstatement is free
+    expect(first.premium).toBe('0.00 AED');
+    expect(first.restored).toBe('600,000.00 AED');
+    expect(first.journalId).toBeNull();          // nothing to post for a free reinstatement, and it says so
+    expect(w.ledger.balance('ALK-CONV:REINS:RECOVERY').minor).toBe(600_000_00n);
+  });
+
+  it('the deposit-accounted treaty keeps its premium off the profit and loss account until it settles', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    const account = view.conventional.deposits.find((d) => d.treatyId === 'AGG-SL-DEPOSIT')!;
+    expect(account.treatment).toBe('deposit');
+    expect(account.depositPaid).toBe('300,000.00 AED');         // two instalments on account
+    expect(account.technicalPremium).toBeNull();               // the period is not settled yet: the console does that
+    expect(account.settled).toBe(false);
+    expect(account.assetRemaining).toBe('300,000.00 AED');      // an asset, still on the balance sheet
+    expect(account.adjustments.at(-1)?.kind).toBe('additional');
+    expect(account.adjustments.at(-1)?.amount).toBe('100,000.00 AED');
+    // and nothing of that money has been recognised as premium expense
+    expect(w.ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(3_819_63n);
+    // The treaty says which accounting it gets, and the two treatments are visibly different.
+    const treatments = view.conventional.treaties.map((t) => t.treatment);
+    expect(treatments).toContain('deposit');
+    expect(treatments).toContain('risk-transferring');
+  });
+
+  it('reinsurance: the cover, reinstatement and deposit fields the console reads are all present', () => {
+    const view = reinsuranceSnapshot(buildWorld());
+    for (const book of [view.conventional, view.takaful]) {
+      for (const treaty of book.treaties) {
+        for (const key of ['limit', 'consumed', 'available', 'exhausted', 'treatment', 'reinstatementsUsed', 'reinstatementsLeft']) {
+          expect(Object.keys(treaty), `treaty.${key}`).toContain(key);
+        }
+      }
+      for (const r of book.reinstatements) {
+        for (const key of ['treatyId', 'sequence', 'restored', 'premium', 'free', 'at', 'available', 'journalId']) {
+          expect(Object.keys(r), `reinstatement.${key}`).toContain(key);
+        }
+      }
+      for (const d of book.deposits) {
+        for (const key of ['treatyId', 'depositPaid', 'technicalPremium', 'settled', 'treatment', 'assetRemaining', 'adjustments']) {
+          expect(Object.keys(d), `deposit.${key}`).toContain(key);
+        }
+      }
+    }
+    for (const e of view.events) for (const key of ['eventId', 'treatyId', 'amount', 'at', 'journalId']) expect(Object.keys(e)).toContain(key);
   });
 });

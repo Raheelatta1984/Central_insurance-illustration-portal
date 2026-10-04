@@ -39,7 +39,7 @@ describe('treaty register', () => {
     expect(register.list({ basis: 'takaful' }).map((t) => t.id)).toEqual(['RTKF-QS-20']);
     // 'all' treaties respond to every line of business, so they belong in this list too.
     expect(register.list({ lineOfBusiness: 'motor' }).map((t) => t.id))
-      .toEqual(['FAC-MOTOR', 'QS-25-2026', 'RTKF-QS-20', 'XOL-CAT-5M']);
+      .toEqual(['AGG-SL-DEPOSIT', 'FAC-MOTOR', 'QS-25-2026', 'RTKF-QS-20', 'XOL-CAT-5M']);
     expect(register.list({ lineOfBusiness: 'medical' }).map((t) => t.id)).not.toContain('FAC-MOTOR');
     expect(() => register.register({ ...REINSURANCE_SEED[0]!, id: 'USD-1', currency: 'USD' } as never)).toThrow(/cannot take a USD treaty/);
   });
@@ -289,4 +289,160 @@ describe('utilisation statement', () => {
     const statement = register.utilisation({ asOf: '2026-10-05', basis: 'conventional' });
     expect(statement.treaties.map((t) => t.treatyId)).toContain('QS-25-2026-RETRO');
   });
+
+describe('catastrophe recovery, cover and reinstatement', () => {
+  const cat = (register: TreatyRegister) => register.coverState('XOL-CAT-5M');
+
+  it('pays the layer above the attachment, and the cover it uses is gone until it is reinstated', () => {
+    const { ledger, register } = seeded();
+    const first = register.recoverEvent('XOL-CAT-5M', {
+      eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00', by: 'catastrophe-desk',
+    });
+    expect(first.amount.minor).toBe(600_000_00n);            // 1.6m loss, 1m retained: the treaty pays 600,000
+    expect(first.treatment).toBe('risk-transferring');
+    expect(first.cover.consumed.minor).toBe(600_000_00n);
+    expect(first.cover.available.minor).toBe(4_400_000_00n);
+    expect(ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(600_000_00n);
+    expect(ledger.balance('ALK-CONV:REINS:RECOVERY').minor).toBe(600_000_00n);   // recovery is income
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+
+    // A loss inside the attachment is retained in full, and says so.
+    expect(() => register.recoverEvent('XOL-CAT-5M', {
+      eventId: 'FLOOD-SMALL', loss: money(700_000_00, 'AED'), at: '2026-04-03T10:00:00+04:00',
+    })).toThrow(/inside the 1,000,000\.00 AED attachment point/);
+  });
+
+  it('refuses a loss the remaining cover cannot meet, rather than paying what is not there', () => {
+    const { register } = seeded();
+    // The first event uses 600,000 of the 5,000,000 layer, so 4,400,000 is left.
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00' });
+    expect(() => register.recoverEvent('XOL-CAT-5M', {
+      eventId: 'STORM-HUGE', loss: money(20_000_000_00, 'AED'), at: '2026-04-03T10:00:00+04:00',
+    })).toThrow(/has 4,400,000\.00 AED of cover left and the event needs 5,000,000\.00 AED/);
+  });
+
+  it('reinstates free the first time, charges for the second, and refuses the third', () => {
+    const { ledger, register } = seeded();
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00' });
+    const first = register.reinstate('XOL-CAT-5M', { at: '2026-04-03T09:00:00+04:00', by: 'reinsurance/desk' });
+    expect(first.free).toBe(true);
+    expect(first.premium.minor).toBe(0n);
+    expect(first.restored.minor).toBe(600_000_00n);
+    expect(first.available.minor).toBe(5_000_000_00n);       // cover whole again
+    expect(cat(register).reinstatementsLeft).toBe(1);
+
+    // a second event, then the paid reinstatement: 50% of 250,000 pro rata to the 600,000 restored
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-BISHRA', loss: money(2_600_000_00, 'AED'), at: '2026-06-10T10:00:00+04:00' });
+    const second = register.reinstate('XOL-CAT-5M', { at: '2026-06-11T09:00:00+04:00' });
+    expect(second.free).toBe(false);
+    expect(second.restored.minor).toBe(1_600_000_00n);       // 2.6m loss, 1m retained: 1.6m paid, so 1.6m restored
+    expect(second.premium.minor).toBe(40_000_00n);           // 250,000 x 50% x 1,600,000/5,000,000
+    expect(second.journalId).toBeTruthy();
+    expect(ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(40_000_00n);
+    expect(cat(register).reinstatementsLeft).toBe(0);
+    expect(register.reinstatements()).toHaveLength(2);
+
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-CYRA', loss: money(1_200_000_00, 'AED'), at: '2026-08-01T10:00:00+04:00' });
+    expect(() => register.reinstate('XOL-CAT-5M', { at: '2026-08-02T09:00:00+04:00' }))
+      .toThrow(/used all 2 reinstatements; the cover is exhausted/);
+  });
+
+  it('will not reinstate cover that has not been used, or leave a reinstatement uncapped', () => {
+    const { register } = seeded();
+    expect(() => register.reinstate('XOL-CAT-5M', { at: '2026-04-03T09:00:00+04:00' }))
+      .toThrow(/has paid nothing: there is nothing to reinstate/);
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00' });
+    expect(() => register.reinstate('XOL-CAT-5M', { at: '2026-04-03T09:00:00+04:00', restore: money(2_000_000_00, 'AED') }))
+      .toThrow(/cannot restore more than has been used/);
+    // and a treaty that is not excess of loss has no reinstatements at all
+    expect(() => register.reinstate('QS-25-2026', { at: '2026-04-03T09:00:00+04:00' }))
+      .toThrow(/reinstatements apply to excess of loss/);
+    expect(() => register.recoverEvent('QS-25-2026', { eventId: 'X', loss: money(9_000_000_00, 'AED'), at: '2026-04-03T09:00:00+04:00' }))
+      .toThrow(/a loss is recovered per policy, not per event/);
+  });
+
+  it('a treaty cannot be written with reinstatements it cannot price', () => {
+    const { register } = book();
+    expect(() => register.register({ ...REINSURANCE_SEED[2]!, id: 'XOL-NO-PREM', annualPremium: undefined } as never))
+      .toThrow(/needs its annual premium/);
+    expect(() => register.register({ ...REINSURANCE_SEED[0]!, id: 'QS-REINST', reinstatements: 2, reinstatementBps: 5_000, annualPremium: money(1_000_00, 'AED') } as never))
+      .toThrow(/reinstatements are an excess of loss feature/);
+    expect(() => register.register({ ...REINSURANCE_SEED[2]!, id: 'XOL-FREE-TOO-MANY', freeReinstatements: 3 } as never))
+      .toThrow(/more free reinstatements than reinstatements/);
+  });
+});
+
+describe('deposit premium and adjustment', () => {
+  it('holds the deposit as an asset, settles on the real subject premium and refunds the difference', () => {
+    const { ledger, register } = seeded();
+    const opened = register.openDeposit('AGG-SL-DEPOSIT', { amount: money(300_000_00, 'AED'), at: '2026-01-05T10:00:00+04:00' });
+    expect(opened.depositPaid.minor).toBe(300_000_00n);
+    expect(ledger.balance('ALK-CONV:REINS:DEPOSIT-PREMIUM').minor).toBe(300_000_00n);   // an asset, not an expense
+    expect(ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(0n);
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+
+    // 8,000,000 of subject premium at 3.5% is 280,000: the deposit overpaid by 20,000, so it comes back
+    const settled = register.settleDeposit('AGG-SL-DEPOSIT', { subjectPremium: money(8_000_000_00, 'AED'), at: '2026-12-31T15:00:00+04:00' });
+    expect(settled.technicalPremium?.minor).toBe(280_000_00n);
+    expect(settled.settled).toBe(true);
+    expect(settled.adjustments.at(-1)?.kind).toBe('return');
+    expect(settled.adjustments.at(-1)?.amount.minor).toBe(20_000_00n);
+    expect(ledger.balance('ALK-CONV:REINS:DEPOSIT-PREMIUM').minor).toBe(0n);            // released
+    expect(ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(280_000_00n);     // the real cost
+    expect(ledger.balance('ALK-CONV:CASH').minor).toBe(-280_000_00n);                   // 300,000 paid out, 20,000 refunded
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+  });
+
+  it('charges additional premium when the period earned more than the deposit', () => {
+    const { ledger, register } = seeded();
+    register.openDeposit('AGG-SL-DEPOSIT', { amount: money(100_000_00, 'AED'), at: '2026-01-05T10:00:00+04:00' });
+    const settled = register.settleDeposit('AGG-SL-DEPOSIT', { subjectPremium: money(8_000_000_00, 'AED'), at: '2026-12-31T15:00:00+04:00' });
+    expect(settled.technicalPremium?.minor).toBe(280_000_00n);
+    expect(settled.adjustments.at(-1)?.kind).toBe('additional');
+    expect(settled.adjustments.at(-1)?.amount.minor).toBe(180_000_00n);
+    expect(ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(280_000_00n);
+    expect(ledger.balance('ALK-CONV:REINS:DEPOSIT-PREMIUM').minor).toBe(0n);
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+  });
+
+  it('pays the deposit in instalments and refuses to settle twice, or to invent a rate', () => {
+    const { register } = seeded();
+    register.openDeposit('AGG-SL-DEPOSIT', { amount: money(100_000_00, 'AED'), at: '2026-01-05T10:00:00+04:00', instalment: 1 });
+    register.openDeposit('AGG-SL-DEPOSIT', { amount: money(100_000_00, 'AED'), at: '2026-04-05T10:00:00+04:00', instalment: 2 });
+    expect(register.depositAccount('AGG-SL-DEPOSIT').depositPaid.minor).toBe(200_000_00n);
+    expect(() => register.openDeposit('AGG-SL-DEPOSIT', { amount: money(100_000_00, 'AED'), at: '2026-01-05T10:00:00+04:00', instalment: 1 }))
+      .toThrow(/instalment 1 of the AGG-SL-DEPOSIT deposit has already been paid/);
+    register.settleDeposit('AGG-SL-DEPOSIT', { subjectPremium: money(8_000_000_00, 'AED'), at: '2026-12-31T15:00:00+04:00' });
+    expect(() => register.settleDeposit('AGG-SL-DEPOSIT', { subjectPremium: money(8_000_000_00, 'AED'), at: '2026-12-31T16:00:00+04:00' }))
+      .toThrow(/already settled for this period/);
+    expect(() => register.settleDeposit('AGG-SL-DEPOSIT', { subjectPremium: money(8_000_000_00, 'AED'), at: '2026-12-31T16:00:00+04:00', rateOnLineBps: 0 }))
+      .toThrow(/already settled/);   // the settlement guard answers before the rate does, which is the right order
+    const { register: fresh } = seeded();
+    fresh.openDeposit('AGG-SL-DEPOSIT', { amount: money(100_000_00, 'AED'), at: '2026-01-05T10:00:00+04:00' });
+    expect(() => fresh.settleDeposit('QS-25-2026', { subjectPremium: money(1_000_00, 'AED'), at: '2026-12-31T15:00:00+04:00' }))
+      .toThrow(/has no deposit premium on account/);
+  });
+
+  it('deposit accounting keeps the premium off the profit and loss account and draws the deposit for a loss', () => {
+    const { ledger, register } = seeded();
+    const cession = register.cedePremium({
+      treatyId: 'AGG-SL-DEPOSIT', policyId: 'AGG-2026', riskId: 'AGG-2026',
+      sumInsured: money(1_000_000_00, 'AED'), premium: money(40_000_00, 'AED'),
+      lineOfBusiness: 'all', at: '2026-01-05T10:00:00+04:00', basis: 'conventional',
+    });
+    expect(cession.treatment).toBe('deposit');
+    expect(ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(0n);              // no expense recognised
+    expect(ledger.hasAccount('ALK-CONV:REINS:DEPOSIT-PREMIUM')).toBe(true);
+
+    register.openDeposit('AGG-SL-DEPOSIT', { amount: money(300_000_00, 'AED'), at: '2026-01-05T10:00:00+04:00' });
+    // the treaty's own share of a loss comes out of the deposit, and no income is recognised
+    const drawn = register.recoverEvent('AGG-SL-DEPOSIT', { eventId: 'AGG-Q3', loss: money(900_000_00, 'AED'), at: '2026-10-01T10:00:00+04:00' });
+    expect(drawn.treatment).toBe('deposit');
+    expect(drawn.amount.minor).toBe(400_000_00n);                                       // above the 500,000 attachment
+    expect(ledger.balance('ALK-CONV:REINS:RECOVERY').minor).toBe(0n);                   // no recovery income
+    expect(register.accountingTreatment('AGG-SL-DEPOSIT')).toBe('deposit');
+    expect(register.accountingTreatment('XOL-CAT-5M')).toBe('risk-transferring');
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+  });
+});
 });

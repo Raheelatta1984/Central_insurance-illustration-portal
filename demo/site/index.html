@@ -79,13 +79,18 @@
 </div>
 
 <script>
-  // This page is served from two places: GitHub Pages (console.html and gallery.html beside it) and
-  // a raw-code host such as raw.githack or jsDelivr, which serves the repository layout instead
-  // (../offline.html and ../index.html). Point the cards at whichever files actually exist, so no
+  // This page is served from three kinds of host: Vercel and GitHub Pages, where console.html and
+  // gallery.html sit beside it, and a raw-code host (raw.githack, jsDelivr), which serves the
+  // repository layout instead (../offline.html and ../index.html). Ask the host which one it is —
+  // a HEAD request for the neighbour file — and point the cards at what actually exists, so no
   // link is ever dead whichever way the demo was opened.
-  if (!location.hostname.endsWith('github.io')) {
+  (async () => {
+    const probe = async (url) => {
+      try { const r = await fetch(url, { method: 'HEAD' }); return r.ok; } catch { return false; }
+    };
+    if (await probe('console.html')) return;                       // sibling layout: nothing to do
     for (const a of document.querySelectorAll('[data-href-repo]')) a.href = a.getAttribute('data-href-repo');
-  }
+  })();
 </script>
 </body>
 </html>

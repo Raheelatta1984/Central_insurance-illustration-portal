@@ -38,13 +38,14 @@ jobs:
           done
           ls -l demo/site/index.html demo/offline.html demo/index.html
 
+      # The same assembly Vercel runs, so the two hosts can never disagree about the site.
       - name: Assemble the site
+        run: node tools/demo-site.mjs
+
+      - name: Move it into place for the Pages action
         run: |
           mkdir -p _site
-          cp demo/site/index.html _site/index.html
-          cp demo/offline.html _site/console.html
-          cp demo/index.html _site/gallery.html
-          cp docs/07-TOUR.md _site/tour.md
+          cp -r site/. _site/
           du -sh _site
 
       - uses: actions/configure-pages@v5

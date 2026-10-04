@@ -1,5 +1,5 @@
 {
-  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done — but only if the evidence files exist and the module's tests pass.",
+  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done \u2014 but only if the evidence files exist and the module's tests pass.",
   "modules": {
     "PLAT": {
       "keywords": [
@@ -470,7 +470,9 @@
         "cession bordereaux",
         "recovery tracking and ageing",
         "reinsurance data quality and reconciliation",
-        "retakaful variants"
+        "retakaful variants",
+        "reinstatement premium",
+        "deposit accounting"
       ],
       "layers": [
         "design",

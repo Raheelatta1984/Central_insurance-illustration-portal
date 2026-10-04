@@ -73,7 +73,7 @@ const script = [
   ['Group finance', ['Run the consolidation']],
   ['Underwriting', ['Ask the AI agent to decide']],
   ['Claims', ['Ask the AI to approve 25,000.00', 'Register a new claim']],
-  ['Reinsurance', ['Place a risk facultatively', 'Cede a further risk', 'Claim the reinsurance recovery']],
+  ['Reinsurance', ['Place a risk facultatively', 'Cede a further risk', 'Claim the reinsurance recovery', 'Claim a catastrophe event', 'Reinstate the catastrophe cover', 'Pay a deposit instalment', 'Settle the deposit premium']],
   ['Onboarding', []],
   ['Ingestion', ['Validate & reconcile', 'Commit the accepted rows']],
   ['Parties & consent', ['Ask with consent', 'Ask without consent']],

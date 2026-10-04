@@ -19,7 +19,8 @@
     "demo:pack": "node tools/demo-pack.mjs",
     "demo:gallery": "node tools/demo-gallery.mjs",
     "demo:offline": "node tools/offline-build.mjs",
-    "demo:record": "node tools/offline-record.mjs"
+    "demo:record": "node tools/offline-record.mjs",
+    "demo:site": "node tools/demo-site.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

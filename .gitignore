@@ -13,3 +13,8 @@ reports/
 # demo pack: keep the gallery, posters, compact video and manifest; the full recordings and
 # full-page PNGs are regenerable with `npm run demo:pack`
 demo/video/raw/
+
+# assembled demo site (built by tools/demo-site.mjs, published by Vercel / Pages).
+# Anchored to the repository root on purpose: an unanchored "site/" would also ignore
+# demo/site/index.html, which is the landing page and must be committed.
+/site/

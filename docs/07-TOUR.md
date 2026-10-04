@@ -211,13 +211,16 @@ An insurer that keeps every risk whole is one bad quarter from ruin. This is the
 - Press "Cede a further risk": the engine authorises the cession, prices it and posts it — and the utilisation statement moves. Naming the same risk twice is refused rather than double-counted.
 - Press "Place a risk facultatively": the reinsurer accepts the named risk first, then the premium moves.
 - Read "The refusals": a risk the reinsurer has not accepted, and participant money offered to a conventional treaty.
+- Press "Claim a catastrophe event", then "Reinstate the catastrophe cover": the layer pays above the retention, the cover is eaten, and the first reinstatement is free.
+- Read the deposit card: premium paid on account is an asset, and the period settles against the real subject premium.
 
 **You should see**
 
 - Ceded premium, commission, net retained premium and the recoverable appear in the books, not just on screen.
 - Every cession names the journal it produced, and the recoverable on the statement equals the receivable in the ledger.
+- A deposit-accounted treaty recognises no premium income and no claim expense at all — the balance sheet carries it until settlement.
 
-*Endpoints: GET /api/reinsurance · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover*
+*Endpoints: GET /api/reinsurance · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover · POST /api/reinsurance/event · POST /api/reinsurance/reinstate · POST /api/reinsurance/deposit · POST /api/reinsurance/deposit/settle*
 
 ## 11. 00:53 — Prove the books can be restored
 

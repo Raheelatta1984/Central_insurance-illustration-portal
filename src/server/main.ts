@@ -276,6 +276,72 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       return true;
     }
 
+    case 'POST /reinsurance/event': {
+      // One more catastrophe on the motor book: the layer responds, and it eats the cover until the
+      // treaty is reinstated. Pressing it twice without reinstating is refused, which is the point.
+      const eventId = String(payload['eventId'] ?? `STORM-${new Date().getUTCFullYear()}-${state.world.reinsurance.eventRecoveryList().length + 1}`);
+      const result = state.world.reinsurance.recoverEvent('XOL-CAT-5M', {
+        eventId,
+        loss: parseAmount(String(payload['loss'] ?? '1,600,000.00'), 'AED'),
+        at: String(payload['at'] ?? `${state.world.asOf}T11:00:00+04:00`),
+        by: String(payload['by'] ?? 'catastrophe-desk'),
+      });
+      json(res, 200, {
+        eventId, amount: formatAmount(result.amount), treatment: result.treatment,
+        consumed: formatAmount(result.cover.consumed), available: formatAmount(result.cover.available),
+        reinstatementsLeft: result.cover.reinstatementsLeft,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/reinstate': {
+      const reinstatement = state.world.reinsurance.reinstate('XOL-CAT-5M', {
+        at: String(payload['at'] ?? `${state.world.asOf}T12:00:00+04:00`),
+        ...(payload['restore'] ? { restore: parseAmount(String(payload['restore']), 'AED') } : {}),
+        by: String(payload['by'] ?? 'reinsurance/desk'),
+      });
+      json(res, 200, {
+        treatyId: reinstatement.treatyId, sequence: reinstatement.sequence, restored: formatAmount(reinstatement.restored),
+        premium: formatAmount(reinstatement.premium), free: reinstatement.free,
+        available: formatAmount(reinstatement.available), journalId: reinstatement.journalId ?? null,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/deposit': {
+      // A further deposit instalment. Once the period is settled the engine refuses, because a new
+      // deposit belongs to the next period — not to this one.
+      const next = state.world.reinsurance.depositAccount('AGG-SL-DEPOSIT');
+      const instalment = next.adjustments.length + 1;
+      const account = state.world.reinsurance.openDeposit('AGG-SL-DEPOSIT', {
+        amount: parseAmount(String(payload['amount'] ?? '100,000.00'), 'AED'),
+        at: String(payload['at'] ?? `${state.world.asOf}T13:00:00+04:00`),
+        instalment,
+      });
+      json(res, 200, {
+        treatyId: account.treatyId, instalment, depositPaid: formatAmount(account.depositPaid),
+        treatment: account.treatment, assetRemaining: formatAmount(account.assetRemaining),
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/deposit/settle': {
+      const account = state.world.reinsurance.settleDeposit('AGG-SL-DEPOSIT', {
+        subjectPremium: parseAmount(String(payload['subjectPremium'] ?? '8,000,000.00'), 'AED'),
+        at: String(payload['at'] ?? `${state.world.asOf}T15:00:00+04:00`),
+        ...(payload['rateOnLineBps'] ? { rateOnLineBps: Number(payload['rateOnLineBps']) } : {}),
+      });
+      json(res, 200, {
+        treatyId: account.treatyId, depositPaid: formatAmount(account.depositPaid),
+        technicalPremium: account.technicalPremium ? formatAmount(account.technicalPremium) : null,
+        settled: account.settled, assetRemaining: formatAmount(account.assetRemaining),
+        adjustment: account.adjustments.at(-1) ? {
+          kind: account.adjustments.at(-1)!.kind, amount: formatAmount(account.adjustments.at(-1)!.amount),
+        } : null,
+      });
+      return true;
+    }
+
     case 'POST /reinsurance/recover': {
       const policyId = String(payload['policyId'] ?? 'MTR-0441');
       const claimId = String(payload['claimId'] ?? 'CLM-000001');

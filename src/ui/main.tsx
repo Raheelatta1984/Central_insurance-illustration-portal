@@ -1006,17 +1006,26 @@ const TreatyTable: React.FC<{ book: ReinsuranceBook; title: string; subtitle: st
     <div className="stat"><span>Recoveries claimed</span><b>{book.recoveries}</b></div>
     <div className="stat"><span>Still recoverable</span><b>{book.recoverable}</b></div>
     <Table
-      head={['Treaty', 'Counterparty', 'Kind', 'Capacity', 'Ceded', 'Headroom', 'Used', 'Premium ceded', 'Commission', 'In force']}
+      head={['Treaty', 'Counterparty', 'Kind', 'Capacity', 'Ceded', 'Cover left', 'Reinst.', 'Premium ceded', 'Commission', 'Accounting', 'In force']}
       rows={book.treaties.map((t) => [
         <span title={t.name}>{t.treatyId}</span>,
         t.counterparty,
         <span>{t.kind.replace(/-/g, ' ')}<span className="muted small"> · {t.lineOfBusiness}</span></span>,
         t.capacity,
         t.cededSumInsured,
-        t.headroom,
-        `${t.usedPct}%`,
+        // For an excess of loss treaty, cover left is what a loss can still draw on; the capacity
+        // column stays what the treaty was written for.
+        t.kind === 'excess-of-loss'
+          ? <span>{t.available}{t.exhausted && <span className="muted small"> · exhausted</span>}</span>
+          : <span className="muted small">—</span>,
+        t.kind === 'excess-of-loss'
+          ? <span>{t.reinstatementsUsed}/{t.reinstatementsUsed + t.reinstatementsLeft}</span>
+          : <span className="muted small">—</span>,
         t.premiumCeded,
         t.commissionEarned,
+        t.treatment === 'deposit'
+          ? <Pill tone="warn">deposit</Pill>
+          : <Pill tone="ok">risk transfer</Pill>,
         t.valid ? <Pill tone="ok">in force</Pill> : <Pill tone="warn">expired</Pill>,
       ])}
       empty="No treaties on this register yet."
@@ -1058,6 +1067,10 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
           <button disabled={busy !== null} onClick={() => call('Cede a further risk', '/reinsurance/cede')}>Cede a further risk</button>
           <button disabled={busy !== null} onClick={() => call('Place a risk facultatively', '/reinsurance/facultative')}>Place a risk facultatively</button>
           <button disabled={busy !== null} onClick={() => call('Claim the reinsurance recovery', '/reinsurance/recover')}>Claim the reinsurance recovery</button>
+          <button disabled={busy !== null} onClick={() => call('Claim a catastrophe event', '/reinsurance/event')}>Claim a catastrophe event</button>
+          <button disabled={busy !== null} onClick={() => call('Reinstate the catastrophe cover', '/reinsurance/reinstate')}>Reinstate the catastrophe cover</button>
+          <button disabled={busy !== null} onClick={() => call('Pay a deposit instalment', '/reinsurance/deposit')}>Pay a deposit instalment</button>
+          <button disabled={busy !== null} onClick={() => call('Settle the deposit premium', '/reinsurance/deposit/settle')}>Settle the deposit premium</button>
         </div>
         {note && <p className="small">{note}</p>}
         {error && <p className="bad small">{error}</p>}
@@ -1076,6 +1089,47 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
           ])}
           empty="Nothing ceded yet."
         />
+      </Card>
+
+      <Card title="Catastrophe cover and reinstatements" subtitle="What the layer has paid, what is left, and what it cost to put back" wide>
+        <div className="stat"><span>Layer (5m xs 1m)</span><b>{view.cover.limit.minor === 0n ? '—' : money0(view.conventional.treaties.find((t) => t.treatyId === 'XOL-CAT-5M')?.limit ?? '—')}</b></div>
+        <div className="stat"><span>Available now</span><b>{money0(view.conventional.treaties.find((t) => t.treatyId === 'XOL-CAT-5M')?.available ?? '—')}</b></div>
+        <div className="stat"><span>Reinstatements left</span><b>{view.cover.reinstatementsLeft}</b></div>
+        <Table
+          head={['Event', 'Treaty', 'Recovered', 'At', 'Journal']}
+          rows={view.events.map((e) => [e.eventId, e.treatyId, e.amount, e.at.slice(0, 10), <span className="muted small">{e.journalId}</span>])}
+          empty="No catastrophe events claimed yet."
+        />
+        <Table
+          head={['Reinstatement', 'Treaty', 'Cover restored', 'Premium', 'Free?', 'Cover after', 'Journal']}
+          rows={view.conventional.reinstatements.map((r) => [
+            `#${r.sequence}`, r.treatyId, r.restored, r.premium,
+            r.free ? <Pill tone="ok">free</Pill> : <Pill tone="warn">charged</Pill>,
+            r.available, r.journalId ? <span className="muted small">{r.journalId}</span> : <span className="muted small">nothing to post</span>,
+          ])}
+          empty="No reinstatements taken yet."
+        />
+      </Card>
+
+      <Card title="Deposit premium and experience adjustment" subtitle="Paid on account, settled against the real subject premium — an asset until then, never an expense" wide>
+        <Table
+          head={['Treaty', 'Deposit paid', 'Technical premium', 'Last adjustment', 'Asset remaining', 'Accounting', 'Settled?']}
+          rows={view.conventional.deposits.map((d) => [
+            d.treatyId, d.depositPaid, d.technicalPremium ?? '—',
+            d.adjustments.length > 0
+              ? `${d.adjustments.at(-1)!.kind === 'return' ? 'returned' : 'additional'} ${d.adjustments.at(-1)!.amount}`
+              : '—',
+            d.assetRemaining,
+            d.treatment === 'deposit' ? <Pill tone="warn">deposit</Pill> : <Pill tone="ok">risk transfer</Pill>,
+            d.settled ? <Pill tone="ok">settled</Pill> : <Pill tone="info">open</Pill>,
+          ])}
+          empty="No deposit premium on account."
+        />
+        <p className="small muted">
+          A deposit-accounted treaty does not recognise premium income or claim expense: the money sits as an asset the
+          reinsurer holds for us, a loss draws it down, and the difference between the deposit and the technical premium
+          is paid or refunded when the period settles.
+        </p>
       </Card>
 
       <Card title="Recoveries from reinsurers" subtitle="Owed to us, not in the bank — the receivable is the proof">

@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T04:04:29.527Z",
+  "capturedAt": "2026-10-04T06:47:56.990Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -305,12 +305,12 @@
             "name": "Al Khaleej Insurance (conventional)",
             "functionalCurrency": "AED",
             "ownershipPct": 100,
-            "netAssets": "9,989,578.31 AED",
-            "income": "-10,421.69 AED",
+            "netAssets": "10,589,578.31 AED",
+            "income": "589,578.31 AED",
             "translationReserve": "0.00 AED",
             "closingRate": "1/1 on 2026-10-05",
             "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
-            "accounts": 23
+            "accounts": 25
           },
           {
             "entityId": "ALK-TKF",
@@ -392,7 +392,7 @@
           "matched": "14,200.00 AED",
           "inTransit": "11,800.00 AED",
           "notes": [
-            "ALK-CONV: translated 23 account balance(s), translation reserve 0.00 AED",
+            "ALK-CONV: translated 25 account balance(s), translation reserve 0.00 AED",
             "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
             "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
             "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
@@ -404,21 +404,21 @@
         },
         "group": {
           "totals": {
-            "assets": "17,294,027.44 AED",
+            "assets": "17,894,027.44 AED",
             "liabilities": "59,637.13 AED",
             "equity": "17,098,200.00 AED",
-            "income": "168,519.94 AED",
+            "income": "768,519.94 AED",
             "expense": "32,329.63 AED",
             "translationReserve": "-151,800.00 AED"
           },
-          "netAssets": "17,234,390.31 AED",
+          "netAssets": "17,834,390.31 AED",
           "balanced": true,
           "difference": "0.00 AED",
           "checks": [
             {
               "check": "consolidated balance sheet balances",
               "ok": true,
-              "detail": "assets 17,294,027.44 AED − liabilities 59,637.13 AED = 17,234,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 136,190.31 AED; difference 0.00 AED"
+              "detail": "assets 17,894,027.44 AED − liabilities 59,637.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
             },
             {
               "check": "group ledger proof",
@@ -437,7 +437,7 @@
             }
           ],
           "attribution": {
-            "owners": "15,960,110.31 AED",
+            "owners": "16,560,110.31 AED",
             "minority": "1,274,280.00 AED"
           },
           "trialBalance": [
@@ -445,7 +445,7 @@
               "accountId": "GRP:ALK-CONV:CASH",
               "name": "ALK-CONV — Cash at bank",
               "type": "asset",
-              "amount": "10,000,512.50 AED"
+              "amount": "9,700,512.50 AED"
             },
             {
               "accountId": "GRP:ALK-CONV:CLAIM-EXPENSE",
@@ -532,6 +532,12 @@
               "amount": "497.94 AED"
             },
             {
+              "accountId": "GRP:ALK-CONV:REINS:DEPOSIT-PREMIUM",
+              "name": "ALK-CONV — Deposit premium paid on account",
+              "type": "asset",
+              "amount": "300,000.00 AED"
+            },
+            {
               "accountId": "GRP:ALK-CONV:REINS:PAYABLE",
               "name": "ALK-CONV — Payable to reinsurers / retakaful operators",
               "type": "liability",
@@ -541,7 +547,13 @@
               "accountId": "GRP:ALK-CONV:REINS:RECEIVABLE",
               "name": "ALK-CONV — Receivable from reinsurers / retakaful operators",
               "type": "asset",
-              "amount": "785.44 AED"
+              "amount": "600,785.44 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:REINS:RECOVERY",
+              "name": "ALK-CONV — Catastrophe / event recovery income",
+              "type": "income",
+              "amount": "600,000.00 AED"
             },
             {
               "accountId": "GRP:ALK-CONV:SHARE-CAPITAL",
@@ -666,11 +678,11 @@
             {
               "currency": "AED",
               "debit": {
-                "minor": "1012461757",
+                "minor": "1213961757",
                 "currency": "AED"
               },
               "credit": {
-                "minor": "1012461757",
+                "minor": "1213961757",
                 "currency": "AED"
               }
             }
@@ -706,12 +718,42 @@
           "netRetainedPremium": "17,096.81 AED",
           "cessionPct": 27.07,
           "commissionIncome": "777.94 AED",
-          "recoveries": "287.50 AED",
-          "recoverable": "1,065.44 AED",
+          "recoveries": "600,287.50 AED",
+          "recoverable": "601,065.44 AED",
           "notes": [
+            "catastrophe-desk: 600,000.00 AED recovered for STORM-ALPHAI under XOL-CAT-5M (RI-ALK-CONV-000004)",
+            "reinsurance/desk: reinstatement 1 under XOL-CAT-5M restored 600,000.00 AED free of charge",
+            "deposit instalment 1 of 200,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000005)",
+            "deposit instalment 2 of 100,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000006)",
             "reinsurance/desk had MTR-ORION-77 accepted under FAC-MOTOR on 2026-10-05"
           ],
           "treaties": [
+            {
+              "treatyId": "AGG-SL-DEPOSIT",
+              "name": "Aggregate stop loss — deposit accounted",
+              "counterparty": "Gulf Reinsurance PSC",
+              "kind": "excess-of-loss",
+              "basis": "conventional",
+              "lineOfBusiness": "all",
+              "valid": true,
+              "risks": 0,
+              "capacity": "2,000,000.00 AED",
+              "cededSumInsured": "0.00 AED",
+              "headroom": "2,000,000.00 AED",
+              "usedPct": 0,
+              "premiumWritten": "0.00 AED",
+              "premiumCeded": "0.00 AED",
+              "premiumCededPct": 0,
+              "commissionEarned": "0.00 AED",
+              "recoveries": "0.00 AED",
+              "treatment": "deposit",
+              "limit": "2,000,000.00 AED",
+              "consumed": "0.00 AED",
+              "available": "2,000,000.00 AED",
+              "exhausted": false,
+              "reinstatementsUsed": 0,
+              "reinstatementsLeft": 0
+            },
             {
               "treatyId": "FAC-MOTOR",
               "name": "Facultative motor — per risk",
@@ -729,7 +771,14 @@
               "premiumCeded": "2,240.00 AED",
               "premiumCededPct": 40,
               "commissionEarned": "280.00 AED",
-              "recoveries": "0.00 AED"
+              "recoveries": "0.00 AED",
+              "treatment": "risk-transferring",
+              "limit": "0.00 AED",
+              "consumed": "0.00 AED",
+              "available": "0.00 AED",
+              "exhausted": true,
+              "reinstatementsUsed": 0,
+              "reinstatementsLeft": 0
             },
             {
               "treatyId": "QS-25-2026",
@@ -748,7 +797,14 @@
               "premiumCeded": "2,319.63 AED",
               "premiumCededPct": 25,
               "commissionEarned": "347.94 AED",
-              "recoveries": "287.50 AED"
+              "recoveries": "287.50 AED",
+              "treatment": "risk-transferring",
+              "limit": "0.00 AED",
+              "consumed": "0.00 AED",
+              "available": "0.00 AED",
+              "exhausted": true,
+              "reinstatementsUsed": 0,
+              "reinstatementsLeft": 0
             },
             {
               "treatyId": "SURPLUS-10",
@@ -767,7 +823,14 @@
               "premiumCeded": "1,500.00 AED",
               "premiumCededPct": 20,
               "commissionEarned": "150.00 AED",
-              "recoveries": "0.00 AED"
+              "recoveries": "0.00 AED",
+              "treatment": "risk-transferring",
+              "limit": "0.00 AED",
+              "consumed": "0.00 AED",
+              "available": "0.00 AED",
+              "exhausted": true,
+              "reinstatementsUsed": 0,
+              "reinstatementsLeft": 0
             },
             {
               "treatyId": "XOL-CAT-5M",
@@ -786,7 +849,50 @@
               "premiumCeded": "0.00 AED",
               "premiumCededPct": 0,
               "commissionEarned": "0.00 AED",
-              "recoveries": "0.00 AED"
+              "recoveries": "600,000.00 AED",
+              "treatment": "risk-transferring",
+              "limit": "5,000,000.00 AED",
+              "consumed": "0.00 AED",
+              "available": "5,000,000.00 AED",
+              "exhausted": false,
+              "reinstatementsUsed": 1,
+              "reinstatementsLeft": 1
+            }
+          ],
+          "reinstatements": [
+            {
+              "treatyId": "XOL-CAT-5M",
+              "sequence": 1,
+              "restored": "600,000.00 AED",
+              "premium": "0.00 AED",
+              "free": true,
+              "at": "2026-09-16T09:00:00+04:00",
+              "available": "5,000,000.00 AED",
+              "journalId": null
+            }
+          ],
+          "deposits": [
+            {
+              "treatyId": "AGG-SL-DEPOSIT",
+              "depositPaid": "300,000.00 AED",
+              "technicalPremium": null,
+              "settled": false,
+              "treatment": "deposit",
+              "assetRemaining": "300,000.00 AED",
+              "adjustments": [
+                {
+                  "at": "2026-01-12T10:00:00+04:00#1",
+                  "kind": "additional",
+                  "amount": "200,000.00 AED",
+                  "journalId": "RI-ALK-CONV-000005"
+                },
+                {
+                  "at": "2026-07-01T10:00:00+04:00#2",
+                  "kind": "additional",
+                  "amount": "100,000.00 AED",
+                  "journalId": "RI-ALK-CONV-000006"
+                }
+              ]
             }
           ]
         },
@@ -819,9 +925,18 @@
               "premiumCeded": "360.00 AED",
               "premiumCededPct": 20,
               "commissionEarned": "72.00 AED",
-              "recoveries": "0.00 AED"
+              "recoveries": "0.00 AED",
+              "treatment": "risk-transferring",
+              "limit": "0.00 AED",
+              "consumed": "0.00 AED",
+              "available": "0.00 AED",
+              "exhausted": true,
+              "reinstatementsUsed": 0,
+              "reinstatementsLeft": 0
             }
-          ]
+          ],
+          "reinstatements": [],
+          "deposits": []
         },
         "schedule": [
           {
@@ -884,7 +999,7 @@
             "cededPremium": "2,240.00 AED",
             "commission": "280.00 AED",
             "netRetained": "3,640.00 AED",
-            "journalId": "RI-ALK-CONV-000004",
+            "journalId": "RI-ALK-CONV-000007",
             "at": "2026-10-05T09:00:00+04:00",
             "explanation": "Al Wathba Re accepted MTR-ORION-77 for 40% on 2026-10-05"
           }
@@ -900,21 +1015,49 @@
             "recoveryId": "REC-CLM-000001-2",
             "treatyId": "QS-25-2026",
             "amount": "287.50 AED",
-            "at": "2026-10-02T09:00:00+04:00"
+            "at": "2026-10-02T09:00:00+04:00",
+            "treatment": "risk-transferring"
           }
-        ]
+        ],
+        "events": [
+          {
+            "eventId": "STORM-ALPHAI",
+            "treatyId": "XOL-CAT-5M",
+            "amount": "600,000.00 AED",
+            "at": "2026-09-15T10:00:00+04:00",
+            "journalId": "RI-ALK-CONV-000004"
+          }
+        ],
+        "cover": {
+          "treatyId": "XOL-CAT-5M",
+          "limit": {
+            "minor": "500000000",
+            "currency": "AED"
+          },
+          "consumed": {
+            "minor": "0",
+            "currency": "AED"
+          },
+          "available": {
+            "minor": "500000000",
+            "currency": "AED"
+          },
+          "reinstatementsUsed": 1,
+          "reinstatementsLeft": 1,
+          "exhausted": false
+        }
       }
     },
     "GET /api/state": {
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T04:04:22.614Z",
-        "fingerprint": "1ea6598cbe6160e7",
-        "accounts": 151,
-        "journals": 71,
+        "takenAt": "2026-10-04T06:47:50.052Z",
+        "fingerprint": "d92884255c00ad2b",
+        "accounts": 157,
+        "journals": 78,
         "fxRates": 2,
-        "bytes": 73809
+        "bytes": 80227
       }
     },
     "GET /api/underwriting": {
@@ -3213,10 +3356,41 @@
             "netRetainedPremium": "13,456.81 AED",
             "cessionPct": 22.76,
             "commissionIncome": "497.94 AED",
-            "recoveries": "287.50 AED",
-            "recoverable": "785.44 AED",
-            "notes": [],
+            "recoveries": "600,287.50 AED",
+            "recoverable": "600,785.44 AED",
+            "notes": [
+              "catastrophe-desk: 600,000.00 AED recovered for STORM-ALPHAI under XOL-CAT-5M (RI-ALK-CONV-000004)",
+              "reinsurance/desk: reinstatement 1 under XOL-CAT-5M restored 600,000.00 AED free of charge",
+              "deposit instalment 1 of 200,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000005)",
+              "deposit instalment 2 of 100,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000006)"
+            ],
             "treaties": [
+              {
+                "treatyId": "AGG-SL-DEPOSIT",
+                "name": "Aggregate stop loss — deposit accounted",
+                "counterparty": "Gulf Reinsurance PSC",
+                "kind": "excess-of-loss",
+                "basis": "conventional",
+                "lineOfBusiness": "all",
+                "valid": true,
+                "risks": 0,
+                "capacity": "2,000,000.00 AED",
+                "cededSumInsured": "0.00 AED",
+                "headroom": "2,000,000.00 AED",
+                "usedPct": 0,
+                "premiumWritten": "0.00 AED",
+                "premiumCeded": "0.00 AED",
+                "premiumCededPct": 0,
+                "commissionEarned": "0.00 AED",
+                "recoveries": "0.00 AED",
+                "treatment": "deposit",
+                "limit": "2,000,000.00 AED",
+                "consumed": "0.00 AED",
+                "available": "2,000,000.00 AED",
+                "exhausted": false,
+                "reinstatementsUsed": 0,
+                "reinstatementsLeft": 0
+              },
               {
                 "treatyId": "FAC-MOTOR",
                 "name": "Facultative motor — per risk",
@@ -3234,7 +3408,14 @@
                 "premiumCeded": "0.00 AED",
                 "premiumCededPct": 0,
                 "commissionEarned": "0.00 AED",
-                "recoveries": "0.00 AED"
+                "recoveries": "0.00 AED",
+                "treatment": "risk-transferring",
+                "limit": "0.00 AED",
+                "consumed": "0.00 AED",
+                "available": "0.00 AED",
+                "exhausted": true,
+                "reinstatementsUsed": 0,
+                "reinstatementsLeft": 0
               },
               {
                 "treatyId": "QS-25-2026",
@@ -3253,7 +3434,14 @@
                 "premiumCeded": "2,319.63 AED",
                 "premiumCededPct": 25,
                 "commissionEarned": "347.94 AED",
-                "recoveries": "287.50 AED"
+                "recoveries": "287.50 AED",
+                "treatment": "risk-transferring",
+                "limit": "0.00 AED",
+                "consumed": "0.00 AED",
+                "available": "0.00 AED",
+                "exhausted": true,
+                "reinstatementsUsed": 0,
+                "reinstatementsLeft": 0
               },
               {
                 "treatyId": "SURPLUS-10",
@@ -3272,7 +3460,14 @@
                 "premiumCeded": "1,500.00 AED",
                 "premiumCededPct": 20,
                 "commissionEarned": "150.00 AED",
-                "recoveries": "0.00 AED"
+                "recoveries": "0.00 AED",
+                "treatment": "risk-transferring",
+                "limit": "0.00 AED",
+                "consumed": "0.00 AED",
+                "available": "0.00 AED",
+                "exhausted": true,
+                "reinstatementsUsed": 0,
+                "reinstatementsLeft": 0
               },
               {
                 "treatyId": "XOL-CAT-5M",
@@ -3291,7 +3486,50 @@
                 "premiumCeded": "0.00 AED",
                 "premiumCededPct": 0,
                 "commissionEarned": "0.00 AED",
-                "recoveries": "0.00 AED"
+                "recoveries": "600,000.00 AED",
+                "treatment": "risk-transferring",
+                "limit": "5,000,000.00 AED",
+                "consumed": "0.00 AED",
+                "available": "5,000,000.00 AED",
+                "exhausted": false,
+                "reinstatementsUsed": 1,
+                "reinstatementsLeft": 1
+              }
+            ],
+            "reinstatements": [
+              {
+                "treatyId": "XOL-CAT-5M",
+                "sequence": 1,
+                "restored": "600,000.00 AED",
+                "premium": "0.00 AED",
+                "free": true,
+                "at": "2026-09-16T09:00:00+04:00",
+                "available": "5,000,000.00 AED",
+                "journalId": null
+              }
+            ],
+            "deposits": [
+              {
+                "treatyId": "AGG-SL-DEPOSIT",
+                "depositPaid": "300,000.00 AED",
+                "technicalPremium": null,
+                "settled": false,
+                "treatment": "deposit",
+                "assetRemaining": "300,000.00 AED",
+                "adjustments": [
+                  {
+                    "at": "2026-01-12T10:00:00+04:00#1",
+                    "kind": "additional",
+                    "amount": "200,000.00 AED",
+                    "journalId": "RI-ALK-CONV-000005"
+                  },
+                  {
+                    "at": "2026-07-01T10:00:00+04:00#2",
+                    "kind": "additional",
+                    "amount": "100,000.00 AED",
+                    "journalId": "RI-ALK-CONV-000006"
+                  }
+                ]
               }
             ]
           },
@@ -3324,9 +3562,18 @@
                 "premiumCeded": "360.00 AED",
                 "premiumCededPct": 20,
                 "commissionEarned": "72.00 AED",
-                "recoveries": "0.00 AED"
+                "recoveries": "0.00 AED",
+                "treatment": "risk-transferring",
+                "limit": "0.00 AED",
+                "consumed": "0.00 AED",
+                "available": "0.00 AED",
+                "exhausted": true,
+                "reinstatementsUsed": 0,
+                "reinstatementsLeft": 0
               }
-            ]
+            ],
+            "reinstatements": [],
+            "deposits": []
           },
           "schedule": [
             {
@@ -3387,9 +3634,37 @@
               "recoveryId": "REC-CLM-000001-2",
               "treatyId": "QS-25-2026",
               "amount": "287.50 AED",
-              "at": "2026-10-02T09:00:00+04:00"
+              "at": "2026-10-02T09:00:00+04:00",
+              "treatment": "risk-transferring"
             }
-          ]
+          ],
+          "events": [
+            {
+              "eventId": "STORM-ALPHAI",
+              "treatyId": "XOL-CAT-5M",
+              "amount": "600,000.00 AED",
+              "at": "2026-09-15T10:00:00+04:00",
+              "journalId": "RI-ALK-CONV-000004"
+            }
+          ],
+          "cover": {
+            "treatyId": "XOL-CAT-5M",
+            "limit": {
+              "minor": "500000000",
+              "currency": "AED"
+            },
+            "consumed": {
+              "minor": "0",
+              "currency": "AED"
+            },
+            "available": {
+              "minor": "500000000",
+              "currency": "AED"
+            },
+            "reinstatementsUsed": 1,
+            "reinstatementsLeft": 1,
+            "exhausted": false
+          }
         },
         "group": {
           "asOf": "2026-10-05",
@@ -3401,12 +3676,12 @@
               "name": "Al Khaleej Insurance (conventional)",
               "functionalCurrency": "AED",
               "ownershipPct": 100,
-              "netAssets": "9,989,578.31 AED",
-              "income": "-10,421.69 AED",
+              "netAssets": "10,589,578.31 AED",
+              "income": "589,578.31 AED",
               "translationReserve": "0.00 AED",
               "closingRate": "1/1 on 2026-10-05",
               "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
-              "accounts": 23
+              "accounts": 25
             },
             {
               "entityId": "ALK-TKF",
@@ -3488,7 +3763,7 @@
             "matched": "14,200.00 AED",
             "inTransit": "11,800.00 AED",
             "notes": [
-              "ALK-CONV: translated 23 account balance(s), translation reserve 0.00 AED",
+              "ALK-CONV: translated 25 account balance(s), translation reserve 0.00 AED",
               "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
               "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
               "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
@@ -3500,21 +3775,21 @@
           },
           "group": {
             "totals": {
-              "assets": "17,294,027.44 AED",
+              "assets": "17,894,027.44 AED",
               "liabilities": "59,637.13 AED",
               "equity": "17,098,200.00 AED",
-              "income": "168,519.94 AED",
+              "income": "768,519.94 AED",
               "expense": "32,329.63 AED",
               "translationReserve": "-151,800.00 AED"
             },
-            "netAssets": "17,234,390.31 AED",
+            "netAssets": "17,834,390.31 AED",
             "balanced": true,
             "difference": "0.00 AED",
             "checks": [
               {
                 "check": "consolidated balance sheet balances",
                 "ok": true,
-                "detail": "assets 17,294,027.44 AED − liabilities 59,637.13 AED = 17,234,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 136,190.31 AED; difference 0.00 AED"
+                "detail": "assets 17,894,027.44 AED − liabilities 59,637.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
               },
               {
                 "check": "group ledger proof",
@@ -3533,7 +3808,7 @@
               }
             ],
             "attribution": {
-              "owners": "15,960,110.31 AED",
+              "owners": "16,560,110.31 AED",
               "minority": "1,274,280.00 AED"
             },
             "trialBalance": [
@@ -3541,7 +3816,7 @@
                 "accountId": "GRP:ALK-CONV:CASH",
                 "name": "ALK-CONV — Cash at bank",
                 "type": "asset",
-                "amount": "10,000,512.50 AED"
+                "amount": "9,700,512.50 AED"
               },
               {
                 "accountId": "GRP:ALK-CONV:CLAIM-EXPENSE",
@@ -3628,6 +3903,12 @@
                 "amount": "497.94 AED"
               },
               {
+                "accountId": "GRP:ALK-CONV:REINS:DEPOSIT-PREMIUM",
+                "name": "ALK-CONV — Deposit premium paid on account",
+                "type": "asset",
+                "amount": "300,000.00 AED"
+              },
+              {
                 "accountId": "GRP:ALK-CONV:REINS:PAYABLE",
                 "name": "ALK-CONV — Payable to reinsurers / retakaful operators",
                 "type": "liability",
@@ -3637,7 +3918,13 @@
                 "accountId": "GRP:ALK-CONV:REINS:RECEIVABLE",
                 "name": "ALK-CONV — Receivable from reinsurers / retakaful operators",
                 "type": "asset",
-                "amount": "785.44 AED"
+                "amount": "600,785.44 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:REINS:RECOVERY",
+                "name": "ALK-CONV — Catastrophe / event recovery income",
+                "type": "income",
+                "amount": "600,000.00 AED"
               },
               {
                 "accountId": "GRP:ALK-CONV:SHARE-CAPITAL",
@@ -4036,11 +4323,11 @@
               {
                 "currency": "AED",
                 "debit": {
-                  "minor": "1012175257",
+                  "minor": "1102175257",
                   "currency": "AED"
                 },
                 "credit": {
-                  "minor": "1012175257",
+                  "minor": "1102175257",
                   "currency": "AED"
                 }
               }
@@ -4065,7 +4352,7 @@
           "trialBalance": [
             {
               "account": "Cash at bank",
-              "balance": "10,000,512.50 AED"
+              "balance": "9,700,512.50 AED"
             },
             {
               "account": "Fund clearing",
@@ -4197,35 +4484,22 @@
             },
             {
               "account": "Receivable from reinsurers / retakaful operators",
-              "balance": "785.44 AED"
+              "balance": "600,785.44 AED"
             },
             {
               "account": "Ceding commission / wakalah fee",
               "balance": "497.94 AED"
+            },
+            {
+              "account": "Catastrophe / event recovery income",
+              "balance": "600,000.00 AED"
+            },
+            {
+              "account": "Deposit premium paid on account",
+              "balance": "300,000.00 AED"
             }
           ],
           "journals": [
-            {
-              "id": "CL-ALK-CONV-000004",
-              "at": "2026-10-01T09:00:00+04:00",
-              "description": "salvage recovery on CLM-000001 for 180.00 AED",
-              "source": "claims",
-              "fundId": "—"
-            },
-            {
-              "id": "CL-ALK-CONV-000006",
-              "at": "2026-08-08T09:00:00+04:00",
-              "description": "Increase in claim reserve CLM-000005 by 15,000.00 AED",
-              "source": "claims",
-              "fundId": "—"
-            },
-            {
-              "id": "RI-ALK-CONV-000001",
-              "at": "2026-09-30T09:00:00+04:00",
-              "description": "Cession of 2,302.88 AED premium (25% of 9,211.50 AED) to Gulf Reinsurance PSC under QS-25-2026",
-              "source": "reinsurance",
-              "fundId": "—"
-            },
             {
               "id": "RI-ALK-CONV-000002",
               "at": "2026-09-30T09:05:00+04:00",
@@ -4245,6 +4519,27 @@
               "at": "2026-10-02T09:00:00+04:00",
               "description": "reinsurance recovery on CLM-000001 for 287.50 AED",
               "source": "claims",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000004",
+              "at": "2026-09-15T10:00:00+04:00",
+              "description": "600,000.00 AED recovered from Emirates Re under XOL-CAT-5M for STORM-ALPHAI",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000005",
+              "at": "2026-01-12T10:00:00+04:00",
+              "description": "Deposit premium instalment 1 of 200,000.00 AED under AGG-SL-DEPOSIT",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000006",
+              "at": "2026-07-01T10:00:00+04:00",
+              "description": "Deposit premium instalment 2 of 100,000.00 AED under AGG-SL-DEPOSIT",
+              "source": "reinsurance",
               "fundId": "—"
             },
             {
@@ -4274,7 +4569,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T04:02:57.162Z"
+        "generatedAt": "2026-10-04T06:46:17.382Z"
       }
     },
     "POST /api/ai/approve": {
@@ -4461,7 +4756,7 @@
           "matched": "14,200.00 AED",
           "inTransit": "11,800.00 AED",
           "notes": [
-            "ALK-CONV: translated 23 account balance(s), translation reserve 0.00 AED",
+            "ALK-CONV: translated 25 account balance(s), translation reserve 0.00 AED",
             "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
             "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
             "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
@@ -4480,23 +4775,23 @@
           }
         ],
         "totals": {
-          "assets": "17,294,027.44 AED",
+          "assets": "17,894,027.44 AED",
           "liabilities": "59,637.13 AED",
           "equity": "17,098,200.00 AED",
-          "income": "168,519.94 AED",
+          "income": "768,519.94 AED",
           "expense": "32,329.63 AED",
           "translationReserve": "-151,800.00 AED"
         },
-        "netAssets": "17,234,390.31 AED",
+        "netAssets": "17,834,390.31 AED",
         "attribution": {
-          "owners": "15,960,110.31 AED",
+          "owners": "16,560,110.31 AED",
           "minority": "1,274,280.00 AED"
         },
         "checks": [
           {
             "check": "consolidated balance sheet balances",
             "ok": true,
-            "detail": "assets 17,294,027.44 AED − liabilities 59,637.13 AED = 17,234,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 136,190.31 AED; difference 0.00 AED"
+            "detail": "assets 17,894,027.44 AED − liabilities 59,637.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
           },
           {
             "check": "group ledger proof",
@@ -4519,7 +4814,7 @@
     "POST /api/ingest/commit": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791086637166",
+        "loadId": "LOAD-1791096444574",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
@@ -4532,7 +4827,7 @@
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791086637166"
+        "loadId": "LOAD-1791096444574"
       }
     },
     "POST /api/onboarding/ocr": {
@@ -5092,8 +5387,43 @@
         "cededPremium": "300.00 AED",
         "commission": "45.00 AED",
         "netRetainedPremium": "945.00 AED",
-        "journalId": "RI-ALK-CONV-000005",
+        "journalId": "RI-ALK-CONV-000008",
         "explanation": "25% of every risk is ceded as it is written"
+      }
+    },
+    "POST /api/reinsurance/deposit": {
+      "status": 200,
+      "body": {
+        "treatyId": "AGG-SL-DEPOSIT",
+        "instalment": 3,
+        "depositPaid": "400,000.00 AED",
+        "treatment": "deposit",
+        "assetRemaining": "400,000.00 AED"
+      }
+    },
+    "POST /api/reinsurance/deposit/settle": {
+      "status": 200,
+      "body": {
+        "treatyId": "AGG-SL-DEPOSIT",
+        "depositPaid": "400,000.00 AED",
+        "technicalPremium": "280,000.00 AED",
+        "settled": true,
+        "assetRemaining": "0.00 AED",
+        "adjustment": {
+          "kind": "return",
+          "amount": "120,000.00 AED"
+        }
+      }
+    },
+    "POST /api/reinsurance/event": {
+      "status": 200,
+      "body": {
+        "eventId": "STORM-2026-2",
+        "amount": "600,000.00 AED",
+        "treatment": "risk-transferring",
+        "consumed": "600,000.00 AED",
+        "available": "4,400,000.00 AED",
+        "reinstatementsLeft": 1
       }
     },
     "POST /api/reinsurance/facultative": {
@@ -5104,7 +5434,7 @@
         "sharePct": 40,
         "cededPremium": "2,240.00 AED",
         "commission": "280.00 AED",
-        "journalId": "RI-ALK-CONV-000004"
+        "journalId": "RI-ALK-CONV-000007"
       }
     },
     "POST /api/reinsurance/recover": {
@@ -5113,28 +5443,40 @@
         "error": "CLM-000001 has already been recovered under QS-25-2026 (REC-CLM-000001-2); claim it again only as a named further instalment"
       }
     },
+    "POST /api/reinsurance/reinstate": {
+      "status": 200,
+      "body": {
+        "treatyId": "XOL-CAT-5M",
+        "sequence": 2,
+        "restored": "600,000.00 AED",
+        "premium": "15,000.00 AED",
+        "free": false,
+        "available": "5,000,000.00 AED",
+        "journalId": "RI-ALK-CONV-000010"
+      }
+    },
     "POST /api/state/drill": {
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "04458691d847a0ac",
+        "fingerprint": "79a69268a5e10c65",
         "fingerprintStable": true,
-        "journals": 71,
-        "restoredJournals": 71,
-        "bytes": 73809,
-        "restoreMs": 62,
+        "journals": 78,
+        "restoredJournals": 78,
+        "bytes": 80227,
+        "restoreMs": 67,
         "balances": [
           {
             "entityId": "ALK-CONV",
             "balanced": true,
             "trialBalanceAgrees": true,
-            "accounts": 35
+            "accounts": 37
           },
           {
             "entityId": "ALK-TKF",
             "balanced": true,
             "trialBalanceAgrees": true,
-            "accounts": 37
+            "accounts": 39
           },
           {
             "entityId": "ALK-MY",
@@ -5146,7 +5488,7 @@
             "entityId": "GRP",
             "balanced": true,
             "trialBalanceAgrees": true,
-            "accounts": 58
+            "accounts": 60
           }
         ]
       }
@@ -5223,11 +5565,11 @@
       "at": "2026-10-05T10:00:00+04:00"
     },
     "POST /api/ingest/commit": {
-      "loadId": "LOAD-1791086637166"
+      "loadId": "LOAD-1791096444574"
     },
     "POST /api/ingest/submit": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791086637166"
+      "loadId": "LOAD-1791096444574"
     },
     "POST /api/onboarding/ocr": {
       "documentType": "emirates-id",

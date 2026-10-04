@@ -336,6 +336,23 @@ export function buildWorld(): World {
     policyId: 'MTR-0441', claim: claims, claimId: motorClaim.id,
     paid: money(1150_00, currency), at: '2026-10-02T09:00:00+04:00', by: 'recovery-desk',
   });
+  // A catastrophe: the motor book takes a 1,600,000 storm loss, the treaty's 1,000,000 retention is
+  // ours and Emirates Re carries the next 600,000 of it. That cover is then reinstated — free, the
+  // first one — and the second reinstatement would cost half the annual premium pro rata.
+  const catastrophes = [
+    { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, currency), at: '2026-09-15T10:00:00+04:00' },
+  ];
+  for (const event of catastrophes) {
+    reinsurance.recoverEvent('XOL-CAT-5M', { ...event, by: 'catastrophe-desk' });
+    reinsurance.reinstate('XOL-CAT-5M', { at: '2026-09-16T09:00:00+04:00', by: 'reinsurance/desk' });
+  }
+  // The aggregate stop loss is deposit accounted: the premium paid on account is an asset, not an
+  // expense, and the period is settled later against the real subject premium at the agreed rate on
+  // line. Two instalments are on account here; the settlement is left to the console, because a
+  // screen that shows the return premium appear is worth more than a figure already baked in.
+  reinsurance.openDeposit('AGG-SL-DEPOSIT', { amount: money(200_000_00, currency), at: '2026-01-12T10:00:00+04:00', instalment: 1 });
+  reinsurance.openDeposit('AGG-SL-DEPOSIT', { amount: money(100_000_00, currency), at: '2026-07-01T10:00:00+04:00', instalment: 2 });
+
   // Retakaful is ceded on the tabarru that went into the risk fund, and the journal carries the fund.
   const tabarru = applyBps(money(6000_00, currency), tkfConfig.tabarruBps);   // the two TK-9001 contributions
   const retakafulCession = retakaful.cedePremium({
@@ -675,6 +692,20 @@ export function reinsuranceSnapshot(w: World) {
       premiumWritten: formatAmount(t.premiumWritten), premiumCeded: formatAmount(t.premiumCeded),
       premiumCededPct: t.premiumCededBps / 100,
       commissionEarned: formatAmount(t.commissionEarned), recoveries: formatAmount(t.recoveries),
+      treatment: t.treatment,
+      limit: formatAmount(t.cover.limit), consumed: formatAmount(t.cover.consumed),
+      available: formatAmount(t.cover.available), exhausted: t.cover.exhausted,
+      reinstatementsUsed: t.reinstatementsUsed, reinstatementsLeft: t.reinstatementsLeft,
+    })),
+    reinstatements: s.reinstatements.map((r) => ({
+      treatyId: r.treatyId, sequence: r.sequence, restored: formatAmount(r.restored), premium: formatAmount(r.premium),
+      free: r.free, at: r.at, available: formatAmount(r.available), journalId: r.journalId ?? null,
+    })),
+    deposits: s.deposits.map((d) => ({
+      treatyId: d.treatyId, depositPaid: formatAmount(d.depositPaid),
+      technicalPremium: d.technicalPremium ? formatAmount(d.technicalPremium) : null,
+      settled: d.settled, treatment: d.treatment, assetRemaining: formatAmount(d.assetRemaining),
+      adjustments: d.adjustments.map((a) => ({ at: a.at, kind: a.kind, amount: formatAmount(a.amount), journalId: a.journalId })),
     })),
   });
   return {
@@ -713,8 +744,12 @@ export function reinsuranceSnapshot(w: World) {
     })(),
     recoveries: w.reinsurance.recoveryList().map((r) => ({
       claimId: r.claimId, recoveryId: r.recoveryId, treatyId: r.treatyId,
-      amount: formatAmount(r.amount), at: r.at,
+      amount: formatAmount(r.amount), at: r.at, treatment: r.treatment,
     })),
+    events: w.reinsurance.eventRecoveryList().map((e) => ({
+      eventId: e.eventId, treatyId: e.treatyId, amount: formatAmount(e.amount), at: e.at, journalId: e.journalId,
+    })),
+    cover: w.reinsurance.coverState('XOL-CAT-5M'),
   };
 }
 
