@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T09:39:54.650Z",
+  "generatedAt": "2026-10-04T10:02:46.784Z",
   "base": "http://127.0.0.1:8787",
   "viewport": {
     "width": 1600,
@@ -13,9 +13,9 @@
       "blurb": "One tenant, three entities, two currencies: the whole book on one screen, with both entity ledgers proving balanced.",
       "screenshot": "screens/overview.png",
       "screenshotFull": "screens/overview-full.png",
-      "video": "video/overview.webm",
-      "videoFallback": null,
-      "bytes": 443607
+      "video": "video/overview.mp4",
+      "videoFallback": "video/overview.webm",
+      "bytes": 451062
     },
     {
       "id": "policyholder",
@@ -24,9 +24,9 @@
       "blurb": "Look-through from a unit-linked policy into the actual instruments it holds — real prices, with the date each price was taken.",
       "screenshot": "screens/policyholder.png",
       "screenshotFull": "screens/policyholder-full.png",
-      "video": "video/policyholder.webm",
-      "videoFallback": null,
-      "bytes": 1083844
+      "video": "video/policyholder.mp4",
+      "videoFallback": "video/policyholder.webm",
+      "bytes": 1100238
     },
     {
       "id": "decisions",
@@ -35,9 +35,9 @@
       "blurb": "Price a switch and a withdrawal before anything moves: units, price, valuation date, dealing rule and fees, plus the labelled projection envelopes.",
       "screenshot": "screens/decisions.png",
       "screenshotFull": "screens/decisions-full.png",
-      "video": "video/decisions.webm",
-      "videoFallback": null,
-      "bytes": 1194981
+      "video": "video/decisions.mp4",
+      "videoFallback": "video/decisions.webm",
+      "bytes": 1241519
     },
     {
       "id": "cover",
@@ -46,9 +46,9 @@
       "blurb": "Micro-duration cover: stop it, advance the clock and watch nothing accrue, start it again and watch only the active days charge.",
       "screenshot": "screens/cover.png",
       "screenshotFull": "screens/cover-full.png",
-      "video": "video/cover.webm",
-      "videoFallback": null,
-      "bytes": 1151246
+      "video": "video/cover.mp4",
+      "videoFallback": "video/cover.webm",
+      "bytes": 1161016
     },
     {
       "id": "funds",
@@ -57,9 +57,9 @@
       "blurb": "The NAV engine behind every price: cut-off, business days, floor price with a named residual, and a reconciliation that has to tie exactly.",
       "screenshot": "screens/funds.png",
       "screenshotFull": "screens/funds-full.png",
-      "video": "video/funds.webm",
-      "videoFallback": null,
-      "bytes": 483431
+      "video": "video/funds.mp4",
+      "videoFallback": "video/funds.webm",
+      "bytes": 488624
     },
     {
       "id": "takaful",
@@ -68,9 +68,9 @@
       "blurb": "Three segregated pools, a claim paid from the risk fund with qard hasan, and a surplus blocked until the actuary, the Shariah Committee and the board have signed.",
       "screenshot": "screens/takaful.png",
       "screenshotFull": "screens/takaful-full.png",
-      "video": "video/takaful.webm",
-      "videoFallback": null,
-      "bytes": 1429753
+      "video": "video/takaful.mp4",
+      "videoFallback": "video/takaful.webm",
+      "bytes": 1419094
     },
     {
       "id": "group",
@@ -79,9 +79,9 @@
       "blurb": "Three entities and two currencies consolidated: closing rate for the balance sheet, average rate for the result, historical rate for equity, intercompany eliminated and a 30% minority stated.",
       "screenshot": "screens/group.png",
       "screenshotFull": "screens/group-full.png",
-      "video": "video/group.webm",
-      "videoFallback": null,
-      "bytes": 1124135
+      "video": "video/group.mp4",
+      "videoFallback": "video/group.webm",
+      "bytes": 1021170
     },
     {
       "id": "underwriting",
@@ -90,9 +90,9 @@
       "blurb": "A manual held as data: every loading, exclusion and evidence requirement with its reason — and an AI agent that may rate inside its limit but never decline.",
       "screenshot": "screens/underwriting.png",
       "screenshotFull": "screens/underwriting-full.png",
-      "video": "video/underwriting.webm",
-      "videoFallback": null,
-      "bytes": 1307160
+      "video": "video/underwriting.mp4",
+      "videoFallback": "video/underwriting.webm",
+      "bytes": 1314885
     },
     {
       "id": "claims",
@@ -101,9 +101,9 @@
       "blurb": "Triage, reserves as booked liabilities, authority-gated approval, settlement releasing the reserve and recoveries as their own income — with a pooled takaful claim paid from the risk fund.",
       "screenshot": "screens/claims.png",
       "screenshotFull": "screens/claims-full.png",
-      "video": "video/claims.webm",
-      "videoFallback": null,
-      "bytes": 1338453
+      "video": "video/claims.mp4",
+      "videoFallback": "video/claims.webm",
+      "bytes": 1357737
     },
     {
       "id": "reinsurance",
@@ -112,9 +112,9 @@
       "blurb": "Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss and a retakaful treaty — plus ageing of what reinsurers owe against their own settlement terms, a register-to-books reconciliation that states every difference, the security behind every counterparty, and the reporting extracts: the supervisory return in four schedules with eight controls that each name the account they tie to, the actuary’s exhibits with the limits of what they claim written on their face, and a bordereau per counterparty — with a return that does not tie refused issue, and a reissue that supersedes the last version rather than editing it.",
       "screenshot": "screens/reinsurance.png",
       "screenshotFull": "screens/reinsurance-full.png",
-      "video": "video/reinsurance.webm",
-      "videoFallback": null,
-      "bytes": 3401478
+      "video": "video/reinsurance.mp4",
+      "videoFallback": "video/reinsurance.webm",
+      "bytes": 3088038
     },
     {
       "id": "durability",
@@ -123,9 +123,9 @@
       "blurb": "Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — a restore drill, not a promise.",
       "screenshot": "screens/durability.png",
       "screenshotFull": "screens/durability-full.png",
-      "video": "video/durability.webm",
-      "videoFallback": null,
-      "bytes": 753647
+      "video": "video/durability.mp4",
+      "videoFallback": "video/durability.webm",
+      "bytes": 741665
     },
     {
       "id": "onboarding",
@@ -134,9 +134,9 @@
       "blurb": "Chip read, government lookup and OCR consensus with a per-field review queue, gated until consent and a need analysis are in place.",
       "screenshot": "screens/onboarding.png",
       "screenshotFull": "screens/onboarding-full.png",
-      "video": "video/onboarding.webm",
-      "videoFallback": null,
-      "bytes": 444452
+      "video": "video/onboarding.mp4",
+      "videoFallback": "video/onboarding.webm",
+      "bytes": 447528
     },
     {
       "id": "ingest",
@@ -145,9 +145,9 @@
       "blurb": "Any shape of file: columns typed from the data, bad rows quarantined with a reason, duplicates suppressed, and a reconciliation a supervisor can sign.",
       "screenshot": "screens/ingest.png",
       "screenshotFull": "screens/ingest-full.png",
-      "video": "video/ingest.webm",
-      "videoFallback": null,
-      "bytes": 1070341
+      "video": "video/ingest.mp4",
+      "videoFallback": "video/ingest.webm",
+      "bytes": 1098557
     },
     {
       "id": "parties",
@@ -156,9 +156,9 @@
       "blurb": "A consented cross-party lookup that returns only what was consented to, a refusal when it is not — and an access log with every attempt on it.",
       "screenshot": "screens/parties.png",
       "screenshotFull": "screens/parties-full.png",
-      "video": "video/parties.webm",
-      "videoFallback": null,
-      "bytes": 1001260
+      "video": "video/parties.mp4",
+      "videoFallback": "video/parties.webm",
+      "bytes": 1064028
     },
     {
       "id": "regulatory",
@@ -167,9 +167,9 @@
       "blurb": "Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored.",
       "screenshot": "screens/regulatory.png",
       "screenshotFull": "screens/regulatory-full.png",
-      "video": "video/regulatory.webm",
-      "videoFallback": null,
-      "bytes": 392549
+      "video": "video/regulatory.mp4",
+      "videoFallback": "video/regulatory.webm",
+      "bytes": 685353
     },
     {
       "id": "ai",
@@ -178,9 +178,9 @@
       "blurb": "Six prohibited intents, risk-gated approvals and a refusal that stays on the record — governance a regulator can read.",
       "screenshot": "screens/ai.png",
       "screenshotFull": "screens/ai-full.png",
-      "video": "video/ai.webm",
-      "videoFallback": null,
-      "bytes": 774217
+      "video": "video/ai.mp4",
+      "videoFallback": "video/ai.webm",
+      "bytes": 780048
     },
     {
       "id": "ledger",
@@ -189,9 +189,9 @@
       "blurb": "The trial balance and journal list for an entity, straight out of the double-entry ledger that every other module posts into.",
       "screenshot": "screens/ledger.png",
       "screenshotFull": "screens/ledger-full.png",
-      "video": "video/ledger.webm",
-      "videoFallback": null,
-      "bytes": 565991
+      "video": "video/ledger.mp4",
+      "videoFallback": "video/ledger.webm",
+      "bytes": 527017
     },
     {
       "id": "labels",
@@ -200,9 +200,9 @@
       "blurb": "The same platform, renamed per scope: the takaful window says Contribution where the conventional book says Premium, and neither leaks into the other.",
       "screenshot": "screens/labels.png",
       "screenshotFull": "screens/labels-full.png",
-      "video": "video/labels.webm",
-      "videoFallback": null,
-      "bytes": 513035
+      "video": "video/labels.mp4",
+      "videoFallback": "video/labels.webm",
+      "bytes": 524922
     },
     {
       "id": "tour",
@@ -211,9 +211,9 @@
       "blurb": "The guided sixty minutes, held as data: eleven steps with a live clock, each saying where to go, what to press, what to expect and why it matters.",
       "screenshot": "screens/tour.png",
       "screenshotFull": "screens/tour-full.png",
-      "video": "video/tour.webm",
-      "videoFallback": null,
-      "bytes": 1049726
+      "video": "video/tour.mp4",
+      "videoFallback": "video/tour.webm",
+      "bytes": 1121703
     }
   ]
 }
