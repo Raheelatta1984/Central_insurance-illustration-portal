@@ -12,6 +12,34 @@ curl -s -m 20 "$B/regulatory/uae" > /dev/null
 curl -s -m 20 "$B/submissions" > /dev/null
 curl -s -m 20 "$B/extracts" > /dev/null
 
+# every tab the console presses, in the console's order
+post cover/stop
+post cover/tick
+post cover/start
+post cover/tick
+post takaful/approve
+post group/consolidate
+post underwriting/decide
+post claims/approve
+post claims/register
+post ingest/submit
+post ingest/commit
+post partner/lookup
+post ai/approve
+post ai/execute
+post wording/generate
+
+# the regulatory tab, the filing and the supervisor's answer
+post preview/switch
+post preview/withdrawal
+post regulatory/uae/check
+post regulatory/uae/check '{"scenario":"unrated-counterparty"}'
+post regulatory/uae/check '{"scenario":"participant-money"}'
+post wording/generate
+post submissions/file
+post submissions/acknowledge
+post claims/settle
+
 # the reinsurance tab, in the order the buttons are pressed
 post reinsurance/cede
 post reinsurance/facultative

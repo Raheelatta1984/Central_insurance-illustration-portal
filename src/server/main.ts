@@ -278,6 +278,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       json(res, 200, {
         ok: report.ok,
         detail: report.detail,
+        actions: report.actions,
         books: report.books,
         replays: report.replays,
         fingerprint: sealed.snapshot.fingerprint,
