@@ -9,6 +9,9 @@ npm install
 npm run verify     # typecheck + 73 tests + build
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
+
+# activate CI (needs a token with the `workflow` scope, or paste it in the GitHub UI):
+mkdir -p .github/workflows && cp docs/ci-workflow.yml .github/workflows/ci.yml
 ```
 
 ## Why this exists
@@ -29,6 +32,7 @@ This platform is built the other way round: **takaful-native, group-finance-nati
 | [`AGENTS.md`](AGENTS.md) | The worker contract every agent follows: claiming, ownership, evidence, risk gates, ledger row |
 | [`docs/05-DECISIONS.md`](docs/05-DECISIONS.md) | The decisions I took on your behalf, each with its rationale and how to reverse it |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
+| [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
 
 ## The build system in one paragraph
