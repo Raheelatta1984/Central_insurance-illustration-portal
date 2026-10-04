@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T09:58:04.368Z",
+  "capturedAt": "2026-10-04T10:13:32.725Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -3908,8 +3908,8 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T09:57:57.513Z",
-        "fingerprint": "a3ebfb2d03a93679",
+        "takenAt": "2026-10-04T10:13:25.887Z",
+        "fingerprint": "4d21f76dffaff774",
         "accounts": 168,
         "journals": 87,
         "fxRates": 2,
@@ -4255,6 +4255,394 @@
             }
           ]
         }
+      }
+    },
+    "GET /api/wording": {
+      "status": 200,
+      "body": {
+        "templates": [
+          {
+            "type": "bordereau-cover",
+            "title": "Cover note to the reinsurer, with the treaty bordereau",
+            "titleAr": "خطاب إحاطة إلى معيد التأمين، مع كشف الاتفاقية",
+            "purpose": "Sends the period’s cession bordereau, names the accounts it was drawn from and the terms on which the balance is due.",
+            "purposeAr": "يُرسل كشف التنازلات عن الفترة، ويحدد الحسابات التي استُخرج منها والشروط التي يستحق بموجبها الرصيد.",
+            "labels": [
+              "policy.premium",
+              "policy.sumAssured",
+              "fund.value"
+            ],
+            "required": [
+              "W-BASIS-01",
+              "W-LICENCE-01",
+              "W-SETTLE-01"
+            ]
+          },
+          {
+            "type": "return-cover",
+            "title": "Cover letter to the supervisor, with the regulatory return",
+            "titleAr": "خطاب إحاطة إلى الجهة الرقابية، مع الإقرار الرقابي",
+            "purpose": "Files the period’s return, names its schedules and controls, and states every difference accepted and by whom.",
+            "purposeAr": "يودع إقرار الفترة، ويحدد جداوله وضوابطه، ويبيّن كل فرق تم قبوله ومن قبله.",
+            "labels": [
+              "policy.premium",
+              "policy.contribution"
+            ],
+            "required": [
+              "W-BASIS-01",
+              "W-LIMIT-01",
+              "W-LICENCE-02"
+            ]
+          },
+          {
+            "type": "treaty-note",
+            "title": "Treaty file note",
+            "titleAr": "مذكرة ملف الاتفاقية",
+            "purpose": "Records the basis of the treaty, the approved plan it sits under, the security held and the rule book’s decision on the placement.",
+            "purposeAr": "يُدوّن أساس الاتفاقية، والخطة المعتمدة التي تندرج تحتها، والضمانات المحتفظ بها، وقرار كتاب القواعد بشأن الإسناد.",
+            "labels": [
+              "policy.premium",
+              "policy.contribution",
+              "takaful.riskFund",
+              "takaful.operator"
+            ],
+            "required": [
+              "W-BASIS-01",
+              "W-LICENCE-01",
+              "W-SEG-01"
+            ]
+          },
+          {
+            "type": "customer-reinsurance-note",
+            "title": "Note to the policyholder on reinsurance",
+            "titleAr": "ملاحظة إلى حامل الوثيقة بشأن إعادة التأمين",
+            "purpose": "Tells the customer that the risk is reinsured, what that does and does not give them, and how their data moves.",
+            "purposeAr": "يُخبر العميل بأن الخطر معاد تأمينه، وما يمنحه ذلك وما لا يمنحه، وكيف تُنقل بياناته.",
+            "labels": [
+              "policy.holder",
+              "policy.premium"
+            ],
+            "required": [
+              "W-CUST-01",
+              "W-LICENCE-02",
+              "W-LIMIT-02"
+            ]
+          }
+        ],
+        "disclaimers": [
+          {
+            "id": "W-BASIS-01",
+            "kind": "basis",
+            "instrument": null,
+            "text": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+            "textAr": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+            "appliesTo": [
+              "bordereau-cover",
+              "return-cover",
+              "treaty-note"
+            ]
+          },
+          {
+            "id": "W-LICENCE-01",
+            "kind": "instrument",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)",
+            "text": "Reinsurance under this document has been placed only with a company licensed to carry the class of business ceded, as Article (42) requires.",
+            "textAr": "لم تُسند إعادة التأمين الواردة في هذا المستند إلا إلى شركة مرخصة لمزاولة نوع التأمين المتنازل عنه، وفقاً لما تقتضيه المادة (42).",
+            "appliesTo": [
+              "bordereau-cover",
+              "treaty-note"
+            ]
+          },
+          {
+            "id": "W-LICENCE-02",
+            "kind": "instrument",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Articles (42) and (64)",
+            "text": "The risk is carried by a company licensed in the United Arab Emirates and reinsured inside or outside the State; where a counterparty is licensed in a financial free zone it may write reinsurance outside the zone and no other insurance activity.",
+            "textAr": "يحمل الخطر شركة مرخصة في دولة الإمارات العربية المتحدة ويُعاد تأمينه داخل الدولة أو خارجها؛ وإذا كان الطرف المرخص له في منطقة مالية حرة فلا يجوز له مزاولة أي نشاط تأميني خارج المنطقة باستثناء إعادة التأمين.",
+            "appliesTo": [
+              "return-cover",
+              "customer-reinsurance-note"
+            ]
+          },
+          {
+            "id": "W-SETTLE-01",
+            "kind": "basis",
+            "instrument": null,
+            "text": "Balances are payable within the settlement terms of the treaty named above; recoveries carry the security stated in the security register, and any part of that security that is not cash is disclosed as off balance sheet.",
+            "textAr": "تُسدد الأرصدة خلال مهلة التسوية المنصوص عليها في الاتفاقية المذكورة أعلاه؛ وتُحمّل المبالغ المستردة بالضمانات المبينة في سجل الضمانات، ويُفصح عن أي جزء من تلك الضمانات غير نقدي خارج الميزانية.",
+            "appliesTo": [
+              "bordereau-cover"
+            ]
+          },
+          {
+            "id": "W-LIMIT-01",
+            "kind": "limitation",
+            "instrument": null,
+            "text": "The return states paid and reserved facts and where its arithmetic stops: no IBNR, no discounting and no unexpired premium on annual business.",
+            "textAr": "يبيّن الإقرار الوقائع المدفوعة والمحتسبة ونقطة توقف حساباته: لا احتياطي للخسائر المتكبدة ولم تُبلغ، ولا خصم، ولا أقساط غير مكتسبة على الأعمال السنوية.",
+            "appliesTo": [
+              "return-cover"
+            ]
+          },
+          {
+            "id": "W-LIMIT-02",
+            "kind": "limitation",
+            "instrument": null,
+            "text": "How we settle a claim with you does not depend on how or whether we reinsure it, and a reinsurer is not answerable to you directly.",
+            "textAr": "لا تتوقف طريقة تسوية مطالبتك معنا على كيفية إعادة تأمين الخطر أو على إعادة تأمينه من عدمه، ولا يُسأل معيد التأمين أمامك مباشرة.",
+            "appliesTo": [
+              "customer-reinsurance-note"
+            ]
+          },
+          {
+            "id": "W-SEG-01",
+            "kind": "segregation",
+            "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations",
+            "text": "Participant risk money is held in the participant risk fund and may only be protected by a retakaful arrangement; the operator’s share is the wakalah fee or its share of surplus, never participant money.",
+            "textAr": "تُحفظ أموال مخاطر المشاركين في صندوق مخاطر المشاركين ولا يجوز حمايتها إلا من خلال ترتيب إعادة تكافل؛ وحصة المشغل هي أجر الوكالة أو نصيبه من الفائض، وليست أموال المشاركين.",
+            "appliesTo": [
+              "treaty-note"
+            ]
+          },
+          {
+            "id": "W-CUST-01",
+            "kind": "illustration",
+            "instrument": "CBUAE consumer protection requirements",
+            "text": "This note explains a reinsurance arrangement; it is not advice, an offer of cover, or a promise that a claim will be paid.",
+            "textAr": "توضح هذه الملاحظة ترتيب إعادة تأمين؛ وهي ليست نصيحة أو عرضاً للتغطية أو وعداً بسداد المطالبة.",
+            "appliesTo": [
+              "customer-reinsurance-note"
+            ]
+          }
+        ],
+        "documents": [
+          {
+            "id": "W-BORD-00001",
+            "version": 1,
+            "type": "bordereau-cover",
+            "scope": "conventional",
+            "locale": "en",
+            "title": "Cover note to the reinsurer, with the treaty bordereau",
+            "titleAr": "خطاب إحاطة إلى معيد التأمين، مع كشف الاتفاقية",
+            "packVersion": "2026.1",
+            "fingerprint": "1b9abb70453cab1e",
+            "generatedAt": "2026-10-05T17:10:00+04:00",
+            "by": "finance/reporting",
+            "tiesTo": [
+              "GET /api/extracts (RS-A, RS-D)",
+              "ALK-CONV:REINS:CEDED-PREMIUM"
+            ],
+            "limitation": "Generated from 4 templates and 8 mandated paragraphs held as data under pack 2026.1; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a label but never a mandated paragraph.",
+            "supersedes": null,
+            "changesSummary": null,
+            "disclaimers": [
+              {
+                "id": "W-BASIS-01",
+                "instrument": null
+              },
+              {
+                "id": "W-LICENCE-01",
+                "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+              },
+              {
+                "id": "W-SETTLE-01",
+                "instrument": null
+              }
+            ],
+            "fields": [
+              {
+                "key": "policy.premium",
+                "label": "Premium",
+                "labelAr": "القسط",
+                "value": "3,819.63 AED"
+              },
+              {
+                "key": "policy.sumAssured",
+                "label": "Sum assured",
+                "labelAr": "مبلغ التأمين",
+                "value": "250,000.00 AED"
+              },
+              {
+                "key": "fund.value",
+                "label": "Fund value",
+                "labelAr": "قيمة الصندوق",
+                "value": "106,271.73 AED"
+              }
+            ],
+            "blocks": [
+              {
+                "id": "heading",
+                "kind": "heading",
+                "en": "Cover note to the reinsurer, with the treaty bordereau",
+                "ar": "خطاب إحاطة إلى معيد التأمين، مع كشف الاتفاقية",
+                "instrument": null
+              },
+              {
+                "id": "purpose",
+                "kind": "purpose",
+                "en": "Sends the period’s cession bordereau, names the accounts it was drawn from and the terms on which the balance is due.",
+                "ar": "يُرسل كشف التنازلات عن الفترة، ويحدد الحسابات التي استُخرج منها والشروط التي يستحق بموجبها الرصيد.",
+                "instrument": null
+              },
+              {
+                "id": "context",
+                "kind": "body",
+                "en": "Al Khaleej Insurance (conventional), in respect of Emirates Re, for the period 2026-01-01 to 2026-10-05.",
+                "ar": "Al Khaleej Insurance (conventional)، بخصوص Emirates Re، عن الفترة 2026-01-01 to 2026-10-05.",
+                "instrument": null
+              },
+              {
+                "id": "W-BASIS-01",
+                "kind": "disclaimer",
+                "en": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+                "ar": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+                "instrument": null
+              },
+              {
+                "id": "W-LICENCE-01",
+                "kind": "disclaimer",
+                "en": "Reinsurance under this document has been placed only with a company licensed to carry the class of business ceded, as Article (42) requires.",
+                "ar": "لم تُسند إعادة التأمين الواردة في هذا المستند إلا إلى شركة مرخصة لمزاولة نوع التأمين المتنازل عنه، وفقاً لما تقتضيه المادة (42).",
+                "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+              },
+              {
+                "id": "W-SETTLE-01",
+                "kind": "disclaimer",
+                "en": "Balances are payable within the settlement terms of the treaty named above; recoveries carry the security stated in the security register, and any part of that security that is not cash is disclosed as off balance sheet.",
+                "ar": "تُسدد الأرصدة خلال مهلة التسوية المنصوص عليها في الاتفاقية المذكورة أعلاه؛ وتُحمّل المبالغ المستردة بالضمانات المبينة في سجل الضمانات، ويُفصح عن أي جزء من تلك الضمانات غير نقدي خارج الميزانية.",
+                "instrument": null
+              },
+              {
+                "id": "closing",
+                "kind": "closing",
+                "en": "Queries on this bordereau should be raised with the reinsurance desk within the settlement terms stated above.",
+                "ar": "تُقدَّم الاستفسارات بشأن هذا الكشف إلى مكتب إعادة التأمين خلال مهلة التسوية المذكورة أعلاه.",
+                "instrument": null
+              }
+            ]
+          },
+          {
+            "id": "W-TREA-00002",
+            "version": 1,
+            "type": "treaty-note",
+            "scope": "takaful",
+            "locale": "en",
+            "title": "Treaty file note",
+            "titleAr": "مذكرة ملف الاتفاقية",
+            "packVersion": "2026.1",
+            "fingerprint": "fc4501b571a47bb3",
+            "generatedAt": "2026-10-05T17:20:00+04:00",
+            "by": "takaful/reinsurance-desk",
+            "tiesTo": [
+              "GET /api/extracts (the window files its own return)",
+              "ALK-TKF:REINS:CEDED-PREMIUM"
+            ],
+            "limitation": "Generated from 4 templates and 8 mandated paragraphs held as data under pack 2026.1; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a label but never a mandated paragraph.",
+            "supersedes": null,
+            "changesSummary": null,
+            "disclaimers": [
+              {
+                "id": "W-BASIS-01",
+                "instrument": null
+              },
+              {
+                "id": "W-LICENCE-01",
+                "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+              },
+              {
+                "id": "W-SEG-01",
+                "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations"
+              }
+            ],
+            "fields": [
+              {
+                "key": "policy.contribution",
+                "label": "Contribution",
+                "labelAr": "المساهمة",
+                "value": "1,800.00 AED"
+              },
+              {
+                "key": "takaful.riskFund",
+                "label": "Participant risk fund",
+                "labelAr": "صندوق مخاطر المشاركين",
+                "value": "Participant risk fund (segregated from the operator)"
+              },
+              {
+                "key": "takaful.operator",
+                "label": "Operator",
+                "labelAr": "المشغل",
+                "value": "Al Khaleej Takaful (operator)"
+              }
+            ],
+            "blocks": [
+              {
+                "id": "heading",
+                "kind": "heading",
+                "en": "Treaty file note",
+                "ar": "مذكرة ملف الاتفاقية",
+                "instrument": null
+              },
+              {
+                "id": "purpose",
+                "kind": "purpose",
+                "en": "Records the basis of the treaty, the approved plan it sits under, the security held and the rule book’s decision on the placement.",
+                "ar": "يُدوّن أساس الاتفاقية، والخطة المعتمدة التي تندرج تحتها، والضمانات المحتفظ بها، وقرار كتاب القواعد بشأن الإسناد.",
+                "instrument": null
+              },
+              {
+                "id": "context",
+                "kind": "body",
+                "en": "Al Khaleej Takaful Window, in respect of MENA Retakaful, for the period 2026-01-01 to 2026-10-05.",
+                "ar": "Al Khaleej Takaful Window، بخصوص MENA Retakaful، عن الفترة 2026-01-01 to 2026-10-05.",
+                "instrument": null
+              },
+              {
+                "id": "W-BASIS-01",
+                "kind": "disclaimer",
+                "en": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+                "ar": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+                "instrument": null
+              },
+              {
+                "id": "W-LICENCE-01",
+                "kind": "disclaimer",
+                "en": "Reinsurance under this document has been placed only with a company licensed to carry the class of business ceded, as Article (42) requires.",
+                "ar": "لم تُسند إعادة التأمين الواردة في هذا المستند إلا إلى شركة مرخصة لمزاولة نوع التأمين المتنازل عنه، وفقاً لما تقتضيه المادة (42).",
+                "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+              },
+              {
+                "id": "W-SEG-01",
+                "kind": "disclaimer",
+                "en": "Participant risk money is held in the participant risk fund and may only be protected by a retakaful arrangement; the operator’s share is the wakalah fee or its share of surplus, never participant money.",
+                "ar": "تُحفظ أموال مخاطر المشاركين في صندوق مخاطر المشاركين ولا يجوز حمايتها إلا من خلال ترتيب إعادة تكافل؛ وحصة المشغل هي أجر الوكالة أو نصيبه من الفائض، وليست أموال المشاركين.",
+                "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations"
+              },
+              {
+                "id": "closing",
+                "kind": "closing",
+                "en": "This note is filed with the treaty and supersedes any earlier note for the same treaty.",
+                "ar": "تُحفظ هذه المذكرة مع الاتفاقية وتحل محل أي مذكرة سابقة لنفس الاتفاقية.",
+                "instrument": null
+              }
+            ]
+          }
+        ],
+        "verify": [
+          {
+            "id": "W-BORD-00001",
+            "fingerprint": "1b9abb70453cab1e",
+            "recomputed": "1b9abb70453cab1e",
+            "intact": true,
+            "detail": "W-BORD-00001 reproduces: the labels, the fields and the mandated paragraphs are exactly the ones it was generated with"
+          },
+          {
+            "id": "W-TREA-00002",
+            "fingerprint": "fc4501b571a47bb3",
+            "recomputed": "fc4501b571a47bb3",
+            "intact": true,
+            "detail": "W-TREA-00002 reproduces: the labels, the fields and the mandated paragraphs are exactly the ones it was generated with"
+          }
+        ]
       }
     },
     "GET /api/world": {
@@ -9111,6 +9499,391 @@
           },
           "limitation": "The rule book holds 12 rules as data, each citing its instrument and clause as published on 30 November 2023; Article numbers are not re-read from the rulebook by this engine, and a citation that has moved shows up as a finding to update rather than as silence. Decisions are append-only: a later placement is answered with a new decision."
         },
+        "wording": {
+          "templates": [
+            {
+              "type": "bordereau-cover",
+              "title": "Cover note to the reinsurer, with the treaty bordereau",
+              "titleAr": "خطاب إحاطة إلى معيد التأمين، مع كشف الاتفاقية",
+              "purpose": "Sends the period’s cession bordereau, names the accounts it was drawn from and the terms on which the balance is due.",
+              "purposeAr": "يُرسل كشف التنازلات عن الفترة، ويحدد الحسابات التي استُخرج منها والشروط التي يستحق بموجبها الرصيد.",
+              "labels": [
+                "policy.premium",
+                "policy.sumAssured",
+                "fund.value"
+              ],
+              "required": [
+                "W-BASIS-01",
+                "W-LICENCE-01",
+                "W-SETTLE-01"
+              ]
+            },
+            {
+              "type": "return-cover",
+              "title": "Cover letter to the supervisor, with the regulatory return",
+              "titleAr": "خطاب إحاطة إلى الجهة الرقابية، مع الإقرار الرقابي",
+              "purpose": "Files the period’s return, names its schedules and controls, and states every difference accepted and by whom.",
+              "purposeAr": "يودع إقرار الفترة، ويحدد جداوله وضوابطه، ويبيّن كل فرق تم قبوله ومن قبله.",
+              "labels": [
+                "policy.premium",
+                "policy.contribution"
+              ],
+              "required": [
+                "W-BASIS-01",
+                "W-LIMIT-01",
+                "W-LICENCE-02"
+              ]
+            },
+            {
+              "type": "treaty-note",
+              "title": "Treaty file note",
+              "titleAr": "مذكرة ملف الاتفاقية",
+              "purpose": "Records the basis of the treaty, the approved plan it sits under, the security held and the rule book’s decision on the placement.",
+              "purposeAr": "يُدوّن أساس الاتفاقية، والخطة المعتمدة التي تندرج تحتها، والضمانات المحتفظ بها، وقرار كتاب القواعد بشأن الإسناد.",
+              "labels": [
+                "policy.premium",
+                "policy.contribution",
+                "takaful.riskFund",
+                "takaful.operator"
+              ],
+              "required": [
+                "W-BASIS-01",
+                "W-LICENCE-01",
+                "W-SEG-01"
+              ]
+            },
+            {
+              "type": "customer-reinsurance-note",
+              "title": "Note to the policyholder on reinsurance",
+              "titleAr": "ملاحظة إلى حامل الوثيقة بشأن إعادة التأمين",
+              "purpose": "Tells the customer that the risk is reinsured, what that does and does not give them, and how their data moves.",
+              "purposeAr": "يُخبر العميل بأن الخطر معاد تأمينه، وما يمنحه ذلك وما لا يمنحه، وكيف تُنقل بياناته.",
+              "labels": [
+                "policy.holder",
+                "policy.premium"
+              ],
+              "required": [
+                "W-CUST-01",
+                "W-LICENCE-02",
+                "W-LIMIT-02"
+              ]
+            }
+          ],
+          "disclaimers": [
+            {
+              "id": "W-BASIS-01",
+              "kind": "basis",
+              "instrument": null,
+              "text": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+              "textAr": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+              "appliesTo": [
+                "bordereau-cover",
+                "return-cover",
+                "treaty-note"
+              ]
+            },
+            {
+              "id": "W-LICENCE-01",
+              "kind": "instrument",
+              "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)",
+              "text": "Reinsurance under this document has been placed only with a company licensed to carry the class of business ceded, as Article (42) requires.",
+              "textAr": "لم تُسند إعادة التأمين الواردة في هذا المستند إلا إلى شركة مرخصة لمزاولة نوع التأمين المتنازل عنه، وفقاً لما تقتضيه المادة (42).",
+              "appliesTo": [
+                "bordereau-cover",
+                "treaty-note"
+              ]
+            },
+            {
+              "id": "W-LICENCE-02",
+              "kind": "instrument",
+              "instrument": "Federal Decree-Law No. 48 of 2023, Articles (42) and (64)",
+              "text": "The risk is carried by a company licensed in the United Arab Emirates and reinsured inside or outside the State; where a counterparty is licensed in a financial free zone it may write reinsurance outside the zone and no other insurance activity.",
+              "textAr": "يحمل الخطر شركة مرخصة في دولة الإمارات العربية المتحدة ويُعاد تأمينه داخل الدولة أو خارجها؛ وإذا كان الطرف المرخص له في منطقة مالية حرة فلا يجوز له مزاولة أي نشاط تأميني خارج المنطقة باستثناء إعادة التأمين.",
+              "appliesTo": [
+                "return-cover",
+                "customer-reinsurance-note"
+              ]
+            },
+            {
+              "id": "W-SETTLE-01",
+              "kind": "basis",
+              "instrument": null,
+              "text": "Balances are payable within the settlement terms of the treaty named above; recoveries carry the security stated in the security register, and any part of that security that is not cash is disclosed as off balance sheet.",
+              "textAr": "تُسدد الأرصدة خلال مهلة التسوية المنصوص عليها في الاتفاقية المذكورة أعلاه؛ وتُحمّل المبالغ المستردة بالضمانات المبينة في سجل الضمانات، ويُفصح عن أي جزء من تلك الضمانات غير نقدي خارج الميزانية.",
+              "appliesTo": [
+                "bordereau-cover"
+              ]
+            },
+            {
+              "id": "W-LIMIT-01",
+              "kind": "limitation",
+              "instrument": null,
+              "text": "The return states paid and reserved facts and where its arithmetic stops: no IBNR, no discounting and no unexpired premium on annual business.",
+              "textAr": "يبيّن الإقرار الوقائع المدفوعة والمحتسبة ونقطة توقف حساباته: لا احتياطي للخسائر المتكبدة ولم تُبلغ، ولا خصم، ولا أقساط غير مكتسبة على الأعمال السنوية.",
+              "appliesTo": [
+                "return-cover"
+              ]
+            },
+            {
+              "id": "W-LIMIT-02",
+              "kind": "limitation",
+              "instrument": null,
+              "text": "How we settle a claim with you does not depend on how or whether we reinsure it, and a reinsurer is not answerable to you directly.",
+              "textAr": "لا تتوقف طريقة تسوية مطالبتك معنا على كيفية إعادة تأمين الخطر أو على إعادة تأمينه من عدمه، ولا يُسأل معيد التأمين أمامك مباشرة.",
+              "appliesTo": [
+                "customer-reinsurance-note"
+              ]
+            },
+            {
+              "id": "W-SEG-01",
+              "kind": "segregation",
+              "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations",
+              "text": "Participant risk money is held in the participant risk fund and may only be protected by a retakaful arrangement; the operator’s share is the wakalah fee or its share of surplus, never participant money.",
+              "textAr": "تُحفظ أموال مخاطر المشاركين في صندوق مخاطر المشاركين ولا يجوز حمايتها إلا من خلال ترتيب إعادة تكافل؛ وحصة المشغل هي أجر الوكالة أو نصيبه من الفائض، وليست أموال المشاركين.",
+              "appliesTo": [
+                "treaty-note"
+              ]
+            },
+            {
+              "id": "W-CUST-01",
+              "kind": "illustration",
+              "instrument": "CBUAE consumer protection requirements",
+              "text": "This note explains a reinsurance arrangement; it is not advice, an offer of cover, or a promise that a claim will be paid.",
+              "textAr": "توضح هذه الملاحظة ترتيب إعادة تأمين؛ وهي ليست نصيحة أو عرضاً للتغطية أو وعداً بسداد المطالبة.",
+              "appliesTo": [
+                "customer-reinsurance-note"
+              ]
+            }
+          ],
+          "documents": [
+            {
+              "id": "W-BORD-00001",
+              "version": 1,
+              "type": "bordereau-cover",
+              "scope": "conventional",
+              "locale": "en",
+              "title": "Cover note to the reinsurer, with the treaty bordereau",
+              "titleAr": "خطاب إحاطة إلى معيد التأمين، مع كشف الاتفاقية",
+              "packVersion": "2026.1",
+              "fingerprint": "1b9abb70453cab1e",
+              "generatedAt": "2026-10-05T17:10:00+04:00",
+              "by": "finance/reporting",
+              "tiesTo": [
+                "GET /api/extracts (RS-A, RS-D)",
+                "ALK-CONV:REINS:CEDED-PREMIUM"
+              ],
+              "limitation": "Generated from 4 templates and 8 mandated paragraphs held as data under pack 2026.1; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a label but never a mandated paragraph.",
+              "supersedes": null,
+              "changesSummary": null,
+              "disclaimers": [
+                {
+                  "id": "W-BASIS-01",
+                  "instrument": null
+                },
+                {
+                  "id": "W-LICENCE-01",
+                  "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+                },
+                {
+                  "id": "W-SETTLE-01",
+                  "instrument": null
+                }
+              ],
+              "fields": [
+                {
+                  "key": "policy.premium",
+                  "label": "Premium",
+                  "labelAr": "القسط",
+                  "value": "3,819.63 AED"
+                },
+                {
+                  "key": "policy.sumAssured",
+                  "label": "Sum assured",
+                  "labelAr": "مبلغ التأمين",
+                  "value": "250,000.00 AED"
+                },
+                {
+                  "key": "fund.value",
+                  "label": "Fund value",
+                  "labelAr": "قيمة الصندوق",
+                  "value": "106,271.73 AED"
+                }
+              ],
+              "blocks": [
+                {
+                  "id": "heading",
+                  "kind": "heading",
+                  "en": "Cover note to the reinsurer, with the treaty bordereau",
+                  "ar": "خطاب إحاطة إلى معيد التأمين، مع كشف الاتفاقية",
+                  "instrument": null
+                },
+                {
+                  "id": "purpose",
+                  "kind": "purpose",
+                  "en": "Sends the period’s cession bordereau, names the accounts it was drawn from and the terms on which the balance is due.",
+                  "ar": "يُرسل كشف التنازلات عن الفترة، ويحدد الحسابات التي استُخرج منها والشروط التي يستحق بموجبها الرصيد.",
+                  "instrument": null
+                },
+                {
+                  "id": "context",
+                  "kind": "body",
+                  "en": "Al Khaleej Insurance (conventional), in respect of Emirates Re, for the period 2026-01-01 to 2026-10-05.",
+                  "ar": "Al Khaleej Insurance (conventional)، بخصوص Emirates Re، عن الفترة 2026-01-01 to 2026-10-05.",
+                  "instrument": null
+                },
+                {
+                  "id": "W-BASIS-01",
+                  "kind": "disclaimer",
+                  "en": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+                  "ar": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+                  "instrument": null
+                },
+                {
+                  "id": "W-LICENCE-01",
+                  "kind": "disclaimer",
+                  "en": "Reinsurance under this document has been placed only with a company licensed to carry the class of business ceded, as Article (42) requires.",
+                  "ar": "لم تُسند إعادة التأمين الواردة في هذا المستند إلا إلى شركة مرخصة لمزاولة نوع التأمين المتنازل عنه، وفقاً لما تقتضيه المادة (42).",
+                  "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+                },
+                {
+                  "id": "W-SETTLE-01",
+                  "kind": "disclaimer",
+                  "en": "Balances are payable within the settlement terms of the treaty named above; recoveries carry the security stated in the security register, and any part of that security that is not cash is disclosed as off balance sheet.",
+                  "ar": "تُسدد الأرصدة خلال مهلة التسوية المنصوص عليها في الاتفاقية المذكورة أعلاه؛ وتُحمّل المبالغ المستردة بالضمانات المبينة في سجل الضمانات، ويُفصح عن أي جزء من تلك الضمانات غير نقدي خارج الميزانية.",
+                  "instrument": null
+                },
+                {
+                  "id": "closing",
+                  "kind": "closing",
+                  "en": "Queries on this bordereau should be raised with the reinsurance desk within the settlement terms stated above.",
+                  "ar": "تُقدَّم الاستفسارات بشأن هذا الكشف إلى مكتب إعادة التأمين خلال مهلة التسوية المذكورة أعلاه.",
+                  "instrument": null
+                }
+              ]
+            },
+            {
+              "id": "W-TREA-00002",
+              "version": 1,
+              "type": "treaty-note",
+              "scope": "takaful",
+              "locale": "en",
+              "title": "Treaty file note",
+              "titleAr": "مذكرة ملف الاتفاقية",
+              "packVersion": "2026.1",
+              "fingerprint": "fc4501b571a47bb3",
+              "generatedAt": "2026-10-05T17:20:00+04:00",
+              "by": "takaful/reinsurance-desk",
+              "tiesTo": [
+                "GET /api/extracts (the window files its own return)",
+                "ALK-TKF:REINS:CEDED-PREMIUM"
+              ],
+              "limitation": "Generated from 4 templates and 8 mandated paragraphs held as data under pack 2026.1; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a label but never a mandated paragraph.",
+              "supersedes": null,
+              "changesSummary": null,
+              "disclaimers": [
+                {
+                  "id": "W-BASIS-01",
+                  "instrument": null
+                },
+                {
+                  "id": "W-LICENCE-01",
+                  "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+                },
+                {
+                  "id": "W-SEG-01",
+                  "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations"
+                }
+              ],
+              "fields": [
+                {
+                  "key": "policy.contribution",
+                  "label": "Contribution",
+                  "labelAr": "المساهمة",
+                  "value": "1,800.00 AED"
+                },
+                {
+                  "key": "takaful.riskFund",
+                  "label": "Participant risk fund",
+                  "labelAr": "صندوق مخاطر المشاركين",
+                  "value": "Participant risk fund (segregated from the operator)"
+                },
+                {
+                  "key": "takaful.operator",
+                  "label": "Operator",
+                  "labelAr": "المشغل",
+                  "value": "Al Khaleej Takaful (operator)"
+                }
+              ],
+              "blocks": [
+                {
+                  "id": "heading",
+                  "kind": "heading",
+                  "en": "Treaty file note",
+                  "ar": "مذكرة ملف الاتفاقية",
+                  "instrument": null
+                },
+                {
+                  "id": "purpose",
+                  "kind": "purpose",
+                  "en": "Records the basis of the treaty, the approved plan it sits under, the security held and the rule book’s decision on the placement.",
+                  "ar": "يُدوّن أساس الاتفاقية، والخطة المعتمدة التي تندرج تحتها، والضمانات المحتفظ بها، وقرار كتاب القواعد بشأن الإسناد.",
+                  "instrument": null
+                },
+                {
+                  "id": "context",
+                  "kind": "body",
+                  "en": "Al Khaleej Takaful Window, in respect of MENA Retakaful, for the period 2026-01-01 to 2026-10-05.",
+                  "ar": "Al Khaleej Takaful Window، بخصوص MENA Retakaful، عن الفترة 2026-01-01 to 2026-10-05.",
+                  "instrument": null
+                },
+                {
+                  "id": "W-BASIS-01",
+                  "kind": "disclaimer",
+                  "en": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+                  "ar": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+                  "instrument": null
+                },
+                {
+                  "id": "W-LICENCE-01",
+                  "kind": "disclaimer",
+                  "en": "Reinsurance under this document has been placed only with a company licensed to carry the class of business ceded, as Article (42) requires.",
+                  "ar": "لم تُسند إعادة التأمين الواردة في هذا المستند إلا إلى شركة مرخصة لمزاولة نوع التأمين المتنازل عنه، وفقاً لما تقتضيه المادة (42).",
+                  "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+                },
+                {
+                  "id": "W-SEG-01",
+                  "kind": "disclaimer",
+                  "en": "Participant risk money is held in the participant risk fund and may only be protected by a retakaful arrangement; the operator’s share is the wakalah fee or its share of surplus, never participant money.",
+                  "ar": "تُحفظ أموال مخاطر المشاركين في صندوق مخاطر المشاركين ولا يجوز حمايتها إلا من خلال ترتيب إعادة تكافل؛ وحصة المشغل هي أجر الوكالة أو نصيبه من الفائض، وليست أموال المشاركين.",
+                  "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations"
+                },
+                {
+                  "id": "closing",
+                  "kind": "closing",
+                  "en": "This note is filed with the treaty and supersedes any earlier note for the same treaty.",
+                  "ar": "تُحفظ هذه المذكرة مع الاتفاقية وتحل محل أي مذكرة سابقة لنفس الاتفاقية.",
+                  "instrument": null
+                }
+              ]
+            }
+          ],
+          "verify": [
+            {
+              "id": "W-BORD-00001",
+              "fingerprint": "1b9abb70453cab1e",
+              "recomputed": "1b9abb70453cab1e",
+              "intact": true,
+              "detail": "W-BORD-00001 reproduces: the labels, the fields and the mandated paragraphs are exactly the ones it was generated with"
+            },
+            {
+              "id": "W-TREA-00002",
+              "fingerprint": "fc4501b571a47bb3",
+              "recomputed": "fc4501b571a47bb3",
+              "intact": true,
+              "detail": "W-TREA-00002 reproduces: the labels, the fields and the mandated paragraphs are exactly the ones it was generated with"
+            }
+          ]
+        },
         "group": {
           "asOf": "2026-10-05",
           "periodStart": "2026-09-01",
@@ -10050,10 +10823,10 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T09:56:12.232Z"
+        "generatedAt": "2026-10-04T10:11:35.237Z"
       }
     },
-    "POST /api/ai/approve": {
+    "POST /api/ai/approve 87cf3980": {
       "status": 200,
       "body": {
         "id": "AIA-00002",
@@ -10079,7 +10852,7 @@
         "approvedBy": "raheel@operator"
       }
     },
-    "POST /api/ai/execute": {
+    "POST /api/ai/execute 87cf3980": {
       "status": 200,
       "body": {
         "id": "AIA-00002",
@@ -10105,13 +10878,19 @@
         "approvedBy": "raheel@operator"
       }
     },
-    "POST /api/claims/approve": {
+    "POST /api/claims/approve 035b7051": {
       "status": 409,
       "body": {
         "error": "an AI agent may authorise at most 1,000.00 AED straight through; 25,000.00 AED needs a human authority"
       }
     },
-    "POST /api/claims/register": {
+    "POST /api/claims/approve 25bf5c1d": {
+      "status": 409,
+      "body": {
+        "error": "an AI agent may authorise at most 1,000.00 AED straight through; 25,000.00 AED needs a human authority"
+      }
+    },
+    "POST /api/claims/register dbfd92df": {
       "status": 200,
       "body": {
         "id": "CLM-000008",
@@ -10159,7 +10938,7 @@
         }
       }
     },
-    "POST /api/cover/start": {
+    "POST /api/cover/start 60aa1c9e": {
       "status": 200,
       "body": {
         "segment": {
@@ -10185,7 +10964,7 @@
         }
       }
     },
-    "POST /api/cover/stop": {
+    "POST /api/cover/stop dfb55669": {
       "status": 200,
       "body": {
         "segment": {
@@ -10211,7 +10990,7 @@
         }
       }
     },
-    "POST /api/cover/tick": {
+    "POST /api/cover/tick a7183d86": {
       "status": 200,
       "body": {
         "raised": [],
@@ -10232,7 +11011,7 @@
         "claimedEvent": "FLOOD-3"
       }
     },
-    "POST /api/extracts/verify": {
+    "POST /api/extracts/verify c36ca302": {
       "status": 200,
       "body": {
         "id": "RI-EX-ALK-CONV-00001",
@@ -10316,26 +11095,26 @@
         ]
       }
     },
-    "POST /api/ingest/commit": {
+    "POST /api/ingest/commit 9667cfba": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791107848446",
+        "loadId": "LOAD-1791108771418",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
       }
     },
-    "POST /api/ingest/submit": {
+    "POST /api/ingest/submit 5ed56eb4": {
       "status": 200,
       "body": {
         "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791107848446"
+        "loadId": "LOAD-1791108771418"
       }
     },
-    "POST /api/onboarding/ocr": {
+    "POST /api/onboarding/ocr 4d38892d": {
       "status": 200,
       "body": {
         "documentKind": "driving-licence",
@@ -10348,7 +11127,55 @@
         ]
       }
     },
-    "POST /api/partner/lookup": {
+    "POST /api/partner/lookup 5a075385": {
+      "status": 200,
+      "body": {
+        "outcome": "granted",
+        "reason": "disclosed customer.exists, customer.name, customer.holdings",
+        "match": {
+          "partyId": "PTY-0001",
+          "score": 2640,
+          "reasons": [
+            "emirates-id number matches exactly",
+            "driving-licence number matches exactly",
+            "full name matches (all tokens)",
+            "date of birth matches",
+            "phone +971 50 123 4567 matches",
+            "email ahmed.mansoori@example.ae matches"
+          ]
+        },
+        "disclosed": {
+          "matchConfidence": 2640,
+          "reasons": [
+            "emirates-id number matches exactly",
+            "driving-licence number matches exactly",
+            "full name matches (all tokens)",
+            "date of birth matches",
+            "phone +971 50 123 4567 matches",
+            "email ahmed.mansoori@example.ae matches"
+          ],
+          "exists": true,
+          "name": "Ahmed Al Mansoori",
+          "holdings": [
+            {
+              "policyId": "UL-000123",
+              "productName": "Global Unit-Linked Plan",
+              "entityId": "ALK-CONV",
+              "status": "in force",
+              "currency": "AED"
+            },
+            {
+              "policyId": "MTR-0441",
+              "productName": "Pay-as-you-drive Motor",
+              "entityId": "ALK-CONV",
+              "status": "active cover",
+              "currency": "AED"
+            }
+          ]
+        }
+      }
+    },
+    "POST /api/partner/lookup a6381b10": {
       "status": 200,
       "body": {
         "outcome": "denied-no-consent",
@@ -10368,7 +11195,7 @@
         "disclosed": {}
       }
     },
-    "POST /api/pre-sale": {
+    "POST /api/pre-sale b246c5e6": {
       "status": 200,
       "body": {
         "allowed": false,
@@ -10382,7 +11209,7 @@
         "pack": "AE 2026.1"
       }
     },
-    "POST /api/preview/switch": {
+    "POST /api/preview/switch ff23eca7": {
       "status": 200,
       "body": {
         "instructionType": "switch",
@@ -10633,7 +11460,7 @@
         "netLabel": "1,980.00 AED"
       }
     },
-    "POST /api/preview/withdrawal": {
+    "POST /api/preview/withdrawal 07cb653f": {
       "status": 200,
       "body": {
         "instructionType": "withdrawal",
@@ -10882,7 +11709,7 @@
         "remainingValueLabel": "13,328.28 AED"
       }
     },
-    "POST /api/regulatory/uae/check": {
+    "POST /api/regulatory/uae/check 3ed38edb": {
       "status": 200,
       "body": {
         "scenario": "unrated-counterparty",
@@ -11068,6 +11895,330 @@
         "limitation": "The rule book holds 12 rules as data, each citing its instrument and clause as published on 30 November 2023; Article numbers are not re-read from the rulebook by this engine, and a citation that has moved shows up as a finding to update rather than as silence. Decisions are append-only: a later placement is answered with a new decision."
       }
     },
+    "POST /api/regulatory/uae/check d957bc76": {
+      "status": 200,
+      "body": {
+        "scenario": "clean-placement",
+        "decision": "allow",
+        "id": "UAE-RULE-000006",
+        "subject": "a quota-share cession to a rated UAE reinsurer with the plan approved",
+        "evidence": "Allowed: every rule that applies to a quota-share cession to a rated UAE reinsurer with the plan approved with Emirates Re is met with the evidence on file. Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities; Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions and 2 further citation(s). Decided by reinsurance/motor-desk at 2026-10-05",
+        "blocking": [],
+        "findings": [
+          {
+            "ruleId": "UAE-RI-01",
+            "title": "Reinsure only with a company licensed to carry the class",
+            "state": "met",
+            "severity": "refuse",
+            "detail": "Emirates Re holds a all licence in the UAE",
+            "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+            "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-03",
+            "title": "Recoverables count as admissible assets only at or above the floor",
+            "state": "met",
+            "severity": "disclose",
+            "detail": "A means recoverables from Emirates Re may be admitted",
+            "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+            "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+            "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-04",
+            "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+            "state": "met",
+            "severity": "refuse",
+            "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+            "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+            "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-12",
+            "title": "UAE risk insured at home, protected anywhere",
+            "state": "met",
+            "severity": "disclose",
+            "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Emirates Re (QS-25-2026)",
+            "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+            "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+            "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          }
+        ],
+        "statement": {
+          "rules": 12,
+          "decisions": 6,
+          "allow": 3,
+          "escalate": 1,
+          "refuse": 2,
+          "byRule": [
+            {
+              "ruleId": "UAE-RI-01",
+              "title": "Reinsure only with a company licensed to carry the class",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-02",
+              "title": "A counterparty at or above the rating floor, or board diligence on file",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-03",
+              "title": "Recoverables count as admissible assets only at or above the floor",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-04",
+              "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-05",
+              "title": "A foreign branch files its head-office reinsurance certificate every year",
+              "severity": "escalate",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-06",
+              "title": "Accepting treaty reinsurance needs approval and capital",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-07",
+              "title": "Facultative acceptance only within retention or under a treaty",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-08",
+              "title": "A tender is only offered with a leading reinsurer behind the surplus",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-09",
+              "title": "Participant risk money goes to retakaful only",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-10",
+              "title": "A free-zone company reinsures, and does nothing else outside the zone",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-11",
+              "title": "A foreign branch lodges the bank guarantee its licence requires",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-12",
+              "title": "UAE risk insured at home, protected anywhere",
+              "severity": "disclose",
+              "raised": 0
+            }
+          ]
+        },
+        "limitation": "The rule book holds 12 rules as data, each citing its instrument and clause as published on 30 November 2023; Article numbers are not re-read from the rulebook by this engine, and a citation that has moved shows up as a finding to update rather than as silence. Decisions are append-only: a later placement is answered with a new decision."
+      }
+    },
+    "POST /api/regulatory/uae/check f798bb04": {
+      "status": 200,
+      "body": {
+        "scenario": "unlicensed-counterparty",
+        "decision": "refuse",
+        "id": "UAE-RULE-000008",
+        "subject": "a motor facultative offer from an unlicensed offshore company",
+        "evidence": "Refused: UAE-RI-01 (Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand). Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities. Decided by reinsurance/motor-desk at 2026-10-05",
+        "blocking": [
+          {
+            "ruleId": "UAE-RI-01",
+            "state": "breached",
+            "severity": "refuse",
+            "detail": "Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand",
+            "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+            "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+            "evidenceMissing": []
+          }
+        ],
+        "findings": [
+          {
+            "ruleId": "UAE-RI-01",
+            "title": "Reinsure only with a company licensed to carry the class",
+            "state": "breached",
+            "severity": "refuse",
+            "detail": "Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand",
+            "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+            "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+            "evidenceRequired": [
+              "home-state licence certificate",
+              "CBUAE licence extract"
+            ],
+            "evidenceOnFile": [
+              "home-state licence certificate",
+              "CBUAE licence extract"
+            ],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-02",
+            "title": "A counterparty at or above the rating floor, or board diligence on file",
+            "state": "met",
+            "severity": "refuse",
+            "detail": "A (agency not stated) is at or above the BBB floor",
+            "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+            "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-03",
+            "title": "Recoverables count as admissible assets only at or above the floor",
+            "state": "met",
+            "severity": "disclose",
+            "detail": "A means recoverables from Oriana Re (unlicensed) may be admitted",
+            "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+            "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+            "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-04",
+            "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+            "state": "met",
+            "severity": "refuse",
+            "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+            "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+            "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-12",
+            "title": "UAE risk insured at home, protected anywhere",
+            "state": "met",
+            "severity": "disclose",
+            "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Oriana Re (unlicensed) (FAC-MOTOR)",
+            "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+            "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+            "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          }
+        ],
+        "statement": {
+          "rules": 12,
+          "decisions": 8,
+          "allow": 3,
+          "escalate": 2,
+          "refuse": 3,
+          "byRule": [
+            {
+              "ruleId": "UAE-RI-01",
+              "title": "Reinsure only with a company licensed to carry the class",
+              "severity": "refuse",
+              "raised": 2
+            },
+            {
+              "ruleId": "UAE-RI-02",
+              "title": "A counterparty at or above the rating floor, or board diligence on file",
+              "severity": "refuse",
+              "raised": 2
+            },
+            {
+              "ruleId": "UAE-RI-03",
+              "title": "Recoverables count as admissible assets only at or above the floor",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-04",
+              "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-05",
+              "title": "A foreign branch files its head-office reinsurance certificate every year",
+              "severity": "escalate",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-06",
+              "title": "Accepting treaty reinsurance needs approval and capital",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-07",
+              "title": "Facultative acceptance only within retention or under a treaty",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-08",
+              "title": "A tender is only offered with a leading reinsurer behind the surplus",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-09",
+              "title": "Participant risk money goes to retakaful only",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-10",
+              "title": "A free-zone company reinsures, and does nothing else outside the zone",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-11",
+              "title": "A foreign branch lodges the bank guarantee its licence requires",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-12",
+              "title": "UAE risk insured at home, protected anywhere",
+              "severity": "disclose",
+              "raised": 0
+            }
+          ]
+        },
+        "limitation": "The rule book holds 12 rules as data, each citing its instrument and clause as published on 30 November 2023; Article numbers are not re-read from the rulebook by this engine, and a citation that has moved shows up as a finding to update rather than as silence. Decisions are append-only: a later placement is answered with a new decision."
+      }
+    },
     "POST /api/reinsurance/cede": {
       "status": 200,
       "body": {
@@ -11146,7 +12297,7 @@
         "journalId": "RI-ALK-CONV-000013"
       }
     },
-    "POST /api/reinsurance/security/call": {
+    "POST /api/reinsurance/security/call b2228251": {
       "status": 409,
       "body": {
         "error": "Emirates Re already has 50,000.00 AED called and unanswered: calling 50,000.00 AED more would double-count the same shortfall"
@@ -11166,7 +12317,7 @@
         "journalId": "RI-ALK-CONV-000017"
       }
     },
-    "POST /api/reinsurance/security/hold": {
+    "POST /api/reinsurance/security/hold 32c78820": {
       "status": 200,
       "body": {
         "instrumentId": "SEC-ALK-CONV-000006",
@@ -11212,12 +12363,12 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "04327803b3cd6b20",
+        "fingerprint": "f9c62401e14fb2a2",
         "fingerprintStable": true,
         "journals": 87,
         "restoredJournals": 87,
         "bytes": 89049,
-        "restoreMs": 43,
+        "restoreMs": 37,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -11246,7 +12397,7 @@
         ]
       }
     },
-    "POST /api/takaful/approve": {
+    "POST /api/takaful/approve 75447b0d": {
       "status": 200,
       "body": {
         "id": "TKF-SRP-000032",
@@ -11263,7 +12414,41 @@
         "ready": false
       }
     },
-    "POST /api/underwriting/decide": {
+    "POST /api/takaful/approve 7dbf4aa1": {
+      "status": 200,
+      "body": {
+        "id": "TKF-SRP-000031",
+        "approvals": {
+          "actuary": false,
+          "shariah": true,
+          "board": false
+        },
+        "blockers": [
+          "Actuarial recommendation missing (the actuary must recommend the surplus)",
+          "Board endorsement missing",
+          "Qard hasan of 40.00 AED is outstanding and must be repaid first"
+        ],
+        "ready": false
+      }
+    },
+    "POST /api/takaful/approve 821f1d59": {
+      "status": 200,
+      "body": {
+        "id": "TKF-SRP-000030",
+        "approvals": {
+          "actuary": true,
+          "shariah": false,
+          "board": false
+        },
+        "blockers": [
+          "Shariah Committee approval missing",
+          "Board endorsement missing",
+          "Qard hasan of 40.00 AED is outstanding and must be repaid first"
+        ],
+        "ready": false
+      }
+    },
+    "POST /api/underwriting/decide 31ae77d3": {
       "status": 200,
       "body": {
         "applicationId": "UW-000001",
@@ -11285,49 +12470,360 @@
           }
         ]
       }
+    },
+    "POST /api/wording/generate 49feb711": {
+      "status": 200,
+      "body": {
+        "id": "W-TREA-00002",
+        "version": 1,
+        "type": "treaty-note",
+        "scope": "takaful",
+        "title": "Treaty file note",
+        "titleAr": "مذكرة ملف الاتفاقية",
+        "fingerprint": "fc4501b571a47bb3",
+        "packVersion": "2026.1",
+        "generatedAt": "2026-10-05T17:20:00+04:00",
+        "by": "takaful/reinsurance-desk",
+        "supersedes": null,
+        "changesSummary": null,
+        "disclaimers": [
+          {
+            "id": "W-BASIS-01"
+          },
+          {
+            "id": "W-LICENCE-01",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)"
+          },
+          {
+            "id": "W-SEG-01",
+            "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations"
+          }
+        ],
+        "fields": [
+          {
+            "key": "policy.contribution",
+            "label": "Contribution",
+            "labelAr": "المساهمة",
+            "value": "1,800.00 AED"
+          },
+          {
+            "key": "takaful.riskFund",
+            "label": "Participant risk fund",
+            "labelAr": "صندوق مخاطر المشاركين",
+            "value": "Participant risk fund (segregated from the operator)"
+          },
+          {
+            "key": "takaful.operator",
+            "label": "Operator",
+            "labelAr": "المشغل",
+            "value": "Al Khaleej Takaful (operator)"
+          }
+        ],
+        "blocks": [
+          {
+            "id": "heading",
+            "kind": "heading",
+            "en": "Treaty file note",
+            "ar": "مذكرة ملف الاتفاقية"
+          },
+          {
+            "id": "purpose",
+            "kind": "purpose",
+            "en": "Records the basis of the treaty, the approved plan it sits under, the security held and the rule book’s decision on the placement.",
+            "ar": "يُدوّن أساس الاتفاقية، والخطة المعتمدة التي تندرج تحتها، والضمانات المحتفظ بها، وقرار كتاب القواعد بشأن الإسناد."
+          },
+          {
+            "id": "context",
+            "kind": "body",
+            "en": "Al Khaleej Takaful Window, in respect of MENA Retakaful, for the period 2026-01-01 to 2026-10-05.",
+            "ar": "Al Khaleej Takaful Window، بخصوص MENA Retakaful، عن الفترة 2026-01-01 to 2026-10-05."
+          },
+          {
+            "id": "W-BASIS-01",
+            "kind": "disclaimer",
+            "en": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+            "ar": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+            "disclaimerId": "W-BASIS-01"
+          },
+          {
+            "id": "W-LICENCE-01",
+            "kind": "disclaimer",
+            "en": "Reinsurance under this document has been placed only with a company licensed to carry the class of business ceded, as Article (42) requires.",
+            "ar": "لم تُسند إعادة التأمين الواردة في هذا المستند إلا إلى شركة مرخصة لمزاولة نوع التأمين المتنازل عنه، وفقاً لما تقتضيه المادة (42).",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Article (42)",
+            "disclaimerId": "W-LICENCE-01"
+          },
+          {
+            "id": "W-SEG-01",
+            "kind": "disclaimer",
+            "en": "Participant risk money is held in the participant risk fund and may only be protected by a retakaful arrangement; the operator’s share is the wakalah fee or its share of surplus, never participant money.",
+            "ar": "تُحفظ أموال مخاطر المشاركين في صندوق مخاطر المشاركين ولا يجوز حمايتها إلا من خلال ترتيب إعادة تكافل؛ وحصة المشغل هي أجر الوكالة أو نصيبه من الفائض، وليست أموال المشاركين.",
+            "instrument": "Federal Decree-Law No. 48 of 2023 and the CBUAE takaful regulations",
+            "disclaimerId": "W-SEG-01"
+          },
+          {
+            "id": "closing",
+            "kind": "closing",
+            "en": "This note is filed with the treaty and supersedes any earlier note for the same treaty.",
+            "ar": "تُحفظ هذه المذكرة مع الاتفاقية وتحل محل أي مذكرة سابقة لنفس الاتفاقية."
+          }
+        ],
+        "limitation": "Generated from 4 templates and 8 mandated paragraphs held as data under pack 2026.1; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a label but never a mandated paragraph.",
+        "verify": {
+          "id": "W-TREA-00002",
+          "fingerprint": "fc4501b571a47bb3",
+          "recomputed": "fc4501b571a47bb3",
+          "intact": true,
+          "detail": "W-TREA-00002 reproduces: the labels, the fields and the mandated paragraphs are exactly the ones it was generated with"
+        },
+        "documents": 3
+      }
+    },
+    "POST /api/wording/generate 8a62efbc": {
+      "status": 200,
+      "body": {
+        "id": "W-CUST-00003",
+        "version": 1,
+        "type": "customer-reinsurance-note",
+        "scope": "conventional",
+        "title": "Note to the policyholder on reinsurance",
+        "titleAr": "ملاحظة إلى حامل الوثيقة بشأن إعادة التأمين",
+        "fingerprint": "7f3f52062bd86660",
+        "packVersion": "2026.1",
+        "generatedAt": "2026-10-05T18:05:00+04:00",
+        "by": "finance/reporting",
+        "supersedes": null,
+        "changesSummary": null,
+        "disclaimers": [
+          {
+            "id": "W-CUST-01",
+            "instrument": "CBUAE consumer protection requirements"
+          },
+          {
+            "id": "W-LICENCE-02",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Articles (42) and (64)"
+          },
+          {
+            "id": "W-LIMIT-02"
+          }
+        ],
+        "fields": [
+          {
+            "key": "policy.holder",
+            "label": "Policyholder",
+            "labelAr": "حامل الوثيقة",
+            "value": "Ahmed Al Mansoori"
+          },
+          {
+            "key": "policy.premium",
+            "label": "Premium",
+            "labelAr": "القسط",
+            "value": "3,819.63 AED"
+          }
+        ],
+        "blocks": [
+          {
+            "id": "heading",
+            "kind": "heading",
+            "en": "Note to the policyholder on reinsurance",
+            "ar": "ملاحظة إلى حامل الوثيقة بشأن إعادة التأمين"
+          },
+          {
+            "id": "purpose",
+            "kind": "purpose",
+            "en": "Tells the customer that the risk is reinsured, what that does and does not give them, and how their data moves.",
+            "ar": "يُخبر العميل بأن الخطر معاد تأمينه، وما يمنحه ذلك وما لا يمنحه، وكيف تُنقل بياناته."
+          },
+          {
+            "id": "context",
+            "kind": "body",
+            "en": "Al Khaleej Insurance (conventional), in respect of Emirates Re, for the period 2026-01-01 to 2026-10-05.",
+            "ar": "Al Khaleej Insurance (conventional)، بخصوص Emirates Re، عن الفترة 2026-01-01 to 2026-10-05."
+          },
+          {
+            "id": "W-CUST-01",
+            "kind": "disclaimer",
+            "en": "This note explains a reinsurance arrangement; it is not advice, an offer of cover, or a promise that a claim will be paid.",
+            "ar": "توضح هذه الملاحظة ترتيب إعادة تأمين؛ وهي ليست نصيحة أو عرضاً للتغطية أو وعداً بسداد المطالبة.",
+            "instrument": "CBUAE consumer protection requirements",
+            "disclaimerId": "W-CUST-01"
+          },
+          {
+            "id": "W-LICENCE-02",
+            "kind": "disclaimer",
+            "en": "The risk is carried by a company licensed in the United Arab Emirates and reinsured inside or outside the State; where a counterparty is licensed in a financial free zone it may write reinsurance outside the zone and no other insurance activity.",
+            "ar": "يحمل الخطر شركة مرخصة في دولة الإمارات العربية المتحدة ويُعاد تأمينه داخل الدولة أو خارجها؛ وإذا كان الطرف المرخص له في منطقة مالية حرة فلا يجوز له مزاولة أي نشاط تأميني خارج المنطقة باستثناء إعادة التأمين.",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Articles (42) and (64)",
+            "disclaimerId": "W-LICENCE-02"
+          },
+          {
+            "id": "W-LIMIT-02",
+            "kind": "disclaimer",
+            "en": "How we settle a claim with you does not depend on how or whether we reinsure it, and a reinsurer is not answerable to you directly.",
+            "ar": "لا تتوقف طريقة تسوية مطالبتك معنا على كيفية إعادة تأمين الخطر أو على إعادة تأمينه من عدمه، ولا يُسأل معيد التأمين أمامك مباشرة.",
+            "disclaimerId": "W-LIMIT-02"
+          },
+          {
+            "id": "closing",
+            "kind": "closing",
+            "en": "Your policy remains with us; the cover, the payments and the complaints route do not change.",
+            "ar": "تبقى وثيقتك لدينا؛ ولا تتغير التغطية ولا المدفوعات ولا قناة تقديم الشكاوى."
+          }
+        ],
+        "limitation": "Generated from 4 templates and 8 mandated paragraphs held as data under pack 2026.1; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a label but never a mandated paragraph.",
+        "verify": {
+          "id": "W-CUST-00003",
+          "fingerprint": "7f3f52062bd86660",
+          "recomputed": "7f3f52062bd86660",
+          "intact": true,
+          "detail": "W-CUST-00003 reproduces: the labels, the fields and the mandated paragraphs are exactly the ones it was generated with"
+        },
+        "documents": 3
+      }
+    },
+    "POST /api/wording/generate ec5dba77": {
+      "status": 200,
+      "body": {
+        "id": "W-RETU-00004",
+        "version": 1,
+        "type": "return-cover",
+        "scope": "conventional",
+        "title": "Cover letter to the supervisor, with the regulatory return",
+        "titleAr": "خطاب إحاطة إلى الجهة الرقابية، مع الإقرار الرقابي",
+        "fingerprint": "748bb748e3b4b982",
+        "packVersion": "2026.1",
+        "generatedAt": "2026-10-05T18:05:00+04:00",
+        "by": "finance/reporting",
+        "supersedes": null,
+        "changesSummary": null,
+        "disclaimers": [
+          {
+            "id": "W-BASIS-01"
+          },
+          {
+            "id": "W-LIMIT-01"
+          },
+          {
+            "id": "W-LICENCE-02",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Articles (42) and (64)"
+          }
+        ],
+        "fields": [
+          {
+            "key": "policy.premium",
+            "label": "Premium",
+            "labelAr": "القسط",
+            "value": "3,819.63 AED"
+          }
+        ],
+        "blocks": [
+          {
+            "id": "heading",
+            "kind": "heading",
+            "en": "Cover letter to the supervisor, with the regulatory return",
+            "ar": "خطاب إحاطة إلى الجهة الرقابية، مع الإقرار الرقابي"
+          },
+          {
+            "id": "purpose",
+            "kind": "purpose",
+            "en": "Files the period’s return, names its schedules and controls, and states every difference accepted and by whom.",
+            "ar": "يودع إقرار الفترة، ويحدد جداوله وضوابطه، ويبيّن كل فرق تم قبوله ومن قبله."
+          },
+          {
+            "id": "context",
+            "kind": "body",
+            "en": "Al Khaleej Insurance (conventional), in respect of Emirates Re, for the period 2026-01-01 to 2026-10-05.",
+            "ar": "Al Khaleej Insurance (conventional)، بخصوص Emirates Re، عن الفترة 2026-01-01 to 2026-10-05."
+          },
+          {
+            "id": "W-BASIS-01",
+            "kind": "disclaimer",
+            "en": "Every figure in this document is derived from the cession register and the books of the entity named above; each control that supports it names the ledger account it ties to.",
+            "ar": "كل رقم في هذا المستند مستخرج من سجل التنازلات ودفاتر الجهة المذكورة أعلاه؛ وكل ضابط يدعمه يحدد حساب الدفاتر الذي يطابقه.",
+            "disclaimerId": "W-BASIS-01"
+          },
+          {
+            "id": "W-LIMIT-01",
+            "kind": "disclaimer",
+            "en": "The return states paid and reserved facts and where its arithmetic stops: no IBNR, no discounting and no unexpired premium on annual business.",
+            "ar": "يبيّن الإقرار الوقائع المدفوعة والمحتسبة ونقطة توقف حساباته: لا احتياطي للخسائر المتكبدة ولم تُبلغ، ولا خصم، ولا أقساط غير مكتسبة على الأعمال السنوية.",
+            "disclaimerId": "W-LIMIT-01"
+          },
+          {
+            "id": "W-LICENCE-02",
+            "kind": "disclaimer",
+            "en": "The risk is carried by a company licensed in the United Arab Emirates and reinsured inside or outside the State; where a counterparty is licensed in a financial free zone it may write reinsurance outside the zone and no other insurance activity.",
+            "ar": "يحمل الخطر شركة مرخصة في دولة الإمارات العربية المتحدة ويُعاد تأمينه داخل الدولة أو خارجها؛ وإذا كان الطرف المرخص له في منطقة مالية حرة فلا يجوز له مزاولة أي نشاط تأميني خارج المنطقة باستثناء إعادة التأمين.",
+            "instrument": "Federal Decree-Law No. 48 of 2023, Articles (42) and (64)",
+            "disclaimerId": "W-LICENCE-02"
+          },
+          {
+            "id": "closing",
+            "kind": "closing",
+            "en": "The return is filed on the basis stated above; a corrected return supersedes this one and says what changed.",
+            "ar": "يُقدَّم الإقرار على الأساس المبين أعلاه؛ ويحل أي إقرار مصحح محل هذا الإقرار مع بيان ما تغيّر."
+          }
+        ],
+        "limitation": "Generated from 4 templates and 8 mandated paragraphs held as data under pack 2026.1; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a label but never a mandated paragraph.",
+        "verify": {
+          "id": "W-RETU-00004",
+          "fingerprint": "748bb748e3b4b982",
+          "recomputed": "748bb748e3b4b982",
+          "intact": true,
+          "detail": "W-RETU-00004 reproduces: the labels, the fields and the mandated paragraphs are exactly the ones it was generated with"
+        },
+        "documents": 4
+      }
     }
   },
   "requestBodies": {
-    "POST /api/ai/approve": {
+    "POST /api/ai/approve 87cf3980": {
       "id": "AIA-00002"
     },
-    "POST /api/ai/execute": {
+    "POST /api/ai/execute 87cf3980": {
       "id": "AIA-00002"
     },
-    "POST /api/claims/approve": {
+    "POST /api/claims/approve 035b7051": {
       "claimId": "CLM-000005",
       "amount": "25000.00",
       "role": "ai-straight-through",
       "by": "agent/claims-triage",
       "isAi": true
     },
-    "POST /api/claims/register": {
+    "POST /api/claims/approve 25bf5c1d": {
+      "claimId": "CLM-000005",
+      "amount": "25000.00",
+      "by": "agent/claims-triage",
+      "role": "ai-straight-through",
+      "isAi": true
+    },
+    "POST /api/claims/register dbfd92df": {
       "policyId": "MTR-0441",
       "cause": "motor",
       "lossDate": "2026-10-01",
       "reportedAt": "2026-10-02",
       "description": "Windscreen damage reported from the console"
     },
-    "POST /api/cover/start": {
+    "POST /api/cover/start 60aa1c9e": {
       "at": "2026-10-04T08:00:00+04:00"
     },
-    "POST /api/cover/stop": {
+    "POST /api/cover/stop dfb55669": {
       "at": "2026-10-04T09:00:00+04:00"
     },
-    "POST /api/cover/tick": {
+    "POST /api/cover/tick a7183d86": {
       "at": "2026-10-05T10:00:00+04:00"
     },
-    "POST /api/extracts/verify": {
+    "POST /api/extracts/verify c36ca302": {
       "extractId": "RI-EX-ALK-CONV-00001"
     },
-    "POST /api/ingest/commit": {
-      "loadId": "LOAD-1791107848446"
+    "POST /api/ingest/commit 9667cfba": {
+      "loadId": "LOAD-1791108771418"
     },
-    "POST /api/ingest/submit": {
+    "POST /api/ingest/submit 5ed56eb4": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791107848446"
+      "loadId": "LOAD-1791108771418"
     },
-    "POST /api/onboarding/ocr": {
+    "POST /api/onboarding/ocr 4d38892d": {
       "documentType": "emirates-id",
       "fields": {
         "fullName": [
@@ -11340,31 +12836,40 @@
         ]
       }
     },
-    "POST /api/partner/lookup": {
+    "POST /api/partner/lookup 5a075385": {
+      "withConsent": true
+    },
+    "POST /api/partner/lookup a6381b10": {
       "withConsent": false
     },
-    "POST /api/pre-sale": {
+    "POST /api/pre-sale b246c5e6": {
       "productLine": "medical",
       "hasNeedAnalysis": false,
       "hasNeedId": false
     },
-    "POST /api/preview/switch": {
+    "POST /api/preview/switch ff23eca7": {
       "amountMinor": 200000,
       "fromFundId": "FGLOBAL",
       "toFundId": "FBAL"
     },
-    "POST /api/preview/withdrawal": {
+    "POST /api/preview/withdrawal 07cb653f": {
       "amountMinor": 150000,
       "fundId": "FBAL"
     },
-    "POST /api/regulatory/uae/check": {
+    "POST /api/regulatory/uae/check 3ed38edb": {
       "scenario": "unrated-counterparty"
     },
-    "POST /api/reinsurance/security/call": {
+    "POST /api/regulatory/uae/check d957bc76": {
+      "scenario": "clean-placement"
+    },
+    "POST /api/regulatory/uae/check f798bb04": {
+      "scenario": "unlicensed-counterparty"
+    },
+    "POST /api/reinsurance/security/call b2228251": {
       "counterparty": "Emirates Re",
       "reason": "the catastrophe recovery is unsecured beyond the letters of credit in force"
     },
-    "POST /api/reinsurance/security/hold": {
+    "POST /api/reinsurance/security/hold 32c78820": {
       "counterparty": "Emirates Re",
       "treatyId": "XOL-CAT-5M",
       "kind": "letter-of-credit",
@@ -11373,14 +12878,34 @@
       "expiresAt": "2027-03-31",
       "by": "treasury"
     },
-    "POST /api/takaful/approve": {
+    "POST /api/takaful/approve 75447b0d": {
       "role": "board",
       "by": "raheel@board"
     },
-    "POST /api/underwriting/decide": {
+    "POST /api/takaful/approve 7dbf4aa1": {
+      "role": "shariah",
+      "by": "raheel@shariah"
+    },
+    "POST /api/takaful/approve 821f1d59": {
+      "role": "actuary",
+      "by": "raheel@actuary"
+    },
+    "POST /api/underwriting/decide 31ae77d3": {
       "applicationId": "UW-000001",
       "by": "agent/quote-bot",
       "isAi": true
+    },
+    "POST /api/wording/generate 49feb711": {
+      "type": "treaty-note",
+      "scope": "takaful"
+    },
+    "POST /api/wording/generate 8a62efbc": {
+      "type": "customer-reinsurance-note",
+      "scope": "conventional"
+    },
+    "POST /api/wording/generate ec5dba77": {
+      "type": "return-cover",
+      "scope": "conventional"
     }
   }
 }

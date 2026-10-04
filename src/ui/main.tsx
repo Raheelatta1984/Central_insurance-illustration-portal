@@ -471,6 +471,98 @@ function RuleBook({ data }: { data: WorldSnapshot }) {
   );
 }
 
+/**
+ * Wording, generated. The point this card makes is that the mandated paragraphs are data: the window's
+ * note says *contribution* because its scope renamed the label, and says exactly the same paragraph
+ * about fund segregation as the conventional one, in both languages.
+ */
+type WordingResult = {
+  id: string; version: number; type: string; scope: string; title: string; titleAr: string;
+  fingerprint: string; packVersion: string; generatedAt: string; by: string;
+  supersedes: string | null; changesSummary: string | null;
+  blocks: { id: string; kind: string; en: string; ar: string; instrument: string | null }[];
+  fields: { key: string; label: string; labelAr: string; value: string }[];
+  disclaimers: { id: string; instrument: string | null }[];
+  verify: { intact: boolean; detail: string };
+  documents: number;
+  limitation: string;
+};
+
+function Wording({ data }: { data: WorldSnapshot }) {
+  const [draft, setDraft] = useState<WordingResult | null>(null);
+  const [count, setCount] = useState(data.wording.documents.length);
+  const draftOf = async (type: string, scope: string) => {
+    const result = await api<WordingResult>('/wording/generate', 'POST', { type, scope });
+    setDraft(result);
+    setCount(result.documents);
+  };
+  const onFile = data.wording.documents;
+  return (
+    <Card
+      title="Wording and disclaimers, generated rather than pasted"
+      subtitle={`${data.wording.templates.length} templates and ${data.wording.disclaimers.length} mandated paragraphs held as data; ${count} letters on file, each stating the pack version that produced it`}
+      wide
+    >
+      <div className="row">
+        <button onClick={() => draftOf('customer-reinsurance-note', 'conventional')}>Draft the note to the policyholder</button>
+        <button onClick={() => draftOf('treaty-note', 'takaful')}>Draft the window's treaty note</button>
+        <button onClick={() => draftOf('return-cover', 'conventional')}>Draft the cover letter to the supervisor</button>
+      </div>
+      {draft && (
+        <div className="stack">
+          <p>
+            <Pill tone={draft.verify.intact ? 'ok' : 'warn'}>{draft.verify.intact ? 'reproduces' : 'no longer reproduces'}</Pill>{' '}
+            <b>{draft.title}</b> — <span className="muted small">{draft.id} v{draft.version} · {draft.type} · scope {draft.scope} · pack {draft.packVersion}</span>
+          </p>
+          {draft.supersedes && <p className="small">Supersedes {draft.supersedes}: {draft.changesSummary}</p>}
+          <Table
+            head={['Field', 'As this scope words it', 'In Arabic', 'Value']}
+            rows={draft.fields.map((f) => [
+              <span key={f.key} className="small muted">{f.key}</span>, f.label,
+              <span key={`${f.key}-ar`} dir="rtl" lang="ar">{f.labelAr}</span>, f.value,
+            ])}
+          />
+          {draft.blocks.map((b) => (
+            <div key={b.id} className="stack">
+              <span className="muted small">{b.id}{b.instrument ? ` · ${b.instrument}` : ''}</span>
+              <p className="small" style={{ margin: 0 }}>{b.en}</p>
+              <p className="small" dir="rtl" lang="ar" style={{ margin: 0 }}>{b.ar}</p>
+            </div>
+          ))}
+          <p className="muted small">{draft.limitation}</p>
+        </div>
+      )}
+      <h4>Letters on file</h4>
+      <Table
+        head={['Letter', 'Template', 'Scope', 'Version', 'Mandated paragraphs', 'Pack', 'Reproduces']}
+        rows={onFile.map((d) => {
+          const verified = data.wording.verify.find((v) => v.id === d.id);
+          return [
+            <span key={d.id} className="small">{d.id}<br /><span className="muted">{d.title}</span></span>,
+            <span key={`${d.id}-t`} className="small">{d.type}</span>,
+            d.scope,
+            `v${d.version}`,
+            <span key={`${d.id}-d`} className="small">{d.disclaimers.map((x) => x.id).join(', ')}</span>,
+            <span key={`${d.id}-p`} className="small">{d.packVersion}</span>,
+            <Pill key={`${d.id}-v`} tone={verified?.intact ? 'ok' : 'warn'}>{verified?.intact ? 'yes' : 'moved'}</Pill>,
+          ];
+        })}
+      />
+      <h4>The mandated paragraphs</h4>
+      <Table
+        head={['Paragraph', 'What it says', 'In Arabic', 'Instrument', 'On which documents']}
+        rows={data.wording.disclaimers.map((d) => [
+          <span key={d.id} className="small"><b>{d.id}</b><br /><span className="muted">{d.kind}</span></span>,
+          <span key={`${d.id}-en`} className="small">{d.text}</span>,
+          <span key={`${d.id}-ar`} className="small" dir="rtl" lang="ar">{d.textAr}</span>,
+          <span key={`${d.id}-i`} className="small">{d.instrument ?? '—'}</span>,
+          <span key={`${d.id}-a`} className="small">{d.appliesTo.join(', ')}</span>,
+        ])}
+      />
+    </Card>
+  );
+}
+
 function Regulatory({ data }: { data: WorldSnapshot }) {
   const [result, setResult] = useState<{ allowed: boolean; blockers: string[]; requiredSteps: string[] } | null>(null);
   const [line, setLine] = useState<'motor' | 'medical' | 'life'>('medical');
@@ -503,6 +595,7 @@ function Regulatory({ data }: { data: WorldSnapshot }) {
         />
       </Card>
       <RuleBook data={data} />
+      <Wording data={data} />
     </div>
   );
 }

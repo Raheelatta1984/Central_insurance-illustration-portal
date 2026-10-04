@@ -41,8 +41,18 @@ async function press(page, text, nth = 0) {
 
 /* Read before anything is pressed: the security statement is most informative as it stands, with a
    shortfall open, a call unanswered and a surplus everybody has forgotten about. */
+
+/* The replay keys a response by method, path and — when a body was sent — the body itself. Without
+   the body in the key, three different drafts through the same endpoint would replay as one. */
+function bodyHash(text) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+const keyOf = (method, path, body) => `${method} ${path}${body === undefined ? '' : ` ${bodyHash(typeof body === 'string' ? body : JSON.stringify(body))}`}`;
+
 async function direct(method, path, body) {
-  const key = `${method} /api${path}`;
+  const key = keyOf(method, `/api${path}`, body);
   if (grab.has(key)) return;
   const res = await fetch(`${BASE}/api${path}`, {
     method,
@@ -62,13 +72,14 @@ const page = await context.newPage();
 page.on('response', async (response) => {
   const url = new URL(response.url());
   if (!url.pathname.startsWith('/api')) return;
-  const key = `${response.request().method()} ${url.pathname}`;   // e.g. "GET /api/world"
+  const sent = response.request().postData();
+  const key = keyOf(response.request().method(), url.pathname, sent ?? undefined);   // e.g. "GET /api/world"
+  const bare = `${response.request().method()} ${url.pathname}`;
   if (grab.has(key) && response.request().method() === 'GET') return;      // keep the first GET
   try {
     const body = await response.json();
     grab.set(key, { status: response.status(), body });
-    const sent = response.request().postData();
-    if (sent) bodies.set(key, JSON.parse(sent));
+    if (sent) { bodies.set(key, JSON.parse(sent)); if (!grab.has(`${bare} (first)`)) grab.set(`${bare} (first)`, { status: response.status(), body }); }
   } catch { /* not JSON: skip */ }
 });
 
@@ -78,6 +89,7 @@ await sleep(1200);
 
 await direct('GET', '/reinsurance/security');
 await direct('GET', '/regulatory/uae-rules');
+await direct('GET', '/wording');
 await direct('GET', '/extracts');
 const issued = grab.get('GET /api/extracts')?.body;
 await direct('POST', '/extracts/verify', issued ? { extractId: issued.conventional.id } : {});
@@ -102,7 +114,7 @@ const script = [
   ['Onboarding', []],
   ['Ingestion', ['Validate & reconcile', 'Commit the accepted rows']],
   ['Parties & consent', ['Ask with consent', 'Ask without consent']],
-  ['Regulatory', ['Run the check', 'Check a clean placement', 'Check a placement with an unrated reinsurer']],
+  ['Regulatory', ['Run the check', 'Check a clean placement', 'Check a placement with an unrated reinsurer', 'Draft the note to the policyholder', "Draft the window's treaty note", 'Draft the cover letter to the supervisor']],
   ['AI ledger', ['Approve', 'Execute']],   // Execute only renders once a human has approved the action
   ['Books', []],
   ['Labels & rename', []],
@@ -159,6 +171,10 @@ await direct('POST', '/reinsurance/security/call', {
 
 const world = grab.get('GET /api/world')?.body;
 await browser.close();
+
+/* The "(first)" markers exist only so a GET recorded before the presses is kept when the same GET is
+   made again afterwards; they are not shipped, because the replay answers on method, path and body. */
+for (const key of [...grab.keys()]) if (key.endsWith(' (first)')) grab.delete(key);
 
 mkdirSync(resolve(ROOT, 'demo'), { recursive: true });
 const record = {

@@ -485,7 +485,12 @@
         "retention and reinsurance plan enforcement",
         "retakaful-only participant money rule",
         "bank guarantee and branch certificate checks",
-        "rule decisions as evidence"
+        "rule decisions as evidence",
+        "bilingual wording and disclaimers",
+        "letter generation with mandated paragraphs",
+        "scope-aware templates",
+        "rename without touching mandated wording",
+        "pack version on every generated letter"
       ],
       "layers": [
         "design",
@@ -509,7 +514,9 @@
         "src/core/extracts.test.ts",
         "src/core/demo.ts",
         "src/core/uae.ts",
-        "src/core/uae.test.ts"
+        "src/core/uae.test.ts",
+        "src/core/wording.ts",
+        "src/core/wording.test.ts"
       ]
     }
   },

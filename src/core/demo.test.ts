@@ -3,7 +3,7 @@
  * These tests guard the journeys the console shows and the numbers the API returns.
  */
 import { describe, expect, it } from 'vitest';
-import { buildWorld, claimsSnapshot, extractSnapshot, groupSnapshot, reinsuranceSnapshot, uaeRuleSnapshot, underwritingSnapshot, worldSnapshot } from './demo.js';
+import { buildWorld, claimsSnapshot, extractSnapshot, groupSnapshot, reinsuranceSnapshot, uaeRuleSnapshot, underwritingSnapshot, wordingSnapshot, worldSnapshot } from './demo.js';
 import { money } from './money.js';
 import { AE_PACK } from './regulatory.js';
 
@@ -687,5 +687,35 @@ describe('the UAE rule book in the world', () => {
     uaeRuleSnapshot(w);
     expect(uaeRuleSnapshot(w).statement.decisions).toBe(first);
     expect(w.rules.statement().decisions).toBe(first);
+  });
+});
+
+describe('the wording book in the world', () => {
+  it('holds the templates and paragraphs as data, and two generated letters with both languages', () => {
+    const view = worldSnapshot(buildWorld());
+    const w = view.wording;
+    expect(w.templates.length).toBe(4);
+    expect(w.disclaimers.length).toBe(8);
+    expect(w.disclaimers.every((d) => /[\u0600-\u06FF]/.test(d.textAr))).toBe(true);
+    expect(w.documents.length).toBe(2);
+    const bordereau = w.documents.find((d) => d.type === 'bordereau-cover')!;
+    expect(bordereau.scope).toBe('conventional');
+    expect(bordereau.blocks.every((b) => b.en.length > 0 && b.ar.length > 0)).toBe(true);
+    expect(bordereau.disclaimers.map((d) => d.id)).toEqual(['W-BASIS-01', 'W-LICENCE-01', 'W-SETTLE-01']);
+    const note = w.documents.find((d) => d.type === 'treaty-note')!;
+    expect(note.scope).toBe('takaful');
+    // the window's scope renames the contribution label and keeps the segregation paragraph word for word
+    expect(note.fields.find((f) => f.key === 'policy.contribution')!.label).toBe('Contribution');
+    const segregation = w.disclaimers.find((d) => d.id === 'W-SEG-01')!;
+    expect(note.blocks.find((b) => b.id === 'W-SEG-01')!.en).toBe(segregation.text);
+    expect(note.blocks.find((b) => b.id === 'W-SEG-01')!.ar).toBe(segregation.textAr);
+    expect(w.verify.every((v) => v.intact)).toBe(true);
+  });
+
+  it('does not add a letter when the world is merely read', () => {
+    const world = buildWorld();
+    const before = wordingSnapshot(world).documents.length;
+    wordingSnapshot(world);
+    expect(wordingSnapshot(world).documents.length).toBe(before);
   });
 });

@@ -25,6 +25,7 @@ import { AE_PACK, comparisonMatrix, preSaleCheck, QuoteOffer } from './regulator
 import { REINSURANCE_SEED, TreatyRegister } from './reinsurance.js';
 import { ExtractEngine, IssuedExtract, formatCell } from './extracts.js';
 import { PlacementFacts, UAE_RULES, UaeRuleBook, ratingRank } from './uae.js';
+import { WordingBook, WordingDocument, WordingFacts } from './wording.js';
 import { IngestionFabric } from './ingest.js';
 import { AgentRuntime } from './ai.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
@@ -45,6 +46,7 @@ export interface World {
   readonly retakaful: TreatyRegister;        // the takaful window's own treaties, kept apart
   readonly extracts: ExtractEngine;          // regulatory, actuarial and bordereau extracts, issued and kept
   readonly rules: UaeRuleBook;               // the UAE reinsurance rule book, and every decision taken under it
+  readonly wording: WordingBook;             // generated letters and notices, with their mandated wording
   readonly takafulExtracts: ExtractEngine;   // the window files its own return, from its own fund
 
   readonly group: GroupConsolidator;
@@ -371,6 +373,12 @@ export function buildWorld(): World {
     retentionPlan: plan, documents: ['approved retention and reinsurance plan', 'board minute of the annual review'],
   });
 
+  // Wording, generated from the same label registry the screens read: a rename in the takaful scope
+  // changes what a field is called in the letters that scope sends, and never a mandated paragraph.
+  const wording = new WordingBook({
+    resolve: (key, locale, scope) => labels.t(key, locale, undefined, scope === 'takaful' ? `${tenant.id}:${takafulEntity}` : 'default'),
+  });
+
   const ratedDecision = underwriting.decisionFor(ratedApp.id)!;
   const cleanDecision = underwriting.decisionFor(cleanApp.id)!;
 
@@ -624,13 +632,45 @@ export function buildWorld(): World {
     { insurer: 'Orient Direct', product: 'Motor Third Party Plus', premium: 1350, excess: 1000, benefits: ['third party', 'fire and theft'], serviceRating: 3, complaintsPer10k: 12 },
   ];
 
+  // Two letters on file: the conventional book's bordereau cover note, and the window's treaty note —
+  // the second with the takaful scope's own words for a contribution, and the same mandated paragraph
+  // about fund segregation in both languages.
+  wording.generate({
+    type: 'bordereau-cover',
+    facts: {
+      scope: 'conventional', locale: 'en', packVersion: AE_PACK.version, at: '2026-10-05T17:10:00+04:00',
+      by: 'finance/reporting', entityName: 'Al Khaleej Insurance (conventional)', counterparty: 'Emirates Re',
+      period: `${DAYS[DAYS.length - 1]!.slice(0, 4)}-01-01 to ${DAYS[DAYS.length - 1]}`,
+      fields: [
+        { key: 'policy.premium', required: true, value: formatAmount(money(3_819_63, currency)) },
+        { key: 'policy.sumAssured', required: true, value: formatAmount(money(250_000_00, currency)) },
+        { key: 'fund.value', required: false, value: formatAmount(money(10_627_173, currency)) },
+      ],
+      tiesTo: ['GET /api/extracts (RS-A, RS-D)', 'ALK-CONV:REINS:CEDED-PREMIUM'],
+    },
+  });
+  wording.generate({
+    type: 'treaty-note',
+    facts: {
+      scope: 'takaful', locale: 'en', packVersion: AE_PACK.version, at: '2026-10-05T17:20:00+04:00',
+      by: 'takaful/reinsurance-desk', entityName: 'Al Khaleej Takaful Window', counterparty: 'MENA Retakaful',
+      period: `${DAYS[DAYS.length - 1]!.slice(0, 4)}-01-01 to ${DAYS[DAYS.length - 1]}`,
+      fields: [
+        { key: 'policy.contribution', required: true, value: formatAmount(money(1_800_00, currency)) },
+        { key: 'takaful.riskFund', required: true, value: 'Participant risk fund (segregated from the operator)' },
+        { key: 'takaful.operator', required: true, value: 'Al Khaleej Takaful (operator)' },
+      ],
+      tiesTo: ['GET /api/extracts (the window files its own return)', 'ALK-TKF:REINS:CEDED-PREMIUM'],
+    },
+  });
+
   return {
     tenant, entities: [
       { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional', currency, regulator: 'CBUAE' },
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
     ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, reinsurance, retakaful,
-    extracts, takafulExtracts, rules,
+    extracts, takafulExtracts, rules, wording,
     group, groupRates, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
@@ -1016,6 +1056,34 @@ export function uaeRuleSnapshot(w: World) {
   };
 }
 
+/**
+ * The wording book as the console reads it: the templates and the mandated paragraphs as data, and
+ * every letter generated from them — with both languages on every block and the pack version that
+ * produced it written on its face.
+ */
+export function wordingSnapshot(w: World) {
+  const catalogue = w.wording.catalogue();
+  return {
+    templates: catalogue.templates.map((t) => ({
+      type: t.type, title: t.title, titleAr: t.titleAr, purpose: t.purpose, purposeAr: t.purposeAr,
+      labels: [...t.labels], required: [...t.disclaimers],
+    })),
+    disclaimers: catalogue.disclaimers.map((d) => ({
+      id: d.id, kind: d.kind, instrument: d.instrument ?? null, text: d.text, textAr: d.textAr, appliesTo: [...d.appliesTo],
+    })),
+    documents: w.wording.documents().map((d) => ({
+      id: d.id, version: d.version, type: d.type, scope: d.scope, locale: d.locale,
+      title: d.title, titleAr: d.titleAr, packVersion: d.packVersion, fingerprint: d.fingerprint,
+      generatedAt: d.generatedAt, by: d.by, tiesTo: [...d.tiesTo], limitation: d.limitation,
+      supersedes: d.supersedes ?? null, changesSummary: d.changesSummary ?? null,
+      disclaimers: d.disclaimers.map((x) => ({ id: x.id, instrument: x.instrument ?? null })),
+      fields: d.fields.map((f) => ({ ...f })),
+      blocks: d.blocks.map((b) => ({ id: b.id, kind: b.kind, en: b.en, ar: b.ar, instrument: b.instrument ?? null })),
+    })),
+    verify: w.wording.documents().map((d) => w.wording.verify(d.id)),
+  };
+}
+
 export function worldSnapshot(w: World) {
   const latest = DAYS[DAYS.length - 1]!;
   const asOf = w.asOf;
@@ -1157,6 +1225,7 @@ export function worldSnapshot(w: World) {
     reinsurance: reinsuranceSnapshot(w),
     extracts: extractSnapshot(w),
     uaeRules: uaeRuleSnapshot(w),
+    wording: wordingSnapshot(w),
     group: groupSnapshot(w, false),
     claims: claimsSnapshot(w.claims, asOf),
     takafulClaims: claimsSnapshot(w.takafulClaims, asOf),

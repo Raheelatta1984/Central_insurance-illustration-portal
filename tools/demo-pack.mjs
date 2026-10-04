@@ -179,7 +179,7 @@ const MODULES = [
       await page.mouse.wheel(0, 700); await sleep(1400);
     } },
   { id: 'regulatory', label: 'Regulatory', tour: '00:56',
-    blurb: 'Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored.' },
+    blurb: 'Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored — then the UAE reinsurance rule book (twelve rules as data, each citing its instrument and clause in both languages, answering allowed, held for a named human or refused) and the wording book, which generates the letters with their mandated paragraphs and lets the takaful scope rename a field without touching a paragraph.' },
   { id: 'ai', label: 'AI ledger', tour: '00:56',
     blurb: 'Six prohibited intents, risk-gated approvals and a refusal that stays on the record — governance a regulator can read.',
     async script(page) {

@@ -8,10 +8,11 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
-import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot, uaeRuleSnapshot } from '../core/demo.js';
+import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot, uaeRuleSnapshot, wordingSnapshot } from '../core/demo.js';
 import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { UaeRuleError } from '../core/uae.js';
+import { WordingError } from '../core/wording.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
 import { ClaimsEngine, ClaimCause } from '../core/claims.js';
@@ -225,6 +226,66 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     case 'GET /reinsurance': {
       // Exactly the shape the console renders, so the two can never drift apart.
       json(res, 200, reinsuranceSnapshot(state.world));
+      return true;
+    }
+
+    case 'GET /wording': {
+      // The templates and the mandated paragraphs as data, and every letter generated from them.
+      json(res, 200, wordingSnapshot(state.world));
+      return true;
+    }
+
+    case 'POST /wording/generate': {
+      // Compose a letter the way the desk would: the same templates, the same mandated paragraphs, and
+      // the scope's own words for a field. Generating identical content returns the letter already on
+      // file; a moved figure supersedes it with a changes summary and keeps the earlier version.
+      const type = String(payload['type'] ?? 'customer-reinsurance-note') as Parameters<typeof state.world.wording.generate>[0]['type'];
+      const scope = String(payload['scope'] ?? 'conventional');
+      const isTakaful = scope === 'takaful';
+      try {
+        const document = state.world.wording.generate({
+          type,
+          facts: {
+            scope, locale: 'en', packVersion: AE_PACK.version,
+            at: `${state.world.asOf}T18:05:00+04:00`,
+            by: String(payload['by'] ?? (isTakaful ? 'takaful/reinsurance-desk' : 'finance/reporting')),
+            entityName: isTakaful ? 'Al Khaleej Takaful Window' : 'Al Khaleej Insurance (conventional)',
+            counterparty: isTakaful ? 'MENA Retakaful' : 'Emirates Re',
+            period: `${state.world.asOf.slice(0, 4)}-01-01 to ${state.world.asOf}`,
+            // Each scope supplies its own vocabulary: a conventional letter states a premium, the
+            // window's states a contribution. Supplying both would add a field to a letter that never
+            // had one — and an addition is a change, which would need a reason.
+            fields: isTakaful ? [
+              { key: 'policy.holder', required: true, value: 'Ahmed Al Mansoori' },
+              { key: 'policy.contribution', required: true, value: formatAmount(money(1_800_00, 'AED')) },
+              { key: 'policy.sumAssured', required: true, value: formatAmount(money(250_000_00, 'AED')) },
+              { key: 'fund.value', required: false, value: formatAmount(money(10_627_173, 'AED')) },
+              { key: 'takaful.riskFund', required: true, value: 'Participant risk fund (segregated from the operator)' },
+              { key: 'takaful.operator', required: true, value: 'Al Khaleej Takaful (operator)' },
+            ] : [
+              { key: 'policy.holder', required: true, value: 'Ahmed Al Mansoori' },
+              { key: 'policy.premium', required: true, value: formatAmount(money(3_819_63, 'AED')) },
+              { key: 'policy.sumAssured', required: true, value: formatAmount(money(250_000_00, 'AED')) },
+              { key: 'fund.value', required: false, value: formatAmount(money(10_627_173, 'AED')) },
+            ],
+            tiesTo: ['GET /api/extracts', isTakaful ? 'ALK-TKF:REINS:CEDED-PREMIUM' : 'ALK-CONV:REINS:CEDED-PREMIUM'],
+          },
+        });
+        json(res, 200, {
+          id: document.id, version: document.version, type: document.type, scope: document.scope,
+          title: document.title, titleAr: document.titleAr, fingerprint: document.fingerprint,
+          packVersion: document.packVersion, generatedAt: document.generatedAt, by: document.by,
+          supersedes: document.supersedes ?? null, changesSummary: document.changesSummary ?? null,
+          disclaimers: document.disclaimers.map((d) => ({ ...d })),
+          fields: document.fields.map((f) => ({ ...f })),
+          blocks: document.blocks.map((b) => ({ ...b })),
+          limitation: document.limitation,
+          verify: state.world.wording.verify(document.id),
+          documents: wordingSnapshot(state.world).documents.length,
+        });
+      } catch (err) {
+        json(res, err instanceof WordingError ? 409 : 500, { error: String((err as Error).message) });
+      }
       return true;
     }
 

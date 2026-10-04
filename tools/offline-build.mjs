@@ -54,7 +54,15 @@ const shim = `
 
     if (path.indexOf('/api') !== 0) return realFetch ? realFetch(input, init) : reply({}, 404);
 
-    var key = method + ' ' + path;
+    function bodyHash(text) {
+      var h = 0x811c9dc5;
+      for (var i = 0; i < text.length; i += 1) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+      return ('0000000' + h.toString(16)).slice(-8);
+    }
+    var sent = (init && init.body) || (input && input.body) || null;
+    var bare = method + ' ' + path;
+    var key = sent === null ? bare : bare + ' ' + bodyHash(String(sent));
+    if (!Object.prototype.hasOwnProperty.call(RESPONSES, key)) key = bare;
     if (Object.prototype.hasOwnProperty.call(RESPONSES, key)) {
       var recorded = RESPONSES[key];
       // Recorded refusals replay as refusals, so the console shows the same error card it showed live.
