@@ -154,7 +154,7 @@ const MODULES = [
       await sleep(2600);
     } },
   { id: 'durability', label: 'Durability', tour: '00:53',
-    blurb: 'Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — a restore drill, not a promise.',
+    blurb: 'Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — and the same treatment for the reporting registers: returns, rule decisions, letters and filings sealed together, replayed into a fresh world and checked record by record, with the books carried forward to the moment each record was made and a hash-chained outbox proving nothing was dropped between snapshots. The register drill in these pages was recorded at the top of the session on the seeded world: a restore is a proof about the world it is handed, and that is the world it was handed.',
     async script(page) {
       await clickText(page, 'Run durability drill', { optional: true });
       await sleep(2600);

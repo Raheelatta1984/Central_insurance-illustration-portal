@@ -1791,8 +1791,10 @@ type RegisterSummary = {
 
 type RegisterDrill = {
   ok: boolean; detail: string; fingerprint: string; schemaVersion: number; bytes: number; restoreMs: number;
+  books: { posted: number; agree: boolean; detail: string };
+  replays: string[];
   registers: {
-    extracts: { expected: number; restored: number; fingerprintsAgree: boolean };
+    extracts: { expected: number; restored: number; fingerprintsAgree: boolean; duplicates: number };
     decisions: { expected: number; restored: number; agree: number; disagreements: string[] };
     letters: { expected: number; restored: number; fingerprintsAgree: boolean };
     filings: { expected: number; restored: number; statusesAgree: boolean };
@@ -1836,7 +1838,9 @@ function RegisterStore() {
         <>
           <div className="stat"><span>Result</span><b>{drill.ok ? <Pill tone="ok">every register replayed</Pill> : <Pill tone="bad">did not reproduce</Pill>}</b></div>
           <div className="stat"><span>Restore time</span><b>{drill.restoreMs} ms</b></div>
+          <div className="stat"><span>Books under the registers</span><b>{drill.books.agree ? <Pill tone="ok">replayed with them</Pill> : <Pill tone="bad">did not come back the same</Pill>}</b></div>
           <p className="small">{drill.detail}</p>
+          <p className="muted small">{drill.books.detail}</p>
           <Table
             head={['Register', 'In the snapshot', 'Rebuilt', 'Same']}
             rows={[
@@ -1850,6 +1854,14 @@ function RegisterStore() {
             ])}
           />
           <p className="muted small">{drill.registers.outbox.detail}</p>
+          <details>
+            <summary className="muted small">What the restore met, record by record ({drill.replays.length})</summary>
+            <ul className="small">
+              {drill.replays.map((line, i) => (
+                <li key={`${i}-${line}`} className={line.includes('refused') || line.includes('different') || line.includes('wrong') ? 'small' : 'small muted'}>{line}</li>
+              ))}
+            </ul>
+          </details>
           <p className="muted small">{drill.limitation}</p>
         </>
       )}

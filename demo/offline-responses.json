@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T12:23:00.301Z",
+  "capturedAt": "2026-10-04T13:16:05.228Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -3908,12 +3908,12 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T12:22:51.639Z",
-        "fingerprint": "969d47303ccf668c",
-        "accounts": 168,
-        "journals": 87,
+        "takenAt": "2026-10-04T13:14:05.218Z",
+        "fingerprint": "3a2df8ea5e4d87d0",
+        "accounts": 167,
+        "journals": 76,
         "fxRates": 2,
-        "bytes": 89049
+        "bytes": 80102
       }
     },
     "GET /api/state/registers": {
@@ -3921,10 +3921,10 @@
       "body": {
         "registers": {
           "conventional": {
-            "extracts": 7,
-            "decisions": 7,
-            "letters": 4,
-            "filings": 2
+            "extracts": 6,
+            "decisions": 5,
+            "letters": 2,
+            "filings": 1
           },
           "takaful": {
             "extracts": 2,
@@ -3932,14 +3932,14 @@
           }
         },
         "schemaVersion": 2,
-        "fingerprint": "e04a8f52fb30d9ad",
-        "bytes": 20326,
+        "fingerprint": "98cf277650d0b4c5",
+        "bytes": 14286,
         "outbox": {
-          "entries": 25,
+          "entries": 18,
           "intact": true,
-          "detail": "25 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
+          "detail": "18 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
         },
-        "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots. It is not yet a database: there is no transactional write, no concurrent-reader isolation and no incremental streaming of the outbox — those belong to the Postgres and outbox chunks this shape is built to hold."
+        "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots, and every record remembers how far the books had got when it was made, so it is re-proved against the books of its own moment. Two limits are stated rather than papered over: it is not yet a database (no transactional write, no concurrent-reader isolation, no incremental streaming of the outbox), and a return whose figures came from a register the store does not carry yet — a catastrophe recovery, say — is reported as one it could not re-prove rather than quietly let through. Carrying those inputs is its own chunk."
       }
     },
     "GET /api/submissions": {
@@ -5871,7 +5871,7 @@
             }
           ],
           "proposal": {
-            "id": "TKF-SRP-000020",
+            "id": "TKF-SRP-000019",
             "grossSurplus": "1,250.00 AED",
             "distributable": "0.00 AED",
             "participantShare": "0.00 AED",
@@ -11253,7 +11253,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T12:20:57.307Z"
+        "generatedAt": "2026-10-04T13:13:59.705Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {
@@ -11525,23 +11525,23 @@
         ]
       }
     },
-    "POST /api/ingest/commit d1929206": {
+    "POST /api/ingest/commit 06005916": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791116533547",
+        "loadId": "LOAD-1791119722023",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
       }
     },
-    "POST /api/ingest/submit d6f006d0": {
+    "POST /api/ingest/submit d5e29a14": {
       "status": 200,
       "body": {
         "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791116533547"
+        "loadId": "LOAD-1791119722023"
       }
     },
     "POST /api/onboarding/ocr 4d38892d": {
@@ -12793,12 +12793,12 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "ac0f7c743d3aaa3b",
+        "fingerprint": "fa926be4747bcf20",
         "fingerprintStable": true,
-        "journals": 87,
-        "restoredJournals": 87,
-        "bytes": 89049,
-        "restoreMs": 32,
+        "journals": 76,
+        "restoredJournals": 76,
+        "bytes": 80102,
+        "restoreMs": 44,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -12822,7 +12822,7 @@
             "entityId": "GRP",
             "balanced": true,
             "trialBalanceAgrees": true,
-            "accounts": 65
+            "accounts": 64
           }
         ]
       }
@@ -12830,43 +12830,74 @@
     "POST /api/state/registers/drill": {
       "status": 200,
       "body": {
-        "ok": false,
-        "detail": "the restore did not reproduce: ",
-        "fingerprint": "74e7e6c658b73a6d",
+        "ok": true,
+        "detail": "every register replayed: 8 extract(s), 5 decision(s), 2 letter(s) and 2 filing(s) came back the same, the books were replayed with them (0 journal(s) posted by the restore), and the outbox chains from the beginning",
+        "books": {
+          "posted": 0,
+          "agree": true,
+          "detail": "the books came back with 76 journal(s), 0 of them posted by the restore as it replayed the registers, and every entity's trial balance is the one the snapshot had"
+        },
+        "replays": [
+          "conventional extract RI-EX-ALK-CONV-00001 → RI-EX-ALK-CONV-00001",
+          "conventional extract RI-EX-ALK-CONV-00002 → RI-EX-ALK-CONV-00002",
+          "conventional extract RI-EX-ALK-CONV-00003 → RI-EX-ALK-CONV-00003",
+          "conventional extract RI-EX-ALK-CONV-00004 → RI-EX-ALK-CONV-00004",
+          "conventional extract RI-EX-ALK-CONV-00005 → RI-EX-ALK-CONV-00005",
+          "conventional extract RI-EX-ALK-CONV-00006 → RI-EX-ALK-CONV-00006",
+          "takaful extract RI-EX-ALK-TKF-00001 → RI-EX-ALK-TKF-00001",
+          "takaful extract RI-EX-ALK-TKF-00002 → RI-EX-ALK-TKF-00002"
+        ],
+        "fingerprint": "e58ffefea9331cc3",
         "schemaVersion": 2,
-        "bytes": 20327,
-        "restoreMs": 27,
+        "bytes": 14287,
+        "restoreMs": 36,
         "registers": {
+          "books": {
+            "posted": 0,
+            "agree": true,
+            "detail": "the books came back with 76 journal(s), 0 of them posted by the restore as it replayed the registers, and every entity's trial balance is the one the snapshot had"
+          },
           "extracts": {
-            "expected": 9,
+            "expected": 8,
             "restored": 8,
-            "fingerprintsAgree": false
+            "fingerprintsAgree": true,
+            "duplicates": 0
           },
           "decisions": {
-            "expected": 7,
-            "restored": 7,
-            "agree": 7,
+            "expected": 5,
+            "restored": 5,
+            "agree": 5,
             "disagreements": []
           },
           "letters": {
-            "expected": 4,
-            "restored": 4,
+            "expected": 2,
+            "restored": 2,
             "fingerprintsAgree": true
           },
           "filings": {
-            "expected": 3,
-            "restored": 3,
+            "expected": 2,
+            "restored": 2,
             "statusesAgree": true
           },
           "outbox": {
             "intact": true,
-            "entries": 25,
-            "detail": "25 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
+            "entries": 18,
+            "detail": "18 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
           },
-          "ok": false,
-          "detail": "the restore did not reproduce: "
+          "ok": true,
+          "detail": "every register replayed: 8 extract(s), 5 decision(s), 2 letter(s) and 2 filing(s) came back the same, the books were replayed with them (0 journal(s) posted by the restore), and the outbox chains from the beginning",
+          "replays": [
+            "conventional extract RI-EX-ALK-CONV-00001 → RI-EX-ALK-CONV-00001",
+            "conventional extract RI-EX-ALK-CONV-00002 → RI-EX-ALK-CONV-00002",
+            "conventional extract RI-EX-ALK-CONV-00003 → RI-EX-ALK-CONV-00003",
+            "conventional extract RI-EX-ALK-CONV-00004 → RI-EX-ALK-CONV-00004",
+            "conventional extract RI-EX-ALK-CONV-00005 → RI-EX-ALK-CONV-00005",
+            "conventional extract RI-EX-ALK-CONV-00006 → RI-EX-ALK-CONV-00006",
+            "takaful extract RI-EX-ALK-TKF-00001 → RI-EX-ALK-TKF-00001",
+            "takaful extract RI-EX-ALK-TKF-00002 → RI-EX-ALK-TKF-00002"
+          ]
         },
-        "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots. It is not yet a database: there is no transactional write, no concurrent-reader isolation and no incremental streaming of the outbox — those belong to the Postgres and outbox chunks this shape is built to hold."
+        "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots, and every record remembers how far the books had got when it was made, so it is re-proved against the books of its own moment. Two limits are stated rather than papered over: it is not yet a database (no transactional write, no concurrent-reader isolation, no incremental streaming of the outbox), and a return whose figures came from a register the store does not carry yet — a catastrophe recovery, say — is reported as one it could not re-prove rather than quietly let through. Carrying those inputs is its own chunk."
       }
     },
     "POST /api/submissions/acknowledge e63c438e": {
@@ -12972,7 +13003,7 @@
     "POST /api/takaful/approve 75447b0d": {
       "status": 200,
       "body": {
-        "id": "TKF-SRP-000033",
+        "id": "TKF-SRP-000030",
         "approvals": {
           "actuary": false,
           "shariah": false,
@@ -12989,7 +13020,7 @@
     "POST /api/takaful/approve 7dbf4aa1": {
       "status": 200,
       "body": {
-        "id": "TKF-SRP-000032",
+        "id": "TKF-SRP-000029",
         "approvals": {
           "actuary": false,
           "shariah": true,
@@ -13006,7 +13037,7 @@
     "POST /api/takaful/approve 821f1d59": {
       "status": 200,
       "body": {
-        "id": "TKF-SRP-000031",
+        "id": "TKF-SRP-000028",
         "approvals": {
           "actuary": true,
           "shariah": false,
@@ -13388,12 +13419,12 @@
     "POST /api/extracts/verify c36ca302": {
       "extractId": "RI-EX-ALK-CONV-00001"
     },
-    "POST /api/ingest/commit d1929206": {
-      "loadId": "LOAD-1791116533547"
+    "POST /api/ingest/commit 06005916": {
+      "loadId": "LOAD-1791119722023"
     },
-    "POST /api/ingest/submit d6f006d0": {
+    "POST /api/ingest/submit d5e29a14": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791116533547"
+      "loadId": "LOAD-1791119722023"
     },
     "POST /api/onboarding/ocr 4d38892d": {
       "documentType": "emirates-id",

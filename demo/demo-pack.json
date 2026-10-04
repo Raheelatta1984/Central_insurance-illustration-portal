@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T10:29:42.497Z",
+  "generatedAt": "2026-10-04T13:24:43.587Z",
   "base": "http://127.0.0.1:8787",
   "viewport": {
     "width": 1600,
@@ -15,18 +15,18 @@
       "screenshotFull": "screens/overview-full.png",
       "video": "video/overview.mp4",
       "videoFallback": "video/overview.webm",
-      "bytes": 459366
+      "bytes": 476301
     },
     {
       "id": "policyholder",
       "label": "Policyholder",
       "tour": "00:04",
-      "blurb": "Look-through from a unit-linked policy into the actual instruments it holds — real prices, with the date each price was taken.",
+      "blurb": "Look-through from a unit-linked policy into the actual instruments it holds \u2014 real prices, with the date each price was taken.",
       "screenshot": "screens/policyholder.png",
       "screenshotFull": "screens/policyholder-full.png",
       "video": "video/policyholder.mp4",
       "videoFallback": "video/policyholder.webm",
-      "bytes": 1013839
+      "bytes": 1022046
     },
     {
       "id": "decisions",
@@ -37,7 +37,7 @@
       "screenshotFull": "screens/decisions-full.png",
       "video": "video/decisions.mp4",
       "videoFallback": "video/decisions.webm",
-      "bytes": 1247917
+      "bytes": 1286619
     },
     {
       "id": "cover",
@@ -48,7 +48,7 @@
       "screenshotFull": "screens/cover-full.png",
       "video": "video/cover.mp4",
       "videoFallback": "video/cover.webm",
-      "bytes": 1155745
+      "bytes": 1175815
     },
     {
       "id": "funds",
@@ -59,7 +59,7 @@
       "screenshotFull": "screens/funds-full.png",
       "video": "video/funds.mp4",
       "videoFallback": "video/funds.webm",
-      "bytes": 490590
+      "bytes": 501047
     },
     {
       "id": "takaful",
@@ -70,7 +70,7 @@
       "screenshotFull": "screens/takaful-full.png",
       "video": "video/takaful.mp4",
       "videoFallback": "video/takaful.webm",
-      "bytes": 1427706
+      "bytes": 1426350
     },
     {
       "id": "group",
@@ -81,51 +81,51 @@
       "screenshotFull": "screens/group-full.png",
       "video": "video/group.mp4",
       "videoFallback": "video/group.webm",
-      "bytes": 1045023
+      "bytes": 1036158
     },
     {
       "id": "underwriting",
       "label": "Underwriting",
       "tour": "00:38",
-      "blurb": "A manual held as data: every loading, exclusion and evidence requirement with its reason — and an AI agent that may rate inside its limit but never decline.",
+      "blurb": "A manual held as data: every loading, exclusion and evidence requirement with its reason \u2014 and an AI agent that may rate inside its limit but never decline.",
       "screenshot": "screens/underwriting.png",
       "screenshotFull": "screens/underwriting-full.png",
       "video": "video/underwriting.mp4",
       "videoFallback": "video/underwriting.webm",
-      "bytes": 1355172
+      "bytes": 1355872
     },
     {
       "id": "claims",
       "label": "Claims",
       "tour": "00:43",
-      "blurb": "Triage, reserves as booked liabilities, authority-gated approval, settlement releasing the reserve and recoveries as their own income — with a pooled takaful claim paid from the risk fund.",
+      "blurb": "Triage, reserves as booked liabilities, authority-gated approval, settlement releasing the reserve and recoveries as their own income \u2014 with a pooled takaful claim paid from the risk fund.",
       "screenshot": "screens/claims.png",
       "screenshotFull": "screens/claims-full.png",
       "video": "video/claims.mp4",
       "videoFallback": "video/claims.webm",
-      "bytes": 1378266
+      "bytes": 1356000
     },
     {
       "id": "reinsurance",
       "label": "Reinsurance",
       "tour": "00:48",
-      "blurb": "Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss and a retakaful treaty — plus ageing of what reinsurers owe against their own settlement terms, a register-to-books reconciliation that states every difference, the security behind every counterparty, and the reporting extracts: the supervisory return in four schedules with eight controls that each name the account they tie to, the actuary’s exhibits with the limits of what they claim written on their face, and a bordereau per counterparty — with a return that does not tie refused issue, and a reissue that supersedes the last version rather than editing it.",
+      "blurb": "Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss and a retakaful treaty \u2014 plus ageing of what reinsurers owe against their own settlement terms, a register-to-books reconciliation that states every difference, the security behind every counterparty, and the reporting extracts: the supervisory return in four schedules with eight controls that each name the account they tie to, the actuary\u2019s exhibits with the limits of what they claim written on their face, and a bordereau per counterparty \u2014 with a return that does not tie refused issue, and a reissue that supersedes the last version rather than editing it.",
       "screenshot": "screens/reinsurance.png",
       "screenshotFull": "screens/reinsurance-full.png",
       "video": "video/reinsurance.mp4",
       "videoFallback": "video/reinsurance.webm",
-      "bytes": 3318685
+      "bytes": 3170861
     },
     {
       "id": "durability",
       "label": "Durability",
       "tour": "00:53",
-      "blurb": "Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — a restore drill, not a promise.",
+      "blurb": "Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances \u2014 and the same treatment for the reporting registers: returns, rule decisions, letters and filings sealed together, replayed into a fresh world and checked record by record, with the books carried forward to the moment each record was made and a hash-chained outbox proving nothing was dropped between snapshots. The register drill in these pages was recorded at the top of the session on the seeded world: a restore is a proof about the world it is handed, and that is the world it was handed.",
       "screenshot": "screens/durability.png",
       "screenshotFull": "screens/durability-full.png",
       "video": "video/durability.mp4",
       "videoFallback": "video/durability.webm",
-      "bytes": 734360
+      "bytes": 812898
     },
     {
       "id": "onboarding",
@@ -136,7 +136,7 @@
       "screenshotFull": "screens/onboarding-full.png",
       "video": "video/onboarding.mp4",
       "videoFallback": "video/onboarding.webm",
-      "bytes": 442001
+      "bytes": 448122
     },
     {
       "id": "ingest",
@@ -147,40 +147,40 @@
       "screenshotFull": "screens/ingest-full.png",
       "video": "video/ingest.mp4",
       "videoFallback": "video/ingest.webm",
-      "bytes": 1041061
+      "bytes": 1068543
     },
     {
       "id": "parties",
       "label": "Parties & consent",
       "tour": "00:56",
-      "blurb": "A consented cross-party lookup that returns only what was consented to, a refusal when it is not — and an access log with every attempt on it.",
+      "blurb": "A consented cross-party lookup that returns only what was consented to, a refusal when it is not \u2014 and an access log with every attempt on it.",
       "screenshot": "screens/parties.png",
       "screenshotFull": "screens/parties-full.png",
       "video": "video/parties.mp4",
       "videoFallback": "video/parties.webm",
-      "bytes": 1067984
+      "bytes": 1055644
     },
     {
       "id": "regulatory",
       "label": "Regulatory",
       "tour": "00:56",
-      "blurb": "Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored — then the UAE reinsurance rule book (twelve rules as data, each citing its instrument and clause in both languages, answering allowed, held for a named human or refused) and the wording book, which generates the letters with their mandated paragraphs and lets the takaful scope rename a field without touching a paragraph — and the submission log, which files the return through the CBUAE channel, refuses a return that has moved since it was issued, supersedes a filing when the return is corrected, and tracks what is still awaiting a reference back.",
+      "blurb": "Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored \u2014 then the UAE reinsurance rule book (twelve rules as data, each citing its instrument and clause in both languages, answering allowed, held for a named human or refused) and the wording book, which generates the letters with their mandated paragraphs and lets the takaful scope rename a field without touching a paragraph \u2014 and the submission log, which files the return through the CBUAE channel, refuses a return that has moved since it was issued, supersedes a filing when the return is corrected, and tracks what is still awaiting a reference back.",
       "screenshot": "screens/regulatory.png",
       "screenshotFull": "screens/regulatory-full.png",
       "video": "video/regulatory.mp4",
       "videoFallback": "video/regulatory.webm",
-      "bytes": 639179
+      "bytes": 707670
     },
     {
       "id": "ai",
       "label": "AI ledger",
       "tour": "00:56",
-      "blurb": "Six prohibited intents, risk-gated approvals and a refusal that stays on the record — governance a regulator can read.",
+      "blurb": "Six prohibited intents, risk-gated approvals and a refusal that stays on the record \u2014 governance a regulator can read.",
       "screenshot": "screens/ai.png",
       "screenshotFull": "screens/ai-full.png",
       "video": "video/ai.mp4",
       "videoFallback": "video/ai.webm",
-      "bytes": 788365
+      "bytes": 775411
     },
     {
       "id": "ledger",
@@ -191,7 +191,7 @@
       "screenshotFull": "screens/ledger-full.png",
       "video": "video/ledger.mp4",
       "videoFallback": "video/ledger.webm",
-      "bytes": 435805
+      "bytes": 538464
     },
     {
       "id": "labels",
@@ -202,7 +202,7 @@
       "screenshotFull": "screens/labels-full.png",
       "video": "video/labels.mp4",
       "videoFallback": "video/labels.webm",
-      "bytes": 525952
+      "bytes": 545077
     },
     {
       "id": "tour",
@@ -213,7 +213,7 @@
       "screenshotFull": "screens/tour-full.png",
       "video": "video/tour.mp4",
       "videoFallback": "video/tour.webm",
-      "bytes": 1046714
+      "bytes": 1131750
     }
   ]
 }

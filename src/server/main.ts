@@ -278,6 +278,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
         ok: report.ok,
         detail: report.detail,
         books: report.books,
+        replays: report.replays,
         fingerprint: sealed.snapshot.fingerprint,
         schemaVersion: sealed.snapshot.schemaVersion,
         bytes: sealed.text.length,
