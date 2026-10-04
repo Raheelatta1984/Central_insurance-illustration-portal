@@ -9,9 +9,11 @@
  * and links to the full-page screenshot and the full-quality recording next to it.
  */
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = process.cwd();
+/** Repo root, from this file's own location — so the command works from any directory. */
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const pack = JSON.parse(readFileSync(resolve(ROOT, 'demo/demo-pack.json'), 'utf8'));
 
 const b64 = (path, mime) => `data:${mime};base64,${readFileSync(path).toString('base64')}`;

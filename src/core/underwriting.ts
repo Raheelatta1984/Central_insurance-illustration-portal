@@ -461,6 +461,11 @@ export class UnderwritingEngine {
     return { standard, loaded, extra: sub(loaded, standard), policies };
   }
 
+  /** The decision on one application — what the reinsurance desk has to cede, and on what terms. */
+  decisionFor(applicationId: string): UnderwritingDecision | undefined {
+    return this.accepted.get(applicationId)?.at(-1) ?? this.applications.get(applicationId)?.decision;
+  }
+
   /** Reinsurance share of the book at a given cession rate, per policy line. */
   reinsuranceShare(cessionBps: number): Array<{ productId: string; ceded: Money; retained: Money }> {
     const byProduct = new Map<string, Money>();

@@ -45,7 +45,7 @@ lines.push(
   '',
   '## What is not finished',
   '',
-  'This is an honest inventory, mirrored in `docs/06-QA-REPORT.md`: reinsurance, policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet built. `ledger/runs.jsonl` records every backlog chunk the fleet has claimed with its evidence; `node tools/fleet.mjs` prints how many are still open.',
+  'This is an honest inventory, mirrored in `docs/06-QA-REPORT.md`: policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet built. `ledger/runs.jsonl` records every backlog chunk the fleet has claimed with its evidence; `node tools/fleet.mjs` prints how many are still open.',
   '',
   '## Where the numbers live',
   '',

@@ -1,6 +1,6 @@
 # 07 — The sixty-minute tour
 
-*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 11 steps, 60 minutes.*
+*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 12 steps, 60 minutes.*
 
 > **Live app:** run `npm install && npm run build && npm start`, then open the console and start on the **Tour** tab. Every number you see is computed by an engine in `src/core`; nothing on the screen is seeded display text.
 
@@ -17,8 +17,9 @@
 | 7 | 00:32 | Group finance | Consolidate three entities, two currencies, one set of books |
 | 8 | 00:38 | Underwriting | Underwrite against a manual held as data |
 | 9 | 00:43 | Claims | Pay a claim through authority, not through a spreadsheet |
-| 10 | 00:48 | Durability | Prove the books can be restored |
-| 11 | 00:51 | Overview | The remainder of the hour: the fabric around the money |
+| 10 | 00:48 | Reinsurance | Hand part of the risk to someone else, on the record |
+| 11 | 00:53 | Durability | Prove the books can be restored |
+| 12 | 00:56 | Overview | The remainder of the hour: the fabric around the money |
 
 ## 1. 00:00 — Land on the whole book in one screen
 
@@ -198,7 +199,27 @@ Triage decides straight-through, referral or decline; a reserve is a booked liab
 
 *Endpoints: GET /api/claims · POST /api/claims/register · POST /api/claims/approve · POST /api/claims/settle*
 
-## 10. 00:48 — Prove the books can be restored
+## 10. 00:48 — Hand part of the risk to someone else, on the record
+
+**Tab:** Reinsurance · **5 minutes**
+
+An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code.
+
+**Do this**
+
+- Read the two statements: the conventional book and the takaful window, each with its own treaties.
+- Press "Cede a further risk": the engine authorises the cession, prices it and posts it — and the utilisation statement moves. Naming the same risk twice is refused rather than double-counted.
+- Press "Place a risk facultatively": the reinsurer accepts the named risk first, then the premium moves.
+- Read "The refusals": a risk the reinsurer has not accepted, and participant money offered to a conventional treaty.
+
+**You should see**
+
+- Ceded premium, commission, net retained premium and the recoverable appear in the books, not just on screen.
+- Every cession names the journal it produced, and the recoverable on the statement equals the receivable in the ledger.
+
+*Endpoints: GET /api/reinsurance · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover*
+
+## 11. 00:53 — Prove the books can be restored
 
 **Tab:** Durability · **3 minutes**
 
@@ -217,9 +238,9 @@ A demo that cannot survive a restart is not an ERP. This seals the books into a 
 
 *Endpoints: GET /api/state · POST /api/state/drill*
 
-## 11. 00:51 — The remainder of the hour: the fabric around the money
+## 12. 00:56 — The remainder of the hour: the fabric around the money
 
-**Tab:** Overview · **9 minutes**
+**Tab:** Overview · **4 minutes**
 
 The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, renaming and AI governance — each one wired to something you can press.
 
@@ -251,7 +272,7 @@ That is the product working, not a bug. The refusals worth trying on purpose:
 
 ## What is not finished
 
-This is an honest inventory, mirrored in `docs/06-QA-REPORT.md`: reinsurance, policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet built. `ledger/runs.jsonl` records every backlog chunk the fleet has claimed with its evidence; `node tools/fleet.mjs` prints how many are still open.
+This is an honest inventory, mirrored in `docs/06-QA-REPORT.md`: policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet built. `ledger/runs.jsonl` records every backlog chunk the fleet has claimed with its evidence; `node tools/fleet.mjs` prints how many are still open.
 
 ## Where the numbers live
 

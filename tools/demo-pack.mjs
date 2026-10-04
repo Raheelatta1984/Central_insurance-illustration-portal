@@ -130,16 +130,25 @@ const MODULES = [
       await clickText(page, 'Register a new claim', { optional: true });
       await sleep(2000);
     } },
-  { id: 'durability', label: 'Durability', tour: '00:48',
+  { id: 'reinsurance', label: 'Reinsurance', tour: '00:48',
+    blurb: 'Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover and a retakaful treaty for the takaful window — ceded premium, commission and recoveries posted to the books, with participant-money segregation enforced in code.',
+    async script(page) {
+      await page.mouse.wheel(0, 900); await sleep(1200);
+      await clickText(page, 'Place a risk facultatively', { optional: true });
+      await sleep(2200);
+      await clickText(page, 'Claim the reinsurance recovery', { optional: true });
+      await sleep(2200);
+    } },
+  { id: 'durability', label: 'Durability', tour: '00:53',
     blurb: 'Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — a restore drill, not a promise.',
     async script(page) {
       await clickText(page, 'Run durability drill', { optional: true });
       await sleep(2600);
       await page.mouse.wheel(0, 300); await sleep(1400);
     } },
-  { id: 'onboarding', label: 'Onboarding', tour: '00:51',
+  { id: 'onboarding', label: 'Onboarding', tour: '00:56',
     blurb: 'Chip read, government lookup and OCR consensus with a per-field review queue, gated until consent and a need analysis are in place.' },
-  { id: 'ingest', label: 'Ingestion', tour: '00:51',
+  { id: 'ingest', label: 'Ingestion', tour: '00:56',
     blurb: 'Any shape of file: columns typed from the data, bad rows quarantined with a reason, duplicates suppressed, and a reconciliation a supervisor can sign.',
     async script(page) {
       await clickText(page, 'Submit', { optional: true });
@@ -148,25 +157,25 @@ const MODULES = [
       await sleep(1800);
       await page.mouse.wheel(0, 700); await sleep(1400);
     } },
-  { id: 'parties', label: 'Parties & consent', tour: '00:51',
+  { id: 'parties', label: 'Parties & consent', tour: '00:56',
     blurb: 'A consented cross-party lookup that returns only what was consented to, a refusal when it is not — and an access log with every attempt on it.',
     async script(page) {
       await clickText(page, 'Look up', { optional: true });
       await sleep(1600);
       await page.mouse.wheel(0, 700); await sleep(1400);
     } },
-  { id: 'regulatory', label: 'Regulatory', tour: '00:51',
+  { id: 'regulatory', label: 'Regulatory', tour: '00:56',
     blurb: 'Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored.' },
-  { id: 'ai', label: 'AI ledger', tour: '00:51',
+  { id: 'ai', label: 'AI ledger', tour: '00:56',
     blurb: 'Six prohibited intents, risk-gated approvals and a refusal that stays on the record — governance a regulator can read.',
     async script(page) {
       await page.mouse.wheel(0, 700); await sleep(1200);
       await clickText(page, 'Execute', { optional: true, nth: 0 });
       await sleep(1800);
     } },
-  { id: 'ledger', label: 'Books', tour: '00:51',
+  { id: 'ledger', label: 'Books', tour: '00:56',
     blurb: 'The trial balance and journal list for an entity, straight out of the double-entry ledger that every other module posts into.' },
-  { id: 'labels', label: 'Labels & rename', tour: '00:51',
+  { id: 'labels', label: 'Labels & rename', tour: '00:56',
     blurb: 'The same platform, renamed per scope: the takaful window says Contribution where the conventional book says Premium, and neither leaks into the other.' },
   { id: 'tour', label: 'Tour', tour: '00:00',
     blurb: 'The guided sixty minutes, held as data: eleven steps with a live clock, each saying where to go, what to press, what to expect and why it matters.',

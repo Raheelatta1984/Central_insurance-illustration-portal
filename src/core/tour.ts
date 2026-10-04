@@ -28,6 +28,7 @@ export const CONSOLE_TABS = [
   { id: 'group', label: 'Group finance', icon: '⌂' },
   { id: 'underwriting', label: 'Underwriting', icon: '⚖' },
   { id: 'claims', label: 'Claims', icon: '✚' },
+  { id: 'reinsurance', label: 'Reinsurance', icon: '⛨' },
   { id: 'onboarding', label: 'Onboarding', icon: '⛨' },
   { id: 'ingest', label: 'Ingestion', icon: '⇥' },
   { id: 'parties', label: 'Parties & consent', icon: '⚖' },
@@ -175,7 +176,22 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/claims', 'POST /api/claims/register', 'POST /api/claims/approve', 'POST /api/claims/settle'],
   },
   {
-    at: '00:48', minutes: 3, tab: 'durability', title: 'Prove the books can be restored',
+    at: '00:48', minutes: 5, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
+    why: 'An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code.',
+    doThis: [
+      'Read the two statements: the conventional book and the takaful window, each with its own treaties.',
+      'Press "Cede a further risk": the engine authorises the cession, prices it and posts it — and the utilisation statement moves. Naming the same risk twice is refused rather than double-counted.',
+      'Press "Place a risk facultatively": the reinsurer accepts the named risk first, then the premium moves.',
+      'Read "The refusals": a risk the reinsurer has not accepted, and participant money offered to a conventional treaty.',
+    ],
+    expect: [
+      'Ceded premium, commission, net retained premium and the recoverable appear in the books, not just on screen.',
+      'Every cession names the journal it produced, and the recoverable on the statement equals the receivable in the ledger.',
+    ],
+    api: ['GET /api/reinsurance', 'POST /api/reinsurance/cede', 'POST /api/reinsurance/facultative', 'POST /api/reinsurance/recover'],
+  },
+  {
+    at: '00:53', minutes: 3, tab: 'durability', title: 'Prove the books can be restored',
     why: 'A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text, comparing trial balances.',
     doThis: [
       'Read the snapshot summary: accounts, journals, size, fingerprint.',
@@ -189,7 +205,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/state', 'POST /api/state/drill'],
   },
   {
-    at: '00:51', minutes: 9, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
+    at: '00:56', minutes: 4, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
     why: 'The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, renaming and AI governance — each one wired to something you can press.',
     doThis: [
       'Onboarding: read the chip read, the government lookup and the OCR consensus, then find the field in the review queue.',

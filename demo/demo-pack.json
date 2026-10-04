@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T03:27:04.227Z",
+  "generatedAt": "2026-10-04T04:08:51.165Z",
   "base": "http://127.0.0.1:8787",
   "viewport": {
     "width": 1600,
@@ -15,7 +15,7 @@
       "screenshotFull": "screens/overview-full.png",
       "video": "video/overview.mp4",
       "videoFallback": "video/overview.webm",
-      "bytes": 468779
+      "bytes": 471797
     },
     {
       "id": "policyholder",
@@ -26,7 +26,7 @@
       "screenshotFull": "screens/policyholder-full.png",
       "video": "video/policyholder.mp4",
       "videoFallback": "video/policyholder.webm",
-      "bytes": 1102750
+      "bytes": 990287
     },
     {
       "id": "decisions",
@@ -37,7 +37,7 @@
       "screenshotFull": "screens/decisions-full.png",
       "video": "video/decisions.mp4",
       "videoFallback": "video/decisions.webm",
-      "bytes": 1352636
+      "bytes": 1283012
     },
     {
       "id": "cover",
@@ -48,7 +48,7 @@
       "screenshotFull": "screens/cover-full.png",
       "video": "video/cover.mp4",
       "videoFallback": "video/cover.webm",
-      "bytes": 1169992
+      "bytes": 1159427
     },
     {
       "id": "funds",
@@ -59,7 +59,7 @@
       "screenshotFull": "screens/funds-full.png",
       "video": "video/funds.mp4",
       "videoFallback": "video/funds.webm",
-      "bytes": 497988
+      "bytes": 483951
     },
     {
       "id": "takaful",
@@ -70,7 +70,7 @@
       "screenshotFull": "screens/takaful-full.png",
       "video": "video/takaful.mp4",
       "videoFallback": "video/takaful.webm",
-      "bytes": 1418984
+      "bytes": 1420326
     },
     {
       "id": "group",
@@ -81,7 +81,7 @@
       "screenshotFull": "screens/group-full.png",
       "video": "video/group.mp4",
       "videoFallback": "video/group.webm",
-      "bytes": 1068197
+      "bytes": 1092684
     },
     {
       "id": "underwriting",
@@ -92,7 +92,7 @@
       "screenshotFull": "screens/underwriting-full.png",
       "video": "video/underwriting.mp4",
       "videoFallback": "video/underwriting.webm",
-      "bytes": 579417
+      "bytes": 1360015
     },
     {
       "id": "claims",
@@ -103,95 +103,106 @@
       "screenshotFull": "screens/claims-full.png",
       "video": "video/claims.mp4",
       "videoFallback": "video/claims.webm",
-      "bytes": 1365094
+      "bytes": 1372589
+    },
+    {
+      "id": "reinsurance",
+      "label": "Reinsurance",
+      "tour": "00:48",
+      "blurb": "Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover and a retakaful treaty for the takaful window — ceded premium, commission and recoveries posted to the books, with participant-money segregation enforced in code.",
+      "screenshot": "screens/reinsurance.png",
+      "screenshotFull": "screens/reinsurance-full.png",
+      "video": "video/reinsurance.mp4",
+      "videoFallback": "video/reinsurance.webm",
+      "bytes": 1393381
     },
     {
       "id": "durability",
       "label": "Durability",
-      "tour": "00:48",
+      "tour": "00:53",
       "blurb": "Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — a restore drill, not a promise.",
       "screenshot": "screens/durability.png",
       "screenshotFull": "screens/durability-full.png",
       "video": "video/durability.mp4",
       "videoFallback": "video/durability.webm",
-      "bytes": 727896
+      "bytes": 741871
     },
     {
       "id": "onboarding",
       "label": "Onboarding",
-      "tour": "00:51",
+      "tour": "00:56",
       "blurb": "Chip read, government lookup and OCR consensus with a per-field review queue, gated until consent and a need analysis are in place.",
       "screenshot": "screens/onboarding.png",
       "screenshotFull": "screens/onboarding-full.png",
       "video": "video/onboarding.mp4",
       "videoFallback": "video/onboarding.webm",
-      "bytes": 450576
+      "bytes": 461093
     },
     {
       "id": "ingest",
       "label": "Ingestion",
-      "tour": "00:51",
+      "tour": "00:56",
       "blurb": "Any shape of file: columns typed from the data, bad rows quarantined with a reason, duplicates suppressed, and a reconciliation a supervisor can sign.",
       "screenshot": "screens/ingest.png",
       "screenshotFull": "screens/ingest-full.png",
       "video": "video/ingest.mp4",
       "videoFallback": "video/ingest.webm",
-      "bytes": 1036676
+      "bytes": 1047332
     },
     {
       "id": "parties",
       "label": "Parties & consent",
-      "tour": "00:51",
+      "tour": "00:56",
       "blurb": "A consented cross-party lookup that returns only what was consented to, a refusal when it is not — and an access log with every attempt on it.",
       "screenshot": "screens/parties.png",
       "screenshotFull": "screens/parties-full.png",
       "video": "video/parties.mp4",
       "videoFallback": "video/parties.webm",
-      "bytes": 999179
+      "bytes": 1029562
     },
     {
       "id": "regulatory",
       "label": "Regulatory",
-      "tour": "00:51",
+      "tour": "00:56",
       "blurb": "Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored.",
       "screenshot": "screens/regulatory.png",
       "screenshotFull": "screens/regulatory-full.png",
       "video": "video/regulatory.mp4",
       "videoFallback": "video/regulatory.webm",
-      "bytes": 398669
+      "bytes": 414970
     },
     {
       "id": "ai",
       "label": "AI ledger",
-      "tour": "00:51",
+      "tour": "00:56",
       "blurb": "Six prohibited intents, risk-gated approvals and a refusal that stays on the record — governance a regulator can read.",
       "screenshot": "screens/ai.png",
       "screenshotFull": "screens/ai-full.png",
       "video": "video/ai.mp4",
       "videoFallback": "video/ai.webm",
-      "bytes": 767412
+      "bytes": 783823
     },
     {
       "id": "ledger",
       "label": "Books",
-      "tour": "00:51",
+      "tour": "00:56",
       "blurb": "The trial balance and journal list for an entity, straight out of the double-entry ledger that every other module posts into.",
       "screenshot": "screens/ledger.png",
       "screenshotFull": "screens/ledger-full.png",
       "video": "video/ledger.mp4",
       "videoFallback": "video/ledger.webm",
-      "bytes": 531136
+      "bytes": 598113
     },
     {
       "id": "labels",
       "label": "Labels & rename",
-      "tour": "00:51",
+      "tour": "00:56",
       "blurb": "The same platform, renamed per scope: the takaful window says Contribution where the conventional book says Premium, and neither leaks into the other.",
       "screenshot": "screens/labels.png",
       "screenshotFull": "screens/labels-full.png",
       "video": "video/labels.mp4",
       "videoFallback": "video/labels.webm",
-      "bytes": 505287
+      "bytes": 546040
     },
     {
       "id": "tour",
@@ -202,7 +213,7 @@
       "screenshotFull": "screens/tour-full.png",
       "video": "video/tour.mp4",
       "videoFallback": "video/tour.webm",
-      "bytes": 1050568
+      "bytes": 1065252
     }
   ]
 }

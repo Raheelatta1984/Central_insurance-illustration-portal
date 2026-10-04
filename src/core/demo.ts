@@ -20,7 +20,9 @@ import { BillingEngine } from './billing.js';
 import { TakafulEngine, TakafulProductConfig } from './takaful.js';
 import { Party, PartyRegistry } from './party.js';
 import { LabelRegistry, Locale } from './labels.js';
+import { applyBps } from './money.js';
 import { AE_PACK, comparisonMatrix, preSaleCheck, QuoteOffer } from './regulatory.js';
+import { REINSURANCE_SEED, TreatyRegister } from './reinsurance.js';
 import { IngestionFabric } from './ingest.js';
 import { AgentRuntime } from './ai.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
@@ -37,6 +39,9 @@ export interface World {
   readonly claims: ClaimsEngine;
   readonly takafulClaims: ClaimsEngine;
   readonly underwriting: UnderwritingEngine;
+  readonly reinsurance: TreatyRegister;      // conventional treaties
+  readonly retakaful: TreatyRegister;        // the takaful window's own treaties, kept apart
+
   readonly group: GroupConsolidator;
   readonly groupRates: RateTable;
   readonly parties: PartyRegistry;
@@ -292,6 +297,53 @@ export function buildWorld(): World {
   });
   underwriting.decide(aiApp.id, { at: '2026-10-01T10:00:05+04:00', by: 'agent/quote-bot', isAi: true });
 
+  /* Reinsurance and retakaful. The company does not keep the whole risk: a quota share carries a
+     quarter of it, a surplus treaty takes the lines above a 200,000 retention, a catastrophe cover
+     stands behind the whole book, and the retakaful operator carries a fifth of the takaful window's
+     risk. Every cession is posted, so the books show what was given away and what came back. */
+  const reinsurance = new TreatyRegister(ledger, conventionalEntity, currency);
+  for (const treaty of REINSURANCE_SEED) {
+    if (treaty.basis === 'conventional') reinsurance.register({ ...treaty, currency });
+  }
+  const retakaful = new TreatyRegister(ledger, takafulEntity, currency);
+  for (const treaty of REINSURANCE_SEED) {
+    if (treaty.basis === 'takaful') retakaful.register({ ...treaty, currency });
+  }
+
+  const ratedDecision = underwriting.decisionFor(ratedApp.id)!;
+  const cleanDecision = underwriting.decisionFor(cleanApp.id)!;
+
+  // Quota share: a quarter of the rated life case, ceded at the premium actually charged.
+  const quotaCession = reinsurance.cedePremium({
+    treatyId: 'QS-25-2026', policyId: ratedApp.id, riskId: `LIFE-${ratedDecision.partyId}`,
+    sumInsured: ratedDecision.sumAssured, premium: ratedDecision.loadedPremium,
+    lineOfBusiness: 'life', at: '2026-09-30T09:00:00+04:00', basis: 'conventional', by: 'reinsurance/desk',
+  });
+  // Surplus: the clean case sits above the 200,000 retention, so the first line of the treaty takes it.
+  const surplusCession = reinsurance.cedePremium({
+    treatyId: 'SURPLUS-10', policyId: cleanApp.id, riskId: `LIFE-${cleanDecision.partyId}`,
+    sumInsured: cleanDecision.sumAssured, premium: cleanDecision.standardPremium,
+    lineOfBusiness: 'life', at: '2026-09-30T09:05:00+04:00', basis: 'conventional', by: 'reinsurance/desk',
+  });
+  // The motor book is inside the quota share too, so the claim on it comes back part-paid.
+  const motorPremium = billing.statement('MTR-0441').total;
+  const motorCession = reinsurance.cedePremium({
+    treatyId: 'QS-25-2026', policyId: 'MTR-0441', riskId: 'MTR-0441',
+    sumInsured: money(250_000_00, currency), premium: motorPremium,
+    lineOfBusiness: 'motor', at: '2026-09-30T09:10:00+04:00', basis: 'conventional', by: 'reinsurance/desk',
+  });
+  const motorRecovery = reinsurance.recoverClaim({
+    policyId: 'MTR-0441', claim: claims, claimId: motorClaim.id,
+    paid: money(1150_00, currency), at: '2026-10-02T09:00:00+04:00', by: 'recovery-desk',
+  });
+  // Retakaful is ceded on the tabarru that went into the risk fund, and the journal carries the fund.
+  const tabarru = applyBps(money(6000_00, currency), tkfConfig.tabarruBps);   // the two TK-9001 contributions
+  const retakafulCession = retakaful.cedePremium({
+    treatyId: 'RTKF-QS-20', policyId: 'TK-9001', riskId: 'TK-9001',
+    sumInsured: money(500_000_00, currency), premium: tabarru,
+    lineOfBusiness: 'life', at: '2026-10-03T09:15:00+04:00', basis: 'takaful', by: 'retakaful/desk', fundId: 'PRF',
+  });
+
   /* A Malaysian subsidiary, reporting in ringgit, and the intercompany charges between the three
      entities — including one that the two books do not agree on, so the consolidation has to show
      it as in transit instead of pretending it evens out. Foreign postings carry their base amount,
@@ -463,7 +515,8 @@ export function buildWorld(): World {
       { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional', currency, regulator: 'CBUAE' },
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
-    ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, group, groupRates, parties, labels, ingest, ai,
+    ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, reinsurance, retakaful,
+    group, groupRates, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
@@ -473,7 +526,7 @@ export function buildWorld(): World {
 /* ------------------------------------------------------------ projections */
 
 /** Underwriting, in the shape the console and the API both read. */
-function underwritingView(engine: UnderwritingEngine, asOf: string) {
+export function underwritingSnapshot(engine: UnderwritingEngine, asOf: string) {
   const book = engine.bookPremium();
   return {
     book: {
@@ -574,7 +627,7 @@ export function groupSnapshot(w: World, post: boolean) {
 
 /* ------------------------------------------------------------ claims views */
 
-function claimView(engine: ClaimsEngine, asOf: string) {
+export function claimsSnapshot(engine: ClaimsEngine, asOf: string) {
   const position = engine.position();
   return {
     position: {
@@ -597,6 +650,70 @@ function claimView(engine: ClaimsEngine, asOf: string) {
         at: d.at, by: d.by, action: d.action, isAi: d.isAi, rationale: d.rationale,
         amount: d.amount ? formatAmount(d.amount) : null,
       })),
+    })),
+  };
+}
+
+/** Reinsurance and retakaful, in the shape the console and the API both read. */
+export function reinsuranceSnapshot(w: World) {
+  const shape = (s: ReturnType<TreatyRegister['utilisation']>) => ({
+    basis: s.basis,
+    asOf: s.asOf,
+    grossPremium: formatAmount(s.grossPremium),
+    cededPremium: formatAmount(s.cededPremium),
+    netRetainedPremium: formatAmount(s.netRetainedPremium),
+    cessionPct: s.cessionBps / 100,
+    commissionIncome: formatAmount(s.commissionIncome),
+    recoveries: formatAmount(s.recoveries),
+    recoverable: formatAmount(s.recoverable),
+    notes: [...s.notes],
+    treaties: s.treaties.map((t) => ({
+      treatyId: t.treatyId, name: t.name, counterparty: t.counterparty, kind: t.kind, basis: t.basis,
+      lineOfBusiness: t.lineOfBusiness, valid: t.valid, risks: t.risks,
+      capacity: formatAmount(t.capacity), cededSumInsured: formatAmount(t.cededSumInsured),
+      headroom: formatAmount(t.headroom), usedPct: t.usedBps / 100,
+      premiumWritten: formatAmount(t.premiumWritten), premiumCeded: formatAmount(t.premiumCeded),
+      premiumCededPct: t.premiumCededBps / 100,
+      commissionEarned: formatAmount(t.commissionEarned), recoveries: formatAmount(t.recoveries),
+    })),
+  });
+  return {
+    conventional: shape(w.reinsurance.utilisation({ asOf: w.asOf, basis: 'conventional' })),
+    takaful: shape(w.retakaful.utilisation({ asOf: w.asOf, basis: 'takaful' })),
+    schedule: w.reinsurance.cessionSchedule().map((c) => ({
+      policyId: c.policyId, ref: c.ref, treatyId: c.treatyId, riskId: c.riskId, sharePct: c.shareBps / 100,
+      sumInsured: formatAmount(c.sumInsured), ceded: formatAmount(c.ceded),
+      premium: formatAmount(c.premium), cededPremium: formatAmount(c.cededPremium),
+      commission: formatAmount(c.commission), netRetained: formatAmount(c.netRetainedPremium),
+      journalId: c.journalId, at: c.at, explanation: c.explanation,
+    })),
+    accepted: w.reinsurance.acceptedRisks('FAC-MOTOR'),
+    facultativeRefusal: (() => {
+      try {
+        w.reinsurance.authoriseCession('FAC-MOTOR', {
+          riskId: 'MTR-UNPLACED', sumInsured: money(400_000_00, 'AED'), lineOfBusiness: 'motor',
+          at: `${w.asOf}T09:00:00+04:00`, basis: 'conventional',
+        });
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+    })(),
+    segregationRefusal: (() => {
+      try {
+        // The control, demonstrated live: participant risk money offered to a conventional treaty.
+        w.reinsurance.authoriseCession('QS-25-2026', {
+          riskId: 'TKF-9001', sumInsured: money(500_000_00, 'AED'), lineOfBusiness: 'life',
+          at: `${w.asOf}T09:00:00+04:00`, basis: 'takaful',
+        });
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+    })(),
+    recoveries: w.reinsurance.recoveryList().map((r) => ({
+      claimId: r.claimId, recoveryId: r.recoveryId, treatyId: r.treatyId,
+      amount: formatAmount(r.amount), at: r.at,
     })),
   };
 }
@@ -738,10 +855,11 @@ export function worldSnapshot(w: World) {
       preSaleHealthBlocked: preSaleCheck(AE_PACK, { productLine: 'medical', hasNeedAnalysis: false, hasNeedId: false, surveyCompleted: false, comparisonPresented: false, customerIsResident: true, consentCaptured: true }),
       comparison: comparisonMatrix(w.quotes).map((c) => ({ ...c, premiumLabel: formatAmount(money(BigInt(c.premium) * 100n, 'AED')), scorePct: Math.round(c.score * 100) })),
     },
-    underwriting: underwritingView(w.underwriting, asOf),
+    underwriting: underwritingSnapshot(w.underwriting, asOf),
+    reinsurance: reinsuranceSnapshot(w),
     group: groupSnapshot(w, false),
-    claims: claimView(w.claims, asOf),
-    takafulClaims: claimView(w.takafulClaims, asOf),
+    claims: claimsSnapshot(w.claims, asOf),
+    takafulClaims: claimsSnapshot(w.takafulClaims, asOf),
     ledger: {
       proof: w.ledger.proof(w.conventionalEntity),
       proofTakaful: w.ledger.proof(w.takafulEntity),

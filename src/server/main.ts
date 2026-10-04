@@ -8,7 +8,7 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
-import { buildWorld, worldSnapshot, World, groupSnapshot } from '../core/demo.js';
+import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot } from '../core/demo.js';
 import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { ocrDocument } from '../core/onboarding.js';
@@ -29,31 +29,6 @@ const MIME: Record<string, string> = {
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.map': 'application/json',
 };
-
-/** The claims view used by the API. Kept here so the console and `/api/claims` cannot drift. */
-function claimViewForServer(engine: ClaimsEngine, asOf: string) {
-  const position = engine.position();
-  return {
-    position: {
-      reserved: formatAmount(position.reserved), expenseIncurred: formatAmount(position.expenseIncurred),
-      paidCash: formatAmount(position.paidCash), recovered: formatAmount(position.recovered),
-      netCost: formatAmount(position.netCost), openClaims: position.openClaims,
-    },
-    authority: engine.authorityTable().map((a) => ({ role: a.role, limit: formatAmount(a.limit), limitMinor: a.limit.minor.toString(), isAi: a.isAi })),
-    overdue: engine.overdue(asOf).map((c) => ({ id: c.id, policyId: c.policyId, cause: c.cause, reportedAt: c.reportedAt, status: c.status })),
-    list: engine.list().map((c) => ({
-      id: c.id, policyId: c.policyId, cause: c.cause, status: c.status, lossDate: c.lossDate, reportedAt: c.reportedAt,
-      description: c.description, fundId: c.fundId ?? null, declinedReason: c.declinedReason ?? null,
-      reserve: formatAmount(c.reserve), paid: formatAmount(c.paid), netCost: formatAmount(engine.netCost(c.id)),
-      approved: engine.approvedAmount(c.id) ? formatAmount(engine.approvedAmount(c.id)!) : null,
-      recoveries: c.recoveries.map((r) => ({ type: r.type, amount: formatAmount(r.amount), at: r.at, journalId: r.journalId })),
-      decisions: c.decisions.map((d) => ({
-        at: d.at, by: d.by, action: d.action, isAi: d.isAi, rationale: d.rationale,
-        amount: d.amount ? formatAmount(d.amount) : null,
-      })),
-    })),
-  };
-}
 
 function json(res: ServerResponse, status: number, body: unknown): void {
   const text = JSON.stringify(body, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
@@ -241,26 +216,79 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     }
 
     case 'GET /underwriting': {
-      const engine = state.world.underwriting;
-      const book = engine.bookPremium();
+      // Exactly the shape the console renders, so the two can never drift apart.
+      json(res, 200, underwritingSnapshot(state.world.underwriting, state.world.asOf));
+      return true;
+    }
+
+    case 'GET /reinsurance': {
+      // Exactly the shape the console renders, so the two can never drift apart.
+      json(res, 200, reinsuranceSnapshot(state.world));
+      return true;
+    }
+
+    case 'POST /reinsurance/cede': {
+      const basis = String(payload['basis'] ?? 'conventional') === 'takaful' ? 'takaful' as const : 'conventional' as const;
+      const register = basis === 'takaful' ? state.world.retakaful : state.world.reinsurance;
+      // Each press cedes the next motor risk to come off the broker's desk, so a demo shows the
+      // utilisation statement move. Naming an existing risk twice is still refused by the engine.
+      const next = register.cessionSchedule().length + 1;
+      const cession = register.cedePremium({
+        treatyId: String(payload['treatyId'] ?? 'QS-25-2026'),
+        policyId: String(payload['policyId'] ?? `MTR-2026-${next}`),
+        riskId: String(payload['riskId'] ?? payload['policyId'] ?? `MTR-2026-${next}`),
+        sumInsured: parseAmount(String(payload['sumInsured'] ?? '250,000.00'), 'AED'),
+        premium: parseAmount(String(payload['premium'] ?? '1,200.00'), 'AED'),
+        lineOfBusiness: String(payload['lineOfBusiness'] ?? 'motor'),
+        at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`),
+        basis,
+        by: String(payload['by'] ?? 'reinsurance/desk'),
+        ...(payload['fundId'] ? { fundId: String(payload['fundId']) } : {}),
+      });
       json(res, 200, {
-        book: { policies: book.policies, standard: formatAmount(book.standard), loaded: formatAmount(book.loaded), extra: formatAmount(book.extra) },
-        queue: engine.queue(),
-        exposure: ['PTY-0001', 'PTY-0002', 'PTY-0003', 'PTY-0004'].map((partyId) => {
-          const exposure = engine.aggregateExposure(partyId);
-          return { partyId, policies: exposure.policies, totalSumAssured: formatAmount(exposure.totalSumAssured), withinAutomaticLimit: exposure.withinAutomaticLimit, facultativeRequired: exposure.facultativeRequired };
-        }),
-        applications: engine.list().map((a) => {
-          const d = a.decision ?? engine.assess(a.id);
-          return {
-            id: a.id, partyId: a.partyId, productId: a.productId, sumAssured: formatAmount(a.sumAssured),
-            outcome: d.outcome, decidedBy: d.decidedBy || null, decidedByAi: d.decidedByAi,
-            extraMortalityBps: d.extraMortalityBps, standardPremium: formatAmount(d.standardPremium),
-            loadedPremium: formatAmount(d.loadedPremium), exclusions: [...d.exclusions], evidence: [...d.evidence],
-            referrals: [...d.referrals], reinsurance: { mode: d.reinsurance.mode, note: d.reinsurance.note },
-            reasons: d.reasons.map((r) => ({ code: r.code, detail: r.detail, source: r.source, referral: r.referral === true })),
-          };
-        }),
+        treatyId: cession.treatyId, policyId: cession.policyId, sharePct: cession.shareBps / 100,
+        ceded: formatAmount(cession.ceded), cededPremium: formatAmount(cession.cededPremium),
+        commission: formatAmount(cession.commission), netRetainedPremium: formatAmount(cession.netRetainedPremium),
+        journalId: cession.journalId, explanation: cession.explanation,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/facultative': {
+      const riskId = String(payload['riskId'] ?? 'MTR-ORION-77');
+      const at = String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`);
+      // Two steps, in the order the market works: the reinsurer accepts the named risk, then the
+      // premium moves. Press it twice and the second press is refused by the engine, not by the UI.
+      if (!state.world.reinsurance.acceptedRisks('FAC-MOTOR').includes(riskId)) {
+        state.world.reinsurance.acceptFacultative('FAC-MOTOR', riskId, { at, by: 'reinsurance/desk' });
+      }
+      const cession = state.world.reinsurance.cedePremium({
+        treatyId: 'FAC-MOTOR', policyId: riskId, riskId,
+        sumInsured: parseAmount(String(payload['sumInsured'] ?? '400,000.00'), 'AED'),
+        premium: parseAmount(String(payload['premium'] ?? '5,600.00'), 'AED'),
+        lineOfBusiness: 'motor', at, basis: 'conventional', by: 'reinsurance/desk',
+      });
+      json(res, 200, {
+        acceptedRisk: riskId, treatyId: cession.treatyId, sharePct: cession.shareBps / 100,
+        cededPremium: formatAmount(cession.cededPremium), commission: formatAmount(cession.commission),
+        journalId: cession.journalId,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/recover': {
+      const policyId = String(payload['policyId'] ?? 'MTR-0441');
+      const claimId = String(payload['claimId'] ?? 'CLM-000001');
+      const paid = parseAmount(String(payload['paid'] ?? '1,150.00'), 'AED');
+      const recovery = state.world.reinsurance.recoverClaim({
+        policyId, claim: state.world.claims, claimId, paid,
+        at: String(payload['at'] ?? `${state.world.asOf}T10:00:00+04:00`),
+        by: String(payload['by'] ?? 'recovery-desk'),
+      });
+      json(res, 200, {
+        claimId, amount: formatAmount(recovery.amount), sharePct: recovery.shareBps / 100,
+        recoveryId: recovery.recoveryId,
+        recovered: formatAmount(state.world.claims.netCost(claimId)),
       });
       return true;
     }
@@ -285,8 +313,8 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
 
     case 'GET /claims': {
       json(res, 200, {
-        conventional: claimViewForServer(state.world.claims, state.world.asOf),
-        takaful: claimViewForServer(state.world.takafulClaims, state.world.asOf),
+        conventional: claimsSnapshot(state.world.claims, state.world.asOf),
+        takaful: claimsSnapshot(state.world.takafulClaims, state.world.asOf),
       });
       return true;
     }
@@ -309,7 +337,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
           decision: triage.decision, reasons: triage.reasons,
           reserveSuggestion: triage.reserveSuggestion ? formatAmount(triage.reserveSuggestion) : null,
         },
-        claim: claimViewForServer(state.world.claims, state.world.asOf).list.at(-1),
+        claim: claimsSnapshot(state.world.claims, state.world.asOf).list.at(-1),
       });
       return true;
     }
@@ -336,7 +364,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       json(res, 200, {
         id: claim.id, status: claim.status, paid: formatAmount(claim.paid),
         decisions: claim.decisions.slice(-1).map((d) => ({ action: d.action, rationale: d.rationale })),
-        position: claimViewForServer(state.world.claims, state.world.asOf).position,
+        position: claimsSnapshot(state.world.claims, state.world.asOf).position,
       });
       return true;
     }
@@ -433,6 +461,19 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
   }
 }
 
+/**
+ * Is this the engine saying no, or the code being broken? Every refusal the core raises is a named
+ * *Error class of its own (`ClaimsError`, `FundError`, `GroupError`, ...) — those are answers, and an
+ * answer deserves 409 with the sentence attached, not a 500. JS built-ins (a real TypeError in our
+ * own code) keep the 500, because that is a bug and should look like one.
+ */
+const JS_BUILTINS: ReadonlySet<unknown> = new Set([Error, TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError, AggregateError]);
+function refusal(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const ctor = err.constructor as { name?: string } | undefined;
+  return typeof ctor === 'function' && !JS_BUILTINS.has(ctor) && /Error$/.test(ctor.name ?? '');
+}
+
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
   if (req.method === 'OPTIONS') {
@@ -444,7 +485,7 @@ const server = createServer((req, res) => {
     handleApi(req, res, url).then((handled) => {
       if (!handled) json(res, 404, { error: 'no such endpoint', path: url.pathname });
     }).catch((err: unknown) => {
-      json(res, 500, { error: err instanceof Error ? err.message : String(err) });
+      json(res, refusal(err) ? 409 : 500, { error: err instanceof Error ? err.message : String(err) });
     });
     return;
   }

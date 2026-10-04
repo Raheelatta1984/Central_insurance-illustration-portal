@@ -19,7 +19,19 @@ async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unkno
     method,
     ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
   });
-  if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
+  if (!res.ok) {
+    // The engines refuse with a sentence a human can act on ("an AI agent may authorise at most
+    // 1,000.00 AED straight through..."). Show that sentence, not just the status code.
+    let detail = '';
+    try {
+      const body = (await res.json()) as { error?: string; message?: string };
+      const sentence = body?.error ?? body?.message;
+      if (sentence) detail = ` — ${sentence}`;
+    } catch { /* not JSON: the status alone will have to do */ }
+    // A 4xx is the engine answering; a 5xx is us being broken. Never blur the two.
+    const what = res.status < 500 ? `${path} refused (${res.status})` : `${path} failed: ${res.status}`;
+    throw new Error(`${what}${detail}`);
+  }
   return (await res.json()) as T;
 }
 
@@ -501,6 +513,7 @@ function App() {
       case 'group': return <GroupFinance data={data} />;
       case 'underwriting': return <Underwriting data={data} />;
       case 'claims': return <Claims data={data} />;
+      case 'reinsurance': return <Reinsurance data={data} />;
       case 'onboarding': return <Onboarding data={data} />;
       case 'ingest': return <Ingest data={data} />;
       case 'parties': return <Parties data={data} />;
@@ -979,10 +992,116 @@ const statusTone = (status: string): 'ok' | 'warn' | 'bad' | 'info' =>
   status === 'settled' ? 'ok' : status === 'declined' ? 'bad' : status === 'approved' ? 'info' : 'warn';
 
 /** Claims: the register, the money at stake, who may approve what, and a live journey. */
+/* --------------------------------------------------------------- reinsurance */
+
+type ReinsuranceView = WorldSnapshot['reinsurance'];
+type ReinsuranceBook = ReinsuranceView['conventional'];
+
+const TreatyTable: React.FC<{ book: ReinsuranceBook; title: string; subtitle: string }> = ({ book, title, subtitle }) => (
+  <Card title={title} subtitle={subtitle} wide>
+    <div className="stat"><span>Gross premium on ceded risks</span><b>{book.grossPremium}</b></div>
+    <div className="stat"><span>Ceded to reinsurers</span><b>{book.cededPremium}</b><span className="muted small"> ({book.cessionPct}% of the book)</span></div>
+    <div className="stat"><span>Commission / wakalah fee earned</span><b>{book.commissionIncome}</b></div>
+    <div className="stat"><span>Net premium retained</span><b>{book.netRetainedPremium}</b></div>
+    <div className="stat"><span>Recoveries claimed</span><b>{book.recoveries}</b></div>
+    <div className="stat"><span>Still recoverable</span><b>{book.recoverable}</b></div>
+    <Table
+      head={['Treaty', 'Counterparty', 'Kind', 'Capacity', 'Ceded', 'Headroom', 'Used', 'Premium ceded', 'Commission', 'In force']}
+      rows={book.treaties.map((t) => [
+        <span title={t.name}>{t.treatyId}</span>,
+        t.counterparty,
+        <span>{t.kind.replace(/-/g, ' ')}<span className="muted small"> · {t.lineOfBusiness}</span></span>,
+        t.capacity,
+        t.cededSumInsured,
+        t.headroom,
+        `${t.usedPct}%`,
+        t.premiumCeded,
+        t.commissionEarned,
+        t.valid ? <Pill tone="ok">in force</Pill> : <Pill tone="warn">expired</Pill>,
+      ])}
+      empty="No treaties on this register yet."
+    />
+    {book.notes.length > 0 && <p className="small muted">{book.notes.join(' · ')}</p>}
+  </Card>
+);
+
+function Reinsurance({ data }: { data: WorldSnapshot }) {
+  const [view, setView] = useState<ReinsuranceView>(data.reinsurance);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { setView(data.reinsurance); }, [data]);
+
+  const call = async (label: string, path: string, body?: unknown) => {
+    setBusy(label); setError(null); setNote(null);
+    try {
+      const result = await api<Record<string, unknown>>(path, 'POST', body);
+      setNote(`${label}: ${JSON.stringify(result)}`);
+      setView(await api<ReinsuranceView>('/reinsurance'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      try { setView(await api<ReinsuranceView>('/reinsurance')); } catch { /* the error says it all */ }
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <div className="grid">
+      <Card title="Reinsurance and retakaful" subtitle="Something else carries part of the risk — and the books say exactly how much" wide>
+        <p className="small muted">
+          A cession is authorised by the treaty, never by hope: a quota share takes its percentage, a surplus treaty
+          responds above the retention, an excess of loss treaty only inside its band, and a facultative treaty only
+          once the reinsurer has accepted that named risk in writing. Participant risk money may only be ceded to a
+          retakaful treaty.
+        </p>
+        <div className="row">
+          <button disabled={busy !== null} onClick={() => call('Cede a further risk', '/reinsurance/cede')}>Cede a further risk</button>
+          <button disabled={busy !== null} onClick={() => call('Place a risk facultatively', '/reinsurance/facultative')}>Place a risk facultatively</button>
+          <button disabled={busy !== null} onClick={() => call('Claim the reinsurance recovery', '/reinsurance/recover')}>Claim the reinsurance recovery</button>
+        </div>
+        {note && <p className="small">{note}</p>}
+        {error && <p className="bad small">{error}</p>}
+      </Card>
+
+      <TreatyTable book={view.conventional} title="Conventional book — treaties and utilisation"
+        subtitle="What each treaty has carried, what is left, and what it earned" />
+      <TreatyTable book={view.takaful} title="Takaful window — retakaful treaty" subtitle="Segregated: participant risk money never touches a conventional reinsurer" />
+
+      <Card title="Cession schedule" subtitle="Every cession posted, with the journal it produced" wide>
+        <Table
+          head={['Policy', 'Treaty', 'Share', 'Sum insured', 'Ceded', 'Premium', 'Premium ceded', 'Commission', 'Net retained', 'Journal']}
+          rows={view.schedule.map((c) => [
+            c.policyId, c.treatyId, `${c.sharePct}%`, c.sumInsured, c.ceded, c.premium, c.cededPremium, c.commission,
+            c.netRetained, <span className="muted small">{c.journalId}</span>,
+          ])}
+          empty="Nothing ceded yet."
+        />
+      </Card>
+
+      <Card title="Recoveries from reinsurers" subtitle="Owed to us, not in the bank — the receivable is the proof">
+        <Table
+          head={['Claim', 'Treaty', 'Amount', 'Recovery', 'At']}
+          rows={view.recoveries.map((r) => [r.claimId, r.treatyId, r.amount, <span className="muted small">{r.recoveryId}</span>, r.at.slice(0, 10)])}
+          empty="No recoveries claimed yet."
+        />
+      </Card>
+
+      <Card title="The refusals" subtitle="Two controls worth showing a regulator" wide>
+        <div className="stat"><span>Facultative, before the reinsurer accepts</span><b className="small">{view.facultativeRefusal ?? '—'}</b></div>
+        <div className="stat"><span>Participant money to a conventional treaty</span><b className="small">{view.segregationRefusal ?? '—'}</b></div>
+        {view.accepted.length > 0 && <p className="small muted">Accepted facultatively: {view.accepted.join(', ')}</p>}
+      </Card>
+    </div>
+  );
+}
+
 function Claims({ data }: { data: WorldSnapshot }) {
   const [view, setView] = useState<ClaimView>(data.claims);
   const [takaful, setTakaful] = useState<ClaimView>(data.takafulClaims);
-  const [open, setOpen] = useState<string | null>(data.claims.list.at(-1)?.id ?? null);
+  /** Open on the claim worth looking at: one approved and waiting to be paid, else the newest. */
+  const interesting = (list: ClaimView['list']) =>
+    list.find((c) => c.status === 'approved')?.id ?? list.at(-1)?.id ?? null;
+  const [open, setOpen] = useState<string | null>(interesting(data.claims.list));
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -990,7 +1109,7 @@ function Claims({ data }: { data: WorldSnapshot }) {
   useEffect(() => {
     setView(data.claims);
     setTakaful(data.takafulClaims);
-    setOpen(data.claims.list.at(-1)?.id ?? null);
+    setOpen((current) => current ?? interesting(data.claims.list));
   }, [data]);
 
   const call = async (label: string, path: string, body?: unknown) => {
@@ -1003,7 +1122,8 @@ function Claims({ data }: { data: WorldSnapshot }) {
       const refreshed = await api<{ conventional: ClaimView; takaful: ClaimView }>('/claims');
       setView(refreshed.conventional);
       setTakaful(refreshed.takaful);
-      if (typeof result['id'] === 'string') setOpen(result['id']);
+      setOpen((current) => (typeof result['id'] === 'string' ? String(result['id'])
+        : refreshed.conventional.list.some((c) => c.id === current) ? current : interesting(refreshed.conventional.list)));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       // The engine refuses illegal moves with a sentence a human can read; reload so the

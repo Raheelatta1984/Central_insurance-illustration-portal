@@ -117,21 +117,38 @@ export class DecisionTheatre {
     }));
   }
 
+  /**
+   * The price an instruction will actually get. An instruction taken after the dealing cut-off rolls
+   * to the next business day, whose valuation is not struck until that evening — a preview must still
+   * answer, so it prices on the latest published valuation and says so in plain words. A fund with no
+   * published valuation at all is a real failure and still throws.
+   */
+  private priceForPreview(fundId: string, valuationDate: string, blocked: string[]): Price {
+    try {
+      return this.nav.priceAt(fundId, valuationDate);
+    } catch (err) {
+      const published = this.nav.valuationHistory(fundId).filter((v) => v.valuationDate <= valuationDate).at(-1);
+      if (!published) throw err;
+      blocked.push(`${fundId}: the ${valuationDate} valuation is not published yet — priced on the ${published.valuationDate} valuation, the latest published`);
+      return published.pricePerUnit;
+    }
+  }
+
   previewSwitch(input: { policyId: string; fromFundId: string; toFundId: string; amount?: Money; units?: bigint; instructionAt: string; disclaimer: string; lockInDate?: string }): SwitchPreview {
     const asOf = input.instructionAt.slice(0, 10);
     const fromFund = this.nav.fund(input.fromFundId);
     const toFund = this.nav.fund(input.toFundId);
     const dpFrom = resolveDealingPoint(fromFund.dealingRule, input.instructionAt, fromFund.calendar);
     const dpTo = resolveDealingPoint(toFund.dealingRule, input.instructionAt, toFund.calendar);
-    const priceFrom = this.nav.priceAt(input.fromFundId, dpFrom.valuationDate);
-    const priceTo = this.nav.priceAt(input.toFundId, dpTo.valuationDate);
+    const blocked: string[] = [];
+    const priceFrom = this.priceForPreview(input.fromFundId, dpFrom.valuationDate, blocked);
+    const priceTo = this.priceForPreview(input.toFundId, dpTo.valuationDate, blocked);
     const held = this.engine.unitsOf(input.policyId, input.fromFundId);
     const units = input.units ?? (input.amount ? unitsToRealise(input.amount, priceFrom) : 0n);
     const gross = valueOfUnits(units, priceFrom);
     const fee = applyBps(gross, this.charges.switchingFeeBps);
     const net = sub(gross, fee);
     const unitsIn = unitsForAmount(net, priceTo);
-    const blocked: string[] = [];
     if (units <= 0n) blocked.push('Specify an amount or a number of units to switch');
     if (units > held) blocked.push(`Only ${unitsToDecimal(held)} units are available in ${fromFund.name}`);
     if (input.lockInDate && input.lockInDate > asOf) blocked.push(`This plan is locked in until ${input.lockInDate}; switching before then is not permitted`);
@@ -149,13 +166,13 @@ export class DecisionTheatre {
     const asOf = input.instructionAt.slice(0, 10);
     const fund = this.nav.fund(input.fundId);
     const dp = resolveDealingPoint(fund.dealingRule, input.instructionAt, fund.calendar);
-    const price: Price = this.nav.priceAt(input.fundId, dp.valuationDate);
+    const blocked: string[] = [];
+    const price: Price = this.priceForPreview(input.fundId, dp.valuationDate, blocked);
     const fee = applyBps(input.amount, this.charges.partialWithdrawalFeeBps);
     const gross = add(input.amount, fee);
     const units = unitsToRealise(gross, price);
     const held = this.engine.unitsOf(input.policyId, input.fundId);
     const remainingUnits = held - units;
-    const blocked: string[] = [];
     if (units > held) blocked.push(`The withdrawal needs ${unitsToDecimal(units)} units but only ${unitsToDecimal(held)} are available`);
     if (input.lockInDate && input.lockInDate > asOf) blocked.push(`This plan is locked in until ${input.lockInDate}; partial withdrawal before then is not permitted`);
     if (input.minRemainingUnits !== undefined && remainingUnits < input.minRemainingUnits) {

@@ -3,8 +3,9 @@
  * These tests guard the journeys the console shows and the numbers the API returns.
  */
 import { describe, expect, it } from 'vitest';
-import { buildWorld, worldSnapshot } from './demo.js';
+import { buildWorld, claimsSnapshot, groupSnapshot, reinsuranceSnapshot, underwritingSnapshot, worldSnapshot } from './demo.js';
 import { money } from './money.js';
+import { AE_PACK } from './regulatory.js';
 
 describe('demo world', () => {
   it('builds a balanced two-entity book with a takaful window', () => {
@@ -21,9 +22,12 @@ describe('demo world', () => {
 
     const motor = claims[0]!;
     expect(motor.paid.minor).toBe(1150_00n);
-    expect(motor.recoveries).toHaveLength(1);
+    expect(motor.recoveries).toHaveLength(2);
     expect(motor.recoveries[0]!.type).toBe('salvage');
-    expect(w.claims.netCost(motor.id).minor).toBe(970_00n);
+    // The second recovery is the quota share's: the reinsurer carries the same quarter of the claim.
+    expect(motor.recoveries[1]!.type).toBe('reinsurance');
+    expect(motor.recoveries[1]!.amount.minor).toBe(287_50n);
+    expect(w.claims.netCost(motor.id).minor).toBe(682_50n);
 
     // The AI approved the small critical-illness line within its straight-through limit.
     const ci = claims[1]!;
@@ -35,7 +39,7 @@ describe('demo world', () => {
     expect(position.paidCash.minor).toBe(1150_00n);          // cash actually paid to the claimant
     expect(position.expenseIncurred.minor).toBe(16150_00n);  // settlement plus the reserve still standing
     expect(position.reserved.minor).toBe(15000_00n);         // the open case's liability
-    expect(position.recovered.minor).toBe(180_00n);
+    expect(position.recovered.minor).toBe(467_50n);   // salvage 180.00 + the reinsurer's 287.50
     expect(position.openClaims).toBe(1);
   });
 
@@ -204,5 +208,157 @@ describe('group finance in the demo world', () => {
     expect(snapshot.group.group.trialBalance.length).toBeGreaterThan(3);
     expect(snapshot.group.nci[0]!.shareOfNetAssets).toMatch(/AED/);
     expect(snapshot.group.eliminations.notes.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the console can render every view the API serves', () => {
+  it('underwriting: the fields the Underwriting tab reads are all present', () => {
+    const w = buildWorld();
+    const view = underwritingSnapshot(w.underwriting, w.asOf);
+    // Regression: the API once served a narrower shape, and the console crashed on view.share.
+    for (const key of ['book', 'queue', 'cession', 'share', 'exposure', 'applications', 'asOf']) {
+      expect(Object.keys(view), `underwriting.${key}`).toContain(key);
+    }
+    expect(view.share.length).toBeGreaterThan(0);
+    expect(view.share[0]!.cededLabel).toMatch(/AED/);
+    expect(view.book).toMatchObject({ policies: expect.any(Number), standard: expect.any(String) });
+  });
+
+  it('claims: the fields the Claims tab reads are all present, for both books', () => {
+    const w = buildWorld();
+    for (const view of [claimsSnapshot(w.claims, w.asOf), claimsSnapshot(w.takafulClaims, w.asOf)]) {
+      for (const key of ['position', 'authority', 'overdue', 'list']) expect(Object.keys(view)).toContain(key);
+      for (const key of ['reserved', 'expenseIncurred', 'paidCash', 'recovered', 'netCost', 'openClaims']) {
+        expect(Object.keys(view.position)).toContain(key);
+      }
+      for (const claim of view.list) {
+        for (const key of ['id', 'status', 'reserve', 'paid', 'netCost', 'approved', 'decisions', 'recoveries']) {
+          expect(Object.keys(claim), `claim.${key}`).toContain(key);
+        }
+      }
+      for (const role of view.authority) expect(Object.keys(role)).toEqual(expect.arrayContaining(['role', 'limit', 'limitMinor', 'isAi']));
+    }
+  });
+
+  it('group: the fields the Group finance tab reads are all present', () => {
+    const view = groupSnapshot(buildWorld(), false);
+    for (const key of ['entities', 'intercompany', 'nci', 'eliminations', 'group']) expect(Object.keys(view)).toContain(key);
+    for (const key of ['totals', 'netAssets', 'balanced', 'difference', 'checks', 'attribution', 'trialBalance']) {
+      expect(Object.keys(view.group), `group.${key}`).toContain(key);
+    }
+  });
+
+  it('a switch taken after the cut-off still prices, on the latest published valuation, and says so', () => {
+    const w = buildWorld();
+    // 16:10 is past the 15:00 cut-off, so the instruction rolls into the next business day — whose
+    // valuation is not struck yet. The preview must answer with the latest published price and be
+    // honest about it, instead of failing in the customer's face.
+    const preview = w.decider.previewSwitch({
+      policyId: 'UL-000123', fromFundId: 'FGLOBAL', toFundId: 'FBAL',
+      amount: money(5000_00, 'AED'), instructionAt: '2026-10-05T16:10:00+04:00',
+      disclaimer: AE_PACK.illustration.wording,
+    });
+    expect(preview.from.valuationDate).toBe('2026-10-06');
+    expect(preview.blocked.join(' ')).toMatch(/2026-10-06 valuation is not published yet/);
+    expect(preview.blocked.join(' ')).toMatch(/priced on the 2026-10-05 valuation/);
+    expect(Number(preview.from.price)).toBeGreaterThan(0);
+    expect(preview.fee.minor).toBeGreaterThan(0n);
+    // and the same for a withdrawal instruction taken inside the dealing day
+    const withdrawal = w.decider.previewWithdrawal({
+      policyId: 'UL-000123', fundId: 'FBAL', amount: money(1500_00, 'AED'),
+      instructionAt: '2026-10-05T16:10:00+04:00', disclaimer: AE_PACK.illustration.wording,
+    });
+    expect(withdrawal.blocked.join(' ')).toMatch(/not published yet/);
+    expect(Number(withdrawal.price)).toBeGreaterThan(0);
+  });
+
+  it('a fund with no published valuation at all is still a hard failure, not a made-up price', () => {
+    const w = buildWorld();
+    expect(() => w.decider.previewWithdrawal({
+      policyId: 'UL-000123', fundId: 'TKF-EQ', amount: money(100_00, 'AED'),
+      instructionAt: '2015-01-01T11:00:00+04:00', disclaimer: AE_PACK.illustration.wording,
+    })).toThrow(/no published valuation/);
+  });
+
+  it('cedes premium to the treaties and shows it in the books, not just in a register', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    const conv = view.conventional;
+    expect(conv.grossPremium).toBe('16,778.50 AED');
+    expect(conv.cededPremium).toBe('3,819.63 AED');
+    expect(conv.netRetainedPremium).toBe('13,456.81 AED');
+    expect(conv.commissionIncome).toBe('497.94 AED');
+    expect(conv.cessionPct).toBe(22.76);
+
+    // The quota share took a quarter of the rated life case and of the pay-as-you-drive motor risk.
+    const quota = conv.treaties.find((t) => t.treatyId === 'QS-25-2026')!;
+    expect(quota.risks).toBe(2);
+    expect(quota.premiumCeded).toBe('2,319.63 AED');
+    expect(quota.commissionEarned).toBe('347.94 AED');
+    // The surplus treaty retained the first 200,000 and ceded one line of the case above it.
+    const surplus = conv.treaties.find((t) => t.treatyId === 'SURPLUS-10')!;
+    expect(surplus.cededSumInsured).toBe('50,000.00 AED');
+    expect(surplus.capacity).toBe('2,000,000.00 AED');
+    expect(surplus.headroom).toBe('1,950,000.00 AED');
+    expect(surplus.usedPct).toBe(2.5);
+    expect(surplus.premiumCeded).toBe('1,500.00 AED');
+    // Catastrophe cover is bought but not yet used: it must still be on the statement, in force.
+    const xol = conv.treaties.find((t) => t.treatyId === 'XOL-CAT-5M')!;
+    expect(xol.risks).toBe(0);
+    expect(xol.headroom).toBe('5,000,000.00 AED');
+    expect(xol.valid).toBe(true);
+    // Nothing is ceded to the facultative treaty until a named risk is accepted in writing.
+    const facultative = conv.treaties.find((t) => t.treatyId === 'FAC-MOTOR')!;
+    expect(facultative.risks).toBe(0);
+    expect(view.accepted).toEqual([]);
+    expect(view.facultativeRefusal).toMatch(/retained in full until the reinsurer says yes in writing/);
+  });
+
+  it('keeps the takaful window apart: its own retakaful treaty, its own fund, its own refusal', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    expect(view.takaful.treaties.map((t) => t.treatyId)).toEqual(['RTKF-QS-20']);
+    expect(view.takaful.cededPremium).toBe('360.00 AED');       // 20% of the 1,800.00 tabarru
+    expect(view.takaful.commissionIncome).toBe('72.00 AED');    // the operator's 20% wakalah fee
+    expect(view.segregationRefusal).toMatch(/participant risk money may not be ceded to it/);
+    // The retakaful journal belongs to the participant risk fund, and the ledger says so.
+    const entry = w.ledger.entriesFor('ALK-TKF').find((e) => e.source === 'reinsurance')!;
+    expect(entry.fundId).toBe('PRF');
+    expect(entry.entityId).toBe('ALK-TKF');
+  });
+
+  it('the reinsurer’s share of the claim is receivable, and the recoverable on the statement agrees with the ledger', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    expect(view.recoveries).toHaveLength(1);
+    expect(view.recoveries[0]!.amount).toBe('287.50 AED');
+    expect(view.conventional.recoveries).toBe('287.50 AED');
+    // Commission due plus recoveries due: the account a finance team reconciles against.
+    expect(w.ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(785_44n);
+    expect(w.ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(3_819_63n);
+    expect(w.ledger.balance('ALK-CONV:REINS:COMMISSION').minor).toBe(497_94n);
+    expect(view.conventional.recoverable).toBe('785.44 AED');
+  });
+
+  it('reinsurance: the fields the Reinsurance tab reads are all present, for both books', () => {
+    const view = reinsuranceSnapshot(buildWorld());
+    for (const key of ['conventional', 'takaful', 'schedule', 'accepted', 'recoveries', 'facultativeRefusal', 'segregationRefusal']) {
+      expect(Object.keys(view)).toContain(key);
+    }
+    for (const book of [view.conventional, view.takaful]) {
+      for (const key of ['grossPremium', 'cededPremium', 'netRetainedPremium', 'cessionPct', 'commissionIncome', 'recoveries', 'recoverable', 'treaties']) {
+        expect(Object.keys(book), `book.${key}`).toContain(key);
+      }
+      for (const treaty of book.treaties) {
+        for (const key of ['treatyId', 'name', 'counterparty', 'kind', 'capacity', 'cededSumInsured', 'headroom', 'usedPct', 'premiumCeded', 'commissionEarned', 'valid']) {
+          expect(Object.keys(treaty), `treaty.${key}`).toContain(key);
+        }
+      }
+    }
+    for (const c of view.schedule) {
+      for (const key of ['policyId', 'treatyId', 'sharePct', 'premium', 'cededPremium', 'commission', 'netRetained', 'journalId']) {
+        expect(Object.keys(c), `cession.${key}`).toContain(key);
+      }
+    }
   });
 });

@@ -1,0 +1,5272 @@
+{
+  "capturedAt": "2026-10-04T04:04:29.527Z",
+  "base": "http://127.0.0.1:8787",
+  "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
+  "responses": {
+    "GET /api/claims": {
+      "status": 200,
+      "body": {
+        "conventional": {
+          "position": {
+            "reserved": "15,000.00 AED",
+            "expenseIncurred": "16,150.00 AED",
+            "paidCash": "1,150.00 AED",
+            "recovered": "467.50 AED",
+            "netCost": "15,682.50 AED",
+            "openClaims": 1
+          },
+          "authority": [
+            {
+              "role": "claims-officer",
+              "limit": "5,000.00 AED",
+              "limitMinor": "500000",
+              "isAi": false
+            },
+            {
+              "role": "claims-manager",
+              "limit": "50,000.00 AED",
+              "limitMinor": "5000000",
+              "isAi": false
+            },
+            {
+              "role": "head-of-claims",
+              "limit": "250,000.00 AED",
+              "limitMinor": "25000000",
+              "isAi": false
+            },
+            {
+              "role": "chief-claims-officer",
+              "limit": "5,000,000.00 AED",
+              "limitMinor": "500000000",
+              "isAi": false
+            },
+            {
+              "role": "ai-straight-through",
+              "limit": "1,000.00 AED",
+              "limitMinor": "100000",
+              "isAi": true
+            }
+          ],
+          "overdue": [
+            {
+              "id": "CLM-000005",
+              "policyId": "UL-000123",
+              "cause": "critical-illness",
+              "reportedAt": "2026-08-05",
+              "status": "approved"
+            }
+          ],
+          "list": [
+            {
+              "id": "CLM-000001",
+              "policyId": "MTR-0441",
+              "cause": "motor",
+              "status": "settled",
+              "lossDate": "2026-09-18",
+              "reportedAt": "2026-09-19",
+              "description": "Rear-end collision on Sheikh Zayed Road; third-party report and photos attached",
+              "fundId": null,
+              "declinedReason": null,
+              "reserve": "0.00 AED",
+              "paid": "1,150.00 AED",
+              "netCost": "682.50 AED",
+              "approved": "1,150.00 AED",
+              "recoveries": [
+                {
+                  "type": "salvage",
+                  "amount": "180.00 AED",
+                  "at": "2026-10-01T09:00:00+04:00",
+                  "journalId": "CL-ALK-CONV-000004"
+                },
+                {
+                  "type": "reinsurance",
+                  "amount": "287.50 AED",
+                  "at": "2026-10-02T09:00:00+04:00",
+                  "journalId": "CL-ALK-CONV-000007"
+                }
+              ],
+              "decisions": [
+                {
+                  "at": "2026-09-19",
+                  "by": "intake",
+                  "action": "registered",
+                  "isAi": false,
+                  "rationale": "Notification received and logged against MTR-0441",
+                  "amount": null
+                },
+                {
+                  "at": "2026-09-19",
+                  "by": "triage",
+                  "action": "triage:accept",
+                  "isAi": false,
+                  "rationale": "Cover in force, no exclusion applied, notification inside the grace period (late by 1 days, 0 fraud signals)",
+                  "amount": null
+                },
+                {
+                  "at": "2026-09-20T09:30:00+04:00",
+                  "by": "reserving-desk",
+                  "action": "reserve",
+                  "isAi": false,
+                  "rationale": "Reserve set to 1,200.00 AED",
+                  "amount": "1,200.00 AED"
+                },
+                {
+                  "at": "2026-09-24T11:00:00+04:00",
+                  "by": "Fatima Al Zaabi",
+                  "action": "approve",
+                  "isAi": false,
+                  "rationale": "Approved within the claims-officer limit of 5,000.00 AED",
+                  "amount": "1,150.00 AED"
+                },
+                {
+                  "at": "2026-09-26T10:00:00+04:00",
+                  "by": "finance-ops",
+                  "action": "settled",
+                  "isAi": false,
+                  "rationale": "Paid 1,150.00 AED against a reserve of 1,200.00 AED (difference -50.00 AED)",
+                  "amount": "1,150.00 AED"
+                },
+                {
+                  "at": "2026-10-01T09:00:00+04:00",
+                  "by": "recovery-desk",
+                  "action": "recovery:salvage",
+                  "isAi": false,
+                  "rationale": "salvage recovery recorded on CL-ALK-CONV-000004",
+                  "amount": "180.00 AED"
+                },
+                {
+                  "at": "2026-10-02T09:00:00+04:00",
+                  "by": "recovery-desk",
+                  "action": "recovery:reinsurance",
+                  "isAi": false,
+                  "rationale": "reinsurance recovery recorded on CL-ALK-CONV-000007",
+                  "amount": "287.50 AED"
+                }
+              ]
+            },
+            {
+              "id": "CLM-000005",
+              "policyId": "UL-000123",
+              "cause": "critical-illness",
+              "status": "approved",
+              "lossDate": "2026-08-03",
+              "reportedAt": "2026-08-05",
+              "description": "Critical illness notified; medical evidence requested from the treating hospital",
+              "fundId": null,
+              "declinedReason": null,
+              "reserve": "15,000.00 AED",
+              "paid": "0.00 AED",
+              "netCost": "0.00 AED",
+              "approved": "400.00 AED",
+              "recoveries": [],
+              "decisions": [
+                {
+                  "at": "2026-08-05",
+                  "by": "intake",
+                  "action": "registered",
+                  "isAi": false,
+                  "rationale": "Notification received and logged against UL-000123",
+                  "amount": null
+                },
+                {
+                  "at": "2026-08-05",
+                  "by": "triage",
+                  "action": "triage:accept",
+                  "isAi": false,
+                  "rationale": "Cover in force, no exclusion applied, notification inside the grace period (late by 2 days, 1 fraud signals)",
+                  "amount": null
+                },
+                {
+                  "at": "2026-08-08T09:00:00+04:00",
+                  "by": "claims-manager",
+                  "action": "reserve",
+                  "isAi": false,
+                  "rationale": "Reserve set from the severity table pending medical evidence",
+                  "amount": "15,000.00 AED"
+                },
+                {
+                  "at": "2026-08-09T09:00:00+04:00",
+                  "by": "agent/claims-triage",
+                  "action": "approve",
+                  "isAi": true,
+                  "rationale": "Approved within the ai-straight-through limit of 1,000.00 AED",
+                  "amount": "400.00 AED"
+                }
+              ]
+            }
+          ]
+        },
+        "takaful": {
+          "position": {
+            "reserved": "0.00 AED",
+            "expenseIncurred": "0.00 AED",
+            "paidCash": "400.00 AED",
+            "recovered": "0.00 AED",
+            "netCost": "0.00 AED",
+            "openClaims": 0
+          },
+          "authority": [
+            {
+              "role": "claims-officer",
+              "limit": "5,000.00 AED",
+              "limitMinor": "500000",
+              "isAi": false
+            },
+            {
+              "role": "claims-manager",
+              "limit": "50,000.00 AED",
+              "limitMinor": "5000000",
+              "isAi": false
+            },
+            {
+              "role": "head-of-claims",
+              "limit": "250,000.00 AED",
+              "limitMinor": "25000000",
+              "isAi": false
+            },
+            {
+              "role": "chief-claims-officer",
+              "limit": "5,000,000.00 AED",
+              "limitMinor": "500000000",
+              "isAi": false
+            },
+            {
+              "role": "ai-straight-through",
+              "limit": "1,000.00 AED",
+              "limitMinor": "100000",
+              "isAi": true
+            }
+          ],
+          "overdue": [],
+          "list": [
+            {
+              "id": "CLM-000001",
+              "policyId": "TK-9001",
+              "cause": "medical",
+              "status": "settled",
+              "lossDate": "2026-09-28",
+              "reportedAt": "2026-09-29",
+              "description": "Hospital admission for a participant; discharge summary and invoice attached",
+              "fundId": "PRF",
+              "declinedReason": null,
+              "reserve": "0.00 AED",
+              "paid": "400.00 AED",
+              "netCost": "400.00 AED",
+              "approved": "400.00 AED",
+              "recoveries": [],
+              "decisions": [
+                {
+                  "at": "2026-09-29",
+                  "by": "intake",
+                  "action": "registered",
+                  "isAi": false,
+                  "rationale": "Notification received and logged against TK-9001",
+                  "amount": null
+                },
+                {
+                  "at": "2026-09-29",
+                  "by": "triage",
+                  "action": "triage:accept",
+                  "isAi": false,
+                  "rationale": "Cover in force, no exclusion applied, notification inside the grace period (late by 1 days, 0 fraud signals)",
+                  "amount": null
+                },
+                {
+                  "at": "2026-10-01T09:00:00+04:00",
+                  "by": "agent/claims-triage",
+                  "action": "approve",
+                  "isAi": true,
+                  "rationale": "Approved within the ai-straight-through limit of 1,000.00 AED",
+                  "amount": "400.00 AED"
+                },
+                {
+                  "at": "2026-10-02T12:00:00+04:00",
+                  "by": "finance-ops",
+                  "action": "settled-from-pool",
+                  "isAi": false,
+                  "rationale": "Paid 400.00 AED from the PRF pool (400.00 AED of it from the pool balance) — journals 1",
+                  "amount": "400.00 AED"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/group": {
+      "status": 200,
+      "body": {
+        "asOf": "2026-10-05",
+        "periodStart": "2026-09-01",
+        "groupCurrency": "AED",
+        "entities": [
+          {
+            "entityId": "ALK-CONV",
+            "name": "Al Khaleej Insurance (conventional)",
+            "functionalCurrency": "AED",
+            "ownershipPct": 100,
+            "netAssets": "9,989,578.31 AED",
+            "income": "-10,421.69 AED",
+            "translationReserve": "0.00 AED",
+            "closingRate": "1/1 on 2026-10-05",
+            "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
+            "accounts": 23
+          },
+          {
+            "entityId": "ALK-TKF",
+            "name": "Al Khaleej Takaful Window",
+            "functionalCurrency": "AED",
+            "ownershipPct": 100,
+            "netAssets": "2,997,212.00 AED",
+            "income": "-2,788.00 AED",
+            "translationReserve": "0.00 AED",
+            "closingRate": "1/1 on 2026-10-05",
+            "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
+            "accounts": 13
+          },
+          {
+            "entityId": "ALK-MY",
+            "name": "Al Khaleej Malaysia (subsidiary)",
+            "functionalCurrency": "MYR",
+            "ownershipPct": 70,
+            "netAssets": "4,247,600.00 AED",
+            "income": "149,400.00 AED",
+            "translationReserve": "-151,800.00 AED",
+            "closingRate": "82/100 on 2026-10-05",
+            "averageRate": "16600/20000 over 2026-09-01..2026-10-05 (2026-10-05)",
+            "accounts": 5
+          }
+        ],
+        "intercompany": {
+          "balances": [
+            {
+              "receivableEntity": "ALK-CONV",
+              "payableEntity": "ALK-TKF",
+              "receivable": "2,500.00 AED",
+              "payable": "2,500.00 AED",
+              "eliminated": "2,500.00 AED",
+              "difference": "0.00 AED",
+              "differenceAbs": "0.00 AED",
+              "direction": "agrees"
+            },
+            {
+              "receivableEntity": "ALK-CONV",
+              "payableEntity": "ALK-MY",
+              "receivable": "4,600.00 AED",
+              "payable": "16,400.00 AED",
+              "eliminated": "4,600.00 AED",
+              "difference": "-11,800.00 AED",
+              "differenceAbs": "11,800.00 AED",
+              "direction": "payable larger"
+            }
+          ],
+          "incomeAndExpense": [
+            {
+              "earningEntity": "ALK-CONV",
+              "chargedEntity": "ALK-TKF",
+              "income": "2,500.00 AED",
+              "expense": "2,500.00 AED",
+              "eliminated": "2,500.00 AED",
+              "difference": "0.00 AED"
+            },
+            {
+              "earningEntity": "ALK-CONV",
+              "chargedEntity": "ALK-MY",
+              "income": "4,600.00 AED",
+              "expense": "16,600.00 AED",
+              "eliminated": "4,600.00 AED",
+              "difference": "12,000.00 AED"
+            }
+          ]
+        },
+        "nci": [
+          {
+            "entityId": "ALK-MY",
+            "ownershipPct": 70,
+            "minorityPct": 30,
+            "shareOfNetAssets": "1,274,280.00 AED"
+          }
+        ],
+        "eliminations": {
+          "journals": [],
+          "matched": "14,200.00 AED",
+          "inTransit": "11,800.00 AED",
+          "notes": [
+            "ALK-CONV: translated 23 account balance(s), translation reserve 0.00 AED",
+            "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
+            "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
+            "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
+            "ALK-CONV ↔ ALK-MY: eliminated 4,600.00 AED of intercompany balances",
+            "ALK-CONV ↔ ALK-MY: 11,800.00 AED does not agree between the two books — treated as in transit, not written off",
+            "ALK-CONV → ALK-TKF: eliminated 2,500.00 AED of intercompany income and expense",
+            "ALK-CONV → ALK-MY: eliminated 4,600.00 AED of intercompany income and expense"
+          ]
+        },
+        "group": {
+          "totals": {
+            "assets": "17,294,027.44 AED",
+            "liabilities": "59,637.13 AED",
+            "equity": "17,098,200.00 AED",
+            "income": "168,519.94 AED",
+            "expense": "32,329.63 AED",
+            "translationReserve": "-151,800.00 AED"
+          },
+          "netAssets": "17,234,390.31 AED",
+          "balanced": true,
+          "difference": "0.00 AED",
+          "checks": [
+            {
+              "check": "consolidated balance sheet balances",
+              "ok": true,
+              "detail": "assets 17,294,027.44 AED − liabilities 59,637.13 AED = 17,234,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 136,190.31 AED; difference 0.00 AED"
+            },
+            {
+              "check": "group ledger proof",
+              "ok": true,
+              "detail": "every translation and elimination journal balances in the group currency"
+            },
+            {
+              "check": "intercompany eliminated",
+              "ok": false,
+              "detail": "2 pair(s) matched, 14,200.00 AED eliminated, 11,800.00 AED in transit"
+            },
+            {
+              "check": "entity books untouched",
+              "ok": true,
+              "detail": "translation and elimination post only to the group ledger; each entity keeps its own books"
+            }
+          ],
+          "attribution": {
+            "owners": "15,960,110.31 AED",
+            "minority": "1,274,280.00 AED"
+          },
+          "trialBalance": [
+            {
+              "accountId": "GRP:ALK-CONV:CASH",
+              "name": "ALK-CONV — Cash at bank",
+              "type": "asset",
+              "amount": "10,000,512.50 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:CLAIM-EXPENSE",
+              "name": "ALK-CONV — Claim expense (including reserve movement)",
+              "type": "expense",
+              "amount": "16,150.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:CLAIM-RECOVERY",
+              "name": "ALK-CONV — Claim recovery income",
+              "type": "income",
+              "amount": "467.50 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:CLAIM-RESERVE",
+              "name": "ALK-CONV — Claim reserve (outstanding)",
+              "type": "liability",
+              "amount": "15,000.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FBAL:INVESTMENTS",
+              "name": "ALK-CONV — Fund investments — FBAL",
+              "type": "asset",
+              "amount": "14,830.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FBAL:PARTICIPANTS",
+              "name": "ALK-CONV — Participants' funds — FBAL",
+              "type": "liability",
+              "amount": "14,830.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FEE:admin",
+              "name": "ALK-CONV — Fee income — admin",
+              "type": "income",
+              "amount": "25.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FEE:allocation",
+              "name": "ALK-CONV — Fee income — allocation",
+              "type": "income",
+              "amount": "1,200.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FEE:coi",
+              "name": "ALK-CONV — Fee income — coi",
+              "type": "income",
+              "amount": "187.50 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FEE:partial-withdrawal",
+              "name": "ALK-CONV — Fee income — partial-withdrawal",
+              "type": "income",
+              "amount": "25.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FEE:switching",
+              "name": "ALK-CONV — Fee income — switching",
+              "type": "income",
+              "amount": "45.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FGLOBAL:INVESTMENTS",
+              "name": "ALK-CONV — Fund investments — FGLOBAL",
+              "type": "asset",
+              "amount": "6,687.50 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:FGLOBAL:PARTICIPANTS",
+              "name": "ALK-CONV — Participants' funds — FGLOBAL",
+              "type": "liability",
+              "amount": "6,687.50 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:REINS:CEDED-PREMIUM",
+              "name": "ALK-CONV — Ceded premium / contribution (expense)",
+              "type": "expense",
+              "amount": "3,819.63 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:REINS:COMMISSION",
+              "name": "ALK-CONV — Ceding commission / wakalah fee",
+              "type": "income",
+              "amount": "497.94 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:REINS:PAYABLE",
+              "name": "ALK-CONV — Payable to reinsurers / retakaful operators",
+              "type": "liability",
+              "amount": "3,819.63 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:REINS:RECEIVABLE",
+              "name": "ALK-CONV — Receivable from reinsurers / retakaful operators",
+              "type": "asset",
+              "amount": "785.44 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:SHARE-CAPITAL",
+              "name": "ALK-CONV — Paid-up share capital",
+              "type": "equity",
+              "amount": "10,000,000.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-MY:CASH",
+              "name": "ALK-MY — Cash at bank",
+              "type": "asset",
+              "amount": "4,264,000.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-MY:IC:EXPENSE:ALK-CONV",
+              "name": "ALK-MY — Intercompany expense — ALK-CONV",
+              "type": "expense",
+              "amount": "12,000.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-MY:IC:PAY:ALK-CONV",
+              "name": "ALK-MY — Intercompany payable — ALK-CONV",
+              "type": "liability",
+              "amount": "11,800.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-MY:PREMIUM-INCOME",
+              "name": "ALK-MY — Premium / contribution income",
+              "type": "income",
+              "amount": "166,000.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-MY:SHARE-CAPITAL",
+              "name": "ALK-MY — Paid-up share capital",
+              "type": "equity",
+              "amount": "4,250,000.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:CASH",
+              "name": "ALK-TKF — Cash at bank",
+              "type": "asset",
+              "amount": "3,007,100.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:OPF:PARTICIPANTS",
+              "name": "ALK-TKF — Participants' funds — OPF",
+              "type": "liability",
+              "amount": "1,800.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:PIF:PARTICIPANTS",
+              "name": "ALK-TKF — Participants' funds — PIF",
+              "type": "liability",
+              "amount": "5,040.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:PRF:PARTICIPANTS",
+              "name": "ALK-TKF — Participants' funds — PRF",
+              "type": "liability",
+              "amount": "300.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:QARD",
+              "name": "ALK-TKF — Qard hasan receivable from participants",
+              "type": "asset",
+              "amount": "40.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:REINS:CEDED-PREMIUM",
+              "name": "ALK-TKF — Ceded premium / contribution (expense)",
+              "type": "expense",
+              "amount": "360.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:REINS:COMMISSION",
+              "name": "ALK-TKF — Ceding commission / wakalah fee",
+              "type": "income",
+              "amount": "72.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:REINS:PAYABLE",
+              "name": "ALK-TKF — Payable to reinsurers / retakaful operators",
+              "type": "liability",
+              "amount": "360.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:REINS:RECEIVABLE",
+              "name": "ALK-TKF — Receivable from reinsurers / retakaful operators",
+              "type": "asset",
+              "amount": "72.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:SHARE-CAPITAL",
+              "name": "ALK-TKF — Paid-up share capital",
+              "type": "equity",
+              "amount": "3,000,000.00 AED"
+            },
+            {
+              "accountId": "GRP:TRANSLATION-RESERVE",
+              "name": "Translation reserve (cumulative)",
+              "type": "equity",
+              "amount": "-151,800.00 AED"
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/health": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "version": 1,
+        "asOf": "2026-10-05"
+      }
+    },
+    "GET /api/ledger/proof": {
+      "status": 200,
+      "body": {
+        "conventional": {
+          "balanced": true,
+          "byCurrency": [
+            {
+              "currency": "AED",
+              "debit": {
+                "minor": "1012461757",
+                "currency": "AED"
+              },
+              "credit": {
+                "minor": "1012461757",
+                "currency": "AED"
+              }
+            }
+          ]
+        },
+        "takaful": {
+          "balanced": true,
+          "byCurrency": [
+            {
+              "currency": "AED",
+              "debit": {
+                "minor": "302291200",
+                "currency": "AED"
+              },
+              "credit": {
+                "minor": "302291200",
+                "currency": "AED"
+              }
+            }
+          ]
+        },
+        "unitHoldings": 9
+      }
+    },
+    "GET /api/reinsurance": {
+      "status": 200,
+      "body": {
+        "conventional": {
+          "basis": "conventional",
+          "asOf": "2026-10-05",
+          "grossPremium": "22,378.50 AED",
+          "cededPremium": "6,059.63 AED",
+          "netRetainedPremium": "17,096.81 AED",
+          "cessionPct": 27.07,
+          "commissionIncome": "777.94 AED",
+          "recoveries": "287.50 AED",
+          "recoverable": "1,065.44 AED",
+          "notes": [
+            "reinsurance/desk had MTR-ORION-77 accepted under FAC-MOTOR on 2026-10-05"
+          ],
+          "treaties": [
+            {
+              "treatyId": "FAC-MOTOR",
+              "name": "Facultative motor — per risk",
+              "counterparty": "Al Wathba Re",
+              "kind": "facultative",
+              "basis": "conventional",
+              "lineOfBusiness": "motor",
+              "valid": true,
+              "risks": 1,
+              "capacity": "160,000.00 AED",
+              "cededSumInsured": "160,000.00 AED",
+              "headroom": "0.00 AED",
+              "usedPct": 100,
+              "premiumWritten": "5,600.00 AED",
+              "premiumCeded": "2,240.00 AED",
+              "premiumCededPct": 40,
+              "commissionEarned": "280.00 AED",
+              "recoveries": "0.00 AED"
+            },
+            {
+              "treatyId": "QS-25-2026",
+              "name": "Quota share 25% — 2026",
+              "counterparty": "Gulf Reinsurance PSC",
+              "kind": "quota-share",
+              "basis": "conventional",
+              "lineOfBusiness": "all",
+              "valid": true,
+              "risks": 2,
+              "capacity": "137,500.00 AED",
+              "cededSumInsured": "137,500.00 AED",
+              "headroom": "0.00 AED",
+              "usedPct": 100,
+              "premiumWritten": "9,278.50 AED",
+              "premiumCeded": "2,319.63 AED",
+              "premiumCededPct": 25,
+              "commissionEarned": "347.94 AED",
+              "recoveries": "287.50 AED"
+            },
+            {
+              "treatyId": "SURPLUS-10",
+              "name": "Surplus 10 lines over 200,000",
+              "counterparty": "MENA Re",
+              "kind": "surplus",
+              "basis": "conventional",
+              "lineOfBusiness": "life",
+              "valid": true,
+              "risks": 1,
+              "capacity": "2,000,000.00 AED",
+              "cededSumInsured": "50,000.00 AED",
+              "headroom": "1,950,000.00 AED",
+              "usedPct": 2.5,
+              "premiumWritten": "7,500.00 AED",
+              "premiumCeded": "1,500.00 AED",
+              "premiumCededPct": 20,
+              "commissionEarned": "150.00 AED",
+              "recoveries": "0.00 AED"
+            },
+            {
+              "treatyId": "XOL-CAT-5M",
+              "name": "Catastrophe excess of loss 5m xs 1m",
+              "counterparty": "Emirates Re",
+              "kind": "excess-of-loss",
+              "basis": "conventional",
+              "lineOfBusiness": "all",
+              "valid": true,
+              "risks": 0,
+              "capacity": "5,000,000.00 AED",
+              "cededSumInsured": "0.00 AED",
+              "headroom": "5,000,000.00 AED",
+              "usedPct": 0,
+              "premiumWritten": "0.00 AED",
+              "premiumCeded": "0.00 AED",
+              "premiumCededPct": 0,
+              "commissionEarned": "0.00 AED",
+              "recoveries": "0.00 AED"
+            }
+          ]
+        },
+        "takaful": {
+          "basis": "takaful",
+          "asOf": "2026-10-05",
+          "grossPremium": "1,800.00 AED",
+          "cededPremium": "360.00 AED",
+          "netRetainedPremium": "1,512.00 AED",
+          "cessionPct": 20,
+          "commissionIncome": "72.00 AED",
+          "recoveries": "0.00 AED",
+          "recoverable": "72.00 AED",
+          "notes": [],
+          "treaties": [
+            {
+              "treatyId": "RTKF-QS-20",
+              "name": "Retakaful quota share 20% (wakalah)",
+              "counterparty": "Takaful Re International",
+              "kind": "quota-share",
+              "basis": "takaful",
+              "lineOfBusiness": "all",
+              "valid": true,
+              "risks": 1,
+              "capacity": "100,000.00 AED",
+              "cededSumInsured": "100,000.00 AED",
+              "headroom": "0.00 AED",
+              "usedPct": 100,
+              "premiumWritten": "1,800.00 AED",
+              "premiumCeded": "360.00 AED",
+              "premiumCededPct": 20,
+              "commissionEarned": "72.00 AED",
+              "recoveries": "0.00 AED"
+            }
+          ]
+        },
+        "schedule": [
+          {
+            "policyId": "UW-000002",
+            "ref": "UW-000002",
+            "treatyId": "QS-25-2026",
+            "riskId": "LIFE-PTY-0002",
+            "sharePct": 25,
+            "sumInsured": "300,000.00 AED",
+            "ceded": "75,000.00 AED",
+            "premium": "9,211.50 AED",
+            "cededPremium": "2,302.88 AED",
+            "commission": "345.43 AED",
+            "netRetained": "7,254.05 AED",
+            "journalId": "RI-ALK-CONV-000001",
+            "at": "2026-09-30T09:00:00+04:00",
+            "explanation": "25% of every risk is ceded as it is written"
+          },
+          {
+            "policyId": "UW-000001",
+            "ref": "UW-000001",
+            "treatyId": "SURPLUS-10",
+            "riskId": "LIFE-PTY-0001",
+            "sharePct": 20,
+            "sumInsured": "250,000.00 AED",
+            "ceded": "50,000.00 AED",
+            "premium": "7,500.00 AED",
+            "cededPremium": "1,500.00 AED",
+            "commission": "150.00 AED",
+            "netRetained": "6,150.00 AED",
+            "journalId": "RI-ALK-CONV-000002",
+            "at": "2026-09-30T09:05:00+04:00",
+            "explanation": "200,000.00 AED retained, the next 10 line(s) ceded up to 2,000,000.00 AED"
+          },
+          {
+            "policyId": "MTR-0441",
+            "ref": "MTR-0441",
+            "treatyId": "QS-25-2026",
+            "riskId": "MTR-0441",
+            "sharePct": 25,
+            "sumInsured": "250,000.00 AED",
+            "ceded": "62,500.00 AED",
+            "premium": "67.00 AED",
+            "cededPremium": "16.75 AED",
+            "commission": "2.51 AED",
+            "netRetained": "52.76 AED",
+            "journalId": "RI-ALK-CONV-000003",
+            "at": "2026-09-30T09:10:00+04:00",
+            "explanation": "25% of every risk is ceded as it is written"
+          },
+          {
+            "policyId": "MTR-ORION-77",
+            "ref": "MTR-ORION-77",
+            "treatyId": "FAC-MOTOR",
+            "riskId": "MTR-ORION-77",
+            "sharePct": 40,
+            "sumInsured": "400,000.00 AED",
+            "ceded": "160,000.00 AED",
+            "premium": "5,600.00 AED",
+            "cededPremium": "2,240.00 AED",
+            "commission": "280.00 AED",
+            "netRetained": "3,640.00 AED",
+            "journalId": "RI-ALK-CONV-000004",
+            "at": "2026-10-05T09:00:00+04:00",
+            "explanation": "Al Wathba Re accepted MTR-ORION-77 for 40% on 2026-10-05"
+          }
+        ],
+        "accepted": [
+          "MTR-ORION-77"
+        ],
+        "facultativeRefusal": "MTR-UNPLACED has not been accepted under facultative treaty FAC-MOTOR; the risk is retained in full until the reinsurer says yes in writing",
+        "segregationRefusal": "QS-25-2026 is a conventional reinsurance treaty: participant risk money may not be ceded to it. Use a retakaful treaty",
+        "recoveries": [
+          {
+            "claimId": "CLM-000001",
+            "recoveryId": "REC-CLM-000001-2",
+            "treatyId": "QS-25-2026",
+            "amount": "287.50 AED",
+            "at": "2026-10-02T09:00:00+04:00"
+          }
+        ]
+      }
+    },
+    "GET /api/state": {
+      "status": 200,
+      "body": {
+        "ledgerSchemaVersion": 1,
+        "takenAt": "2026-10-04T04:04:22.614Z",
+        "fingerprint": "1ea6598cbe6160e7",
+        "accounts": 151,
+        "journals": 71,
+        "fxRates": 2,
+        "bytes": 73809
+      }
+    },
+    "GET /api/underwriting": {
+      "status": 200,
+      "body": {
+        "book": {
+          "policies": 4,
+          "standard": "27,600.00 AED",
+          "loaded": "27,811.50 AED",
+          "extra": "211.50 AED"
+        },
+        "queue": [
+          {
+            "applicationId": "UW-000003",
+            "partyId": "PTY-0003",
+            "outcome": "referred",
+            "waitingOn": [
+              "senior-underwriter",
+              "reinsurance-desk"
+            ],
+            "reasonCodes": [
+              "occupation-referral",
+              "condition-cardiac-history",
+              "reinsurance-facultative"
+            ]
+          }
+        ],
+        "cession": [
+          {
+            "partyId": "PTY-0001",
+            "policies": 2,
+            "totalSumAssured": {
+              "minor": "50000000",
+              "currency": "AED"
+            },
+            "mode": "automatic",
+            "totalSumAssuredLabel": "500,000.00 AED"
+          },
+          {
+            "partyId": "PTY-0002",
+            "policies": 1,
+            "totalSumAssured": {
+              "minor": "30000000",
+              "currency": "AED"
+            },
+            "mode": "automatic",
+            "totalSumAssuredLabel": "300,000.00 AED"
+          },
+          {
+            "partyId": "PTY-0004",
+            "policies": 1,
+            "totalSumAssured": {
+              "minor": "12000000",
+              "currency": "AED"
+            },
+            "mode": "automatic",
+            "totalSumAssuredLabel": "120,000.00 AED"
+          }
+        ],
+        "share": [
+          {
+            "productId": "PROD-LIFE-TERM",
+            "ceded": {
+              "minor": "23000000",
+              "currency": "AED"
+            },
+            "retained": {
+              "minor": "69000000",
+              "currency": "AED"
+            },
+            "cededLabel": "230,000.00 AED",
+            "retainedLabel": "690,000.00 AED"
+          }
+        ],
+        "exposure": [
+          {
+            "partyId": "PTY-0001",
+            "policies": 2,
+            "totalSumAssured": "500,000.00 AED",
+            "withinAutomaticLimit": true,
+            "facultativeRequired": false
+          },
+          {
+            "partyId": "PTY-0002",
+            "policies": 1,
+            "totalSumAssured": "300,000.00 AED",
+            "withinAutomaticLimit": true,
+            "facultativeRequired": false
+          },
+          {
+            "partyId": "PTY-0003",
+            "policies": 0,
+            "totalSumAssured": "0.00 AED",
+            "withinAutomaticLimit": true,
+            "facultativeRequired": false
+          },
+          {
+            "partyId": "PTY-0004",
+            "policies": 1,
+            "totalSumAssured": "120,000.00 AED",
+            "withinAutomaticLimit": true,
+            "facultativeRequired": false
+          }
+        ],
+        "applications": [
+          {
+            "id": "UW-000001",
+            "partyId": "PTY-0001",
+            "productId": "PROD-LIFE-TERM",
+            "at": "2026-09-20T10:00:00+04:00",
+            "age": 38,
+            "smoker": false,
+            "bmi": 24.6,
+            "occupationClass": 1,
+            "conditions": [],
+            "pursuits": [],
+            "sumAssured": "250,000.00 AED",
+            "outcome": "standard",
+            "decidedBy": "agent/quote-bot",
+            "decidedByAi": true,
+            "extraMortalityBps": 0,
+            "standardPremium": "7,500.00 AED",
+            "loadedPremium": "7,500.00 AED",
+            "exclusions": [],
+            "evidence": [],
+            "referrals": [],
+            "reinsurance": {
+              "mode": "automatic",
+              "threshold": "2,000,000.00 AED",
+              "note": "Inside the automatic binding limit"
+            },
+            "reasons": [
+              {
+                "code": "occupation-class-1",
+                "detail": "Occupation class 1 is inside the standard range for PROD-LIFE-TERM: no debit",
+                "source": "occupation",
+                "referral": false
+              }
+            ]
+          },
+          {
+            "id": "UW-000002",
+            "partyId": "PTY-0002",
+            "productId": "PROD-LIFE-TERM",
+            "at": "2026-09-22T10:00:00+04:00",
+            "age": 38,
+            "smoker": true,
+            "bmi": 24.6,
+            "occupationClass": 3,
+            "conditions": [
+              "diabetes-type-2"
+            ],
+            "pursuits": [],
+            "sumAssured": "300,000.00 AED",
+            "outcome": "rated",
+            "decidedBy": "senior-underwriter",
+            "decidedByAi": false,
+            "extraMortalityBps": 235,
+            "standardPremium": "9,000.00 AED",
+            "loadedPremium": "9,211.50 AED",
+            "exclusions": [],
+            "evidence": [
+              "HbA1c result within 6 months"
+            ],
+            "referrals": [
+              "senior-underwriter"
+            ],
+            "reinsurance": {
+              "mode": "automatic",
+              "threshold": "2,000,000.00 AED",
+              "note": "Inside the automatic binding limit"
+            },
+            "reasons": [
+              {
+                "code": "smoker",
+                "detail": "Current smoker: 100 basis points of extra mortality",
+                "source": "build",
+                "referral": false
+              },
+              {
+                "code": "occupation-referral",
+                "detail": "Occupation class 3 is outside the standard range (1, 2) and carries a debit of 60 basis points",
+                "source": "occupation",
+                "referral": true
+              },
+              {
+                "code": "condition-diabetes-type-2",
+                "detail": "Type 2 diabetes: 75 basis points; evidence required (HbA1c result within 6 months)",
+                "source": "medical",
+                "referral": false
+              },
+              {
+                "code": "referral-waived",
+                "detail": "senior-underwriter decided the case with 1 referral point(s) waived: occupation-referral",
+                "source": "authority",
+                "referral": false
+              }
+            ]
+          },
+          {
+            "id": "UW-000003",
+            "partyId": "PTY-0003",
+            "productId": "PROD-LIFE-TERM",
+            "at": "2026-09-30T10:00:00+04:00",
+            "age": 57,
+            "smoker": false,
+            "bmi": 24.6,
+            "occupationClass": 3,
+            "conditions": [
+              "cardiac-history"
+            ],
+            "pursuits": [],
+            "sumAssured": "2,500,000.00 AED",
+            "outcome": "referred",
+            "decidedBy": null,
+            "decidedByAi": false,
+            "extraMortalityBps": 260,
+            "standardPremium": "75,000.00 AED",
+            "loadedPremium": "76,950.00 AED",
+            "exclusions": [],
+            "evidence": [
+              "cardiologist report",
+              "stress ECG",
+              "blood profile",
+              "urine analysis",
+              "ECG",
+              "treadmill test"
+            ],
+            "referrals": [
+              "senior-underwriter",
+              "reinsurance-desk"
+            ],
+            "reinsurance": {
+              "mode": "facultative",
+              "threshold": "2,000,000.00 AED",
+              "note": "Reinsurer referral required before issue"
+            },
+            "reasons": [
+              {
+                "code": "occupation-referral",
+                "detail": "Occupation class 3 is outside the standard range (1, 2) and carries a debit of 60 basis points",
+                "source": "occupation",
+                "referral": true
+              },
+              {
+                "code": "condition-cardiac-history",
+                "detail": "Cardiac history: 200 basis points; evidence required (cardiologist report, stress ECG)",
+                "source": "medical",
+                "referral": true
+              },
+              {
+                "code": "reinsurance-facultative",
+                "detail": "Sum assured 2,500,000.00 AED reaches the facultative threshold of 2,000,000.00 AED; the reinsurer must be asked before issue",
+                "source": "reinsurance",
+                "referral": true
+              }
+            ]
+          },
+          {
+            "id": "UW-000004",
+            "partyId": "PTY-0004",
+            "productId": "PROD-LIFE-TERM",
+            "at": "2026-10-01T10:00:00+04:00",
+            "age": 29,
+            "smoker": false,
+            "bmi": 24.6,
+            "occupationClass": 1,
+            "conditions": [],
+            "pursuits": [],
+            "sumAssured": "120,000.00 AED",
+            "outcome": "standard",
+            "decidedBy": "agent/quote-bot",
+            "decidedByAi": true,
+            "extraMortalityBps": 0,
+            "standardPremium": "3,600.00 AED",
+            "loadedPremium": "3,600.00 AED",
+            "exclusions": [],
+            "evidence": [],
+            "referrals": [],
+            "reinsurance": {
+              "mode": "automatic",
+              "threshold": "2,000,000.00 AED",
+              "note": "Inside the automatic binding limit"
+            },
+            "reasons": [
+              {
+                "code": "occupation-class-1",
+                "detail": "Occupation class 1 is inside the standard range for PROD-LIFE-TERM: no debit",
+                "source": "occupation",
+                "referral": false
+              }
+            ]
+          }
+        ],
+        "asOf": "2026-10-05"
+      }
+    },
+    "GET /api/units": {
+      "status": 200,
+      "body": {
+        "fundUnitsInIssue": [
+          {
+            "fundId": "FGLOBAL",
+            "units": "64452.918572"
+          },
+          {
+            "fundId": "FBAL",
+            "units": "141437.514387"
+          },
+          {
+            "fundId": "TKF-EQ",
+            "units": "0"
+          }
+        ],
+        "policyUnits": [
+          {
+            "fundId": "FGLOBAL",
+            "units": "64452.918572"
+          },
+          {
+            "fundId": "FBAL",
+            "units": "141437.514387"
+          }
+        ],
+        "reproduce": {
+          "ok": true,
+          "detail": [
+            {
+              "fundId": "FGLOBAL",
+              "fromLog": "64452.918572",
+              "live": "64452.918572",
+              "match": true
+            },
+            {
+              "fundId": "FBAL",
+              "fromLog": "141437.514387",
+              "live": "141437.514387",
+              "match": true
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/world": {
+      "status": 200,
+      "body": {
+        "tenant": {
+          "id": "alkhaleej",
+          "name": "Al Khaleej Insurance Group"
+        },
+        "entities": [
+          {
+            "id": "ALK-CONV",
+            "name": "Al Khaleej Insurance (conventional)",
+            "type": "conventional",
+            "currency": "AED",
+            "regulator": "CBUAE"
+          },
+          {
+            "id": "ALK-TKF",
+            "name": "Al Khaleej Takaful Window",
+            "type": "takaful",
+            "currency": "AED",
+            "regulator": "CBUAE / Shariah Committee"
+          }
+        ],
+        "asOf": "2026-10-05",
+        "policy": {
+          "id": "UL-000123",
+          "holder": "PTY-0001",
+          "holderName": "Ahmed Al Mansoori",
+          "currency": "AED",
+          "sumAssured": "250,000.00 AED",
+          "value": {
+            "total": "21,715.30 AED",
+            "byFund": [
+              {
+                "fundId": "FGLOBAL",
+                "fundName": "Global Growth Fund",
+                "units": "64452918572",
+                "unitsLabel": "64452.918572",
+                "price": "10.627173",
+                "value": {
+                  "minor": "684952",
+                  "currency": "AED"
+                },
+                "priceAsOf": "2026-10-05",
+                "staleDays": 0,
+                "valueLabel": "6,849.52 AED"
+              },
+              {
+                "fundId": "FBAL",
+                "fundName": "Balanced Income Fund",
+                "units": "141437514387",
+                "unitsLabel": "141437.514387",
+                "price": "10.510493",
+                "value": {
+                  "minor": "1486578",
+                  "currency": "AED"
+                },
+                "priceAsOf": "2026-10-05",
+                "staleDays": 0,
+                "valueLabel": "14,865.78 AED"
+              }
+            ]
+          },
+          "penetration": [
+            {
+              "fundId": "FGLOBAL",
+              "fundName": "Global Growth Fund",
+              "units": "64452.918572",
+              "price": "10.627173",
+              "value": "6,849.52 AED",
+              "priceAsOf": "2026-10-05",
+              "stale": 0,
+              "holdings": [
+                {
+                  "instrument": "Global Equity Index Fund",
+                  "assetClass": "equity",
+                  "weightPct": 55,
+                  "value": "3,767.23 AED",
+                  "marketPrice": 80.64,
+                  "asOf": "2026-10-05",
+                  "shariah": false
+                },
+                {
+                  "instrument": "Emaar Properties",
+                  "assetClass": "equity",
+                  "weightPct": 20,
+                  "value": "1,369.90 AED",
+                  "marketPrice": 8.61,
+                  "asOf": "2026-10-05",
+                  "shariah": true
+                },
+                {
+                  "instrument": "First Abu Dhabi Bank",
+                  "assetClass": "equity",
+                  "weightPct": 15,
+                  "value": "1,027.42 AED",
+                  "marketPrice": 13.44,
+                  "asOf": "2026-10-05",
+                  "shariah": false
+                },
+                {
+                  "instrument": "UAE Federal Sukuk 2030",
+                  "assetClass": "sukuk",
+                  "weightPct": 10,
+                  "value": "684.95 AED",
+                  "marketPrice": 103.43,
+                  "asOf": "2026-10-05",
+                  "shariah": true
+                }
+              ]
+            },
+            {
+              "fundId": "FBAL",
+              "fundName": "Balanced Income Fund",
+              "units": "141437.514387",
+              "price": "10.510493",
+              "value": "14,865.78 AED",
+              "priceAsOf": "2026-10-05",
+              "stale": 0,
+              "holdings": [
+                {
+                  "instrument": "UAE Federal Sukuk 2030",
+                  "assetClass": "sukuk",
+                  "weightPct": 60,
+                  "value": "8,919.46 AED",
+                  "marketPrice": 103.43,
+                  "asOf": "2026-10-05",
+                  "shariah": true
+                },
+                {
+                  "instrument": "Gold ETF (physical)",
+                  "assetClass": "commodity",
+                  "weightPct": 15,
+                  "value": "2,229.86 AED",
+                  "marketPrice": 94.43,
+                  "asOf": "2026-10-05",
+                  "shariah": true
+                },
+                {
+                  "instrument": "Emaar Properties",
+                  "assetClass": "equity",
+                  "weightPct": 15,
+                  "value": "2,229.86 AED",
+                  "marketPrice": 8.61,
+                  "asOf": "2026-10-05",
+                  "shariah": true
+                },
+                {
+                  "instrument": "Global Equity Index Fund",
+                  "assetClass": "equity",
+                  "weightPct": 10,
+                  "value": "1,486.57 AED",
+                  "marketPrice": 80.64,
+                  "asOf": "2026-10-05",
+                  "shariah": false
+                }
+              ]
+            }
+          ],
+          "transactions": [
+            {
+              "id": "UL-T-000005",
+              "type": "allocation",
+              "fund": "FGLOBAL",
+              "units": "109078.028489",
+              "price": "10.451234",
+              "value": "11,400.00 AED",
+              "at": "2026-09-29T09:40:00+04:00",
+              "valuationDate": "2026-09-29",
+              "explanation": "Received 09:40 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+              "charges": [
+                {
+                  "code": "allocation",
+                  "amount": "600.00 AED",
+                  "basis": "500 bps of premium"
+                }
+              ],
+              "note": "Allocated 109078.028489 units at 10.451234 (Received 09:40 local, before the 15:00 cut-off, on a business day: same-day closing price.)"
+            },
+            {
+              "id": "UL-T-000010",
+              "type": "allocation",
+              "fund": "FBAL",
+              "units": "108760.391984",
+              "price": "10.481757",
+              "value": "11,400.00 AED",
+              "at": "2026-09-30T11:05:00+04:00",
+              "valuationDate": "2026-09-30",
+              "explanation": "Received 11:05 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+              "charges": [
+                {
+                  "code": "allocation",
+                  "amount": "600.00 AED",
+                  "basis": "500 bps of premium"
+                }
+              ],
+              "note": "Allocated 108760.391984 units at 10.481757 (Received 11:05 local, before the 15:00 cut-off, on a business day: same-day closing price.)"
+            },
+            {
+              "id": "UL-T-000014",
+              "type": "charge",
+              "fund": "FGLOBAL",
+              "units": "-238.081135",
+              "price": "10.500622",
+              "value": "25.00 AED",
+              "at": "2026-09-30T12:00:00+04:00",
+              "valuationDate": "2026-09-30",
+              "explanation": "Received 12:00 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+              "charges": [
+                {
+                  "code": "admin",
+                  "amount": "25.00 AED",
+                  "basis": "monthly administration fee"
+                }
+              ],
+              "note": "admin charge cancelled 238.081135 units at 10.500622"
+            },
+            {
+              "id": "UL-T-000018",
+              "type": "charge",
+              "fund": "FGLOBAL",
+              "units": "-1778.174488",
+              "price": "10.544522",
+              "value": "187.50 AED",
+              "at": "2026-10-01T12:00:00+04:00",
+              "valuationDate": "2026-10-01",
+              "explanation": "Received 12:00 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+              "charges": [
+                {
+                  "code": "coi",
+                  "amount": "187.50 AED",
+                  "basis": "0.9 per mille of sum assured, monthly"
+                }
+              ],
+              "note": "coi charge cancelled 1778.174488 units at 10.544522"
+            },
+            {
+              "id": "UL-T-000025",
+              "type": "switch-out",
+              "fund": "FGLOBAL",
+              "units": "-28450.791796",
+              "price": "10.544522",
+              "value": "3,000.00 AED",
+              "at": "2026-09-30T15:30:00+04:00",
+              "valuationDate": "2026-10-01",
+              "explanation": "Received 15:30 local, at or after the 15:00 cut-off: next dealing day 2026-10-01.",
+              "charges": [
+                {
+                  "code": "switching",
+                  "amount": "30.00 AED",
+                  "basis": "100 bps of switched value"
+                }
+              ],
+              "note": "Switch UL-SW-000019: out of FGLOBAL"
+            },
+            {
+              "id": "UL-T-000026",
+              "type": "switch-in",
+              "fund": "FBAL",
+              "units": "28305.180162",
+              "price": "10.492779",
+              "value": "2,970.00 AED",
+              "at": "2026-09-30T15:30:00+04:00",
+              "valuationDate": "2026-10-01",
+              "explanation": "Received 15:30 local, at or after the 15:00 cut-off: next dealing day 2026-10-01.",
+              "charges": [],
+              "note": "Switch UL-SW-000019: into FBAL"
+            },
+            {
+              "id": "UL-T-000033",
+              "type": "switch-out",
+              "fund": "FGLOBAL",
+              "units": "-14158.062498",
+              "price": "10.59467",
+              "value": "1,500.00 AED",
+              "at": "2026-10-01T16:20:00+04:00",
+              "valuationDate": "2026-10-02",
+              "explanation": "Received 16:20 local, at or after the 15:00 cut-off: next dealing day 2026-10-02.",
+              "charges": [
+                {
+                  "code": "switching",
+                  "amount": "15.00 AED",
+                  "basis": "100 bps of switched value"
+                }
+              ],
+              "note": "Switch UL-SW-000027: out of FGLOBAL"
+            },
+            {
+              "id": "UL-T-000034",
+              "type": "switch-in",
+              "fund": "FBAL",
+              "units": "14140.565025",
+              "price": "10.501702",
+              "value": "1,485.00 AED",
+              "at": "2026-10-01T16:20:00+04:00",
+              "valuationDate": "2026-10-02",
+              "explanation": "Received 16:20 local, at or after the 15:00 cut-off: next dealing day 2026-10-02.",
+              "charges": [],
+              "note": "Switch UL-SW-000027: into FBAL"
+            },
+            {
+              "id": "UL-T-000039",
+              "type": "withdrawal",
+              "fund": "FBAL",
+              "units": "-9768.622784",
+              "price": "10.492779",
+              "value": "1,025.00 AED",
+              "at": "2026-10-01T10:15:00+04:00",
+              "valuationDate": "2026-10-01",
+              "explanation": "Received 10:15 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+              "charges": [
+                {
+                  "code": "partial-withdrawal",
+                  "amount": "25.00 AED",
+                  "basis": "250 bps of withdrawal"
+                }
+              ],
+              "note": "Paid 1,000.00 AED to the customer, cancelled 9768.622784 units"
+            }
+          ],
+          "reproduce": {
+            "ok": true,
+            "detail": [
+              {
+                "fundId": "FGLOBAL",
+                "fromLog": "64452.918572",
+                "live": "64452.918572",
+                "match": true
+              },
+              {
+                "fundId": "FBAL",
+                "fromLog": "141437.514387",
+                "live": "141437.514387",
+                "match": true
+              }
+            ]
+          }
+        },
+        "switchPreview": {
+          "instructionType": "switch",
+          "from": {
+            "fundId": "FGLOBAL",
+            "fundName": "Global Growth Fund",
+            "units": "18819.680455",
+            "price": "10.627173",
+            "value": {
+              "minor": "200000",
+              "currency": "AED"
+            },
+            "valuationDate": "2026-10-05",
+            "explanation": "Received 11:10 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+            "valueLabel": "2,000.00 AED"
+          },
+          "to": {
+            "fundId": "FBAL",
+            "fundName": "Balanced Income Fund",
+            "price": "10.510493",
+            "valuationDate": "2026-10-05",
+            "unitsExpected": "18838.317099",
+            "explanation": "Received 11:10 local, before the 15:00 cut-off, on a business day: same-day closing price."
+          },
+          "fee": {
+            "minor": "2000",
+            "currency": "AED"
+          },
+          "netInvested": {
+            "minor": "198000",
+            "currency": "AED"
+          },
+          "illustration": {
+            "isIllustration": true,
+            "currency": "AED",
+            "startValue": {
+              "minor": "198000",
+              "currency": "AED"
+            },
+            "monthlyContribution": {
+              "minor": "0",
+              "currency": "AED"
+            },
+            "scenarios": {
+              "adverseBps": 0,
+              "centralBps": 600,
+              "favourableBps": 1000,
+              "annualChargeDragBps": 150
+            },
+            "rows": [
+              {
+                "year": 1,
+                "adverse": "1,977.72 AED",
+                "central": "1,989.48 AED",
+                "favourable": "1,999.03 AED"
+              },
+              {
+                "year": 2,
+                "adverse": "1,975.44 AED",
+                "central": "1,998.96 AED",
+                "favourable": "2,018.25 AED"
+              },
+              {
+                "year": 3,
+                "adverse": "1,973.16 AED",
+                "central": "2,008.54 AED",
+                "favourable": "2,037.64 AED"
+              },
+              {
+                "year": 4,
+                "adverse": "1,970.88 AED",
+                "central": "2,018.14 AED",
+                "favourable": "2,057.24 AED"
+              },
+              {
+                "year": 5,
+                "adverse": "1,968.60 AED",
+                "central": "2,027.77 AED",
+                "favourable": "2,077.01 AED"
+              },
+              {
+                "year": 6,
+                "adverse": "1,966.32 AED",
+                "central": "2,037.49 AED",
+                "favourable": "2,096.98 AED"
+              },
+              {
+                "year": 7,
+                "adverse": "1,964.04 AED",
+                "central": "2,047.21 AED",
+                "favourable": "2,117.14 AED"
+              },
+              {
+                "year": 8,
+                "adverse": "1,961.76 AED",
+                "central": "2,057.01 AED",
+                "favourable": "2,137.49 AED"
+              },
+              {
+                "year": 9,
+                "adverse": "1,959.48 AED",
+                "central": "2,066.85 AED",
+                "favourable": "2,158.04 AED"
+              },
+              {
+                "year": 10,
+                "adverse": "1,957.20 AED",
+                "central": "2,076.71 AED",
+                "favourable": "2,178.79 AED"
+              }
+            ],
+            "disclaimer": "This illustration is not a forecast and does not constitute financial advice. Values may fall as well as rise."
+          },
+          "blocked": [],
+          "feeLabel": "20.00 AED",
+          "netLabel": "1,980.00 AED"
+        },
+        "withdrawalPreview": {
+          "instructionType": "withdrawal",
+          "fundId": "FBAL",
+          "requested": {
+            "minor": "150000",
+            "currency": "AED"
+          },
+          "unitsCancelled": "14628.238657",
+          "fee": {
+            "minor": "3750",
+            "currency": "AED"
+          },
+          "gross": {
+            "minor": "153750",
+            "currency": "AED"
+          },
+          "cashToCustomer": {
+            "minor": "150000",
+            "currency": "AED"
+          },
+          "price": "10.510493",
+          "valuationDate": "2026-10-05",
+          "explanation": "Received 10:15 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+          "remainingUnits": "126809.27573",
+          "remainingValue": {
+            "minor": "1332828",
+            "currency": "AED"
+          },
+          "lockInActive": false,
+          "illustration": {
+            "isIllustration": true,
+            "currency": "AED",
+            "startValue": {
+              "minor": "1332828",
+              "currency": "AED"
+            },
+            "monthlyContribution": {
+              "minor": "0",
+              "currency": "AED"
+            },
+            "scenarios": {
+              "adverseBps": 0,
+              "centralBps": 600,
+              "favourableBps": 1000,
+              "annualChargeDragBps": 150
+            },
+            "rows": [
+              {
+                "year": 1,
+                "adverse": {
+                  "minor": "1331232",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1339234",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1345673",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 2,
+                "adverse": {
+                  "minor": "1329638",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1345670",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1358643",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 3,
+                "adverse": {
+                  "minor": "1328054",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1352137",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1371737",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 4,
+                "adverse": {
+                  "minor": "1326470",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1358636",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1384959",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 5,
+                "adverse": {
+                  "minor": "1324886",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1365165",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1398306",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 6,
+                "adverse": {
+                  "minor": "1323302",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1371727",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1411783",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 7,
+                "adverse": {
+                  "minor": "1321718",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1378320",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1425390",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 8,
+                "adverse": {
+                  "minor": "1320134",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1384944",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1439128",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 9,
+                "adverse": {
+                  "minor": "1318560",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1391600",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1452998",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              },
+              {
+                "year": 10,
+                "adverse": {
+                  "minor": "1316988",
+                  "currency": "AED"
+                },
+                "central": {
+                  "minor": "1398288",
+                  "currency": "AED"
+                },
+                "favourable": {
+                  "minor": "1467002",
+                  "currency": "AED"
+                },
+                "contributionsToDate": {
+                  "minor": "1332828",
+                  "currency": "AED"
+                }
+              }
+            ],
+            "disclaimer": "This illustration is not a forecast and does not constitute financial advice. Values may fall as well as rise."
+          },
+          "blocked": [],
+          "requestedLabel": "1,500.00 AED",
+          "feeLabel": "37.50 AED",
+          "cashLabel": "1,500.00 AED",
+          "remainingValueLabel": "13,328.28 AED"
+        },
+        "dream": {
+          "isIllustration": true,
+          "currency": "AED",
+          "startValue": {
+            "minor": "2171530",
+            "currency": "AED"
+          },
+          "monthlyContribution": {
+            "minor": "100000",
+            "currency": "AED"
+          },
+          "scenarios": {
+            "adverseBps": 0,
+            "centralBps": 600,
+            "favourableBps": 1000,
+            "annualChargeDragBps": 150
+          },
+          "rows": [
+            {
+              "year": 1,
+              "adverse": "33,681.51 AED",
+              "central": "33,850.94 AED",
+              "favourable": "33,987.20 AED",
+              "contributions": "33,715.30 AED"
+            },
+            {
+              "year": 2,
+              "adverse": "45,633.39 AED",
+              "central": "46,044.97 AED",
+              "favourable": "46,377.44 AED",
+              "contributions": "45,715.30 AED"
+            },
+            {
+              "year": 3,
+              "adverse": "57,570.92 AED",
+              "central": "58,297.66 AED",
+              "favourable": "58,887.16 AED",
+              "contributions": "57,715.30 AED"
+            },
+            {
+              "year": 4,
+              "adverse": "69,494.12 AED",
+              "central": "70,609.27 AED",
+              "favourable": "71,517.47 AED",
+              "contributions": "69,715.30 AED"
+            },
+            {
+              "year": 5,
+              "adverse": "81,403.04 AED",
+              "central": "82,980.12 AED",
+              "favourable": "84,269.60 AED",
+              "contributions": "81,715.30 AED"
+            },
+            {
+              "year": 6,
+              "adverse": "93,297.67 AED",
+              "central": "95,410.48 AED",
+              "favourable": "97,144.70 AED",
+              "contributions": "93,715.30 AED"
+            },
+            {
+              "year": 7,
+              "adverse": "105,178.05 AED",
+              "central": "107,900.64 AED",
+              "favourable": "110,143.92 AED",
+              "contributions": "105,715.30 AED"
+            },
+            {
+              "year": 8,
+              "adverse": "117,044.17 AED",
+              "central": "120,450.90 AED",
+              "favourable": "123,268.49 AED",
+              "contributions": "117,715.30 AED"
+            },
+            {
+              "year": 9,
+              "adverse": "128,896.05 AED",
+              "central": "133,061.51 AED",
+              "favourable": "136,519.61 AED",
+              "contributions": "129,715.30 AED"
+            },
+            {
+              "year": 10,
+              "adverse": "140,733.73 AED",
+              "central": "145,732.79 AED",
+              "favourable": "149,898.51 AED",
+              "contributions": "141,715.30 AED"
+            }
+          ],
+          "disclaimer": "This illustration is not a forecast and does not constitute financial advice. Values may fall as well as rise."
+        },
+        "cover": {
+          "policyId": "MTR-0441",
+          "segments": [
+            {
+              "policyId": "MTR-0441",
+              "productId": "PROD-MOTOR-PAYG",
+              "mode": "start-stop",
+              "dailyRate": {
+                "minor": "1250",
+                "currency": "AED"
+              },
+              "usageRatePerUnit": {
+                "minor": "35",
+                "currency": "AED"
+              },
+              "tariffVersion": "MOTOR-AE-2026.1",
+              "autoStart": false,
+              "graceDays": 3,
+              "id": "SEG-000001",
+              "status": "paused",
+              "startAt": "2026-10-01T08:00:00+04:00",
+              "endAt": "2026-10-03T11:00:00+04:00",
+              "dailyRateLabel": "12.50 AED",
+              "usageLabel": "0.35 AED / km"
+            },
+            {
+              "policyId": "MTR-0441",
+              "productId": "PROD-MOTOR-PAYG",
+              "mode": "daily",
+              "dailyRate": {
+                "minor": "975",
+                "currency": "AED"
+              },
+              "tariffVersion": "MOTOR-AE-2026.1",
+              "autoStart": true,
+              "graceDays": 2,
+              "id": "SEG-000005",
+              "status": "scheduled",
+              "scheduledStartAt": "2026-10-10T00:00:00+04:00",
+              "scheduledStopAt": "2026-10-20T00:00:00+04:00",
+              "dailyRateLabel": "9.75 AED",
+              "usageLabel": "—"
+            }
+          ],
+          "events": [
+            {
+              "id": "CHG-000002",
+              "policyId": "MTR-0441",
+              "segmentId": "SEG-000001",
+              "kind": "cover-day",
+              "at": "2026-10-02T00:00:00.000Z",
+              "amount": {
+                "minor": "1250",
+                "currency": "AED"
+              },
+              "tariffVersion": "MOTOR-AE-2026.1",
+              "note": "Daily cover charged for the day starting 2026-10-02 (explicit start)",
+              "amountLabel": "12.50 AED"
+            },
+            {
+              "id": "CHG-000003",
+              "policyId": "MTR-0441",
+              "segmentId": "SEG-000001",
+              "kind": "cover-day",
+              "at": "2026-10-03T00:00:00.000Z",
+              "amount": {
+                "minor": "1250",
+                "currency": "AED"
+              },
+              "tariffVersion": "MOTOR-AE-2026.1",
+              "note": "Daily cover charged for the day starting 2026-10-03 (explicit start)",
+              "amountLabel": "12.50 AED"
+            },
+            {
+              "id": "CHG-000004",
+              "policyId": "MTR-0441",
+              "segmentId": "SEG-000001",
+              "kind": "usage",
+              "at": "2026-10-05T09:00:00+04:00",
+              "amount": {
+                "minor": "4200",
+                "currency": "AED"
+              },
+              "tariffVersion": "MOTOR-AE-2026.1",
+              "note": "120 km driven this week",
+              "amountLabel": "42.00 AED"
+            }
+          ],
+          "total": "67.00 AED",
+          "balance": "433.00 AED"
+        },
+        "funds": [
+          {
+            "id": "FGLOBAL",
+            "name": "Global Growth Fund",
+            "currency": "AED",
+            "shariah": false,
+            "fmcBps": 150,
+            "dealing": "15:00",
+            "url": "MSCI World",
+            "nav": "10.627173",
+            "navDate": "2026-10-05",
+            "units": "118450.123456",
+            "navValue": "12,587.90 AED",
+            "residual": "0.00 AED",
+            "dayChangePct": 0.31,
+            "composition": [
+              {
+                "instrument": "Global Equity Index Fund",
+                "weightPct": 55
+              },
+              {
+                "instrument": "Emaar Properties",
+                "weightPct": 20
+              },
+              {
+                "instrument": "First Abu Dhabi Bank",
+                "weightPct": 15
+              },
+              {
+                "instrument": "UAE Federal Sukuk 2030",
+                "weightPct": 10
+              }
+            ],
+            "warnings": []
+          },
+          {
+            "id": "FBAL",
+            "name": "Balanced Income Fund",
+            "currency": "AED",
+            "shariah": false,
+            "fmcBps": 110,
+            "dealing": "15:00",
+            "url": "30% equity / 70% sukuk",
+            "nav": "10.510493",
+            "navDate": "2026-10-05",
+            "units": "76210.5",
+            "navValue": "8,010.10 AED",
+            "residual": "0.00 AED",
+            "dayChangePct": 0.08,
+            "composition": [
+              {
+                "instrument": "UAE Federal Sukuk 2030",
+                "weightPct": 60
+              },
+              {
+                "instrument": "Gold ETF (physical)",
+                "weightPct": 15
+              },
+              {
+                "instrument": "Emaar Properties",
+                "weightPct": 15
+              },
+              {
+                "instrument": "Global Equity Index Fund",
+                "weightPct": 10
+              }
+            ],
+            "warnings": []
+          },
+          {
+            "id": "TKF-EQ",
+            "name": "Al Khaleej Shariah Equity Fund",
+            "currency": "AED",
+            "shariah": true,
+            "fmcBps": 140,
+            "dealing": "15:00",
+            "url": "FTSE Shariah UAE",
+            "nav": "10.526865",
+            "navDate": "2026-10-05",
+            "units": "42150.25",
+            "navValue": "4,437.10 AED",
+            "residual": "0.00 AED",
+            "dayChangePct": 0.11,
+            "composition": [
+              {
+                "instrument": "Emaar Properties",
+                "weightPct": 45
+              },
+              {
+                "instrument": "UAE Federal Sukuk 2030",
+                "weightPct": 35
+              },
+              {
+                "instrument": "Gold ETF (physical)",
+                "weightPct": 20
+              }
+            ],
+            "warnings": []
+          }
+        ],
+        "takaful": {
+          "pools": [
+            {
+              "fund": "PRF",
+              "label": "Participant risk fund",
+              "balance": "300.00 AED"
+            },
+            {
+              "fund": "PIF",
+              "label": "Participant investment fund",
+              "balance": "5,040.00 AED"
+            },
+            {
+              "fund": "OPF",
+              "label": "Operator",
+              "balance": "1,800.00 AED"
+            }
+          ],
+          "qards": [
+            {
+              "id": "TKF-QARD-000010",
+              "amount": "60.00 AED",
+              "repaid": "20.00 AED",
+              "outstanding": "40.00 AED",
+              "status": "outstanding",
+              "reason": "Deficit in risk fund for claim CLM-TKF-77"
+            }
+          ],
+          "proposal": {
+            "id": "TKF-SRP-000019",
+            "grossSurplus": "1,250.00 AED",
+            "distributable": "0.00 AED",
+            "participantShare": "0.00 AED",
+            "operatorShare": "0.00 AED",
+            "approvals": {
+              "actuary": false,
+              "shariah": false,
+              "board": false
+            },
+            "blockers": [
+              "Actuarial recommendation missing (the actuary must recommend the surplus)",
+              "Shariah Committee approval missing",
+              "Board endorsement missing",
+              "Qard hasan of 40.00 AED is outstanding and must be repaid first"
+            ],
+            "ready": false,
+            "notes": [
+              "Jurisdiction rule (AE): surplus may not be distributed to savers under this model — retained in the risk fund."
+            ]
+          },
+          "model": "wakalah"
+        },
+        "labels": {
+          "en": {
+            "app.title": "Central Insurance ERP",
+            "nav.policyholder": "Policyholder",
+            "nav.operator": "Operations",
+            "nav.funds": "Funds & NAV",
+            "nav.decisions": "Decision theatre",
+            "nav.cover": "Cover control",
+            "nav.onboarding": "Onboarding",
+            "nav.ingest": "Ingestion",
+            "nav.regulatory": "Regulatory",
+            "nav.ai": "AI ledger",
+            "policy.premium": "Contribution",
+            "policy.contribution": "Contribution",
+            "policy.sumAssured": "Tabarru' cover",
+            "policy.holder": "Participant",
+            "policy.certificate": "Certificate",
+            "fund.units": "Units",
+            "fund.nav": "NAV per unit",
+            "fund.value": "Fund value",
+            "fund.switch": "Switch funds",
+            "fund.withdraw": "Partial withdrawal",
+            "fund.lookThrough": "Where your money is invested",
+            "cover.start": "Start cover",
+            "cover.stop": "Stop cover",
+            "cover.schedule": "Schedule start / stop",
+            "cover.autoStart": "Daily renewal at midnight",
+            "cover.noAutoStartNotice": "Cover stays stopped until you start it. Nothing restarts by itself.",
+            "takaful.operator": "Operator",
+            "takaful.participant": "Participant",
+            "takaful.riskFund": "Participant risk fund",
+            "takaful.tabarru": "Tabarru (donation)",
+            "takaful.qard": "Qard hasan",
+            "takaful.surplus": "Surplus",
+            "role.surrender": "Early termination",
+            "disclaimer.illustration": "This is an illustration, not advice or a forecast. Investment values can fall as well as rise and are not guaranteed.",
+            "disclaimer.lookThrough": "Market prices are shown for information only and may be delayed."
+          },
+          "ar": {
+            "app.title": "نظام التأمين المركزي",
+            "nav.policyholder": "حامل الوثيقة",
+            "nav.operator": "العمليات",
+            "nav.funds": "الصناديق وصافي قيمة الأصول",
+            "nav.decisions": "مسرح القرار",
+            "nav.cover": "التحكم بالتغطية",
+            "nav.onboarding": "التسجيل",
+            "nav.ingest": "الاستيراد",
+            "nav.regulatory": "التنظيمي",
+            "nav.ai": "سجل الذكاء الاصطناعي",
+            "policy.premium": "القسط",
+            "policy.contribution": "المساهمة",
+            "policy.sumAssured": "مبلغ التأمين",
+            "policy.holder": "حامل الوثيقة",
+            "policy.certificate": "الشهادة",
+            "fund.units": "الوحدات",
+            "fund.nav": "صافي قيمة الوحدة",
+            "fund.value": "قيمة الصندوق",
+            "fund.switch": "تبديل الصناديق",
+            "fund.withdraw": "سحب جزئي",
+            "fund.lookThrough": "أين تُستثمر أموالك",
+            "cover.start": "بدء التغطية",
+            "cover.stop": "إيقاف التغطية",
+            "cover.schedule": "جدولة البدء والإيقاف",
+            "cover.autoStart": "تجديد يومي عند منتصف الليل",
+            "cover.noAutoStartNotice": "تبقى التغطية متوقفة حتى تبدأها. لا شيء يعود تلقائياً.",
+            "takaful.operator": "المشغل",
+            "takaful.participant": "المشارك",
+            "takaful.riskFund": "صندوق مخاطر المشاركين",
+            "takaful.tabarru": "التبّرع",
+            "takaful.qard": "القرض الحسن",
+            "takaful.surplus": "الفائض",
+            "role.surrender": "الاستسلام",
+            "disclaimer.illustration": "هذا توضيح وليس نصيحة أو توقعاً. يمكن أن تنخفض قيمة الاستثمار كما يمكن أن ترتفع، وهي غير مضمونة.",
+            "disclaimer.lookThrough": "تُعرض أسعار السوق لأغراض المعلومات فقط وقد تكون متأخرة."
+          },
+          "takafulEn": {
+            "app.title": "Central Insurance ERP",
+            "nav.policyholder": "Policyholder",
+            "nav.operator": "Operations",
+            "nav.funds": "Funds & NAV",
+            "nav.decisions": "Decision theatre",
+            "nav.cover": "Cover control",
+            "nav.onboarding": "Onboarding",
+            "nav.ingest": "Ingestion",
+            "nav.regulatory": "Regulatory",
+            "nav.ai": "AI ledger",
+            "policy.premium": "Contribution",
+            "policy.contribution": "Contribution",
+            "policy.sumAssured": "Tabarru' cover",
+            "policy.holder": "Participant",
+            "policy.certificate": "Certificate",
+            "fund.units": "Units",
+            "fund.nav": "NAV per unit",
+            "fund.value": "Fund value",
+            "fund.switch": "Switch funds",
+            "fund.withdraw": "Partial withdrawal",
+            "fund.lookThrough": "Where your money is invested",
+            "cover.start": "Start cover",
+            "cover.stop": "Stop cover",
+            "cover.schedule": "Schedule start / stop",
+            "cover.autoStart": "Daily renewal at midnight",
+            "cover.noAutoStartNotice": "Cover stays stopped until you start it. Nothing restarts by itself.",
+            "takaful.operator": "Operator",
+            "takaful.participant": "Participant",
+            "takaful.riskFund": "Participant risk fund",
+            "takaful.tabarru": "Tabarru (donation)",
+            "takaful.qard": "Qard hasan",
+            "takaful.surplus": "Surplus",
+            "role.surrender": "Early termination",
+            "disclaimer.illustration": "This is an illustration, not advice or a forecast. Investment values can fall as well as rise and are not guaranteed.",
+            "disclaimer.lookThrough": "Market prices are shown for information only and may be delayed."
+          },
+          "audit": [
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej",
+              "key": "policy.holder",
+              "locale": "en",
+              "to": "Participant",
+              "from": "Policyholder"
+            },
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej",
+              "key": "policy.certificate",
+              "locale": "en",
+              "to": "Certificate",
+              "from": "Certificate"
+            },
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej",
+              "key": "role.surrender",
+              "locale": "en",
+              "to": "Early termination",
+              "from": "Surrender"
+            },
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej:ALK-TKF",
+              "key": "policy.premium",
+              "locale": "en",
+              "to": "Contribution",
+              "from": "Premium"
+            },
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej:ALK-TKF",
+              "key": "policy.sumAssured",
+              "locale": "en",
+              "to": "Tabarru' cover",
+              "from": "Sum assured"
+            },
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej:ALK-TKF",
+              "key": "policy.holder",
+              "locale": "en",
+              "to": "Participant",
+              "from": "Policyholder"
+            },
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej:ALK-TKF",
+              "key": "policy.certificate",
+              "locale": "en",
+              "to": "Certificate",
+              "from": "Certificate"
+            },
+            {
+              "actor": "system:takaful-window",
+              "at": "2026-09-01T00:00:00Z",
+              "tenantId": "alkhaleej:ALK-TKF",
+              "key": "role.surrender",
+              "locale": "en",
+              "to": "Early termination",
+              "from": "Surrender"
+            }
+          ],
+          "coverageAr": {
+            "covered": 35,
+            "total": 35,
+            "missing": []
+          }
+        },
+        "parties": {
+          "list": [
+            {
+              "id": "PTY-0001",
+              "name": "Ahmed Al Mansoori",
+              "nameAr": "أحمد المنصوري",
+              "dob": "1985-04-12",
+              "ids": [
+                {
+                  "type": "emirates-id",
+                  "value": "784-1985-1234567-1",
+                  "country": "AE",
+                  "source": "chip",
+                  "confidence": 0.999
+                },
+                {
+                  "type": "driving-licence",
+                  "value": "DL-AE-99120",
+                  "country": "AE",
+                  "source": "ocr",
+                  "confidence": 0.94
+                }
+              ],
+              "phones": [
+                "+971 50 123 4567"
+              ],
+              "emails": [
+                "ahmed.mansoori@example.ae"
+              ],
+              "roles": [
+                "policyholder",
+                "life-assured"
+              ],
+              "holdings": [
+                {
+                  "policyId": "UL-000123",
+                  "productName": "Global Unit-Linked Plan",
+                  "entityId": "ALK-CONV",
+                  "status": "in force",
+                  "currency": "AED"
+                },
+                {
+                  "policyId": "MTR-0441",
+                  "productName": "Pay-as-you-drive Motor",
+                  "entityId": "ALK-CONV",
+                  "status": "active cover",
+                  "currency": "AED"
+                }
+              ]
+            },
+            {
+              "id": "PTY-0002",
+              "name": "Sara Khalifa",
+              "nameAr": "سارة خليفة",
+              "dob": "1990-11-02",
+              "ids": [
+                {
+                  "type": "emirates-id",
+                  "value": "784-1990-7654321-9",
+                  "country": "AE",
+                  "source": "government-lookup",
+                  "confidence": 0.98
+                }
+              ],
+              "phones": [
+                "+971 55 987 6543"
+              ],
+              "emails": [
+                "sara.khalifa@example.ae"
+              ],
+              "roles": [
+                "policyholder"
+              ],
+              "holdings": [
+                {
+                  "policyId": "TK-9001",
+                  "productName": "Family Takaful Plan",
+                  "entityId": "ALK-TKF",
+                  "status": "in force",
+                  "currency": "AED"
+                }
+              ]
+            }
+          ],
+          "consent": {
+            "id": "CNS-00001",
+            "scopes": [
+              "customer.exists",
+              "customer.name",
+              "customer.holdings"
+            ],
+            "expiresAt": "2027-09-20T08:00:00+04:00",
+            "purpose": "Avoid creating a duplicate customer record",
+            "grantedTo": "DXB-BROKER-01"
+          },
+          "partnerLookup": {
+            "outcome": "granted",
+            "reason": "disclosed customer.exists, customer.name, customer.holdings",
+            "disclosed": {
+              "matchConfidence": 2640,
+              "reasons": [
+                "emirates-id number matches exactly",
+                "driving-licence number matches exactly",
+                "full name matches (all tokens)",
+                "date of birth matches",
+                "phone +971 50 123 4567 matches",
+                "email ahmed.mansoori@example.ae matches"
+              ],
+              "exists": true,
+              "name": "Ahmed Al Mansoori",
+              "holdings": [
+                {
+                  "policyId": "UL-000123",
+                  "productName": "Global Unit-Linked Plan",
+                  "entityId": "ALK-CONV",
+                  "status": "in force",
+                  "currency": "AED"
+                },
+                {
+                  "policyId": "MTR-0441",
+                  "productName": "Pay-as-you-drive Motor",
+                  "entityId": "ALK-CONV",
+                  "status": "active cover",
+                  "currency": "AED"
+                }
+              ]
+            },
+            "match": {
+              "partyId": "PTY-0001",
+              "score": 2640,
+              "reasons": [
+                "emirates-id number matches exactly",
+                "driving-licence number matches exactly",
+                "full name matches (all tokens)",
+                "date of birth matches",
+                "phone +971 50 123 4567 matches",
+                "email ahmed.mansoori@example.ae matches"
+              ]
+            }
+          },
+          "partnerLookupDenied": {
+            "outcome": "denied-no-consent",
+            "reason": "a consent token is required before any disclosure"
+          },
+          "accessLog": [
+            {
+              "at": "2026-10-05T09:00:00+04:00",
+              "consentId": "CNS-00001",
+              "partyId": "PTY-0001",
+              "requestedBy": "DXB-BROKER-01",
+              "scopesRequested": [
+                "customer.exists",
+                "customer.name",
+                "customer.holdings"
+              ],
+              "scopesGranted": [
+                "customer.exists",
+                "customer.name",
+                "customer.holdings"
+              ],
+              "outcome": "granted",
+              "reason": "disclosed customer.exists, customer.name, customer.holdings"
+            },
+            {
+              "at": "2026-10-05T09:01:00+04:00",
+              "partyId": "PTY-0001",
+              "requestedBy": "DXB-BROKER-01",
+              "scopesRequested": [
+                "customer.exists"
+              ],
+              "scopesGranted": [],
+              "outcome": "denied-no-consent",
+              "reason": "a consent token is required before any disclosure"
+            }
+          ]
+        },
+        "onboarding": {
+          "chip": {
+            "method": "chip",
+            "fields": [
+              {
+                "field": "fullName",
+                "value": "أحمد المنصوري",
+                "confidence": 0.999,
+                "source": "chip"
+              },
+              {
+                "field": "idNumber",
+                "value": "784-1985-1234567-1",
+                "confidence": 0.999,
+                "source": "chip"
+              },
+              {
+                "field": "nationality",
+                "value": "United Arab Emirates",
+                "confidence": 0.999,
+                "source": "chip"
+              },
+              {
+                "field": "dateOfBirth",
+                "value": "1985-04-12",
+                "confidence": 0.999,
+                "source": "chip"
+              },
+              {
+                "field": "expiry",
+                "value": "2028-06-30",
+                "confidence": 0.999,
+                "source": "chip"
+              },
+              {
+                "field": "sponsor",
+                "value": "—",
+                "confidence": 0.999,
+                "source": "chip"
+              }
+            ]
+          },
+          "ocr": {
+            "method": "ocr",
+            "fields": [
+              {
+                "field": "fullName",
+                "value": "Ahmed Al Mansoori",
+                "confidence": 1,
+                "source": "ocr-consensus",
+                "engines": 3
+              },
+              {
+                "field": "licenceNumber",
+                "value": "DL-AE-99120",
+                "confidence": 0.667,
+                "source": "ocr-consensus",
+                "engines": 3
+              },
+              {
+                "field": "expiry",
+                "value": "2027-03-15",
+                "confidence": 1,
+                "source": "ocr-consensus",
+                "engines": 3
+              }
+            ],
+            "reviewQueue": [
+              {
+                "field": "licenceNumber",
+                "value": "DL-AE-99120",
+                "confidence": 0.667,
+                "source": "ocr-consensus",
+                "engines": 3
+              }
+            ],
+            "notes": [
+              "1 field(s) need a human eye before this record is accepted."
+            ]
+          }
+        },
+        "ingest": {
+          "summary": "3/5 rows accepted, 2 quarantined, 1 duplicates suppressed, committed at 2026-10-03T07:45:00+04:00",
+          "anomalies": [
+            "2 row(s) quarantined — review before re-submission",
+            "1 duplicate row(s) suppressed by natural key",
+            "More than 20% of rows quarantined — the source file has changed shape or the mapping is wrong",
+            "Most common offending columns: email (1)"
+          ],
+          "supervisorNotes": [
+            "Supervisor: 2 row(s) held back — data quality, not a system failure."
+          ],
+          "quarantine": [
+            {
+              "row": 3,
+              "data": {
+                "full_name": "Omar Hassan",
+                "emirates_id": "784-1978-1112223-4",
+                "email": "not-an-email",
+                "phone": "+971 52 111 2222",
+                "date_of_birth": "1978-06-21"
+              },
+              "errors": [
+                {
+                  "row": 3,
+                  "column": "email",
+                  "value": "not-an-email",
+                  "message": "not an email address"
+                }
+              ]
+            },
+            {
+              "row": 4,
+              "data": {
+                "full_name": "",
+                "emirates_id": "784-1999-0000000-0",
+                "email": "",
+                "phone": "",
+                "date_of_birth": ""
+              },
+              "errors": [
+                {
+                  "row": 4,
+                  "column": "full_name",
+                  "value": "",
+                  "message": "required value is missing"
+                },
+                {
+                  "row": 4,
+                  "column": "email",
+                  "value": "",
+                  "message": "required value is missing"
+                }
+              ]
+            }
+          ],
+          "committed": true,
+          "loadId": "LOAD-2026-10-03-001"
+        },
+        "ai": {
+          "actions": [
+            {
+              "id": "AIA-00001",
+              "agent": "doc-intake-v3",
+              "module": "onboarding",
+              "intent": "classify-document",
+              "riskClass": "low",
+              "status": "proposed",
+              "note": "Low risk: eligible for automatic execution with review",
+              "cost": 0.02,
+              "at": "2026-10-03T08:00:00+04:00"
+            },
+            {
+              "id": "AIA-00002",
+              "agent": "claims-triage-v2",
+              "module": "claims",
+              "intent": "suggest-reserve",
+              "riskClass": "high",
+              "status": "awaiting-approval",
+              "note": "Waiting for a human decision",
+              "cost": 0.11,
+              "at": "2026-10-03T08:05:00+04:00"
+            },
+            {
+              "id": "AIA-00003",
+              "agent": "rogue-validator",
+              "module": "ingest",
+              "intent": "approve-claim-payment",
+              "riskClass": "high",
+              "status": "refused",
+              "note": "Refused: Payout decisions above limits require a named human approver",
+              "cost": 0.01,
+              "at": "2026-10-03T08:06:00+04:00"
+            }
+          ],
+          "awaiting": 1,
+          "totalCost": 0.14
+        },
+        "regulatory": {
+          "pack": "United Arab Emirates — CBUAE-flavoured pack",
+          "preSaleMotor": {
+            "allowed": true,
+            "blockers": [],
+            "requiredSteps": [
+              "Complete the pre-quote vehicle survey",
+              "Present the insurer comparison matrix"
+            ],
+            "pack": "AE 2026.1"
+          },
+          "preSaleHealthBlocked": {
+            "allowed": false,
+            "blockers": [
+              "A need analysis is mandatory before selling medical in AE",
+              "No need-analysis identifier issued for this medical case"
+            ],
+            "requiredSteps": [
+              "Complete and store the need analysis"
+            ],
+            "pack": "AE 2026.1"
+          },
+          "comparison": [
+            {
+              "insurer": "Al Khaleej",
+              "product": "Motor Comprehensive Plus",
+              "premium": 2450,
+              "excess": 500,
+              "benefits": [
+                "agency repair",
+                "GCC cover",
+                "24/7 roadside"
+              ],
+              "serviceRating": 5,
+              "complaintsPer10k": 3,
+              "score": 0.3813,
+              "rationale": "Ranked on premium 2,450 (0% of best); service rating 5/5 with 3 complaints per 10,000; excess 500.",
+              "premiumLabel": "2,450.00 AED",
+              "scorePct": 38
+            },
+            {
+              "insurer": "Orient Direct",
+              "product": "Motor Third Party Plus",
+              "premium": 1350,
+              "excess": 1000,
+              "benefits": [
+                "third party",
+                "fire and theft"
+              ],
+              "serviceRating": 3,
+              "complaintsPer10k": 12,
+              "score": 0.3295,
+              "rationale": "Ranked on premium 1,350 (45% of best); service rating 3/5 with 12 complaints per 10,000; excess 1,000.",
+              "premiumLabel": "1,350.00 AED",
+              "scorePct": 33
+            },
+            {
+              "insurer": "Gulf Union",
+              "product": "Motor Comprehensive",
+              "premium": 2210,
+              "excess": 750,
+              "benefits": [
+                "agency repair",
+                "roadside"
+              ],
+              "serviceRating": 4,
+              "complaintsPer10k": 7,
+              "score": 0.2848,
+              "rationale": "Ranked on premium 2,210 (10% of best); service rating 4/5 with 7 complaints per 10,000; excess 750.",
+              "premiumLabel": "2,210.00 AED",
+              "scorePct": 28
+            }
+          ]
+        },
+        "underwriting": {
+          "book": {
+            "policies": 3,
+            "standard": "20,100.00 AED",
+            "loaded": "20,311.50 AED",
+            "extra": "211.50 AED"
+          },
+          "queue": [
+            {
+              "applicationId": "UW-000003",
+              "partyId": "PTY-0003",
+              "outcome": "referred",
+              "waitingOn": [
+                "senior-underwriter",
+                "reinsurance-desk"
+              ],
+              "reasonCodes": [
+                "occupation-referral",
+                "condition-cardiac-history",
+                "reinsurance-facultative"
+              ]
+            }
+          ],
+          "cession": [
+            {
+              "partyId": "PTY-0001",
+              "policies": 1,
+              "totalSumAssured": {
+                "minor": "25000000",
+                "currency": "AED"
+              },
+              "mode": "automatic",
+              "totalSumAssuredLabel": "250,000.00 AED"
+            },
+            {
+              "partyId": "PTY-0002",
+              "policies": 1,
+              "totalSumAssured": {
+                "minor": "30000000",
+                "currency": "AED"
+              },
+              "mode": "automatic",
+              "totalSumAssuredLabel": "300,000.00 AED"
+            },
+            {
+              "partyId": "PTY-0004",
+              "policies": 1,
+              "totalSumAssured": {
+                "minor": "12000000",
+                "currency": "AED"
+              },
+              "mode": "automatic",
+              "totalSumAssuredLabel": "120,000.00 AED"
+            }
+          ],
+          "share": [
+            {
+              "productId": "PROD-LIFE-TERM",
+              "ceded": {
+                "minor": "16750000",
+                "currency": "AED"
+              },
+              "retained": {
+                "minor": "50250000",
+                "currency": "AED"
+              },
+              "cededLabel": "167,500.00 AED",
+              "retainedLabel": "502,500.00 AED"
+            }
+          ],
+          "exposure": [
+            {
+              "partyId": "PTY-0001",
+              "policies": 1,
+              "totalSumAssured": "250,000.00 AED",
+              "withinAutomaticLimit": true,
+              "facultativeRequired": false
+            },
+            {
+              "partyId": "PTY-0002",
+              "policies": 1,
+              "totalSumAssured": "300,000.00 AED",
+              "withinAutomaticLimit": true,
+              "facultativeRequired": false
+            },
+            {
+              "partyId": "PTY-0003",
+              "policies": 0,
+              "totalSumAssured": "0.00 AED",
+              "withinAutomaticLimit": true,
+              "facultativeRequired": false
+            },
+            {
+              "partyId": "PTY-0004",
+              "policies": 1,
+              "totalSumAssured": "120,000.00 AED",
+              "withinAutomaticLimit": true,
+              "facultativeRequired": false
+            }
+          ],
+          "applications": [
+            {
+              "id": "UW-000001",
+              "partyId": "PTY-0001",
+              "productId": "PROD-LIFE-TERM",
+              "at": "2026-09-20T10:00:00+04:00",
+              "age": 38,
+              "smoker": false,
+              "bmi": 24.6,
+              "occupationClass": 1,
+              "conditions": [],
+              "pursuits": [],
+              "sumAssured": "250,000.00 AED",
+              "outcome": "standard",
+              "decidedBy": "senior-underwriter",
+              "decidedByAi": false,
+              "extraMortalityBps": 0,
+              "standardPremium": "7,500.00 AED",
+              "loadedPremium": "7,500.00 AED",
+              "exclusions": [],
+              "evidence": [],
+              "referrals": [],
+              "reinsurance": {
+                "mode": "automatic",
+                "threshold": "2,000,000.00 AED",
+                "note": "Inside the automatic binding limit"
+              },
+              "reasons": [
+                {
+                  "code": "occupation-class-1",
+                  "detail": "Occupation class 1 is inside the standard range for PROD-LIFE-TERM: no debit",
+                  "source": "occupation",
+                  "referral": false
+                }
+              ]
+            },
+            {
+              "id": "UW-000002",
+              "partyId": "PTY-0002",
+              "productId": "PROD-LIFE-TERM",
+              "at": "2026-09-22T10:00:00+04:00",
+              "age": 38,
+              "smoker": true,
+              "bmi": 24.6,
+              "occupationClass": 3,
+              "conditions": [
+                "diabetes-type-2"
+              ],
+              "pursuits": [],
+              "sumAssured": "300,000.00 AED",
+              "outcome": "rated",
+              "decidedBy": "senior-underwriter",
+              "decidedByAi": false,
+              "extraMortalityBps": 235,
+              "standardPremium": "9,000.00 AED",
+              "loadedPremium": "9,211.50 AED",
+              "exclusions": [],
+              "evidence": [
+                "HbA1c result within 6 months"
+              ],
+              "referrals": [
+                "senior-underwriter"
+              ],
+              "reinsurance": {
+                "mode": "automatic",
+                "threshold": "2,000,000.00 AED",
+                "note": "Inside the automatic binding limit"
+              },
+              "reasons": [
+                {
+                  "code": "smoker",
+                  "detail": "Current smoker: 100 basis points of extra mortality",
+                  "source": "build",
+                  "referral": false
+                },
+                {
+                  "code": "occupation-referral",
+                  "detail": "Occupation class 3 is outside the standard range (1, 2) and carries a debit of 60 basis points",
+                  "source": "occupation",
+                  "referral": true
+                },
+                {
+                  "code": "condition-diabetes-type-2",
+                  "detail": "Type 2 diabetes: 75 basis points; evidence required (HbA1c result within 6 months)",
+                  "source": "medical",
+                  "referral": false
+                },
+                {
+                  "code": "referral-waived",
+                  "detail": "senior-underwriter decided the case with 1 referral point(s) waived: occupation-referral",
+                  "source": "authority",
+                  "referral": false
+                }
+              ]
+            },
+            {
+              "id": "UW-000003",
+              "partyId": "PTY-0003",
+              "productId": "PROD-LIFE-TERM",
+              "at": "2026-09-30T10:00:00+04:00",
+              "age": 57,
+              "smoker": false,
+              "bmi": 24.6,
+              "occupationClass": 3,
+              "conditions": [
+                "cardiac-history"
+              ],
+              "pursuits": [],
+              "sumAssured": "2,500,000.00 AED",
+              "outcome": "referred",
+              "decidedBy": null,
+              "decidedByAi": false,
+              "extraMortalityBps": 260,
+              "standardPremium": "75,000.00 AED",
+              "loadedPremium": "76,950.00 AED",
+              "exclusions": [],
+              "evidence": [
+                "cardiologist report",
+                "stress ECG",
+                "blood profile",
+                "urine analysis",
+                "ECG",
+                "treadmill test"
+              ],
+              "referrals": [
+                "senior-underwriter",
+                "reinsurance-desk"
+              ],
+              "reinsurance": {
+                "mode": "facultative",
+                "threshold": "2,000,000.00 AED",
+                "note": "Reinsurer referral required before issue"
+              },
+              "reasons": [
+                {
+                  "code": "occupation-referral",
+                  "detail": "Occupation class 3 is outside the standard range (1, 2) and carries a debit of 60 basis points",
+                  "source": "occupation",
+                  "referral": true
+                },
+                {
+                  "code": "condition-cardiac-history",
+                  "detail": "Cardiac history: 200 basis points; evidence required (cardiologist report, stress ECG)",
+                  "source": "medical",
+                  "referral": true
+                },
+                {
+                  "code": "reinsurance-facultative",
+                  "detail": "Sum assured 2,500,000.00 AED reaches the facultative threshold of 2,000,000.00 AED; the reinsurer must be asked before issue",
+                  "source": "reinsurance",
+                  "referral": true
+                }
+              ]
+            },
+            {
+              "id": "UW-000004",
+              "partyId": "PTY-0004",
+              "productId": "PROD-LIFE-TERM",
+              "at": "2026-10-01T10:00:00+04:00",
+              "age": 29,
+              "smoker": false,
+              "bmi": 24.6,
+              "occupationClass": 1,
+              "conditions": [],
+              "pursuits": [],
+              "sumAssured": "120,000.00 AED",
+              "outcome": "standard",
+              "decidedBy": "agent/quote-bot",
+              "decidedByAi": true,
+              "extraMortalityBps": 0,
+              "standardPremium": "3,600.00 AED",
+              "loadedPremium": "3,600.00 AED",
+              "exclusions": [],
+              "evidence": [],
+              "referrals": [],
+              "reinsurance": {
+                "mode": "automatic",
+                "threshold": "2,000,000.00 AED",
+                "note": "Inside the automatic binding limit"
+              },
+              "reasons": [
+                {
+                  "code": "occupation-class-1",
+                  "detail": "Occupation class 1 is inside the standard range for PROD-LIFE-TERM: no debit",
+                  "source": "occupation",
+                  "referral": false
+                }
+              ]
+            }
+          ],
+          "asOf": "2026-10-05"
+        },
+        "reinsurance": {
+          "conventional": {
+            "basis": "conventional",
+            "asOf": "2026-10-05",
+            "grossPremium": "16,778.50 AED",
+            "cededPremium": "3,819.63 AED",
+            "netRetainedPremium": "13,456.81 AED",
+            "cessionPct": 22.76,
+            "commissionIncome": "497.94 AED",
+            "recoveries": "287.50 AED",
+            "recoverable": "785.44 AED",
+            "notes": [],
+            "treaties": [
+              {
+                "treatyId": "FAC-MOTOR",
+                "name": "Facultative motor — per risk",
+                "counterparty": "Al Wathba Re",
+                "kind": "facultative",
+                "basis": "conventional",
+                "lineOfBusiness": "motor",
+                "valid": true,
+                "risks": 0,
+                "capacity": "0.00 AED",
+                "cededSumInsured": "0.00 AED",
+                "headroom": "0.00 AED",
+                "usedPct": 0,
+                "premiumWritten": "0.00 AED",
+                "premiumCeded": "0.00 AED",
+                "premiumCededPct": 0,
+                "commissionEarned": "0.00 AED",
+                "recoveries": "0.00 AED"
+              },
+              {
+                "treatyId": "QS-25-2026",
+                "name": "Quota share 25% — 2026",
+                "counterparty": "Gulf Reinsurance PSC",
+                "kind": "quota-share",
+                "basis": "conventional",
+                "lineOfBusiness": "all",
+                "valid": true,
+                "risks": 2,
+                "capacity": "137,500.00 AED",
+                "cededSumInsured": "137,500.00 AED",
+                "headroom": "0.00 AED",
+                "usedPct": 100,
+                "premiumWritten": "9,278.50 AED",
+                "premiumCeded": "2,319.63 AED",
+                "premiumCededPct": 25,
+                "commissionEarned": "347.94 AED",
+                "recoveries": "287.50 AED"
+              },
+              {
+                "treatyId": "SURPLUS-10",
+                "name": "Surplus 10 lines over 200,000",
+                "counterparty": "MENA Re",
+                "kind": "surplus",
+                "basis": "conventional",
+                "lineOfBusiness": "life",
+                "valid": true,
+                "risks": 1,
+                "capacity": "2,000,000.00 AED",
+                "cededSumInsured": "50,000.00 AED",
+                "headroom": "1,950,000.00 AED",
+                "usedPct": 2.5,
+                "premiumWritten": "7,500.00 AED",
+                "premiumCeded": "1,500.00 AED",
+                "premiumCededPct": 20,
+                "commissionEarned": "150.00 AED",
+                "recoveries": "0.00 AED"
+              },
+              {
+                "treatyId": "XOL-CAT-5M",
+                "name": "Catastrophe excess of loss 5m xs 1m",
+                "counterparty": "Emirates Re",
+                "kind": "excess-of-loss",
+                "basis": "conventional",
+                "lineOfBusiness": "all",
+                "valid": true,
+                "risks": 0,
+                "capacity": "5,000,000.00 AED",
+                "cededSumInsured": "0.00 AED",
+                "headroom": "5,000,000.00 AED",
+                "usedPct": 0,
+                "premiumWritten": "0.00 AED",
+                "premiumCeded": "0.00 AED",
+                "premiumCededPct": 0,
+                "commissionEarned": "0.00 AED",
+                "recoveries": "0.00 AED"
+              }
+            ]
+          },
+          "takaful": {
+            "basis": "takaful",
+            "asOf": "2026-10-05",
+            "grossPremium": "1,800.00 AED",
+            "cededPremium": "360.00 AED",
+            "netRetainedPremium": "1,512.00 AED",
+            "cessionPct": 20,
+            "commissionIncome": "72.00 AED",
+            "recoveries": "0.00 AED",
+            "recoverable": "72.00 AED",
+            "notes": [],
+            "treaties": [
+              {
+                "treatyId": "RTKF-QS-20",
+                "name": "Retakaful quota share 20% (wakalah)",
+                "counterparty": "Takaful Re International",
+                "kind": "quota-share",
+                "basis": "takaful",
+                "lineOfBusiness": "all",
+                "valid": true,
+                "risks": 1,
+                "capacity": "100,000.00 AED",
+                "cededSumInsured": "100,000.00 AED",
+                "headroom": "0.00 AED",
+                "usedPct": 100,
+                "premiumWritten": "1,800.00 AED",
+                "premiumCeded": "360.00 AED",
+                "premiumCededPct": 20,
+                "commissionEarned": "72.00 AED",
+                "recoveries": "0.00 AED"
+              }
+            ]
+          },
+          "schedule": [
+            {
+              "policyId": "UW-000002",
+              "ref": "UW-000002",
+              "treatyId": "QS-25-2026",
+              "riskId": "LIFE-PTY-0002",
+              "sharePct": 25,
+              "sumInsured": "300,000.00 AED",
+              "ceded": "75,000.00 AED",
+              "premium": "9,211.50 AED",
+              "cededPremium": "2,302.88 AED",
+              "commission": "345.43 AED",
+              "netRetained": "7,254.05 AED",
+              "journalId": "RI-ALK-CONV-000001",
+              "at": "2026-09-30T09:00:00+04:00",
+              "explanation": "25% of every risk is ceded as it is written"
+            },
+            {
+              "policyId": "UW-000001",
+              "ref": "UW-000001",
+              "treatyId": "SURPLUS-10",
+              "riskId": "LIFE-PTY-0001",
+              "sharePct": 20,
+              "sumInsured": "250,000.00 AED",
+              "ceded": "50,000.00 AED",
+              "premium": "7,500.00 AED",
+              "cededPremium": "1,500.00 AED",
+              "commission": "150.00 AED",
+              "netRetained": "6,150.00 AED",
+              "journalId": "RI-ALK-CONV-000002",
+              "at": "2026-09-30T09:05:00+04:00",
+              "explanation": "200,000.00 AED retained, the next 10 line(s) ceded up to 2,000,000.00 AED"
+            },
+            {
+              "policyId": "MTR-0441",
+              "ref": "MTR-0441",
+              "treatyId": "QS-25-2026",
+              "riskId": "MTR-0441",
+              "sharePct": 25,
+              "sumInsured": "250,000.00 AED",
+              "ceded": "62,500.00 AED",
+              "premium": "67.00 AED",
+              "cededPremium": "16.75 AED",
+              "commission": "2.51 AED",
+              "netRetained": "52.76 AED",
+              "journalId": "RI-ALK-CONV-000003",
+              "at": "2026-09-30T09:10:00+04:00",
+              "explanation": "25% of every risk is ceded as it is written"
+            }
+          ],
+          "accepted": [],
+          "facultativeRefusal": "MTR-UNPLACED has not been accepted under facultative treaty FAC-MOTOR; the risk is retained in full until the reinsurer says yes in writing",
+          "segregationRefusal": "QS-25-2026 is a conventional reinsurance treaty: participant risk money may not be ceded to it. Use a retakaful treaty",
+          "recoveries": [
+            {
+              "claimId": "CLM-000001",
+              "recoveryId": "REC-CLM-000001-2",
+              "treatyId": "QS-25-2026",
+              "amount": "287.50 AED",
+              "at": "2026-10-02T09:00:00+04:00"
+            }
+          ]
+        },
+        "group": {
+          "asOf": "2026-10-05",
+          "periodStart": "2026-09-01",
+          "groupCurrency": "AED",
+          "entities": [
+            {
+              "entityId": "ALK-CONV",
+              "name": "Al Khaleej Insurance (conventional)",
+              "functionalCurrency": "AED",
+              "ownershipPct": 100,
+              "netAssets": "9,989,578.31 AED",
+              "income": "-10,421.69 AED",
+              "translationReserve": "0.00 AED",
+              "closingRate": "1/1 on 2026-10-05",
+              "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
+              "accounts": 23
+            },
+            {
+              "entityId": "ALK-TKF",
+              "name": "Al Khaleej Takaful Window",
+              "functionalCurrency": "AED",
+              "ownershipPct": 100,
+              "netAssets": "2,997,212.00 AED",
+              "income": "-2,788.00 AED",
+              "translationReserve": "0.00 AED",
+              "closingRate": "1/1 on 2026-10-05",
+              "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
+              "accounts": 13
+            },
+            {
+              "entityId": "ALK-MY",
+              "name": "Al Khaleej Malaysia (subsidiary)",
+              "functionalCurrency": "MYR",
+              "ownershipPct": 70,
+              "netAssets": "4,247,600.00 AED",
+              "income": "149,400.00 AED",
+              "translationReserve": "-151,800.00 AED",
+              "closingRate": "82/100 on 2026-10-05",
+              "averageRate": "16600/20000 over 2026-09-01..2026-10-05 (2026-10-05)",
+              "accounts": 5
+            }
+          ],
+          "intercompany": {
+            "balances": [
+              {
+                "receivableEntity": "ALK-CONV",
+                "payableEntity": "ALK-TKF",
+                "receivable": "2,500.00 AED",
+                "payable": "2,500.00 AED",
+                "eliminated": "2,500.00 AED",
+                "difference": "0.00 AED",
+                "differenceAbs": "0.00 AED",
+                "direction": "agrees"
+              },
+              {
+                "receivableEntity": "ALK-CONV",
+                "payableEntity": "ALK-MY",
+                "receivable": "4,600.00 AED",
+                "payable": "16,400.00 AED",
+                "eliminated": "4,600.00 AED",
+                "difference": "-11,800.00 AED",
+                "differenceAbs": "11,800.00 AED",
+                "direction": "payable larger"
+              }
+            ],
+            "incomeAndExpense": [
+              {
+                "earningEntity": "ALK-CONV",
+                "chargedEntity": "ALK-TKF",
+                "income": "2,500.00 AED",
+                "expense": "2,500.00 AED",
+                "eliminated": "2,500.00 AED",
+                "difference": "0.00 AED"
+              },
+              {
+                "earningEntity": "ALK-CONV",
+                "chargedEntity": "ALK-MY",
+                "income": "4,600.00 AED",
+                "expense": "16,600.00 AED",
+                "eliminated": "4,600.00 AED",
+                "difference": "12,000.00 AED"
+              }
+            ]
+          },
+          "nci": [
+            {
+              "entityId": "ALK-MY",
+              "ownershipPct": 70,
+              "minorityPct": 30,
+              "shareOfNetAssets": "1,274,280.00 AED"
+            }
+          ],
+          "eliminations": {
+            "journals": [],
+            "matched": "14,200.00 AED",
+            "inTransit": "11,800.00 AED",
+            "notes": [
+              "ALK-CONV: translated 23 account balance(s), translation reserve 0.00 AED",
+              "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
+              "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
+              "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
+              "ALK-CONV ↔ ALK-MY: eliminated 4,600.00 AED of intercompany balances",
+              "ALK-CONV ↔ ALK-MY: 11,800.00 AED does not agree between the two books — treated as in transit, not written off",
+              "ALK-CONV → ALK-TKF: eliminated 2,500.00 AED of intercompany income and expense",
+              "ALK-CONV → ALK-MY: eliminated 4,600.00 AED of intercompany income and expense"
+            ]
+          },
+          "group": {
+            "totals": {
+              "assets": "17,294,027.44 AED",
+              "liabilities": "59,637.13 AED",
+              "equity": "17,098,200.00 AED",
+              "income": "168,519.94 AED",
+              "expense": "32,329.63 AED",
+              "translationReserve": "-151,800.00 AED"
+            },
+            "netAssets": "17,234,390.31 AED",
+            "balanced": true,
+            "difference": "0.00 AED",
+            "checks": [
+              {
+                "check": "consolidated balance sheet balances",
+                "ok": true,
+                "detail": "assets 17,294,027.44 AED − liabilities 59,637.13 AED = 17,234,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 136,190.31 AED; difference 0.00 AED"
+              },
+              {
+                "check": "group ledger proof",
+                "ok": true,
+                "detail": "every translation and elimination journal balances in the group currency"
+              },
+              {
+                "check": "intercompany eliminated",
+                "ok": false,
+                "detail": "2 pair(s) matched, 14,200.00 AED eliminated, 11,800.00 AED in transit"
+              },
+              {
+                "check": "entity books untouched",
+                "ok": true,
+                "detail": "translation and elimination post only to the group ledger; each entity keeps its own books"
+              }
+            ],
+            "attribution": {
+              "owners": "15,960,110.31 AED",
+              "minority": "1,274,280.00 AED"
+            },
+            "trialBalance": [
+              {
+                "accountId": "GRP:ALK-CONV:CASH",
+                "name": "ALK-CONV — Cash at bank",
+                "type": "asset",
+                "amount": "10,000,512.50 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:CLAIM-EXPENSE",
+                "name": "ALK-CONV — Claim expense (including reserve movement)",
+                "type": "expense",
+                "amount": "16,150.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:CLAIM-RECOVERY",
+                "name": "ALK-CONV — Claim recovery income",
+                "type": "income",
+                "amount": "467.50 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:CLAIM-RESERVE",
+                "name": "ALK-CONV — Claim reserve (outstanding)",
+                "type": "liability",
+                "amount": "15,000.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FBAL:INVESTMENTS",
+                "name": "ALK-CONV — Fund investments — FBAL",
+                "type": "asset",
+                "amount": "14,830.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FBAL:PARTICIPANTS",
+                "name": "ALK-CONV — Participants' funds — FBAL",
+                "type": "liability",
+                "amount": "14,830.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FEE:admin",
+                "name": "ALK-CONV — Fee income — admin",
+                "type": "income",
+                "amount": "25.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FEE:allocation",
+                "name": "ALK-CONV — Fee income — allocation",
+                "type": "income",
+                "amount": "1,200.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FEE:coi",
+                "name": "ALK-CONV — Fee income — coi",
+                "type": "income",
+                "amount": "187.50 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FEE:partial-withdrawal",
+                "name": "ALK-CONV — Fee income — partial-withdrawal",
+                "type": "income",
+                "amount": "25.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FEE:switching",
+                "name": "ALK-CONV — Fee income — switching",
+                "type": "income",
+                "amount": "45.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FGLOBAL:INVESTMENTS",
+                "name": "ALK-CONV — Fund investments — FGLOBAL",
+                "type": "asset",
+                "amount": "6,687.50 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:FGLOBAL:PARTICIPANTS",
+                "name": "ALK-CONV — Participants' funds — FGLOBAL",
+                "type": "liability",
+                "amount": "6,687.50 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:REINS:CEDED-PREMIUM",
+                "name": "ALK-CONV — Ceded premium / contribution (expense)",
+                "type": "expense",
+                "amount": "3,819.63 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:REINS:COMMISSION",
+                "name": "ALK-CONV — Ceding commission / wakalah fee",
+                "type": "income",
+                "amount": "497.94 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:REINS:PAYABLE",
+                "name": "ALK-CONV — Payable to reinsurers / retakaful operators",
+                "type": "liability",
+                "amount": "3,819.63 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:REINS:RECEIVABLE",
+                "name": "ALK-CONV — Receivable from reinsurers / retakaful operators",
+                "type": "asset",
+                "amount": "785.44 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:SHARE-CAPITAL",
+                "name": "ALK-CONV — Paid-up share capital",
+                "type": "equity",
+                "amount": "10,000,000.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-MY:CASH",
+                "name": "ALK-MY — Cash at bank",
+                "type": "asset",
+                "amount": "4,264,000.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-MY:IC:EXPENSE:ALK-CONV",
+                "name": "ALK-MY — Intercompany expense — ALK-CONV",
+                "type": "expense",
+                "amount": "12,000.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-MY:IC:PAY:ALK-CONV",
+                "name": "ALK-MY — Intercompany payable — ALK-CONV",
+                "type": "liability",
+                "amount": "11,800.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-MY:PREMIUM-INCOME",
+                "name": "ALK-MY — Premium / contribution income",
+                "type": "income",
+                "amount": "166,000.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-MY:SHARE-CAPITAL",
+                "name": "ALK-MY — Paid-up share capital",
+                "type": "equity",
+                "amount": "4,250,000.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:CASH",
+                "name": "ALK-TKF — Cash at bank",
+                "type": "asset",
+                "amount": "3,007,100.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:OPF:PARTICIPANTS",
+                "name": "ALK-TKF — Participants' funds — OPF",
+                "type": "liability",
+                "amount": "1,800.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:PIF:PARTICIPANTS",
+                "name": "ALK-TKF — Participants' funds — PIF",
+                "type": "liability",
+                "amount": "5,040.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:PRF:PARTICIPANTS",
+                "name": "ALK-TKF — Participants' funds — PRF",
+                "type": "liability",
+                "amount": "300.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:QARD",
+                "name": "ALK-TKF — Qard hasan receivable from participants",
+                "type": "asset",
+                "amount": "40.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:REINS:CEDED-PREMIUM",
+                "name": "ALK-TKF — Ceded premium / contribution (expense)",
+                "type": "expense",
+                "amount": "360.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:REINS:COMMISSION",
+                "name": "ALK-TKF — Ceding commission / wakalah fee",
+                "type": "income",
+                "amount": "72.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:REINS:PAYABLE",
+                "name": "ALK-TKF — Payable to reinsurers / retakaful operators",
+                "type": "liability",
+                "amount": "360.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:REINS:RECEIVABLE",
+                "name": "ALK-TKF — Receivable from reinsurers / retakaful operators",
+                "type": "asset",
+                "amount": "72.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:SHARE-CAPITAL",
+                "name": "ALK-TKF — Paid-up share capital",
+                "type": "equity",
+                "amount": "3,000,000.00 AED"
+              },
+              {
+                "accountId": "GRP:TRANSLATION-RESERVE",
+                "name": "Translation reserve (cumulative)",
+                "type": "equity",
+                "amount": "-151,800.00 AED"
+              }
+            ]
+          }
+        },
+        "claims": {
+          "position": {
+            "reserved": "15,000.00 AED",
+            "expenseIncurred": "16,150.00 AED",
+            "paidCash": "1,150.00 AED",
+            "recovered": "467.50 AED",
+            "netCost": "15,682.50 AED",
+            "openClaims": 1
+          },
+          "authority": [
+            {
+              "role": "claims-officer",
+              "limit": "5,000.00 AED",
+              "limitMinor": "500000",
+              "isAi": false
+            },
+            {
+              "role": "claims-manager",
+              "limit": "50,000.00 AED",
+              "limitMinor": "5000000",
+              "isAi": false
+            },
+            {
+              "role": "head-of-claims",
+              "limit": "250,000.00 AED",
+              "limitMinor": "25000000",
+              "isAi": false
+            },
+            {
+              "role": "chief-claims-officer",
+              "limit": "5,000,000.00 AED",
+              "limitMinor": "500000000",
+              "isAi": false
+            },
+            {
+              "role": "ai-straight-through",
+              "limit": "1,000.00 AED",
+              "limitMinor": "100000",
+              "isAi": true
+            }
+          ],
+          "overdue": [
+            {
+              "id": "CLM-000005",
+              "policyId": "UL-000123",
+              "cause": "critical-illness",
+              "reportedAt": "2026-08-05",
+              "status": "approved"
+            }
+          ],
+          "list": [
+            {
+              "id": "CLM-000001",
+              "policyId": "MTR-0441",
+              "cause": "motor",
+              "status": "settled",
+              "lossDate": "2026-09-18",
+              "reportedAt": "2026-09-19",
+              "description": "Rear-end collision on Sheikh Zayed Road; third-party report and photos attached",
+              "fundId": null,
+              "declinedReason": null,
+              "reserve": "0.00 AED",
+              "paid": "1,150.00 AED",
+              "netCost": "682.50 AED",
+              "approved": "1,150.00 AED",
+              "recoveries": [
+                {
+                  "type": "salvage",
+                  "amount": "180.00 AED",
+                  "at": "2026-10-01T09:00:00+04:00",
+                  "journalId": "CL-ALK-CONV-000004"
+                },
+                {
+                  "type": "reinsurance",
+                  "amount": "287.50 AED",
+                  "at": "2026-10-02T09:00:00+04:00",
+                  "journalId": "CL-ALK-CONV-000007"
+                }
+              ],
+              "decisions": [
+                {
+                  "at": "2026-09-19",
+                  "by": "intake",
+                  "action": "registered",
+                  "isAi": false,
+                  "rationale": "Notification received and logged against MTR-0441",
+                  "amount": null
+                },
+                {
+                  "at": "2026-09-19",
+                  "by": "triage",
+                  "action": "triage:accept",
+                  "isAi": false,
+                  "rationale": "Cover in force, no exclusion applied, notification inside the grace period (late by 1 days, 0 fraud signals)",
+                  "amount": null
+                },
+                {
+                  "at": "2026-09-20T09:30:00+04:00",
+                  "by": "reserving-desk",
+                  "action": "reserve",
+                  "isAi": false,
+                  "rationale": "Reserve set to 1,200.00 AED",
+                  "amount": "1,200.00 AED"
+                },
+                {
+                  "at": "2026-09-24T11:00:00+04:00",
+                  "by": "Fatima Al Zaabi",
+                  "action": "approve",
+                  "isAi": false,
+                  "rationale": "Approved within the claims-officer limit of 5,000.00 AED",
+                  "amount": "1,150.00 AED"
+                },
+                {
+                  "at": "2026-09-26T10:00:00+04:00",
+                  "by": "finance-ops",
+                  "action": "settled",
+                  "isAi": false,
+                  "rationale": "Paid 1,150.00 AED against a reserve of 1,200.00 AED (difference -50.00 AED)",
+                  "amount": "1,150.00 AED"
+                },
+                {
+                  "at": "2026-10-01T09:00:00+04:00",
+                  "by": "recovery-desk",
+                  "action": "recovery:salvage",
+                  "isAi": false,
+                  "rationale": "salvage recovery recorded on CL-ALK-CONV-000004",
+                  "amount": "180.00 AED"
+                },
+                {
+                  "at": "2026-10-02T09:00:00+04:00",
+                  "by": "recovery-desk",
+                  "action": "recovery:reinsurance",
+                  "isAi": false,
+                  "rationale": "reinsurance recovery recorded on CL-ALK-CONV-000007",
+                  "amount": "287.50 AED"
+                }
+              ]
+            },
+            {
+              "id": "CLM-000005",
+              "policyId": "UL-000123",
+              "cause": "critical-illness",
+              "status": "approved",
+              "lossDate": "2026-08-03",
+              "reportedAt": "2026-08-05",
+              "description": "Critical illness notified; medical evidence requested from the treating hospital",
+              "fundId": null,
+              "declinedReason": null,
+              "reserve": "15,000.00 AED",
+              "paid": "0.00 AED",
+              "netCost": "0.00 AED",
+              "approved": "400.00 AED",
+              "recoveries": [],
+              "decisions": [
+                {
+                  "at": "2026-08-05",
+                  "by": "intake",
+                  "action": "registered",
+                  "isAi": false,
+                  "rationale": "Notification received and logged against UL-000123",
+                  "amount": null
+                },
+                {
+                  "at": "2026-08-05",
+                  "by": "triage",
+                  "action": "triage:accept",
+                  "isAi": false,
+                  "rationale": "Cover in force, no exclusion applied, notification inside the grace period (late by 2 days, 1 fraud signals)",
+                  "amount": null
+                },
+                {
+                  "at": "2026-08-08T09:00:00+04:00",
+                  "by": "claims-manager",
+                  "action": "reserve",
+                  "isAi": false,
+                  "rationale": "Reserve set from the severity table pending medical evidence",
+                  "amount": "15,000.00 AED"
+                },
+                {
+                  "at": "2026-08-09T09:00:00+04:00",
+                  "by": "agent/claims-triage",
+                  "action": "approve",
+                  "isAi": true,
+                  "rationale": "Approved within the ai-straight-through limit of 1,000.00 AED",
+                  "amount": "400.00 AED"
+                }
+              ]
+            }
+          ]
+        },
+        "takafulClaims": {
+          "position": {
+            "reserved": "0.00 AED",
+            "expenseIncurred": "0.00 AED",
+            "paidCash": "400.00 AED",
+            "recovered": "0.00 AED",
+            "netCost": "0.00 AED",
+            "openClaims": 0
+          },
+          "authority": [
+            {
+              "role": "claims-officer",
+              "limit": "5,000.00 AED",
+              "limitMinor": "500000",
+              "isAi": false
+            },
+            {
+              "role": "claims-manager",
+              "limit": "50,000.00 AED",
+              "limitMinor": "5000000",
+              "isAi": false
+            },
+            {
+              "role": "head-of-claims",
+              "limit": "250,000.00 AED",
+              "limitMinor": "25000000",
+              "isAi": false
+            },
+            {
+              "role": "chief-claims-officer",
+              "limit": "5,000,000.00 AED",
+              "limitMinor": "500000000",
+              "isAi": false
+            },
+            {
+              "role": "ai-straight-through",
+              "limit": "1,000.00 AED",
+              "limitMinor": "100000",
+              "isAi": true
+            }
+          ],
+          "overdue": [],
+          "list": [
+            {
+              "id": "CLM-000001",
+              "policyId": "TK-9001",
+              "cause": "medical",
+              "status": "settled",
+              "lossDate": "2026-09-28",
+              "reportedAt": "2026-09-29",
+              "description": "Hospital admission for a participant; discharge summary and invoice attached",
+              "fundId": "PRF",
+              "declinedReason": null,
+              "reserve": "0.00 AED",
+              "paid": "400.00 AED",
+              "netCost": "400.00 AED",
+              "approved": "400.00 AED",
+              "recoveries": [],
+              "decisions": [
+                {
+                  "at": "2026-09-29",
+                  "by": "intake",
+                  "action": "registered",
+                  "isAi": false,
+                  "rationale": "Notification received and logged against TK-9001",
+                  "amount": null
+                },
+                {
+                  "at": "2026-09-29",
+                  "by": "triage",
+                  "action": "triage:accept",
+                  "isAi": false,
+                  "rationale": "Cover in force, no exclusion applied, notification inside the grace period (late by 1 days, 0 fraud signals)",
+                  "amount": null
+                },
+                {
+                  "at": "2026-10-01T09:00:00+04:00",
+                  "by": "agent/claims-triage",
+                  "action": "approve",
+                  "isAi": true,
+                  "rationale": "Approved within the ai-straight-through limit of 1,000.00 AED",
+                  "amount": "400.00 AED"
+                },
+                {
+                  "at": "2026-10-02T12:00:00+04:00",
+                  "by": "finance-ops",
+                  "action": "settled-from-pool",
+                  "isAi": false,
+                  "rationale": "Paid 400.00 AED from the PRF pool (400.00 AED of it from the pool balance) — journals 1",
+                  "amount": "400.00 AED"
+                }
+              ]
+            }
+          ]
+        },
+        "ledger": {
+          "proof": {
+            "balanced": true,
+            "byCurrency": [
+              {
+                "currency": "AED",
+                "debit": {
+                  "minor": "1012175257",
+                  "currency": "AED"
+                },
+                "credit": {
+                  "minor": "1012175257",
+                  "currency": "AED"
+                }
+              }
+            ]
+          },
+          "proofTakaful": {
+            "balanced": true,
+            "byCurrency": [
+              {
+                "currency": "AED",
+                "debit": {
+                  "minor": "302291200",
+                  "currency": "AED"
+                },
+                "credit": {
+                  "minor": "302291200",
+                  "currency": "AED"
+                }
+              }
+            ]
+          },
+          "trialBalance": [
+            {
+              "account": "Cash at bank",
+              "balance": "10,000,512.50 AED"
+            },
+            {
+              "account": "Fund clearing",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Premium / contribution income",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Fee income — allocation",
+              "balance": "1,200.00 AED"
+            },
+            {
+              "account": "Fee income — coi",
+              "balance": "187.50 AED"
+            },
+            {
+              "account": "Fee income — admin",
+              "balance": "25.00 AED"
+            },
+            {
+              "account": "Fee income — switching",
+              "balance": "45.00 AED"
+            },
+            {
+              "account": "Fee income — surrender",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Fee income — partial-withdrawal",
+              "balance": "25.00 AED"
+            },
+            {
+              "account": "Fee income — topup",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Fee income — fund-management",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Operator fund (shareholder)",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Paid-up share capital",
+              "balance": "10,000,000.00 AED"
+            },
+            {
+              "account": "Claim expense (including reserve movement)",
+              "balance": "16,150.00 AED"
+            },
+            {
+              "account": "Claim reserve (outstanding)",
+              "balance": "15,000.00 AED"
+            },
+            {
+              "account": "Claim recovery income",
+              "balance": "467.50 AED"
+            },
+            {
+              "account": "Qard hasan receivable from participants",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Fund investments — FGLOBAL",
+              "balance": "6,687.50 AED"
+            },
+            {
+              "account": "Participants' funds — FGLOBAL",
+              "balance": "6,687.50 AED"
+            },
+            {
+              "account": "Rounding residual — FGLOBAL",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Fund investments — FBAL",
+              "balance": "14,830.00 AED"
+            },
+            {
+              "account": "Participants' funds — FBAL",
+              "balance": "14,830.00 AED"
+            },
+            {
+              "account": "Rounding residual — FBAL",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Intercompany receivable — ALK-TKF",
+              "balance": "2,500.00 AED"
+            },
+            {
+              "account": "Intercompany payable — ALK-TKF",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Intercompany income — ALK-TKF",
+              "balance": "2,500.00 AED"
+            },
+            {
+              "account": "Intercompany expense — ALK-TKF",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Intercompany receivable — ALK-MY",
+              "balance": "4,600.00 AED"
+            },
+            {
+              "account": "Intercompany payable — ALK-MY",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Intercompany income — ALK-MY",
+              "balance": "4,600.00 AED"
+            },
+            {
+              "account": "Intercompany expense — ALK-MY",
+              "balance": "0.00 AED"
+            },
+            {
+              "account": "Ceded premium / contribution (expense)",
+              "balance": "3,819.63 AED"
+            },
+            {
+              "account": "Payable to reinsurers / retakaful operators",
+              "balance": "3,819.63 AED"
+            },
+            {
+              "account": "Receivable from reinsurers / retakaful operators",
+              "balance": "785.44 AED"
+            },
+            {
+              "account": "Ceding commission / wakalah fee",
+              "balance": "497.94 AED"
+            }
+          ],
+          "journals": [
+            {
+              "id": "CL-ALK-CONV-000004",
+              "at": "2026-10-01T09:00:00+04:00",
+              "description": "salvage recovery on CLM-000001 for 180.00 AED",
+              "source": "claims",
+              "fundId": "—"
+            },
+            {
+              "id": "CL-ALK-CONV-000006",
+              "at": "2026-08-08T09:00:00+04:00",
+              "description": "Increase in claim reserve CLM-000005 by 15,000.00 AED",
+              "source": "claims",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000001",
+              "at": "2026-09-30T09:00:00+04:00",
+              "description": "Cession of 2,302.88 AED premium (25% of 9,211.50 AED) to Gulf Reinsurance PSC under QS-25-2026",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000002",
+              "at": "2026-09-30T09:05:00+04:00",
+              "description": "Cession of 1,500.00 AED premium (20% of 7,500.00 AED) to MENA Re under SURPLUS-10",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000003",
+              "at": "2026-09-30T09:10:00+04:00",
+              "description": "Cession of 16.75 AED premium (25% of 67.00 AED) to Gulf Reinsurance PSC under QS-25-2026",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "CL-ALK-CONV-000007",
+              "at": "2026-10-02T09:00:00+04:00",
+              "description": "reinsurance recovery on CLM-000001 for 287.50 AED",
+              "source": "claims",
+              "fundId": "—"
+            },
+            {
+              "id": "CONV-J-IC-1",
+              "at": "2026-09-20T09:00:00+04:00",
+              "description": "Intercompany management fee receivable from the Malaysian subsidiary",
+              "source": "groupfinance",
+              "fundId": "—"
+            },
+            {
+              "id": "CONV-J-IC-2",
+              "at": "2026-09-25T09:00:00+04:00",
+              "description": "Management fee receivable from the takaful window",
+              "source": "groupfinance",
+              "fundId": "—"
+            }
+          ]
+        },
+        "motorPolicy": {
+          "policyId": "MTR-0441",
+          "holder": "Ahmed Al Mansoori"
+        },
+        "days": [
+          "2026-09-29",
+          "2026-09-30",
+          "2026-10-01",
+          "2026-10-02",
+          "2026-10-05"
+        ],
+        "generatedAt": "2026-10-04T04:02:57.162Z"
+      }
+    },
+    "POST /api/ai/approve": {
+      "status": 200,
+      "body": {
+        "id": "AIA-00002",
+        "agent": "claims-triage-v2",
+        "module": "claims",
+        "intent": "suggest-reserve",
+        "riskClass": "high",
+        "at": "2026-10-03T08:05:00+04:00",
+        "inputs": {
+          "claimId": "CLM-TKF-77",
+          "benefit": "death",
+          "age": 38
+        },
+        "output": {
+          "suggestedReserveMinor": 110000,
+          "basis": "benefit schedule plus outstanding medicals"
+        },
+        "dryRun": false,
+        "costUsd": 0.11,
+        "status": "approved",
+        "requiresHuman": true,
+        "note": "Approved by raheel@operator",
+        "approvedBy": "raheel@operator"
+      }
+    },
+    "POST /api/ai/execute": {
+      "status": 200,
+      "body": {
+        "id": "AIA-00002",
+        "agent": "claims-triage-v2",
+        "module": "claims",
+        "intent": "suggest-reserve",
+        "riskClass": "high",
+        "at": "2026-10-03T08:05:00+04:00",
+        "inputs": {
+          "claimId": "CLM-TKF-77",
+          "benefit": "death",
+          "age": 38
+        },
+        "output": {
+          "suggestedReserveMinor": 110000,
+          "basis": "benefit schedule plus outstanding medicals"
+        },
+        "dryRun": false,
+        "costUsd": 0.11,
+        "status": "executed",
+        "requiresHuman": true,
+        "note": "Executed",
+        "approvedBy": "raheel@operator"
+      }
+    },
+    "POST /api/claims/approve": {
+      "status": 409,
+      "body": {
+        "error": "an AI agent may authorise at most 1,000.00 AED straight through; 25,000.00 AED needs a human authority"
+      }
+    },
+    "POST /api/claims/register": {
+      "status": 200,
+      "body": {
+        "id": "CLM-000008",
+        "status": "under-review",
+        "triage": {
+          "decision": "accept",
+          "reasons": [
+            "Cover in force, no exclusion applied, notification inside the grace period"
+          ],
+          "reserveSuggestion": "0.00 AED"
+        },
+        "claim": {
+          "id": "CLM-000008",
+          "policyId": "MTR-0441",
+          "cause": "motor",
+          "status": "under-review",
+          "lossDate": "2026-10-01",
+          "reportedAt": "2026-10-02",
+          "description": "Windscreen damage reported from the console",
+          "fundId": null,
+          "declinedReason": null,
+          "reserve": "0.00 AED",
+          "paid": "0.00 AED",
+          "netCost": "0.00 AED",
+          "approved": null,
+          "recoveries": [],
+          "decisions": [
+            {
+              "at": "2026-10-02",
+              "by": "intake",
+              "action": "registered",
+              "isAi": false,
+              "rationale": "Notification received and logged against MTR-0441",
+              "amount": null
+            },
+            {
+              "at": "2026-10-02",
+              "by": "triage",
+              "action": "triage:accept",
+              "isAi": false,
+              "rationale": "Cover in force, no exclusion applied, notification inside the grace period (late by 2 days, 0 fraud signals)",
+              "amount": null
+            }
+          ]
+        }
+      }
+    },
+    "POST /api/cover/start": {
+      "status": 200,
+      "body": {
+        "segment": {
+          "policyId": "MTR-0441",
+          "productId": "PROD-MOTOR-PAYG",
+          "mode": "start-stop",
+          "dailyRate": {
+            "minor": "1250",
+            "currency": "AED"
+          },
+          "usageRatePerUnit": {
+            "minor": "35",
+            "currency": "AED"
+          },
+          "tariffVersion": "MOTOR-AE-2026.1",
+          "autoStart": false,
+          "graceDays": 3,
+          "id": "SEG-000001",
+          "status": "active",
+          "startAt": "2026-10-04T08:00:00+04:00",
+          "endAt": "2026-10-04T09:00:00+04:00",
+          "dailyRateLabel": "12.50 AED"
+        }
+      }
+    },
+    "POST /api/cover/stop": {
+      "status": 200,
+      "body": {
+        "segment": {
+          "policyId": "MTR-0441",
+          "productId": "PROD-MOTOR-PAYG",
+          "mode": "start-stop",
+          "dailyRate": {
+            "minor": "1250",
+            "currency": "AED"
+          },
+          "usageRatePerUnit": {
+            "minor": "35",
+            "currency": "AED"
+          },
+          "tariffVersion": "MOTOR-AE-2026.1",
+          "autoStart": false,
+          "graceDays": 3,
+          "id": "SEG-000001",
+          "status": "paused",
+          "startAt": "2026-10-01T08:00:00+04:00",
+          "endAt": "2026-10-04T09:00:00+04:00",
+          "dailyRateLabel": "12.50 AED"
+        }
+      }
+    },
+    "POST /api/cover/tick": {
+      "status": 200,
+      "body": {
+        "raised": [],
+        "note": "Cover is charged only for days inside an active start/stop window. Nothing auto-starts unless the segment elected daily renewal."
+      }
+    },
+    "POST /api/group/consolidate": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "asOf": "2026-10-05",
+        "groupCurrency": "AED",
+        "journals": [
+          "TRANSLATE ALK-CONV 2026-10-05",
+          "TRANSLATE ALK-TKF 2026-10-05",
+          "TRANSLATE ALK-MY 2026-10-05",
+          "ELIMINATE-BALANCE ALK-CONV ALK-TKF 2026-10-05",
+          "ELIMINATE-BALANCE ALK-CONV ALK-MY 2026-10-05",
+          "ELIMINATE-TRADING ALK-CONV ALK-TKF 2026-10-05",
+          "ELIMINATE-TRADING ALK-CONV ALK-MY 2026-10-05"
+        ],
+        "eliminations": {
+          "matched": "14,200.00 AED",
+          "inTransit": "11,800.00 AED",
+          "notes": [
+            "ALK-CONV: translated 23 account balance(s), translation reserve 0.00 AED",
+            "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
+            "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
+            "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
+            "ALK-CONV ↔ ALK-MY: eliminated 4,600.00 AED of intercompany balances",
+            "ALK-CONV ↔ ALK-MY: 11,800.00 AED does not agree between the two books — treated as in transit, not written off",
+            "ALK-CONV → ALK-TKF: eliminated 2,500.00 AED of intercompany income and expense",
+            "ALK-CONV → ALK-MY: eliminated 4,600.00 AED of intercompany income and expense"
+          ]
+        },
+        "nci": [
+          {
+            "entityId": "ALK-MY",
+            "ownershipPct": 70,
+            "minorityPct": 30,
+            "shareOfNetAssets": "1,274,280.00 AED"
+          }
+        ],
+        "totals": {
+          "assets": "17,294,027.44 AED",
+          "liabilities": "59,637.13 AED",
+          "equity": "17,098,200.00 AED",
+          "income": "168,519.94 AED",
+          "expense": "32,329.63 AED",
+          "translationReserve": "-151,800.00 AED"
+        },
+        "netAssets": "17,234,390.31 AED",
+        "attribution": {
+          "owners": "15,960,110.31 AED",
+          "minority": "1,274,280.00 AED"
+        },
+        "checks": [
+          {
+            "check": "consolidated balance sheet balances",
+            "ok": true,
+            "detail": "assets 17,294,027.44 AED − liabilities 59,637.13 AED = 17,234,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 136,190.31 AED; difference 0.00 AED"
+          },
+          {
+            "check": "group ledger proof",
+            "ok": true,
+            "detail": "every translation and elimination journal balances in the group currency"
+          },
+          {
+            "check": "intercompany eliminated",
+            "ok": false,
+            "detail": "2 pair(s) matched, 14,200.00 AED eliminated, 11,800.00 AED in transit"
+          },
+          {
+            "check": "entity books untouched",
+            "ok": true,
+            "detail": "translation and elimination post only to the group ledger; each entity keeps its own books"
+          }
+        ]
+      }
+    },
+    "POST /api/ingest/commit": {
+      "status": 200,
+      "body": {
+        "loadId": "LOAD-1791086637166",
+        "committed": true,
+        "committedKeys": 2,
+        "duplicates": 0
+      }
+    },
+    "POST /api/ingest/submit": {
+      "status": 200,
+      "body": {
+        "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
+        "anomalies": [],
+        "quarantine": [],
+        "supervisorNotes": [],
+        "loadId": "LOAD-1791086637166"
+      }
+    },
+    "POST /api/onboarding/ocr": {
+      "status": 200,
+      "body": {
+        "documentKind": "driving-licence",
+        "method": "ocr",
+        "fields": [],
+        "reviewQueue": [],
+        "autoAccepted": true,
+        "notes": [
+          "All fields reached consensus across the OCR engines."
+        ]
+      }
+    },
+    "POST /api/partner/lookup": {
+      "status": 200,
+      "body": {
+        "outcome": "denied-no-consent",
+        "reason": "a consent token is required before any disclosure",
+        "match": {
+          "partyId": "PTY-0001",
+          "score": 2640,
+          "reasons": [
+            "emirates-id number matches exactly",
+            "driving-licence number matches exactly",
+            "full name matches (all tokens)",
+            "date of birth matches",
+            "phone +971 50 123 4567 matches",
+            "email ahmed.mansoori@example.ae matches"
+          ]
+        },
+        "disclosed": {}
+      }
+    },
+    "POST /api/pre-sale": {
+      "status": 200,
+      "body": {
+        "allowed": false,
+        "blockers": [
+          "A need analysis is mandatory before selling medical in AE",
+          "No need-analysis identifier issued for this medical case"
+        ],
+        "requiredSteps": [
+          "Complete and store the need analysis"
+        ],
+        "pack": "AE 2026.1"
+      }
+    },
+    "POST /api/preview/switch": {
+      "status": 200,
+      "body": {
+        "instructionType": "switch",
+        "from": {
+          "fundId": "FGLOBAL",
+          "fundName": "Global Growth Fund",
+          "units": "18819.680455",
+          "price": "10.627173",
+          "value": {
+            "minor": "200000",
+            "currency": "AED"
+          },
+          "valuationDate": "2026-10-06",
+          "explanation": "Received 16:10 local, at or after the 15:00 cut-off: next dealing day 2026-10-06."
+        },
+        "to": {
+          "fundId": "FBAL",
+          "fundName": "Balanced Income Fund",
+          "price": "10.510493",
+          "valuationDate": "2026-10-06",
+          "unitsExpected": "18838.317099",
+          "explanation": "Received 16:10 local, at or after the 15:00 cut-off: next dealing day 2026-10-06."
+        },
+        "fee": {
+          "minor": "2000",
+          "currency": "AED"
+        },
+        "netInvested": {
+          "minor": "198000",
+          "currency": "AED"
+        },
+        "illustration": {
+          "isIllustration": true,
+          "currency": "AED",
+          "startValue": {
+            "minor": "198000",
+            "currency": "AED"
+          },
+          "monthlyContribution": {
+            "minor": "0",
+            "currency": "AED"
+          },
+          "scenarios": {
+            "adverseBps": 0,
+            "centralBps": 600,
+            "favourableBps": 1000,
+            "annualChargeDragBps": 150
+          },
+          "rows": [
+            {
+              "year": 1,
+              "adverse": {
+                "minor": "197772",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "198948",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "199903",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 2,
+              "adverse": {
+                "minor": "197544",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "199896",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "201825",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 3,
+              "adverse": {
+                "minor": "197316",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "200854",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "203764",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 4,
+              "adverse": {
+                "minor": "197088",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "201814",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "205724",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 5,
+              "adverse": {
+                "minor": "196860",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "202777",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "207701",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 6,
+              "adverse": {
+                "minor": "196632",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "203749",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "209698",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 7,
+              "adverse": {
+                "minor": "196404",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "204721",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "211714",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 8,
+              "adverse": {
+                "minor": "196176",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "205701",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "213749",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 9,
+              "adverse": {
+                "minor": "195948",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "206685",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "215804",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 10,
+              "adverse": {
+                "minor": "195720",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "207671",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "217879",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "198000",
+                "currency": "AED"
+              }
+            }
+          ],
+          "disclaimer": "This illustration is not a forecast and does not constitute financial advice. Values may fall as well as rise."
+        },
+        "blocked": [
+          "FGLOBAL: the 2026-10-06 valuation is not published yet — priced on the 2026-10-05 valuation, the latest published",
+          "FBAL: the 2026-10-06 valuation is not published yet — priced on the 2026-10-05 valuation, the latest published"
+        ],
+        "feeLabel": "20.00 AED",
+        "netLabel": "1,980.00 AED"
+      }
+    },
+    "POST /api/preview/withdrawal": {
+      "status": 200,
+      "body": {
+        "instructionType": "withdrawal",
+        "fundId": "FBAL",
+        "requested": {
+          "minor": "150000",
+          "currency": "AED"
+        },
+        "unitsCancelled": "14628.238657",
+        "fee": {
+          "minor": "3750",
+          "currency": "AED"
+        },
+        "gross": {
+          "minor": "153750",
+          "currency": "AED"
+        },
+        "cashToCustomer": {
+          "minor": "150000",
+          "currency": "AED"
+        },
+        "price": "10.510493",
+        "valuationDate": "2026-10-05",
+        "explanation": "Received 11:00 local, before the 15:00 cut-off, on a business day: same-day closing price.",
+        "remainingUnits": "126809.27573",
+        "remainingValue": {
+          "minor": "1332828",
+          "currency": "AED"
+        },
+        "lockInActive": false,
+        "illustration": {
+          "isIllustration": true,
+          "currency": "AED",
+          "startValue": {
+            "minor": "1332828",
+            "currency": "AED"
+          },
+          "monthlyContribution": {
+            "minor": "0",
+            "currency": "AED"
+          },
+          "scenarios": {
+            "adverseBps": 0,
+            "centralBps": 600,
+            "favourableBps": 1000,
+            "annualChargeDragBps": 150
+          },
+          "rows": [
+            {
+              "year": 1,
+              "adverse": {
+                "minor": "1331232",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1339234",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1345673",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 2,
+              "adverse": {
+                "minor": "1329638",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1345670",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1358643",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 3,
+              "adverse": {
+                "minor": "1328054",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1352137",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1371737",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 4,
+              "adverse": {
+                "minor": "1326470",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1358636",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1384959",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 5,
+              "adverse": {
+                "minor": "1324886",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1365165",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1398306",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 6,
+              "adverse": {
+                "minor": "1323302",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1371727",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1411783",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 7,
+              "adverse": {
+                "minor": "1321718",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1378320",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1425390",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 8,
+              "adverse": {
+                "minor": "1320134",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1384944",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1439128",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 9,
+              "adverse": {
+                "minor": "1318560",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1391600",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1452998",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            },
+            {
+              "year": 10,
+              "adverse": {
+                "minor": "1316988",
+                "currency": "AED"
+              },
+              "central": {
+                "minor": "1398288",
+                "currency": "AED"
+              },
+              "favourable": {
+                "minor": "1467002",
+                "currency": "AED"
+              },
+              "contributionsToDate": {
+                "minor": "1332828",
+                "currency": "AED"
+              }
+            }
+          ],
+          "disclaimer": "This illustration is not a forecast and does not constitute financial advice. Values may fall as well as rise."
+        },
+        "blocked": [],
+        "requestedLabel": "1,500.00 AED",
+        "feeLabel": "37.50 AED",
+        "cashLabel": "1,500.00 AED",
+        "remainingValueLabel": "13,328.28 AED"
+      }
+    },
+    "POST /api/reinsurance/cede": {
+      "status": 200,
+      "body": {
+        "treatyId": "QS-25-2026",
+        "policyId": "MTR-2026-5",
+        "sharePct": 25,
+        "ceded": "62,500.00 AED",
+        "cededPremium": "300.00 AED",
+        "commission": "45.00 AED",
+        "netRetainedPremium": "945.00 AED",
+        "journalId": "RI-ALK-CONV-000005",
+        "explanation": "25% of every risk is ceded as it is written"
+      }
+    },
+    "POST /api/reinsurance/facultative": {
+      "status": 200,
+      "body": {
+        "acceptedRisk": "MTR-ORION-77",
+        "treatyId": "FAC-MOTOR",
+        "sharePct": 40,
+        "cededPremium": "2,240.00 AED",
+        "commission": "280.00 AED",
+        "journalId": "RI-ALK-CONV-000004"
+      }
+    },
+    "POST /api/reinsurance/recover": {
+      "status": 409,
+      "body": {
+        "error": "CLM-000001 has already been recovered under QS-25-2026 (REC-CLM-000001-2); claim it again only as a named further instalment"
+      }
+    },
+    "POST /api/state/drill": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "fingerprint": "04458691d847a0ac",
+        "fingerprintStable": true,
+        "journals": 71,
+        "restoredJournals": 71,
+        "bytes": 73809,
+        "restoreMs": 62,
+        "balances": [
+          {
+            "entityId": "ALK-CONV",
+            "balanced": true,
+            "trialBalanceAgrees": true,
+            "accounts": 35
+          },
+          {
+            "entityId": "ALK-TKF",
+            "balanced": true,
+            "trialBalanceAgrees": true,
+            "accounts": 37
+          },
+          {
+            "entityId": "ALK-MY",
+            "balanced": true,
+            "trialBalanceAgrees": true,
+            "accounts": 21
+          },
+          {
+            "entityId": "GRP",
+            "balanced": true,
+            "trialBalanceAgrees": true,
+            "accounts": 58
+          }
+        ]
+      }
+    },
+    "POST /api/takaful/approve": {
+      "status": 200,
+      "body": {
+        "id": "TKF-SRP-000032",
+        "approvals": {
+          "actuary": false,
+          "shariah": false,
+          "board": true
+        },
+        "blockers": [
+          "Actuarial recommendation missing (the actuary must recommend the surplus)",
+          "Shariah Committee approval missing",
+          "Qard hasan of 40.00 AED is outstanding and must be repaid first"
+        ],
+        "ready": false
+      }
+    },
+    "POST /api/underwriting/decide": {
+      "status": 200,
+      "body": {
+        "applicationId": "UW-000001",
+        "outcome": "standard",
+        "decidedBy": "agent/quote-bot",
+        "decidedByAi": true,
+        "extraMortalityBps": 0,
+        "standardPremium": "7,500.00 AED",
+        "loadedPremium": "7,500.00 AED",
+        "exclusions": [],
+        "evidence": [],
+        "referrals": [],
+        "reasons": [
+          {
+            "code": "occupation-class-1",
+            "detail": "Occupation class 1 is inside the standard range for PROD-LIFE-TERM: no debit",
+            "source": "occupation",
+            "referral": false
+          }
+        ]
+      }
+    }
+  },
+  "requestBodies": {
+    "POST /api/ai/approve": {
+      "id": "AIA-00002"
+    },
+    "POST /api/ai/execute": {
+      "id": "AIA-00002"
+    },
+    "POST /api/claims/approve": {
+      "claimId": "CLM-000005",
+      "amount": "25000.00",
+      "role": "ai-straight-through",
+      "by": "agent/claims-triage",
+      "isAi": true
+    },
+    "POST /api/claims/register": {
+      "policyId": "MTR-0441",
+      "cause": "motor",
+      "lossDate": "2026-10-01",
+      "reportedAt": "2026-10-02",
+      "description": "Windscreen damage reported from the console"
+    },
+    "POST /api/cover/start": {
+      "at": "2026-10-04T08:00:00+04:00"
+    },
+    "POST /api/cover/stop": {
+      "at": "2026-10-04T09:00:00+04:00"
+    },
+    "POST /api/cover/tick": {
+      "at": "2026-10-05T10:00:00+04:00"
+    },
+    "POST /api/ingest/commit": {
+      "loadId": "LOAD-1791086637166"
+    },
+    "POST /api/ingest/submit": {
+      "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
+      "loadId": "LOAD-1791086637166"
+    },
+    "POST /api/onboarding/ocr": {
+      "documentType": "emirates-id",
+      "fields": {
+        "fullName": [
+          "Ahmed Al Mansoori",
+          "Ahmed Al Mansoori"
+        ],
+        "idNumber": [
+          "784-1985-1234567-1",
+          "784-1985-1234567-1"
+        ]
+      }
+    },
+    "POST /api/partner/lookup": {
+      "withConsent": false
+    },
+    "POST /api/pre-sale": {
+      "productLine": "medical",
+      "hasNeedAnalysis": false,
+      "hasNeedId": false
+    },
+    "POST /api/preview/switch": {
+      "amountMinor": 200000,
+      "fromFundId": "FGLOBAL",
+      "toFundId": "FBAL"
+    },
+    "POST /api/preview/withdrawal": {
+      "amountMinor": 150000,
+      "fundId": "FBAL"
+    },
+    "POST /api/takaful/approve": {
+      "role": "board",
+      "by": "raheel@board"
+    },
+    "POST /api/underwriting/decide": {
+      "applicationId": "UW-000001",
+      "by": "agent/quote-bot",
+      "isAi": true
+    }
+  }
+}

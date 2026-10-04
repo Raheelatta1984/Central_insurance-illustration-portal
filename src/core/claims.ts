@@ -317,14 +317,19 @@ export class ClaimsEngine {
   /* ------------------------------------------------------------- recoveries */
 
   /** Salvage, subrogation or reinsurance money coming back. Never netted off the payment. */
-  recover(claimId: string, input: { type: RecoveryType; amount: Money; at: string; by?: string }): Recovery {
+  /**
+   * A recovery. Salvage and subrogation arrive in the bank; a reinsurance recovery is owed to us by
+   * the reinsurer, so it lands on the reinsurance receivable instead of cash. One code path, one
+   * journal, and the money sits where it actually is.
+   */
+  recover(claimId: string, input: { type: RecoveryType; amount: Money; at: string; by?: string; receivedInto?: string }): Recovery {
     const claim = this.claim(claimId);
     if (isNegative(input.amount) || compare(input.amount, zero(this.currency)) === 0) {
       throw new ClaimsError('a recovery amount must be positive');
     }
     const id = `REC-${claim.id}-${claim.recoveries.length + 1}`;
     const journalId = this.post(`recovery ${id}`, claim, input.at, `${input.type} recovery on ${claim.id} for ${formatAmount(input.amount)}`, [
-      { accountId: this.chart.cash(), side: 'debit', amount: input.amount, memo: `${input.type} received` },
+      { accountId: input.receivedInto ?? this.chart.cash(), side: 'debit', amount: input.amount, memo: input.receivedInto ? `${input.type} recoverable` : `${input.type} received` },
       { accountId: this.chart.claimRecovery(), side: 'credit', amount: input.amount, memo: `${input.type} recovery income` },
     ]);
     const recovery: Recovery = { id, type: input.type, amount: input.amount, at: input.at, journalId };

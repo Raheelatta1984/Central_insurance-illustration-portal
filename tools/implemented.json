@@ -1,5 +1,5 @@
 {
-  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done \u2014 but only if the evidence files exist and the module's tests pass.",
+  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done — but only if the evidence files exist and the module's tests pass.",
   "modules": {
     "PLAT": {
       "keywords": [
@@ -461,6 +461,35 @@
         "src/server/main.ts",
         "src/ui/main.tsx"
       ]
+    },
+    "RI": {
+      "keywords": [
+        "treaty programme definition",
+        "facultative placement",
+        "automatic cession calculation",
+        "cession bordereaux",
+        "recovery tracking and ageing",
+        "reinsurance data quality and reconciliation",
+        "retakaful variants"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "store",
+        "api",
+        "ui",
+        "test",
+        "docs"
+      ],
+      "evidence": [
+        "src/core/reinsurance.ts",
+        "src/core/claims.ts",
+        "src/server/main.ts",
+        "src/ui/main.tsx",
+        "README.md",
+        "docs/07-TOUR.md"
+      ]
     }
   },
   "testCommand": "npx vitest run --reporter=dot",
@@ -482,6 +511,7 @@
     "AI": "src/core/moneyproof.test.ts",
     "DOC": "src/core/regulatory.test.ts",
     "CLM": "src/core/claims.test.ts",
-    "UW": "src/core/underwriting.test.ts"
+    "UW": "src/core/underwriting.test.ts",
+    "RI": "src/core/reinsurance.test.ts"
   }
 }
