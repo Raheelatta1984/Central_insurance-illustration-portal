@@ -144,6 +144,19 @@ describe('group finance in the demo world', () => {
     expect(report.group.checks.every((c) => c.check !== 'consolidated balance sheet balances' || c.ok)).toBe(true);
   });
 
+  it('funds every entity with paid-up capital, so the group balance sheet looks like an insurer', () => {
+    const w = buildWorld();
+    const report = w.group.consolidate({ asOf: w.asOf, periodStart: w.groupPeriodStart });
+    for (const e of report.entities) {
+      expect(e.netAssets.minor).toBeGreaterThan(0n);
+      expect(e.lines.find((l) => l.accountId.endsWith('SHARE-CAPITAL'))?.amount.minor ?? 0n).toBeGreaterThan(0n);
+    }
+    // Equity in the Malaysian book is translated at the historical rate, not the closing one.
+    const malaysia = report.entities.find((e) => e.entityId === 'ALK-MY')!;
+    expect(malaysia.lines.find((l) => l.accountId === 'ALK-MY:SHARE-CAPITAL')?.rateBasis).toBe('historical');
+    expect(malaysia.cta.minor).not.toBe(0n);
+  });
+
   it('states the 30% minority share of the Malaysian subsidiary', () => {
     const w = buildWorld();
     const report = w.group.consolidate({ asOf: w.asOf, periodStart: w.groupPeriodStart });

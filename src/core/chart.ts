@@ -19,6 +19,7 @@ export interface Chart {
   fundResidual(fundId: string): string;
   fundAsset(): string;
   operatorFund(): string;
+  shareCapital(): string;
   qard(): string;
   claimExpense(): string;
   claimReserve(): string;
@@ -68,6 +69,7 @@ export function buildChart(ledger: Ledger, entityId: string, currency: string, f
     ledger.defineAccount({ id: id(`FEE:${code}`), name: `Fee income — ${code}`, type: 'income', entityId, currency });
   }
   ledger.defineAccount({ id: id('OPERATOR-FUND'), name: 'Operator fund (shareholder)', type: 'equity', entityId, currency });
+  ledger.defineAccount({ id: id('SHARE-CAPITAL'), name: 'Paid-up share capital', type: 'equity', entityId, currency });
   ledger.defineAccount({ id: id('CLAIM-EXPENSE'), name: 'Claim expense (including reserve movement)', type: 'expense', entityId, currency });
   ledger.defineAccount({ id: id('CLAIM-RESERVE'), name: 'Claim reserve (outstanding)', type: 'liability', entityId, currency });
   ledger.defineAccount({ id: id('CLAIM-RECOVERY'), name: 'Claim recovery income', type: 'income', entityId, currency });
@@ -90,6 +92,7 @@ export function buildChart(ledger: Ledger, entityId: string, currency: string, f
     fundResidual: (fundId: string) => `${entityId}:${fundId}:RESIDUAL`,
     fundAsset: () => id('CASH'),
     operatorFund: () => id('OPERATOR-FUND'),
+    shareCapital: () => id('SHARE-CAPITAL'),
     qard: () => id('QARD'),
     claimExpense: () => id('CLAIM-EXPENSE'),
     claimReserve: () => id('CLAIM-RESERVE'),

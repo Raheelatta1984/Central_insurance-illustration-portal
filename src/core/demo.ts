@@ -75,6 +75,35 @@ export function buildWorld(): World {
   defineIntercompany(ledger, takafulEntity, currency, [conventionalEntity]);
   defineIntercompany(ledger, malaysiaEntity, 'MYR', [conventionalEntity]);
 
+  /* Paid-up capital. An insurer with no capital is not an insurer: every entity here starts with
+     the shareholders' money in, posted the way the regulator expects to see it. */
+  ledger.post({
+    id: 'CAP-CONV-2026', entityId: conventionalEntity, at: '2026-01-02T09:00:00+04:00', recordedAt: '2026-01-02T09:00:00+04:00',
+    source: 'gl', sourceRef: 'CAP-2026', description: 'Paid-up share capital received',
+    postings: [
+      posting(convChart.cash(), 'debit', money(10_000_000_00, currency)),
+      posting(convChart.shareCapital(), 'credit', money(10_000_000_00, currency)),
+    ],
+  });
+  ledger.post({
+    id: 'CAP-TKF-2026', entityId: takafulEntity, at: '2026-01-02T09:00:00+04:00', recordedAt: '2026-01-02T09:00:00+04:00',
+    source: 'gl', sourceRef: 'CAP-2026', description: 'Operator capital contributed to the takaful window',
+    postings: [
+      posting(tkfChart.cash(), 'debit', money(3_000_000_00, currency)),
+      posting(tkfChart.shareCapital(), 'credit', money(3_000_000_00, currency)),
+    ],
+  });
+  ledger.post({
+    id: 'CAP-MY-2026', entityId: malaysiaEntity, at: '2026-01-05T09:00:00+08:00', recordedAt: '2026-01-05T09:00:00+08:00',
+    source: 'gl', sourceRef: 'CAP-MY-2026', description: 'Paid-up capital of the Malaysian subsidiary',
+    postings: [
+      // Capital came in at the 2026-01-01 rate of 0.85, which is why equity carries a
+      // historical rate while the balance sheet is translated at 0.82.
+      posting(myChart.cash(), 'debit', money(5_000_000_00, 'MYR'), money(4_250_000_00, currency)),
+      posting(myChart.shareCapital(), 'credit', money(5_000_000_00, 'MYR'), money(4_250_000_00, currency)),
+    ],
+  });
+
   const nav = new NavEngine();
   nav.defineInstrument({ id: 'EMAAR', name: 'Emaar Properties', assetClass: 'equity', isin: 'AEE000301011', shariahScreened: true });
   nav.defineInstrument({ id: 'FAB', name: 'First Abu Dhabi Bank', assetClass: 'equity', isin: 'AEE000801020', shariahScreened: false });
@@ -312,6 +341,9 @@ export function buildWorld(): World {
   /* Group finance: three entities, two currencies, one set of books at the top. The rate table is
      dated, because a consolidation needs a closing rate, an average rate and historical rates. */
   const groupRates = new RateTable(currency, [
+    // A rate from the start of the year, so equity has a *historical* rate and the translation
+    // reserve is a genuine number rather than a rounding scrap.
+    { from: 'MYR', to: 'AED', numerator: 85n, denominator: 100n, asOf: '2026-01-01' },
     { from: 'MYR', to: 'AED', numerator: 84n, denominator: 100n, asOf: '2026-09-01' },
     { from: 'MYR', to: 'AED', numerator: 82n, denominator: 100n, asOf: '2026-09-30' },
     { from: 'USD', to: 'AED', numerator: 367n, denominator: 100n, asOf: '2026-09-01' },
