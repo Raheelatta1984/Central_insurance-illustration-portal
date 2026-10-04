@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T10:02:46.784Z",
+  "generatedAt": "2026-10-04T10:29:42.497Z",
   "base": "http://127.0.0.1:8787",
   "viewport": {
     "width": 1600,
@@ -15,7 +15,7 @@
       "screenshotFull": "screens/overview-full.png",
       "video": "video/overview.mp4",
       "videoFallback": "video/overview.webm",
-      "bytes": 451062
+      "bytes": 459366
     },
     {
       "id": "policyholder",
@@ -26,7 +26,7 @@
       "screenshotFull": "screens/policyholder-full.png",
       "video": "video/policyholder.mp4",
       "videoFallback": "video/policyholder.webm",
-      "bytes": 1100238
+      "bytes": 1013839
     },
     {
       "id": "decisions",
@@ -37,7 +37,7 @@
       "screenshotFull": "screens/decisions-full.png",
       "video": "video/decisions.mp4",
       "videoFallback": "video/decisions.webm",
-      "bytes": 1241519
+      "bytes": 1247917
     },
     {
       "id": "cover",
@@ -48,7 +48,7 @@
       "screenshotFull": "screens/cover-full.png",
       "video": "video/cover.mp4",
       "videoFallback": "video/cover.webm",
-      "bytes": 1161016
+      "bytes": 1155745
     },
     {
       "id": "funds",
@@ -59,7 +59,7 @@
       "screenshotFull": "screens/funds-full.png",
       "video": "video/funds.mp4",
       "videoFallback": "video/funds.webm",
-      "bytes": 488624
+      "bytes": 490590
     },
     {
       "id": "takaful",
@@ -70,7 +70,7 @@
       "screenshotFull": "screens/takaful-full.png",
       "video": "video/takaful.mp4",
       "videoFallback": "video/takaful.webm",
-      "bytes": 1419094
+      "bytes": 1427706
     },
     {
       "id": "group",
@@ -81,7 +81,7 @@
       "screenshotFull": "screens/group-full.png",
       "video": "video/group.mp4",
       "videoFallback": "video/group.webm",
-      "bytes": 1021170
+      "bytes": 1045023
     },
     {
       "id": "underwriting",
@@ -92,7 +92,7 @@
       "screenshotFull": "screens/underwriting-full.png",
       "video": "video/underwriting.mp4",
       "videoFallback": "video/underwriting.webm",
-      "bytes": 1314885
+      "bytes": 1355172
     },
     {
       "id": "claims",
@@ -103,7 +103,7 @@
       "screenshotFull": "screens/claims-full.png",
       "video": "video/claims.mp4",
       "videoFallback": "video/claims.webm",
-      "bytes": 1357737
+      "bytes": 1378266
     },
     {
       "id": "reinsurance",
@@ -114,7 +114,7 @@
       "screenshotFull": "screens/reinsurance-full.png",
       "video": "video/reinsurance.mp4",
       "videoFallback": "video/reinsurance.webm",
-      "bytes": 3088038
+      "bytes": 3318685
     },
     {
       "id": "durability",
@@ -125,7 +125,7 @@
       "screenshotFull": "screens/durability-full.png",
       "video": "video/durability.mp4",
       "videoFallback": "video/durability.webm",
-      "bytes": 741665
+      "bytes": 734360
     },
     {
       "id": "onboarding",
@@ -136,7 +136,7 @@
       "screenshotFull": "screens/onboarding-full.png",
       "video": "video/onboarding.mp4",
       "videoFallback": "video/onboarding.webm",
-      "bytes": 447528
+      "bytes": 442001
     },
     {
       "id": "ingest",
@@ -147,7 +147,7 @@
       "screenshotFull": "screens/ingest-full.png",
       "video": "video/ingest.mp4",
       "videoFallback": "video/ingest.webm",
-      "bytes": 1098557
+      "bytes": 1041061
     },
     {
       "id": "parties",
@@ -158,18 +158,18 @@
       "screenshotFull": "screens/parties-full.png",
       "video": "video/parties.mp4",
       "videoFallback": "video/parties.webm",
-      "bytes": 1064028
+      "bytes": 1067984
     },
     {
       "id": "regulatory",
       "label": "Regulatory",
       "tour": "00:56",
-      "blurb": "Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored.",
+      "blurb": "Per-country pre-sale gates and the motor comparison matrix: why a health sale is blocked without an ID, and how the best-insurer ranking is scored — then the UAE reinsurance rule book (twelve rules as data, each citing its instrument and clause in both languages, answering allowed, held for a named human or refused) and the wording book, which generates the letters with their mandated paragraphs and lets the takaful scope rename a field without touching a paragraph — and the submission log, which files the return through the CBUAE channel, refuses a return that has moved since it was issued, supersedes a filing when the return is corrected, and tracks what is still awaiting a reference back.",
       "screenshot": "screens/regulatory.png",
       "screenshotFull": "screens/regulatory-full.png",
       "video": "video/regulatory.mp4",
       "videoFallback": "video/regulatory.webm",
-      "bytes": 685353
+      "bytes": 639179
     },
     {
       "id": "ai",
@@ -180,7 +180,7 @@
       "screenshotFull": "screens/ai-full.png",
       "video": "video/ai.mp4",
       "videoFallback": "video/ai.webm",
-      "bytes": 780048
+      "bytes": 788365
     },
     {
       "id": "ledger",
@@ -191,7 +191,7 @@
       "screenshotFull": "screens/ledger-full.png",
       "video": "video/ledger.mp4",
       "videoFallback": "video/ledger.webm",
-      "bytes": 527017
+      "bytes": 435805
     },
     {
       "id": "labels",
@@ -202,7 +202,7 @@
       "screenshotFull": "screens/labels-full.png",
       "video": "video/labels.mp4",
       "videoFallback": "video/labels.webm",
-      "bytes": 524922
+      "bytes": 525952
     },
     {
       "id": "tour",
@@ -213,7 +213,7 @@
       "screenshotFull": "screens/tour-full.png",
       "video": "video/tour.mp4",
       "videoFallback": "video/tour.webm",
-      "bytes": 1121703
+      "bytes": 1046714
     }
   ]
 }
