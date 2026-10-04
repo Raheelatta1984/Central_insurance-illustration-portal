@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T10:13:32.725Z",
+  "capturedAt": "2026-10-04T10:25:16.720Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -3908,12 +3908,201 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T10:13:25.887Z",
-        "fingerprint": "4d21f76dffaff774",
+        "takenAt": "2026-10-04T10:25:09.850Z",
+        "fingerprint": "5101f34b6c76f48d",
         "accounts": 168,
         "journals": 87,
         "fxRates": 2,
         "bytes": 89049
+      }
+    },
+    "GET /api/submissions": {
+      "status": 200,
+      "body": {
+        "conventional": {
+          "entity": "ALK-CONV",
+          "statement": {
+            "filings": 1,
+            "acknowledged": 1,
+            "awaiting": 0,
+            "rejected": 0,
+            "late": 0,
+            "findings": 0,
+            "window": [
+              {
+                "returnCode": "CBUAE-MONTHLY",
+                "name": "Monthly regulatory return",
+                "deadlineDays": 15,
+                "graceDays": 5,
+                "channel": "CBUAE e-services portal (XML + signed PDF)"
+              },
+              {
+                "returnCode": "CBUAE-ANNUAL",
+                "name": "Annual financial return",
+                "deadlineDays": 90,
+                "graceDays": 15,
+                "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+              }
+            ],
+            "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
+          },
+          "submissions": [
+            {
+              "id": "SUB-000001",
+              "reference": "CBUAE-MONTHLY/2026-10-05/001",
+              "returnCode": "CBUAE-MONTHLY",
+              "period": {
+                "from": "2026-01-01",
+                "to": "2026-10-05"
+              },
+              "asOf": "2026-10-05",
+              "filedAt": "2026-10-05T18:30:00+04:00",
+              "filedBy": "finance/reporting",
+              "channel": "CBUAE e-services portal (XML + signed PDF)",
+              "status": "acknowledged",
+              "onTime": true,
+              "lateApprovedBy": null,
+              "lateReason": null,
+              "acknowledgedAt": "2026-10-05T19:15:00+04:00",
+              "acknowledgedBy": "compliance/records",
+              "supervisorReference": "CBUAE-ACK-2026-10488",
+              "rejectionReason": null,
+              "rejectedAt": null,
+              "rejectedBy": null,
+              "resubmissionOf": null,
+              "extractId": "RI-EX-ALK-CONV-00001",
+              "extractVersion": 1,
+              "manifest": "return RI-EX-ALK-CONV-00001 v1 for 2026-01-01 to 2026-10-05, prepared 2026-10-05; cover letter W-RETU-00001; 8 controls; 0 difference(s) open; every control agrees; 3 rule decision(s) behind the figures",
+              "coverLetterId": "W-RETU-00001",
+              "controls": {
+                "total": 8,
+                "disagreeing": 0
+              },
+              "ruleDecisions": [
+                "UAE-RULE-000001",
+                "UAE-RULE-000002",
+                "UAE-RULE-000003"
+              ]
+            }
+          ],
+          "awaiting": [],
+          "findings": [],
+          "window": [
+            {
+              "returnCode": "CBUAE-MONTHLY",
+              "name": "Monthly regulatory return",
+              "deadlineDays": 15,
+              "graceDays": 5,
+              "channel": "CBUAE e-services portal (XML + signed PDF)"
+            },
+            {
+              "returnCode": "CBUAE-ANNUAL",
+              "name": "Annual financial return",
+              "deadlineDays": 90,
+              "graceDays": 15,
+              "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+            }
+          ]
+        },
+        "takaful": {
+          "entity": "ALK-TKF",
+          "statement": {
+            "filings": 1,
+            "acknowledged": 0,
+            "awaiting": 1,
+            "rejected": 0,
+            "late": 0,
+            "findings": 1,
+            "window": [
+              {
+                "returnCode": "CBUAE-MONTHLY",
+                "name": "Monthly regulatory return",
+                "deadlineDays": 15,
+                "graceDays": 5,
+                "channel": "CBUAE e-services portal (XML + signed PDF)"
+              },
+              {
+                "returnCode": "CBUAE-ANNUAL",
+                "name": "Annual financial return",
+                "deadlineDays": 90,
+                "graceDays": 15,
+                "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+              }
+            ],
+            "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
+          },
+          "submissions": [
+            {
+              "id": "SUB-000001",
+              "reference": "CBUAE-MONTHLY/2026-10-05/001",
+              "returnCode": "CBUAE-MONTHLY",
+              "period": {
+                "from": "2026-01-01",
+                "to": "2026-10-05"
+              },
+              "asOf": "2026-10-05",
+              "filedAt": "2026-10-05T18:40:00+04:00",
+              "filedBy": "takaful/compliance",
+              "channel": "CBUAE e-services portal (XML + signed PDF)",
+              "status": "filed",
+              "onTime": true,
+              "lateApprovedBy": null,
+              "lateReason": null,
+              "acknowledgedAt": null,
+              "acknowledgedBy": null,
+              "supervisorReference": null,
+              "rejectionReason": null,
+              "rejectedAt": null,
+              "rejectedBy": null,
+              "resubmissionOf": null,
+              "extractId": "RI-EX-ALK-TKF-00001",
+              "extractVersion": 1,
+              "manifest": "return RI-EX-ALK-TKF-00001 v1 for 2026-01-01 to 2026-10-05, prepared 2026-10-05; cover letter W-TREA-00002; 8 controls; 0 difference(s) open; every control agrees; 2 rule decision(s) behind the figures",
+              "coverLetterId": "W-TREA-00002",
+              "controls": {
+                "total": 8,
+                "disagreeing": 0
+              },
+              "ruleDecisions": [
+                "UAE-RULE-000002",
+                "UAE-RULE-000004"
+              ]
+            }
+          ],
+          "awaiting": [
+            {
+              "id": "SUB-000001",
+              "reference": "CBUAE-MONTHLY/2026-10-05/001",
+              "days": 0,
+              "overdue": false
+            }
+          ],
+          "findings": [
+            {
+              "code": "SUBM-002",
+              "severity": "warning",
+              "detail": "CBUAE-MONTHLY/2026-10-05/001 was filed 0 day(s) ago and is not acknowledged",
+              "submissionId": "SUB-000001"
+            }
+          ],
+          "window": [
+            {
+              "returnCode": "CBUAE-MONTHLY",
+              "name": "Monthly regulatory return",
+              "deadlineDays": 15,
+              "graceDays": 5,
+              "channel": "CBUAE e-services portal (XML + signed PDF)"
+            },
+            {
+              "returnCode": "CBUAE-ANNUAL",
+              "name": "Annual financial return",
+              "deadlineDays": 90,
+              "graceDays": 15,
+              "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+            }
+          ]
+        },
+        "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
       }
     },
     "GET /api/underwriting": {
@@ -9884,6 +10073,192 @@
             }
           ]
         },
+        "submissions": {
+          "conventional": {
+            "entity": "ALK-CONV",
+            "statement": {
+              "filings": 1,
+              "acknowledged": 1,
+              "awaiting": 0,
+              "rejected": 0,
+              "late": 0,
+              "findings": 0,
+              "window": [
+                {
+                  "returnCode": "CBUAE-MONTHLY",
+                  "name": "Monthly regulatory return",
+                  "deadlineDays": 15,
+                  "graceDays": 5,
+                  "channel": "CBUAE e-services portal (XML + signed PDF)"
+                },
+                {
+                  "returnCode": "CBUAE-ANNUAL",
+                  "name": "Annual financial return",
+                  "deadlineDays": 90,
+                  "graceDays": 15,
+                  "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+                }
+              ],
+              "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
+            },
+            "submissions": [
+              {
+                "id": "SUB-000001",
+                "reference": "CBUAE-MONTHLY/2026-10-05/001",
+                "returnCode": "CBUAE-MONTHLY",
+                "period": {
+                  "from": "2026-01-01",
+                  "to": "2026-10-05"
+                },
+                "asOf": "2026-10-05",
+                "filedAt": "2026-10-05T18:30:00+04:00",
+                "filedBy": "finance/reporting",
+                "channel": "CBUAE e-services portal (XML + signed PDF)",
+                "status": "acknowledged",
+                "onTime": true,
+                "lateApprovedBy": null,
+                "lateReason": null,
+                "acknowledgedAt": "2026-10-05T19:15:00+04:00",
+                "acknowledgedBy": "compliance/records",
+                "supervisorReference": "CBUAE-ACK-2026-10488",
+                "rejectionReason": null,
+                "rejectedAt": null,
+                "rejectedBy": null,
+                "resubmissionOf": null,
+                "extractId": "RI-EX-ALK-CONV-00001",
+                "extractVersion": 1,
+                "manifest": "return RI-EX-ALK-CONV-00001 v1 for 2026-01-01 to 2026-10-05, prepared 2026-10-05; cover letter W-RETU-00001; 8 controls; 0 difference(s) open; every control agrees; 3 rule decision(s) behind the figures",
+                "coverLetterId": "W-RETU-00001",
+                "controls": {
+                  "total": 8,
+                  "disagreeing": 0
+                },
+                "ruleDecisions": [
+                  "UAE-RULE-000001",
+                  "UAE-RULE-000002",
+                  "UAE-RULE-000003"
+                ]
+              }
+            ],
+            "awaiting": [],
+            "findings": [],
+            "window": [
+              {
+                "returnCode": "CBUAE-MONTHLY",
+                "name": "Monthly regulatory return",
+                "deadlineDays": 15,
+                "graceDays": 5,
+                "channel": "CBUAE e-services portal (XML + signed PDF)"
+              },
+              {
+                "returnCode": "CBUAE-ANNUAL",
+                "name": "Annual financial return",
+                "deadlineDays": 90,
+                "graceDays": 15,
+                "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+              }
+            ]
+          },
+          "takaful": {
+            "entity": "ALK-TKF",
+            "statement": {
+              "filings": 1,
+              "acknowledged": 0,
+              "awaiting": 1,
+              "rejected": 0,
+              "late": 0,
+              "findings": 1,
+              "window": [
+                {
+                  "returnCode": "CBUAE-MONTHLY",
+                  "name": "Monthly regulatory return",
+                  "deadlineDays": 15,
+                  "graceDays": 5,
+                  "channel": "CBUAE e-services portal (XML + signed PDF)"
+                },
+                {
+                  "returnCode": "CBUAE-ANNUAL",
+                  "name": "Annual financial return",
+                  "deadlineDays": 90,
+                  "graceDays": 15,
+                  "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+                }
+              ],
+              "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
+            },
+            "submissions": [
+              {
+                "id": "SUB-000001",
+                "reference": "CBUAE-MONTHLY/2026-10-05/001",
+                "returnCode": "CBUAE-MONTHLY",
+                "period": {
+                  "from": "2026-01-01",
+                  "to": "2026-10-05"
+                },
+                "asOf": "2026-10-05",
+                "filedAt": "2026-10-05T18:40:00+04:00",
+                "filedBy": "takaful/compliance",
+                "channel": "CBUAE e-services portal (XML + signed PDF)",
+                "status": "filed",
+                "onTime": true,
+                "lateApprovedBy": null,
+                "lateReason": null,
+                "acknowledgedAt": null,
+                "acknowledgedBy": null,
+                "supervisorReference": null,
+                "rejectionReason": null,
+                "rejectedAt": null,
+                "rejectedBy": null,
+                "resubmissionOf": null,
+                "extractId": "RI-EX-ALK-TKF-00001",
+                "extractVersion": 1,
+                "manifest": "return RI-EX-ALK-TKF-00001 v1 for 2026-01-01 to 2026-10-05, prepared 2026-10-05; cover letter W-TREA-00002; 8 controls; 0 difference(s) open; every control agrees; 2 rule decision(s) behind the figures",
+                "coverLetterId": "W-TREA-00002",
+                "controls": {
+                  "total": 8,
+                  "disagreeing": 0
+                },
+                "ruleDecisions": [
+                  "UAE-RULE-000002",
+                  "UAE-RULE-000004"
+                ]
+              }
+            ],
+            "awaiting": [
+              {
+                "id": "SUB-000001",
+                "reference": "CBUAE-MONTHLY/2026-10-05/001",
+                "days": 0,
+                "overdue": false
+              }
+            ],
+            "findings": [
+              {
+                "code": "SUBM-002",
+                "severity": "warning",
+                "detail": "CBUAE-MONTHLY/2026-10-05/001 was filed 0 day(s) ago and is not acknowledged",
+                "submissionId": "SUB-000001"
+              }
+            ],
+            "window": [
+              {
+                "returnCode": "CBUAE-MONTHLY",
+                "name": "Monthly regulatory return",
+                "deadlineDays": 15,
+                "graceDays": 5,
+                "channel": "CBUAE e-services portal (XML + signed PDF)"
+              },
+              {
+                "returnCode": "CBUAE-ANNUAL",
+                "name": "Annual financial return",
+                "deadlineDays": 90,
+                "graceDays": 15,
+                "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+              }
+            ]
+          },
+          "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
+        },
         "group": {
           "asOf": "2026-10-05",
           "periodStart": "2026-09-01",
@@ -10823,7 +11198,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T10:11:35.237Z"
+        "generatedAt": "2026-10-04T10:23:15.429Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {
@@ -11095,23 +11470,23 @@
         ]
       }
     },
-    "POST /api/ingest/commit 9667cfba": {
+    "POST /api/ingest/commit 70ec0dd8": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791108771418",
+        "loadId": "LOAD-1791109471711",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
       }
     },
-    "POST /api/ingest/submit 5ed56eb4": {
+    "POST /api/ingest/submit f91ce92a": {
       "status": 200,
       "body": {
         "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791108771418"
+        "loadId": "LOAD-1791109471711"
       }
     },
     "POST /api/onboarding/ocr 4d38892d": {
@@ -12363,7 +12738,7 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "f9c62401e14fb2a2",
+        "fingerprint": "637caca2916c3308",
         "fingerprintStable": true,
         "journals": 87,
         "restoredJournals": 87,
@@ -12393,6 +12768,106 @@
             "balanced": true,
             "trialBalanceAgrees": true,
             "accounts": 65
+          }
+        ]
+      }
+    },
+    "POST /api/submissions/acknowledge e63c438e": {
+      "status": 200,
+      "body": {
+        "id": "SUB-000001",
+        "reference": "CBUAE-MONTHLY/2026-10-05/001",
+        "status": "acknowledged",
+        "acknowledgedAt": "2026-10-05T19:30:00+04:00",
+        "acknowledgedBy": "compliance/records",
+        "supervisorReference": "CBUAE-ACK-20261005",
+        "statement": {
+          "filings": 1,
+          "acknowledged": 1,
+          "awaiting": 0,
+          "rejected": 0,
+          "late": 0,
+          "findings": 0,
+          "window": [
+            {
+              "returnCode": "CBUAE-MONTHLY",
+              "name": "Monthly regulatory return",
+              "deadlineDays": 15,
+              "graceDays": 5,
+              "channel": "CBUAE e-services portal (XML + signed PDF)"
+            },
+            {
+              "returnCode": "CBUAE-ANNUAL",
+              "name": "Annual financial return",
+              "deadlineDays": 90,
+              "graceDays": 15,
+              "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+            }
+          ],
+          "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
+        },
+        "findings": []
+      }
+    },
+    "POST /api/submissions/file 4880abd4": {
+      "status": 200,
+      "body": {
+        "id": "SUB-000002",
+        "reference": "CBUAE-MONTHLY/2026-10-05/002",
+        "status": "filed",
+        "onTime": true,
+        "filedAt": "2026-10-05T18:45:00+04:00",
+        "filedBy": "finance/reporting",
+        "channel": "CBUAE e-services portal (XML + signed PDF)",
+        "period": {
+          "from": "2026-01-01",
+          "to": "2026-10-05"
+        },
+        "manifest": "return RI-EX-ALK-CONV-00007 v2 for 2026-01-01 to 2026-10-05, prepared 2026-10-05; cover letter W-RETU-00004; 8 controls; 0 difference(s) open; every control agrees; 4 rule decision(s) behind the figures",
+        "assessment": {
+          "allowed": true,
+          "outcome": "in-window",
+          "deadline": "2026-10-20",
+          "graceEnds": "2026-10-25",
+          "detail": "inside the window: due by 2026-10-20, filed 2026-10-05"
+        },
+        "statement": {
+          "filings": 2,
+          "acknowledged": 0,
+          "awaiting": 1,
+          "rejected": 0,
+          "late": 0,
+          "findings": 2,
+          "window": [
+            {
+              "returnCode": "CBUAE-MONTHLY",
+              "name": "Monthly regulatory return",
+              "deadlineDays": 15,
+              "graceDays": 5,
+              "channel": "CBUAE e-services portal (XML + signed PDF)"
+            },
+            {
+              "returnCode": "CBUAE-ANNUAL",
+              "name": "Annual financial return",
+              "deadlineDays": 90,
+              "graceDays": 15,
+              "channel": "CBUAE e-services portal (audited accounts + actuary’s report)"
+            }
+          ],
+          "limitation": "The log records what was filed, through which channel, on whose authority and under what reference. It does not speak for the supervisor: an acknowledgement is recorded from the notice received, and a filing without one stays outstanding for as long as that is true."
+        },
+        "findings": [
+          {
+            "code": "SUBM-002",
+            "severity": "warning",
+            "detail": "CBUAE-MONTHLY/2026-10-05/002 was filed 0 day(s) ago and is not acknowledged",
+            "submissionId": "SUB-000002"
+          },
+          {
+            "code": "SUBM-005",
+            "severity": "info",
+            "detail": "CBUAE-MONTHLY/2026-10-05/001 was superseded by a corrected filing",
+            "submissionId": "SUB-000001"
           }
         ]
       }
@@ -12816,12 +13291,12 @@
     "POST /api/extracts/verify c36ca302": {
       "extractId": "RI-EX-ALK-CONV-00001"
     },
-    "POST /api/ingest/commit 9667cfba": {
-      "loadId": "LOAD-1791108771418"
+    "POST /api/ingest/commit 70ec0dd8": {
+      "loadId": "LOAD-1791109471711"
     },
-    "POST /api/ingest/submit 5ed56eb4": {
+    "POST /api/ingest/submit f91ce92a": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791108771418"
+      "loadId": "LOAD-1791109471711"
     },
     "POST /api/onboarding/ocr 4d38892d": {
       "documentType": "emirates-id",
@@ -12877,6 +13352,12 @@
       "reference": "LC-RECORDED",
       "expiresAt": "2027-03-31",
       "by": "treasury"
+    },
+    "POST /api/submissions/acknowledge e63c438e": {
+      "entity": "takaful"
+    },
+    "POST /api/submissions/file 4880abd4": {
+      "entity": "conventional"
     },
     "POST /api/takaful/approve 75447b0d": {
       "role": "board",

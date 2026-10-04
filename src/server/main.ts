@@ -8,11 +8,12 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
-import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot, uaeRuleSnapshot, wordingSnapshot } from '../core/demo.js';
+import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot, uaeRuleSnapshot, wordingSnapshot, submissionSnapshot } from '../core/demo.js';
 import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { UaeRuleError } from '../core/uae.js';
 import { WordingError } from '../core/wording.js';
+import { SubmissionError } from '../core/submission.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
 import { ClaimsEngine, ClaimCause } from '../core/claims.js';
@@ -226,6 +227,76 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     case 'GET /reinsurance': {
       // Exactly the shape the console renders, so the two can never drift apart.
       json(res, 200, reinsuranceSnapshot(state.world));
+      return true;
+    }
+
+    case 'GET /submissions': {
+      // The filing log: what went to the supervisor, what came back, and what is still outstanding.
+      json(res, 200, submissionSnapshot(state.world));
+      return true;
+    }
+
+    case 'POST /submissions/file': {
+      // File the current return. The pack is built from the issued extract, the cover letter the
+      // wording book generated for it, and the rule decisions behind the figures; the register
+      // recomputes the return from the books first, so a return that has moved cannot be filed old.
+      const entity = String(payload['entity'] ?? 'conventional');
+      const register = entity === 'takaful' ? state.world.takafulSubmissions : state.world.submissions;
+      const extracts = entity === 'takaful' ? state.world.takafulExtracts : state.world.extracts;
+      const returnCode = String(payload['returnCode'] ?? 'CBUAE-MONTHLY');
+      const latest = [...extracts.list()].reverse().find((e) => e.kind === 'regulatory-return');
+      if (!latest) { json(res, 409, { error: `no regulatory return has been issued for the ${entity} book` }); return true; }
+      try {
+        const cover = [...state.world.wording.documents()].reverse()
+          .find((d) => (entity === 'takaful' ? d.type === 'treaty-note' : d.type === 'return-cover'));
+        const pack = register.pack({
+          extract: latest, returnCode,
+          coverLetterId: cover?.id ?? 'W-RETU-00001',
+          ruleDecisions: state.world.rules.decisions().map((d) => d.id).slice(0, 4),
+        });
+        const at = `${state.world.asOf}T${entity === 'takaful' ? '19:05' : '18:45'}:00+04:00`;
+        const assessment = register.assess(returnCode, pack.period, at);
+        const submission = register.file({
+          pack, at, by: entity === 'takaful' ? 'takaful/compliance' : 'finance/reporting',
+          ...(assessment.allowed ? {} : {
+            lateApprovedBy: String(payload['lateApprovedBy'] ?? 'chief-financial-officer'),
+            lateReason: String(payload['lateReason'] ?? 'the return was held while the reinsurance recovery was confirmed with the counterparty'),
+          }),
+        });
+        json(res, 200, {
+          id: submission.id, reference: submission.reference, status: submission.status, onTime: submission.onTime,
+          filedAt: submission.filedAt, filedBy: submission.filedBy, channel: submission.channel,
+          period: submission.period, manifest: submission.pack.manifest, assessment,
+          statement: register.statement(state.world.asOf),
+          findings: register.findings(state.world.asOf).map((f) => ({ ...f })),
+        });
+      } catch (err) {
+        json(res, err instanceof SubmissionError ? 409 : 500, { error: String((err as Error).message) });
+      }
+      return true;
+    }
+
+    case 'POST /submissions/acknowledge': {
+      // The supervisor answers. It names who recorded it and under what reference; an acknowledgement
+      // without a reference is not an acknowledgement.
+      const register = String(payload['entity'] ?? 'conventional') === 'takaful' ? state.world.takafulSubmissions : state.world.submissions;
+      const id = String(payload['id'] ?? register.submissions().at(-1)?.id ?? '');
+      try {
+        const updated = register.acknowledge(id, {
+          at: `${state.world.asOf}T19:30:00+04:00`,
+          by: String(payload['by'] ?? 'compliance/records'),
+          supervisorReference: String(payload['supervisorReference'] ?? `CBUAE-ACK-${state.world.asOf.replace(/-/g, '')}`),
+        });
+        json(res, 200, {
+          id: updated.id, reference: updated.reference, status: updated.status,
+          acknowledgedAt: updated.acknowledgedAt, acknowledgedBy: updated.acknowledgedBy,
+          supervisorReference: updated.supervisorReference,
+          statement: register.statement(state.world.asOf),
+          findings: register.findings(state.world.asOf).map((f) => ({ ...f })),
+        });
+      } catch (err) {
+        json(res, err instanceof SubmissionError ? 409 : 500, { error: String((err as Error).message) });
+      }
       return true;
     }
 

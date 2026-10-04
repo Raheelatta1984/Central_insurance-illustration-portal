@@ -3,7 +3,7 @@
  * These tests guard the journeys the console shows and the numbers the API returns.
  */
 import { describe, expect, it } from 'vitest';
-import { buildWorld, claimsSnapshot, extractSnapshot, groupSnapshot, reinsuranceSnapshot, uaeRuleSnapshot, underwritingSnapshot, wordingSnapshot, worldSnapshot } from './demo.js';
+import { buildWorld, claimsSnapshot, extractSnapshot, groupSnapshot, reinsuranceSnapshot, submissionSnapshot, uaeRuleSnapshot, underwritingSnapshot, wordingSnapshot, worldSnapshot } from './demo.js';
 import { money } from './money.js';
 import { AE_PACK } from './regulatory.js';
 
@@ -717,5 +717,37 @@ describe('the wording book in the world', () => {
     const before = wordingSnapshot(world).documents.length;
     wordingSnapshot(world);
     expect(wordingSnapshot(world).documents.length).toBe(before);
+  });
+});
+
+describe('the submission log in the world', () => {
+  it('files the conventional return and has it acknowledged, and leaves the window\'s own filing outstanding', () => {
+    const w = buildWorld();
+    const view = submissionSnapshot(w);
+    expect(view.conventional.submissions.length).toBe(1);
+    const filed = view.conventional.submissions[0]!;
+    expect(filed.status).toBe('acknowledged');
+    expect(filed.supervisorReference).toBe('CBUAE-ACK-2026-10488');
+    expect(filed.onTime).toBe(true);
+    expect(filed.channel).toContain('CBUAE e-services');
+    expect(filed.controls.total).toBeGreaterThan(5);
+    expect(filed.ruleDecisions.length).toBeGreaterThan(0);
+    expect(filed.manifest).toContain('cover letter');
+    expect(view.conventional.statement).toMatchObject({ filings: 1, acknowledged: 1, awaiting: 0 });
+    expect(view.conventional.findings.length).toBe(0);
+
+    expect(view.takaful.submissions.length).toBe(1);
+    expect(view.takaful.submissions[0]!.status).toBe('filed');
+    expect(view.takaful.statement.awaiting).toBe(1);
+    expect(view.takaful.awaiting[0]!.overdue).toBe(false);
+    expect(view.limitation).toContain('does not speak for the supervisor');
+  });
+
+  it('files nothing a second time when the world is read again', () => {
+    const w = buildWorld();
+    submissionSnapshot(w);
+    submissionSnapshot(w);
+    expect(w.submissions.submissions().length).toBe(1);
+    expect(w.takafulSubmissions.submissions().length).toBe(1);
   });
 });

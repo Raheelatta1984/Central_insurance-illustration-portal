@@ -26,6 +26,7 @@ import { REINSURANCE_SEED, TreatyRegister } from './reinsurance.js';
 import { ExtractEngine, IssuedExtract, formatCell } from './extracts.js';
 import { PlacementFacts, UAE_RULES, UaeRuleBook, ratingRank } from './uae.js';
 import { WordingBook, WordingDocument, WordingFacts } from './wording.js';
+import { AE_FILING_WINDOWS, Submission, SubmissionPack, SubmissionRegister } from './submission.js';
 import { IngestionFabric } from './ingest.js';
 import { AgentRuntime } from './ai.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
@@ -47,6 +48,8 @@ export interface World {
   readonly extracts: ExtractEngine;          // regulatory, actuarial and bordereau extracts, issued and kept
   readonly rules: UaeRuleBook;               // the UAE reinsurance rule book, and every decision taken under it
   readonly wording: WordingBook;             // generated letters and notices, with their mandated wording
+  readonly submissions: SubmissionRegister;  // what was filed with the supervisor, and what came back
+  readonly takafulSubmissions: SubmissionRegister;  // the window files its own return, from its own fund
   readonly takafulExtracts: ExtractEngine;   // the window files its own return, from its own fund
 
   readonly group: GroupConsolidator;
@@ -373,6 +376,17 @@ export function buildWorld(): World {
     retentionPlan: plan, documents: ['approved retention and reinsurance plan', 'board minute of the annual review'],
   });
 
+  // Filing with the supervisor. The register recomputes the return from the books before it accepts
+  // a pack, so a return that has moved since it was issued cannot be filed in its old form.
+  const submissions = new SubmissionRegister({
+    windows: AE_FILING_WINDOWS,
+    verify: (extractId) => extracts.verify(extractId),
+  });
+  const takafulSubmissions = new SubmissionRegister({
+    windows: AE_FILING_WINDOWS,
+    verify: (extractId) => takafulExtracts.verify(extractId),
+  });
+
   // Wording, generated from the same label registry the screens read: a rename in the takaful scope
   // changes what a field is called in the letters that scope sends, and never a mandated paragraph.
   const wording = new WordingBook({
@@ -670,7 +684,7 @@ export function buildWorld(): World {
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
     ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, reinsurance, retakaful,
-    extracts, takafulExtracts, rules, wording,
+    extracts, takafulExtracts, rules, wording, submissions, takafulSubmissions,
     group, groupRates, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
@@ -978,19 +992,28 @@ export function reinsuranceSnapshot(w: World) {
  * bordereau per counterparty — prepared live and then issued, so the console shows an issued document
  * rather than a draft that would be rebuilt differently the next time it is opened.
  */
+/**
+ * Reading the world must never issue anything twice: a reporting view that mutated the register every
+ * time it was opened would be a reporting view nobody could trust. The first read issues; every read
+ * after that returns exactly what was issued.
+ */
+export function ensureExtract(
+  w: World, engine: ExtractEngine,
+  kind: 'regulatory-return' | 'actuarial-exhibits' | 'treaty-bordereau', by: string, counterparty?: string,
+): IssuedExtract {
+  const year = { from: `${w.asOf.slice(0, 4)}-01-01`, to: w.asOf };
+  const already = engine.history(kind, year, counterparty).at(-1);
+  if (already) return engine.get(already.id);
+  return engine.issue({
+    kind, period: year, asOf: w.asOf, by, at: `${w.asOf}T17:00:00+04:00`,
+    ...(counterparty ? { counterparty } : {}),
+  }).extract;
+}
+
 export function extractSnapshot(w: World) {
   const year = { from: `${w.asOf.slice(0, 4)}-01-01`, to: w.asOf };
-  // Reading the world must never issue anything twice: a reporting view that mutated the register every
-  // time it was opened would be a reporting view nobody could trust. The first read issues; every read
-  // after that returns exactly what was issued.
-  const ensure = (engine: ExtractEngine, kind: 'regulatory-return' | 'actuarial-exhibits' | 'treaty-bordereau', by: string, counterparty?: string) => {
-    const already = engine.history(kind, year, counterparty).at(-1);
-    if (already) return engine.get(already.id);
-    return engine.issue({
-      kind, period: year, asOf: w.asOf, by, at: `${w.asOf}T17:00:00+04:00`,
-      ...(counterparty ? { counterparty } : {}),
-    }).extract;
-  };
+  const ensure = (engine: ExtractEngine, kind: 'regulatory-return' | 'actuarial-exhibits' | 'treaty-bordereau', by: string, counterparty?: string) =>
+    ensureExtract(w, engine, kind, by, counterparty);
   const conventionalReturn = ensure(w.extracts, 'regulatory-return', 'finance/reporting');
   const takafulReturn = ensure(w.takafulExtracts, 'regulatory-return', 'finance/takaful');
   ensure(w.extracts, 'actuarial-exhibits', 'actuarial');
@@ -1081,6 +1104,67 @@ export function wordingSnapshot(w: World) {
       blocks: d.blocks.map((b) => ({ id: b.id, kind: b.kind, en: b.en, ar: b.ar, instrument: b.instrument ?? null })),
     })),
     verify: w.wording.documents().map((d) => w.wording.verify(d.id)),
+  };
+}
+
+/**
+ * The submission log as the console reads it: what was filed, through which channel, on whose
+ * authority, under what reference — and what is still outstanding, because that is the part a
+ * controller actually watches.
+ */
+/**
+ * The filing journey, standing up the returns it files: the September return filed and acknowledged,
+ * and the window's own return filed and still awaiting the supervisor's reference. Like the extracts
+ * themselves, this happens once — a read of the world files nothing a second time.
+ */
+export function ensureFilings(w: World): void {
+  const septemberReturn = ensureExtract(w, w.extracts, 'regulatory-return', 'finance/reporting');
+  if (w.submissions.submissions().length === 0) {
+    const pack = w.submissions.pack({
+      extract: septemberReturn, returnCode: 'CBUAE-MONTHLY',
+      coverLetterId: w.wording.documents().find((d) => d.type === 'return-cover')?.id ?? 'W-RETU-00001',
+      ruleDecisions: w.rules.decisions().slice(0, 3).map((d) => d.id),
+    });
+    const filed = w.submissions.file({ pack, at: `${w.asOf}T18:30:00+04:00`, by: 'finance/reporting' });
+    w.submissions.acknowledge(filed.id, {
+      at: `${w.asOf}T19:15:00+04:00`, by: 'compliance/records', supervisorReference: 'CBUAE-ACK-2026-10488',
+    });
+  }
+  const takafulReturn = ensureExtract(w, w.takafulExtracts, 'regulatory-return', 'takaful/compliance');
+  if (w.takafulSubmissions.submissions().length === 0) {
+    const pack = w.takafulSubmissions.pack({
+      extract: takafulReturn, returnCode: 'CBUAE-MONTHLY',
+      coverLetterId: w.wording.documents().find((d) => d.type === 'treaty-note')?.id ?? 'W-TREA-00002',
+      ruleDecisions: w.rules.decisions().filter((d) => d.basis === 'takaful').map((d) => d.id),
+    });
+    w.takafulSubmissions.file({ pack, at: `${w.asOf}T18:40:00+04:00`, by: 'takaful/compliance' });
+  }
+}
+
+export function submissionSnapshot(w: World, at: string = w.asOf) {
+  ensureFilings(w);
+  const shape = (register: SubmissionRegister, entity: string) => ({
+    entity,
+    statement: register.statement(at),
+    submissions: register.submissions().map((s: Submission) => ({
+      id: s.id, reference: s.reference, returnCode: s.returnCode, period: s.period, asOf: s.asOf,
+      filedAt: s.filedAt, filedBy: s.filedBy, channel: s.channel, status: s.status, onTime: s.onTime,
+      lateApprovedBy: s.lateApprovedBy, lateReason: s.lateReason,
+      acknowledgedAt: s.acknowledgedAt, acknowledgedBy: s.acknowledgedBy, supervisorReference: s.supervisorReference,
+      rejectionReason: s.rejectionReason, rejectedAt: s.rejectedAt, rejectedBy: s.rejectedBy,
+      resubmissionOf: s.resubmissionOf, extractId: s.extractId, extractVersion: s.extractVersion,
+      manifest: s.pack.manifest, coverLetterId: s.pack.coverLetterId,
+      controls: { total: s.pack.controls.length, disagreeing: s.pack.controls.filter((c) => c.state !== 'agrees' && c.state !== 'informational').length },
+      ruleDecisions: [...s.pack.ruleDecisions],
+    })),
+    awaiting: register.awaitingAcknowledgement(at).map((a) => ({ id: a.submission.id, reference: a.submission.reference, days: a.days, overdue: a.overdue })),
+    findings: register.findings(at).map((f) => ({ ...f })),
+    window: w.submissions.statement(at).window,
+  });
+  return {
+    conventional: shape(w.submissions, w.conventionalEntity),
+    takaful: shape(w.takafulSubmissions, w.takafulEntity),
+    limitation: w.submissions.statement(at).limitation,
   };
 }
 
@@ -1226,6 +1310,7 @@ export function worldSnapshot(w: World) {
     extracts: extractSnapshot(w),
     uaeRules: uaeRuleSnapshot(w),
     wording: wordingSnapshot(w),
+    submissions: submissionSnapshot(w),
     group: groupSnapshot(w, false),
     claims: claimsSnapshot(w.claims, asOf),
     takafulClaims: claimsSnapshot(w.takafulClaims, asOf),

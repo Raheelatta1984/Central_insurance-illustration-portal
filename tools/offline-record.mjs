@@ -90,6 +90,7 @@ await sleep(1200);
 await direct('GET', '/reinsurance/security');
 await direct('GET', '/regulatory/uae-rules');
 await direct('GET', '/wording');
+await direct('GET', '/submissions');
 await direct('GET', '/extracts');
 const issued = grab.get('GET /api/extracts')?.body;
 await direct('POST', '/extracts/verify', issued ? { extractId: issued.conventional.id } : {});
@@ -114,7 +115,7 @@ const script = [
   ['Onboarding', []],
   ['Ingestion', ['Validate & reconcile', 'Commit the accepted rows']],
   ['Parties & consent', ['Ask with consent', 'Ask without consent']],
-  ['Regulatory', ['Run the check', 'Check a clean placement', 'Check a placement with an unrated reinsurer', 'Draft the note to the policyholder', "Draft the window's treaty note", 'Draft the cover letter to the supervisor']],
+  ['Regulatory', ['Run the check', 'Check a clean placement', 'Check a placement with an unrated reinsurer', 'Draft the note to the policyholder', "Draft the window's treaty note", 'Draft the cover letter to the supervisor', 'File the return with the supervisor', "Record the supervisor's acknowledgement"]],
   ['AI ledger', ['Approve', 'Execute']],   // Execute only renders once a human has approved the action
   ['Books', []],
   ['Labels & rename', []],

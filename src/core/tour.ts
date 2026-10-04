@@ -222,14 +222,15 @@ export const TOUR: TourStep[] = [
   },
   {
     at: '00:56', minutes: 4, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
-    why: 'The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.',
+    why: 'The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs, and the submission log with the supervisor’s references — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.',
     doThis: [
       'Onboarding: read the chip read, the government lookup and the OCR consensus, then find the field in the review queue.',
       'Ingestion: submit a file of any shape, watch it map its own columns, quarantine the bad rows and suppress the duplicate.',
       'Parties & consent: run a partner lookup with consent, then without it, and read the access log.',
-      'Regulatory: read the pre-sale gates for motor and medical, the comparison matrix behind a motor quote, the UAE reinsurance rule book — put a placement past it and read the answer — and the wording book, which drafts the letters with their mandated paragraphs in both languages.',
+      'Regulatory: read the pre-sale gates for motor and medical, the comparison matrix behind a motor quote, the UAE reinsurance rule book — put a placement past it and read the answer — the wording book, which drafts the letters with their mandated paragraphs in both languages, and the submission log — file the return, and record the reference that comes back.',
       'Labels & rename: rename a label in one scope only and watch the other scope keep its own word.',
       'Regulatory rule book: a clean placement is allowed and an unrated counterparty is held for a named human with the missing evidence listed — the two buttons give different answers on purpose.',
+      'Filing: the return goes through the CBUAE channel with its cover letter attached, and the filing stays outstanding until the supervisor\u2019s reference is recorded against it.',
       'Wording: the note to the policyholder is drafted with three mandated paragraphs in English and Arabic, and the window’s treaty note says Contribution where the conventional book says Premium — with the same segregation paragraph, word for word.',
       'AI ledger: read the prohibited intents, then try to get one executed and read the refusal.',
       'Books: read the trial balance and the journal list for an entity.',
@@ -238,7 +239,7 @@ export const TOUR: TourStep[] = [
       'Quarantined rows carry a reason per column; duplicates are suppressed, not double-counted.',
       'A refused AI action stays refused, and the attempt is still on the record.',
     ],
-    api: ['POST /api/ingest/submit', 'POST /api/ingest/commit', 'POST /api/partner/lookup', 'POST /api/pre-sale', 'GET /api/regulatory/uae-rules', 'POST /api/regulatory/uae/check', 'GET /api/wording', 'POST /api/wording/generate', 'POST /api/ai/approve', 'POST /api/ai/execute'],
+    api: ['POST /api/ingest/submit', 'POST /api/ingest/commit', 'POST /api/partner/lookup', 'POST /api/pre-sale', 'GET /api/regulatory/uae-rules', 'POST /api/regulatory/uae/check', 'GET /api/wording', 'POST /api/wording/generate', 'GET /api/submissions', 'POST /api/submissions/file', 'POST /api/submissions/acknowledge', 'POST /api/ai/approve', 'POST /api/ai/execute'],
   },
 ];
 

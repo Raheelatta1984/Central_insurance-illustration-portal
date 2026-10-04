@@ -490,7 +490,12 @@
         "letter generation with mandated paragraphs",
         "scope-aware templates",
         "rename without touching mandated wording",
-        "pack version on every generated letter"
+        "pack version on every generated letter",
+        "regulator return submission",
+        "filing window and late filing",
+        "submission supersession",
+        "acknowledgement tracking",
+        "submission log as evidence"
       ],
       "layers": [
         "design",
@@ -516,7 +521,9 @@
         "src/core/uae.ts",
         "src/core/uae.test.ts",
         "src/core/wording.ts",
-        "src/core/wording.test.ts"
+        "src/core/wording.test.ts",
+        "src/core/submission.ts",
+        "src/core/submission.test.ts"
       ]
     }
   },

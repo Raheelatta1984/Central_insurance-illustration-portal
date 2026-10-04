@@ -563,6 +563,81 @@ function Wording({ data }: { data: WorldSnapshot }) {
   );
 }
 
+/**
+ * The filing log. The card a compliance officer actually works from: what went to the supervisor,
+ * through which channel, on whose authority, and what is still waiting for a reference back.
+ */
+type FilingResult = {
+  id: string; reference: string; status: string; filedAt?: string; filedBy?: string; channel?: string;
+  acknowledgedAt?: string; acknowledgedBy?: string; supervisorReference?: string;
+  manifest?: string;   // the filing response carries it; an acknowledgement does not
+  onTime?: boolean;
+  assessment?: { allowed: boolean; outcome: string; detail: string; deadline: string; graceEnds: string };
+  statement: { filings: number; acknowledged: number; awaiting: number; rejected: number; late: number; findings: number };
+  findings: { code: string; severity: string; detail: string }[];
+};
+
+function Submissions({ data }: { data: WorldSnapshot }) {
+  const [result, setResult] = useState<FilingResult | null>(null);
+  const [log, setLog] = useState(data.submissions);
+  const file = async (entity: 'conventional' | 'takaful') => {
+    const filed = await api<FilingResult>('/submissions/file', 'POST', { entity });
+    setResult(filed);
+    const w = await api<WorldSnapshot>('/world');
+    setLog(w.submissions);
+  };
+  const acknowledge = async (entity: 'conventional' | 'takaful') => {
+    const acked = await api<FilingResult>('/submissions/acknowledge', 'POST', { entity });
+    setResult(acked);
+    const w = await api<WorldSnapshot>('/world');
+    setLog(w.submissions);
+  };
+  const tone = (s: string) => (s === 'acknowledged' ? 'ok' : s === 'rejected' ? 'bad' : s === 'late-filed' ? 'warn' : 'info');
+  const rows = [...log.conventional.submissions.map((s) => ({ ...s, entity: 'conventional' })), ...log.takaful.submissions.map((s) => ({ ...s, entity: 'takaful' }))];
+  return (
+    <Card
+      title="The submission log — what was filed, and what came back"
+      subtitle={`conventional: ${log.conventional.statement.filings} filed, ${log.conventional.statement.acknowledged} acknowledged, ${log.conventional.statement.awaiting} awaiting · takaful: ${log.takaful.statement.filings} filed, ${log.takaful.statement.awaiting} awaiting — a filing is not done when it leaves, it is done when it is acknowledged`}
+      wide
+    >
+      <div className="row">
+        <button onClick={() => file('conventional')}>File the return with the supervisor</button>
+        <button onClick={() => acknowledge('takaful')}>Record the supervisor's acknowledgement</button>
+      </div>
+      {result && (
+        <div className="stack">
+          <p>
+            <Pill tone={tone(result.status)}>{result.status}</Pill>{' '}
+            <b>{result.reference}</b> — <span className="muted small">{result.supervisorReference ? `${result.supervisorReference} recorded by ${result.acknowledgedBy}` : `${result.filedAt} · ${result.filedBy} · ${result.channel}`}</span>
+          </p>
+          {result.assessment && <p className="small">{result.assessment.detail}</p>}
+          {result.manifest && <p className="small muted">{result.manifest}</p>}
+          {result.findings.length > 0 && (
+            <ul className="list">
+              {result.findings.map((f) => <li key={`${f.code}-${f.detail}`}><Pill tone={f.severity === 'error' ? 'bad' : f.severity === 'warning' ? 'warn' : 'info'}>{f.code}</Pill> {f.detail}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+      <Table
+        head={['Filing', 'Entity', 'Return', 'Period', 'Filed', 'Channel', 'Ties to', 'Status', 'Supervisor reference']}
+        rows={rows.map((s) => [
+          <span key={s.id} className="small">{s.id}<br /><span className="muted">{s.filedBy}</span></span>,
+          <span key={`${s.id}-e`} className="small">{s.entity}</span>,
+          <span key={`${s.id}-r`} className="small">{s.returnCode}<br /><span className="muted">v{s.extractVersion} · {s.extractId}</span></span>,
+          <span key={`${s.id}-p`} className="small">{s.period.from} → {s.period.to}</span>,
+          <span key={`${s.id}-f`} className="small">{s.filedAt}<br /><span className="muted">{s.onTime ? 'inside the window' : `late, approved by ${s.lateApprovedBy}`}</span></span>,
+          <span key={`${s.id}-c`} className="small">{s.channel}</span>,
+          <span key={`${s.id}-t`} className="small">{s.controls.total} controls, {s.controls.disagreeing} disagreeing<br /><span className="muted">{s.ruleDecisions.length} rule decision(s)</span></span>,
+          <Pill key={`${s.id}-s`} tone={tone(s.status)}>{s.status}</Pill>,
+          <span key={`${s.id}-x`} className="small">{s.supervisorReference ?? (s.rejectionReason ? `rejected: ${s.rejectionReason}` : '—')}</span>,
+        ])}
+      />
+      <p className="muted small">{log.limitation}</p>
+    </Card>
+  );
+}
+
 function Regulatory({ data }: { data: WorldSnapshot }) {
   const [result, setResult] = useState<{ allowed: boolean; blockers: string[]; requiredSteps: string[] } | null>(null);
   const [line, setLine] = useState<'motor' | 'medical' | 'life'>('medical');
@@ -596,6 +671,7 @@ function Regulatory({ data }: { data: WorldSnapshot }) {
       </Card>
       <RuleBook data={data} />
       <Wording data={data} />
+      <Submissions data={data} />
     </div>
   );
 }
