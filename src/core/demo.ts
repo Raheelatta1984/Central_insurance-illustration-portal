@@ -10,6 +10,7 @@
 import { Ledger } from './ledger.js';
 import { buildChart } from './chart.js';
 import { ClaimsEngine } from './claims.js';
+import { ProductRules, RiskProfile, UnderwritingEngine } from './underwriting.js';
 import { Money, money, zero, formatAmount, toDecimalString } from './money.js';
 import { unitsFromDecimal, unitsToDecimal } from './units.js';
 import { NavEngine, singlePriceFund, FundDef } from './fund.js';
@@ -34,6 +35,7 @@ export interface World {
   readonly takaful: TakafulEngine;
   readonly claims: ClaimsEngine;
   readonly takafulClaims: ClaimsEngine;
+  readonly underwriting: UnderwritingEngine;
   readonly parties: PartyRegistry;
   readonly labels: LabelRegistry;
   readonly ingest: IngestionFabric;
@@ -207,6 +209,51 @@ export function buildWorld(): World {
   takafulClaims.approve(tkfClaim.id, { amount: money(400_00, currency), at: '2026-10-01T09:00:00+04:00', by: 'agent/claims-triage', role: 'ai-straight-through', isAi: true });
   takafulClaims.settle(tkfClaim.id, { amount: money(400_00, currency), at: '2026-10-02T12:00:00+04:00', by: 'finance-ops' });
 
+  /* Underwriting. Two manuals, four applications: a clean acceptance, a rated life, a case that
+     reaches the reinsurer, and one an AI agent accepts inside its own limit — nothing more. */
+  const LIFE_MANUAL: ProductRules = {
+    productId: 'PROD-LIFE-TERM', line: 'life',
+    minAge: 18, maxAge: 65, referralMarginYears: 5, maxBmi: 32,
+    acceptedCountries: ['AE', 'MY', 'GB'], standardOccupations: [1, 2],
+    baseRatePerThousandMinor: 3_000n, incomeMultiple: 20,
+    automaticBindingLimitMinor: 1_000_000_00n, facultativeThresholdMinor: 2_000_000_00n,
+    evidenceBands: [
+      { fromAge: 40, fromSumAssuredMinor: 500_000_00n, requirements: ['blood profile', 'urine analysis'] },
+      { fromAge: 55, fromSumAssuredMinor: 100_000_00n, requirements: ['ECG', 'treadmill test'] },
+    ],
+    aiStraightThroughMinor: 500_000_00n,
+  };
+  const MEDICAL_MANUAL: ProductRules = { ...LIFE_MANUAL, productId: 'PROD-MEDICAL-GRP', line: 'medical', incomeMultiple: 10 };
+  const underwriting = new UnderwritingEngine(new Map([[LIFE_MANUAL.productId, LIFE_MANUAL], [MEDICAL_MANUAL.productId, MEDICAL_MANUAL]]), currency);
+
+  const profileOf = (overrides: Partial<RiskProfile> = {}): RiskProfile => ({
+    partyId: 'PTY-0001', age: 38, sex: 'male', smoker: false, heightCm: 178, weightKg: 78,
+    occupationClass: 1, pursuits: [], conditions: [], familyHistory: [],
+    residenceCountry: 'AE', annualIncome: money(30_000_00, currency), ...overrides,
+  });
+
+  const cleanApp = underwriting.register({ partyId: 'PTY-0001', productId: 'PROD-LIFE-TERM', sumAssured: money(250_000_00, currency), at: '2026-09-20T10:00:00+04:00', profile: profileOf() });
+  underwriting.decide(cleanApp.id, { at: '2026-09-20T10:05:00+04:00', by: 'senior-underwriter' });
+
+  const ratedApp = underwriting.register({
+    partyId: 'PTY-0002', productId: 'PROD-LIFE-TERM', sumAssured: money(300_000_00, currency), at: '2026-09-22T10:00:00+04:00',
+    profile: profileOf({ partyId: 'PTY-0002', smoker: true, conditions: ['diabetes-type-2'], occupationClass: 3 }),
+  });
+  underwriting.decide(ratedApp.id, { at: '2026-09-22T10:30:00+04:00', by: 'senior-underwriter' });
+
+  const referralApp = underwriting.register({
+    partyId: 'PTY-0003', productId: 'PROD-LIFE-TERM', sumAssured: money(2_500_000_00, currency), at: '2026-09-30T10:00:00+04:00',
+    profile: profileOf({ partyId: 'PTY-0003', age: 57, conditions: ['cardiac-history'], occupationClass: 3, annualIncome: money(400_000_00, currency) }),
+  });
+  underwriting.assess(referralApp.id);   // assessed, waiting on a human and the reinsurance desk
+
+  const aiApp = underwriting.register({
+    partyId: 'PTY-0004', productId: 'PROD-LIFE-TERM', sumAssured: money(120_000_00, currency), at: '2026-10-01T10:00:00+04:00',
+    profile: profileOf({ partyId: 'PTY-0004', age: 29 }),
+  });
+  underwriting.decide(aiApp.id, { at: '2026-10-01T10:00:05+04:00', by: 'agent/quote-bot', isAi: true });
+
+
   const parties = new PartyRegistry(tenant.id);
   const ahmed: Party = {
     id: 'PTY-0001', kind: 'person', names: { en: 'Ahmed Al Mansoori', ar: 'أحمد المنصوري' }, dateOfBirth: '1985-04-12',
@@ -310,7 +357,7 @@ export function buildWorld(): World {
       { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional', currency, regulator: 'CBUAE' },
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
-    ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, parties, labels, ingest, ai,
+    ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity,
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
@@ -318,6 +365,52 @@ export function buildWorld(): World {
 }
 
 /* ------------------------------------------------------------ projections */
+
+/** Underwriting, in the shape the console and the API both read. */
+function underwritingView(engine: UnderwritingEngine, asOf: string) {
+  const book = engine.bookPremium();
+  return {
+    book: {
+      policies: book.policies,
+      standard: formatAmount(book.standard),
+      loaded: formatAmount(book.loaded),
+      extra: formatAmount(book.extra),
+    },
+    queue: engine.queue().map((q) => ({ ...q })),
+    cession: engine.cessionSchedule().map((c) => ({ ...c, totalSumAssuredLabel: formatAmount(c.totalSumAssured) })),
+    share: engine.reinsuranceShare(2_500).map((s) => ({ ...s, cededLabel: formatAmount(s.ceded), retainedLabel: formatAmount(s.retained) })),
+    exposure: ['PTY-0001', 'PTY-0002', 'PTY-0003', 'PTY-0004'].map((partyId) => {
+      const exposure = engine.aggregateExposure(partyId);
+      return {
+        partyId, policies: exposure.policies,
+        totalSumAssured: formatAmount(exposure.totalSumAssured),
+        withinAutomaticLimit: exposure.withinAutomaticLimit,
+        facultativeRequired: exposure.facultativeRequired,
+      };
+    }),
+    applications: engine.list().map((a) => {
+      const assessment = a.decision ?? engine.assess(a.id);
+      return {
+        id: a.id, partyId: a.partyId, productId: a.productId, at: a.at,
+        age: a.profile.age, smoker: a.profile.smoker, bmi: engine.bmi(a.profile),
+        occupationClass: a.profile.occupationClass, conditions: [...a.profile.conditions], pursuits: [...a.profile.pursuits],
+        sumAssured: formatAmount(a.sumAssured),
+        outcome: assessment.outcome,
+        decidedBy: assessment.decidedBy || null,
+        decidedByAi: assessment.decidedByAi,
+        extraMortalityBps: assessment.extraMortalityBps,
+        standardPremium: formatAmount(assessment.standardPremium),
+        loadedPremium: formatAmount(assessment.loadedPremium),
+        exclusions: [...assessment.exclusions],
+        evidence: [...assessment.evidence],
+        referrals: [...assessment.referrals],
+        reinsurance: { mode: assessment.reinsurance.mode, threshold: formatAmount(assessment.reinsurance.threshold), note: assessment.reinsurance.note },
+        reasons: assessment.reasons.map((r) => ({ code: r.code, detail: r.detail, source: r.source, referral: r.referral === true })),
+      };
+    }),
+    asOf,
+  };
+}
 
 /* ------------------------------------------------------------ claims views */
 
@@ -485,6 +578,7 @@ export function worldSnapshot(w: World) {
       preSaleHealthBlocked: preSaleCheck(AE_PACK, { productLine: 'medical', hasNeedAnalysis: false, hasNeedId: false, surveyCompleted: false, comparisonPresented: false, customerIsResident: true, consentCaptured: true }),
       comparison: comparisonMatrix(w.quotes).map((c) => ({ ...c, premiumLabel: formatAmount(money(BigInt(c.premium) * 100n, 'AED')), scorePct: Math.round(c.score * 100) })),
     },
+    underwriting: underwritingView(w.underwriting, asOf),
     claims: claimView(w.claims, asOf),
     takafulClaims: claimView(w.takafulClaims, asOf),
     ledger: {

@@ -10,7 +10,7 @@ import type { WorldSnapshot } from '../core/demo';
 
 type Tab =
   | 'overview' | 'policyholder' | 'decisions' | 'cover' | 'funds' | 'takaful'
-  | 'claims' | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
+  | 'underwriting' | 'claims' | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
 
 const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'overview', label: 'Overview', icon: '◈' },
@@ -19,6 +19,7 @@ const TABS: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'cover', label: 'Cover control', icon: '⏻' },
   { id: 'funds', label: 'Funds & NAV', icon: '≣' },
   { id: 'takaful', label: 'Takaful', icon: '☾' },
+  { id: 'underwriting', label: 'Underwriting', icon: '⚖' },
   { id: 'claims', label: 'Claims', icon: '✚' },
   { id: 'onboarding', label: 'Onboarding', icon: '⛨' },
   { id: 'ingest', label: 'Ingestion', icon: '⇥' },
@@ -513,6 +514,7 @@ function App() {
       case 'cover': return <Cover data={data} />;
       case 'funds': return <Funds data={data} />;
       case 'takaful': return <Takaful data={data} />;
+      case 'underwriting': return <Underwriting data={data} />;
       case 'claims': return <Claims data={data} />;
       case 'onboarding': return <Onboarding data={data} />;
       case 'ingest': return <Ingest data={data} />;
@@ -560,6 +562,169 @@ function App() {
 }
 
 
+
+
+/* ----------------------------------------------------------- underwriting */
+
+type UwView = WorldSnapshot['underwriting'];
+type UwApp = UwView['applications'][number];
+
+const outcomeTone = (outcome: string): 'ok' | 'warn' | 'bad' | 'info' =>
+  outcome === 'standard' ? 'ok' : outcome === 'declined' ? 'bad' : outcome === 'referred' ? 'warn' : 'info';
+
+/** Underwriting: the manual, the queue, the reinsurance position — and the authority limits. */
+function Underwriting({ data }: { data: WorldSnapshot }) {
+  const [view, setView] = useState<UwView>(data.underwriting);
+  const [selected, setSelected] = useState<string>(data.underwriting.applications[0]?.id ?? '');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setView(data.underwriting);
+    setSelected(data.underwriting.applications[0]?.id ?? '');
+  }, [data]);
+
+  const reload = async () => { setView(await api<UwView>('/underwriting')); };
+
+  const decide = async (label: string, body: Record<string, unknown>) => {
+    setBusy(label); setError(null); setNote(null);
+    try {
+      const result = await api<Record<string, unknown>>('/underwriting/decide', 'POST', body);
+      setNote(`${label}: ${JSON.stringify(result)}`);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      await reload().catch(() => undefined);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const app: UwApp | undefined = view.applications.find((a) => a.id === selected) ?? view.applications[0];
+  const waiting = app && app.outcome === 'referred';
+
+  return (
+    <div className="grid">
+      <Card title="Accepted book" subtitle="Standard against loaded premium, from the underwriting decisions only">
+        <div className="stat"><span>Policies</span><b>{view.book.policies}</b></div>
+        <div className="stat"><span>Standard premium</span><b>{view.book.standard}</b></div>
+        <div className="stat"><span>Loaded premium</span><b>{view.book.loaded}</b></div>
+        <div className="stat"><span>Extra mortality priced in</span><b>{view.book.extra}</b></div>
+      </Card>
+
+      <Card title="Reinsurer's share" subtitle="A 25% quota share, per product line, over accepted sum assured">
+        {view.share.map((s) => (
+          <div key={s.productId}>
+            <div className="stat"><span>{s.productId} · ceded</span><b>{s.cededLabel}</b></div>
+            <div className="stat"><span>retained</span><b>{s.retainedLabel}</b></div>
+          </div>
+        ))}
+        <table>
+          <thead><tr><th>Party</th><th>Policies</th><th>Sum assured</th><th>Binding limit</th><th>Treaty</th></tr></thead>
+          <tbody>
+            {view.cession.map((c) => (
+              <tr key={c.partyId}>
+                <td>{c.partyId}</td>
+                <td>{c.policies}</td>
+                <td>{c.totalSumAssuredLabel}</td>
+                <td>{c.mode}</td>
+                <td>{c.mode === 'facultative' ? <Pill tone="warn">ask the reinsurer</Pill> : <Pill tone="info">inside automatic</Pill>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      <Card title="Exposure per life" subtitle="What the reinsurer asks about first">
+        <table>
+          <thead><tr><th>Party</th><th>Policies</th><th>On risk</th><th>Within automatic limit</th></tr></thead>
+          <tbody>
+            {view.exposure.map((e) => (
+              <tr key={e.partyId}>
+                <td>{e.partyId}</td>
+                <td>{e.policies}</td>
+                <td>{e.totalSumAssured}</td>
+                <td>{e.withinAutomaticLimit ? <Pill tone="ok">yes</Pill> : <Pill tone="warn">no — facultative</Pill>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      <Card title="Human queue" subtitle={`${view.queue.length} case(s) waiting on a named role`} wide>
+        {view.queue.length === 0 ? <p className="muted">Nothing is waiting on a human.</p> : (
+          <table>
+            <thead><tr><th>Application</th><th>Party</th><th>Rules say</th><th>Waiting on</th><th>Referral points</th></tr></thead>
+            <tbody>
+              {view.queue.map((q) => (
+                <tr key={q.applicationId}>
+                  <td>{q.applicationId}</td>
+                  <td>{q.partyId}</td>
+                  <td><Pill tone={outcomeTone(q.outcome)}>{q.outcome}</Pill></td>
+                  <td>{q.waitingOn.join(', ')}</td>
+                  <td className="small">{q.reasonCodes.join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
+      <Card title="Applications" subtitle="Every loading, exclusion and evidence requirement, with its reason" wide>
+        <table>
+          <thead><tr><th>Application</th><th>Party</th><th>Profile</th><th>Sum assured</th><th>Decision</th><th>Extra</th><th>Premium</th><th>Decided by</th><th></th></tr></thead>
+          <tbody>
+            {view.applications.map((a) => (
+              <tr key={a.id}>
+                <td>{a.id}</td>
+                <td>{a.partyId}</td>
+                <td className="small">age {a.age} · BMI {a.bmi} · class {a.occupationClass}{a.smoker ? ' · smoker' : ''}</td>
+                <td>{a.sumAssured}</td>
+                <td><Pill tone={outcomeTone(a.outcome)}>{a.outcome}</Pill></td>
+                <td>{a.extraMortalityBps} bps</td>
+                <td className="small">{a.loadedPremium}</td>
+                <td className="small">{a.decidedBy ?? '—'} {a.decidedByAi ? <Pill tone="warn">AI</Pill> : null}</td>
+                <td><button className="ghost" onClick={() => setSelected(a.id)}>assess</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      {app && (
+        <Card title={`Assessment — ${app.id}`} subtitle={`${app.productId} · sum assured ${app.sumAssured} · reinsurance ${app.reinsurance.mode}: ${app.reinsurance.note}`} wide>
+          <table>
+            <thead><tr><th>Reason</th><th>Code</th><th>Detail</th></tr></thead>
+            <tbody>
+              {app.reasons.map((r) => (
+                <tr key={r.code}>
+                  <td>{r.source}{r.referral ? <Pill tone="warn">referral</Pill> : null}</td>
+                  <td className="small">{r.code}</td>
+                  <td className="small">{r.detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="row">
+            <button disabled={busy !== null || !waiting} onClick={() => decide('human decision', { applicationId: app.id, by: 'senior-underwriter' })}>
+              {busy === 'human decision' ? 'Deciding…' : 'Senior underwriter takes the case'}
+            </button>
+            <button className="ghost" disabled={busy !== null}
+              onClick={() => decide('AI decision', { applicationId: app.id, by: 'agent/quote-bot', isAi: true })}>
+              Ask the AI agent to decide
+            </button>
+          </div>
+          {app.evidence.length > 0 && <p className="small">Evidence the file must carry: {app.evidence.join(' · ')}</p>}
+          {app.exclusions.length > 0 && <p className="small warnText">Exclusions on the issued terms: {app.exclusions.join(' · ')}</p>}
+        </Card>
+      )}
+
+      {note && <Card title="Last call" wide><div className="code">{note}</div></Card>}
+      {error && <Card title="Refused" wide><div className="errorBox">{error}</div></Card>}
+    </div>
+  );
+}
 
 /* ---------------------------------------------------------------- claims */
 

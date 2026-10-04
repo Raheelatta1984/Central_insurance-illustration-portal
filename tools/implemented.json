@@ -410,6 +410,46 @@
         "src/server/main.ts",
         "src/ui/main.tsx"
       ]
+    },
+    "UW": {
+      "keywords": [
+        "underwriting",
+        "risk class",
+        "loading",
+        "rating",
+        "exclusion",
+        "evidence",
+        "medical",
+        "bmi",
+        "build",
+        "occupation",
+        "pursuit",
+        "financial underwriting",
+        "aggregate",
+        "binding limit",
+        "facultative",
+        "cession",
+        "reinsurance referral",
+        "decline",
+        "postpone",
+        "referral"
+      ],
+      "layers": [
+        "design",
+        "contract",
+        "domain",
+        "api",
+        "test",
+        "docs",
+        "ui",
+        "store"
+      ],
+      "evidence": [
+        "src/core/underwriting.ts",
+        "src/core/demo.ts",
+        "src/server/main.ts",
+        "src/ui/main.tsx"
+      ]
     }
   },
   "testCommand": "npx vitest run --reporter=dot",
@@ -430,6 +470,7 @@
     "ONBD": "src/core/regulatory.test.ts",
     "AI": "src/core/moneyproof.test.ts",
     "DOC": "src/core/regulatory.test.ts",
-    "CLM": "src/core/claims.test.ts"
+    "CLM": "src/core/claims.test.ts",
+    "UW": "src/core/underwriting.test.ts"
   }
 }

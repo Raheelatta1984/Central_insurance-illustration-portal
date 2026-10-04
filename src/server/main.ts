@@ -217,6 +217,49 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       return true;
     }
 
+    case 'GET /underwriting': {
+      const engine = state.world.underwriting;
+      const book = engine.bookPremium();
+      json(res, 200, {
+        book: { policies: book.policies, standard: formatAmount(book.standard), loaded: formatAmount(book.loaded), extra: formatAmount(book.extra) },
+        queue: engine.queue(),
+        exposure: ['PTY-0001', 'PTY-0002', 'PTY-0003', 'PTY-0004'].map((partyId) => {
+          const exposure = engine.aggregateExposure(partyId);
+          return { partyId, policies: exposure.policies, totalSumAssured: formatAmount(exposure.totalSumAssured), withinAutomaticLimit: exposure.withinAutomaticLimit, facultativeRequired: exposure.facultativeRequired };
+        }),
+        applications: engine.list().map((a) => {
+          const d = a.decision ?? engine.assess(a.id);
+          return {
+            id: a.id, partyId: a.partyId, productId: a.productId, sumAssured: formatAmount(a.sumAssured),
+            outcome: d.outcome, decidedBy: d.decidedBy || null, decidedByAi: d.decidedByAi,
+            extraMortalityBps: d.extraMortalityBps, standardPremium: formatAmount(d.standardPremium),
+            loadedPremium: formatAmount(d.loadedPremium), exclusions: [...d.exclusions], evidence: [...d.evidence],
+            referrals: [...d.referrals], reinsurance: { mode: d.reinsurance.mode, note: d.reinsurance.note },
+            reasons: d.reasons.map((r) => ({ code: r.code, detail: r.detail, source: r.source, referral: r.referral === true })),
+          };
+        }),
+      });
+      return true;
+    }
+
+    case 'POST /underwriting/decide': {
+      const applicationId = String(payload['applicationId']);
+      const decision = state.world.underwriting.decide(applicationId, {
+        at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`),
+        by: String(payload['by'] ?? 'senior-underwriter'),
+        isAi: Boolean(payload['isAi'] ?? false),
+        ...(Array.isArray(payload['acceptReferralReasonCodes']) ? { acceptReferralReasonCodes: payload['acceptReferralReasonCodes'] as string[] } : {}),
+      });
+      json(res, 200, {
+        applicationId, outcome: decision.outcome, decidedBy: decision.decidedBy, decidedByAi: decision.decidedByAi,
+        extraMortalityBps: decision.extraMortalityBps,
+        standardPremium: formatAmount(decision.standardPremium), loadedPremium: formatAmount(decision.loadedPremium),
+        exclusions: decision.exclusions, evidence: decision.evidence, referrals: decision.referrals,
+        reasons: decision.reasons.map((r) => ({ code: r.code, detail: r.detail, source: r.source, referral: r.referral === true })),
+      });
+      return true;
+    }
+
     case 'GET /claims': {
       json(res, 200, {
         conventional: claimViewForServer(state.world.claims, state.world.asOf),
