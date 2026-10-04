@@ -9,3 +9,7 @@ coverage/
 .env.*
 dist-server/
 reports/
+
+# demo pack: keep the gallery, posters, compact video and manifest; the full recordings and
+# full-page PNGs are regenerable with `npm run demo:pack`
+demo/video/raw/
