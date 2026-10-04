@@ -24,6 +24,7 @@ import { applyBps } from './money.js';
 import { AE_PACK, comparisonMatrix, preSaleCheck, QuoteOffer } from './regulatory.js';
 import { REINSURANCE_SEED, TreatyRegister } from './reinsurance.js';
 import { ExtractEngine, IssuedExtract, formatCell } from './extracts.js';
+import { PlacementFacts, UAE_RULES, UaeRuleBook, ratingRank } from './uae.js';
 import { IngestionFabric } from './ingest.js';
 import { AgentRuntime } from './ai.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
@@ -43,6 +44,7 @@ export interface World {
   readonly reinsurance: TreatyRegister;      // conventional treaties
   readonly retakaful: TreatyRegister;        // the takaful window's own treaties, kept apart
   readonly extracts: ExtractEngine;          // regulatory, actuarial and bordereau extracts, issued and kept
+  readonly rules: UaeRuleBook;               // the UAE reinsurance rule book, and every decision taken under it
   readonly takafulExtracts: ExtractEngine;   // the window files its own return, from its own fund
 
   readonly group: GroupConsolidator;
@@ -323,6 +325,52 @@ export function buildWorld(): World {
     register: retakaful, claims: takafulClaims,
   });
 
+  // The UAE reinsurance rule book. Every placement the desk makes goes past it, and what it answers
+  // is kept: the five decisions below are the world as it stands — two allowed, one held for a human,
+  // two refused — and each one names the rule, quotes the instrument and states its evidence.
+  const rules = new UaeRuleBook();
+  const onFile = [
+    'home-state licence certificate', 'CBUAE licence extract', 'rating agency report',
+    'approved retention and reinsurance plan', 'board minute of the annual review',
+    'shariah committee approval', 'head office certificate', 'bank guarantee',
+  ];
+  const plan = { approved: true, reviewedAt: '2026-02-10' };
+  rules.enforce({
+    subject: 'QS-25-2026 cession of LIFE-0001 and the motor book',
+    at: '2026-09-30', by: 'reinsurance/life-desk', basis: 'conventional',
+    counterparty: { name: 'Emirates Re', licensedIn: 'AE', licenceClass: 'all', rating: 'A', ratingAgency: 'S&P' },
+    cession: { treatyId: 'QS-25-2026', kind: 'quota-share', lineOfBusiness: 'life', shareBps: 2_500 },
+    retentionPlan: plan, documents: onFile,
+  });
+  rules.enforce({
+    subject: 'RTKF-QS-20 cession of TKF-0001',
+    at: '2026-09-30', by: 'takaful/reinsurance-desk', basis: 'takaful',
+    counterparty: { name: 'MENA Retakaful', licensedIn: 'foreign', licenceClass: 'all', rating: 'A-', ratingAgency: 'S&P', retakaful: true },
+    cession: { treatyId: 'RTKF-QS-20', kind: 'quota-share', lineOfBusiness: 'life', shareBps: 2_000 },
+    retentionPlan: plan, documents: onFile,
+  });
+  rules.enforce({
+    subject: 'FAC-MOTOR facultative offer from Gulf Reinsurance PSC',
+    at: '2026-10-02', by: 'reinsurance/motor-desk', basis: 'conventional',
+    counterparty: { name: 'Gulf Reinsurance PSC', licensedIn: 'foreign', licenceClass: 'all' },
+    cession: { treatyId: 'FAC-MOTOR', kind: 'facultative', lineOfBusiness: 'motor', shareBps: 4_000 },
+    retentionPlan: plan, documents: ['home-state licence certificate', 'CBUAE licence extract', 'approved retention and reinsurance plan', 'board minute of the annual review'],
+  });
+  rules.enforce({
+    subject: 'an attempt to place participant money with a conventional reinsurer',
+    at: '2026-10-05', by: 'takaful/reinsurance-desk', basis: 'takaful',
+    counterparty: { name: 'Emirates Re', licensedIn: 'AE', licenceClass: 'all', rating: 'A' },
+    cession: { treatyId: 'RTKF-QS-20', kind: 'quota-share', lineOfBusiness: 'life', shareBps: 2_000 },
+    retentionPlan: plan, documents: onFile,
+  });
+  rules.enforce({
+    subject: 'an offshore placement offered on the strength of a letterhead',
+    at: '2026-10-05', by: 'reinsurance/motor-desk', basis: 'conventional',
+    counterparty: { name: 'Oriana Re (unlicensed)', licensedIn: 'unlicensed', rating: 'A' },
+    cession: { treatyId: 'FAC-MOTOR', kind: 'facultative', lineOfBusiness: 'motor', shareBps: 4_000 },
+    retentionPlan: plan, documents: ['approved retention and reinsurance plan', 'board minute of the annual review'],
+  });
+
   const ratedDecision = underwriting.decisionFor(ratedApp.id)!;
   const cleanDecision = underwriting.decisionFor(cleanApp.id)!;
 
@@ -582,7 +630,7 @@ export function buildWorld(): World {
       { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
     ],
     ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, reinsurance, retakaful,
-    extracts, takafulExtracts,
+    extracts, takafulExtracts, rules,
     group, groupRates, parties, labels, ingest, ai,
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
@@ -934,6 +982,40 @@ export function extractSnapshot(w: World) {
   };
 }
 
+/**
+ * The rule book as the console reads it: the rules themselves (with both languages), every decision
+ * taken under them, and a placement a controller can run now to see what the desk would be told.
+ */
+export function uaeRuleSnapshot(w: World) {
+  const statement = w.rules.statement();
+  return {
+    country: 'AE',
+    rules: UAE_RULES.map((r) => ({
+      id: r.id, title: r.title, severity: r.severity,
+      instrument: `${r.instrument.reference} — ${r.instrument.title}`,
+      inForce: r.instrument.inForce,
+      note: r.instrument.note ?? null,
+      clause: r.clause,
+      requirement: r.requirement,
+      requirementAr: r.requirementAr,
+      evidence: [...r.evidence],
+    })),
+    decisions: w.rules.decisions().map((d) => ({
+      id: d.id, subject: d.subject, at: d.at, by: d.by, basis: d.basis, counterparty: d.counterparty,
+      decision: d.decision,
+      evidence: d.evidence,
+      blocking: d.blocking.map((f) => ({ ruleId: f.ruleId, state: f.state, severity: f.severity, detail: f.detail, missing: [...f.evidenceMissing] })),
+      findings: d.findings.map((f) => ({
+        ruleId: f.ruleId, title: f.title, state: f.state, severity: f.severity,
+        detail: f.detail, clause: f.clause, requirement: f.requirement, requirementAr: f.requirementAr,
+        evidenceRequired: [...f.evidenceRequired], evidenceOnFile: [...f.evidenceOnFile], evidenceMissing: [...f.evidenceMissing],
+      })),
+    })),
+    statement,
+    limitation: w.rules.limitation(),
+  };
+}
+
 export function worldSnapshot(w: World) {
   const latest = DAYS[DAYS.length - 1]!;
   const asOf = w.asOf;
@@ -1074,6 +1156,7 @@ export function worldSnapshot(w: World) {
     underwriting: underwritingSnapshot(w.underwriting, asOf),
     reinsurance: reinsuranceSnapshot(w),
     extracts: extractSnapshot(w),
+    uaeRules: uaeRuleSnapshot(w),
     group: groupSnapshot(w, false),
     claims: claimsSnapshot(w.claims, asOf),
     takafulClaims: claimsSnapshot(w.takafulClaims, asOf),

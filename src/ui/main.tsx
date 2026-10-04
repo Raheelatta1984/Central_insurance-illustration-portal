@@ -386,6 +386,91 @@ function Parties({ data }: { data: WorldSnapshot }) {
   );
 }
 
+/**
+ * The UAE reinsurance rule book. Two buttons, because the point is the difference between them: the
+ * same desk, the same treaty, and one placement allowed while another is held for a named human with
+ * the missing evidence listed. The rules themselves are shown with their instruments and their Arabic
+ * wording, because that is what an examiner asks to see.
+ */
+type RuleCheck = {
+  scenario: string; decision: string; id: string; subject: string; evidence: string;
+  blocking: { ruleId: string; state: string; severity: string; detail: string; clause: string; requirement: string; requirementAr: string; evidenceMissing: string[] }[];
+  statement: { rules: number; decisions: number; allow: number; escalate: number; refuse: number; byRule: readonly { ruleId: string; title: string; severity: string; raised: number }[] };
+  limitation: string;
+};
+
+function RuleBook({ data }: { data: WorldSnapshot }) {
+  const [check, setCheck] = useState<RuleCheck | null>(null);
+  const [summary, setSummary] = useState<RuleCheck['statement']>(data.uaeRules.statement);
+  const run = async (scenario: string) => {
+    const result = await api<RuleCheck>('/regulatory/uae/check', 'POST', { scenario });
+    setCheck(result);
+    setSummary(result.statement);
+  };
+  const decisions = data.uaeRules.decisions;
+  const tone = (d: string) => (d === 'allow' ? 'ok' : d === 'escalate' ? 'warn' : 'bad');
+  return (
+    <Card
+      title="UAE reinsurance rule book — decided, not described"
+      subtitle={`${summary.rules} rules held as data, each citing its instrument and clause; ${summary.decisions} decisions taken under them (${summary.allow} allowed, ${summary.escalate} held for a human, ${summary.refuse} refused)`}
+      wide
+    >
+      <div className="row">
+        <button onClick={() => run('clean-placement')}>Check a clean placement</button>
+        <button onClick={() => run('unrated-counterparty')}>Check a placement with an unrated reinsurer</button>
+        <button onClick={() => run('unlicensed-counterparty')}>Check a placement with an unlicensed company</button>
+        <button onClick={() => run('participant-money')}>Check participant money going conventional</button>
+      </div>
+      {check && (
+        <div className="stack">
+          <p>
+            <Pill tone={tone(check.decision)}>{check.decision}</Pill>{' '}
+            <b>{check.subject}</b> — <span className="muted small">{check.id}</span>
+          </p>
+          <p className="small">{check.evidence}</p>
+          {check.blocking.length > 0 && (
+            <Table
+              head={['Rule', 'Answer', 'What the rule asks', 'Why this placement stops', 'Missing evidence']}
+              rows={check.blocking.map((f) => [
+                <b key={f.ruleId}>{f.ruleId}</b>,
+                <Pill key={`${f.ruleId}-s`} tone={f.state === 'breached' ? 'bad' : 'warn'}>{f.state}</Pill>,
+                <span key={`${f.ruleId}-r`} className="small">{f.requirement}<br /><span dir="rtl" lang="ar">{f.requirementAr}</span><br /><span className="muted">{f.clause}</span></span>,
+                <span key={`${f.ruleId}-d`} className="small">{f.detail}</span>,
+                <span key={`${f.ruleId}-m`} className="small">{f.evidenceMissing.length > 0 ? f.evidenceMissing.join(', ') : '—'}</span>,
+              ])}
+            />
+          )}
+          <p className="muted small">{check.limitation}</p>
+        </div>
+      )}
+      <h4>Decisions on the desk's record</h4>
+      <Table
+        head={['Decision', 'Placement', 'Answer', 'Counterparty', 'Why', 'Taken by']}
+        rows={decisions.map((d) => [
+          <span key={d.id} className="small">{d.id}<br /><span className="muted">{d.at}</span></span>,
+          <span key={`${d.id}-s`} className="small">{d.subject}</span>,
+          <Pill key={`${d.id}-a`} tone={tone(d.decision)}>{d.decision}</Pill>,
+          d.counterparty,
+          <span key={`${d.id}-w`} className="small">{d.blocking.length > 0 ? `${d.blocking[0]!.ruleId}: ${d.blocking[0]!.detail}` : 'every rule that applies is met'}</span>,
+          <span key={`${d.id}-b`} className="small">{d.by}</span>,
+        ])}
+      />
+      <h4>The rules</h4>
+      <Table
+        head={['Rule', 'What it requires', 'Instrument and clause', 'If breached', 'Evidence an examiner asks for', 'Raised']}
+        rows={data.uaeRules.rules.map((r) => [
+          <b key={r.id}>{r.id}<br /><span className="muted small">{r.title}</span></b>,
+          <span key={`${r.id}-q`} className="small">{r.requirement}<br /><span dir="rtl" lang="ar">{r.requirementAr}</span></span>,
+          <span key={`${r.id}-i`} className="small">{r.instrument}<br /><span className="muted">{r.clause}</span></span>,
+          <Pill key={`${r.id}-s`} tone={r.severity === 'refuse' ? 'bad' : r.severity === 'escalate' ? 'warn' : 'info'}>{r.severity}</Pill>,
+          <span key={`${r.id}-e`} className="small">{r.evidence.join(', ')}</span>,
+          String(data.uaeRules.statement.byRule.find((x) => x.ruleId === r.id)?.raised ?? 0),
+        ])}
+      />
+    </Card>
+  );
+}
+
 function Regulatory({ data }: { data: WorldSnapshot }) {
   const [result, setResult] = useState<{ allowed: boolean; blockers: string[]; requiredSteps: string[] } | null>(null);
   const [line, setLine] = useState<'motor' | 'medical' | 'life'>('medical');
@@ -417,6 +502,7 @@ function Regulatory({ data }: { data: WorldSnapshot }) {
           ])}
         />
       </Card>
+      <RuleBook data={data} />
     </div>
   );
 }

@@ -8,9 +8,10 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
-import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot } from '../core/demo.js';
+import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot, uaeRuleSnapshot } from '../core/demo.js';
 import { money, formatAmount } from '../core/money.js';
 import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
+import { UaeRuleError } from '../core/uae.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
 import { ClaimsEngine, ClaimCause } from '../core/claims.js';
@@ -224,6 +225,78 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     case 'GET /reinsurance': {
       // Exactly the shape the console renders, so the two can never drift apart.
       json(res, 200, reinsuranceSnapshot(state.world));
+      return true;
+    }
+
+    case 'GET /regulatory/uae-rules': {
+      // The rule book as data: every rule with its instrument, its clause and both languages, and the
+      // decisions taken under it. Nothing here is a summary of the rules — this is the rules.
+      json(res, 200, uaeRuleSnapshot(state.world));
+      return true;
+    }
+
+    case 'POST /regulatory/uae/check': {
+      // A placement put past the rule book. The console runs it with an unrated counterparty so the
+      // answer is the honest one an operator meets on a Monday: held for a named human, with the
+      // missing evidence named and the clause quoted.
+      const scenario = String(payload['scenario'] ?? 'unrated-counterparty');
+      const at = `${state.world.asOf}`;
+      const onFile = ['home-state licence certificate', 'CBUAE licence extract', 'approved retention and reinsurance plan', 'board minute of the annual review'];
+      const plan = { approved: true, reviewedAt: '2026-02-10' };
+      const base = {
+        at, by: String(payload['by'] ?? 'reinsurance/motor-desk'), basis: 'conventional' as const,
+        retentionPlan: plan,
+      };
+      const placements: Record<string, Parameters<typeof state.world.rules.enforce>[0]> = {
+        'unrated-counterparty': {
+          ...base, subject: 'a motor facultative offer from a reinsurer with no rating on file',
+          counterparty: { name: 'Gulf Reinsurance PSC', licensedIn: 'foreign' as const, licenceClass: 'all' },
+          cession: { treatyId: 'FAC-MOTOR', kind: 'facultative' as const, lineOfBusiness: 'motor', shareBps: 4_000 },
+          documents: onFile,   // the licence and the plan are on file; the rating nobody has seen is the point
+        },
+        'unlicensed-counterparty': {
+          ...base, subject: 'a motor facultative offer from an unlicensed offshore company',
+          counterparty: { name: 'Oriana Re (unlicensed)', licensedIn: 'unlicensed' as const, rating: 'A' },
+          cession: { treatyId: 'FAC-MOTOR', kind: 'facultative' as const, lineOfBusiness: 'motor', shareBps: 4_000 },
+          documents: onFile,
+        },
+        'participant-money': {
+          ...base, basis: 'takaful' as const, subject: 'an attempt to place participant risk money conventionally',
+          by: 'takaful/reinsurance-desk',
+          counterparty: { name: 'Emirates Re', licensedIn: 'AE' as const, licenceClass: 'all', rating: 'A' },
+          cession: { treatyId: 'RTKF-QS-20', kind: 'quota-share' as const, lineOfBusiness: 'life', shareBps: 2_000 },
+          documents: onFile,
+        },
+        'clean-placement': {
+          ...base, subject: 'a quota-share cession to a rated UAE reinsurer with the plan approved',
+          counterparty: { name: 'Emirates Re', licensedIn: 'AE' as const, licenceClass: 'all', rating: 'A', ratingAgency: 'S&P' },
+          cession: { treatyId: 'QS-25-2026', kind: 'quota-share' as const, lineOfBusiness: 'life', shareBps: 2_500 },
+          documents: [...onFile, 'shariah committee approval'],
+        },
+      };
+      const facts = placements[scenario];
+      if (!facts) { json(res, 400, { error: `no placement scenario called ${scenario}` }); return true; }
+      try {
+        const decision = state.world.rules.enforce(facts);
+        json(res, 200, {
+          scenario, decision: decision.decision, id: decision.id, subject: decision.subject,
+          evidence: decision.evidence,
+          blocking: decision.blocking.map((f) => ({
+            ruleId: f.ruleId, state: f.state, severity: f.severity, detail: f.detail,
+            clause: f.clause, requirement: f.requirement, requirementAr: f.requirementAr,
+            evidenceMissing: [...f.evidenceMissing],
+          })),
+          findings: decision.findings.map((f) => ({
+            ruleId: f.ruleId, title: f.title, state: f.state, severity: f.severity, detail: f.detail,
+            clause: f.clause, requirement: f.requirement, requirementAr: f.requirementAr,
+            evidenceRequired: [...f.evidenceRequired], evidenceOnFile: [...f.evidenceOnFile], evidenceMissing: [...f.evidenceMissing],
+          })),
+          statement: state.world.rules.statement(),
+          limitation: state.world.rules.limitation(),
+        });
+      } catch (err) {
+        json(res, err instanceof UaeRuleError ? 409 : 500, { error: String((err as Error).message) });
+      }
       return true;
     }
 

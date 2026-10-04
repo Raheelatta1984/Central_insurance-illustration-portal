@@ -479,7 +479,13 @@
         "actuarial exhibits",
         "treaty bordereaux",
         "extract issue and verify",
-        "deposit premium recognition"
+        "deposit premium recognition",
+        "UAE reinsurance rule book",
+        "counterparty licensing and rating floor",
+        "retention and reinsurance plan enforcement",
+        "retakaful-only participant money rule",
+        "bank guarantee and branch certificate checks",
+        "rule decisions as evidence"
       ],
       "layers": [
         "design",
@@ -501,7 +507,9 @@
         "docs/07-TOUR.md",
         "src/core/extracts.ts",
         "src/core/extracts.test.ts",
-        "src/core/demo.ts"
+        "src/core/demo.ts",
+        "src/core/uae.ts",
+        "src/core/uae.test.ts"
       ]
     }
   },

@@ -3,7 +3,7 @@
  * These tests guard the journeys the console shows and the numbers the API returns.
  */
 import { describe, expect, it } from 'vitest';
-import { buildWorld, claimsSnapshot, extractSnapshot, groupSnapshot, reinsuranceSnapshot, underwritingSnapshot, worldSnapshot } from './demo.js';
+import { buildWorld, claimsSnapshot, extractSnapshot, groupSnapshot, reinsuranceSnapshot, uaeRuleSnapshot, underwritingSnapshot, worldSnapshot } from './demo.js';
 import { money } from './money.js';
 import { AE_PACK } from './regulatory.js';
 
@@ -661,5 +661,31 @@ describe('the console can render every view the API serves', () => {
       }
     }
     for (const key of ['restrictedCash', 'receivedAsSecurity', 'interestCredited', 'offBalanceSheet']) expect(Object.keys(view.security.ledger)).toContain(key);
+  });
+});
+
+describe('the UAE rule book in the world', () => {
+  it('carries every rule with both languages, and the five decisions the desk has taken under it', () => {
+    const view = worldSnapshot(buildWorld());
+    const book = view.uaeRules;
+    expect(book.rules.length).toBe(12);
+    expect(book.rules.every((r) => /[\u0600-\u06FF]/.test(r.requirementAr))).toBe(true);
+    expect(book.rules.every((r) => r.instrument.includes('—') && r.clause.length > 40)).toBe(true);
+    expect(book.decisions.map((d) => d.decision)).toEqual(['allow', 'allow', 'escalate', 'refuse', 'refuse']);
+    expect(book.statement).toMatchObject({ rules: 12, decisions: 5, allow: 2, escalate: 1, refuse: 2 });
+    expect(book.decisions[0]!.blocking).toEqual([]);
+    expect(book.decisions[2]!.blocking[0]!.ruleId).toBe('UAE-RI-02');
+    expect(book.decisions[2]!.blocking[0]!.missing).toContain('rating agency report');
+    expect(book.decisions[3]!.blocking[0]!.ruleId).toBe('UAE-RI-09');
+    expect(book.decisions[4]!.blocking[0]!.detail).toContain('no licence');
+    expect(book.limitation).toContain('append-only');
+  });
+
+  it('does not let a read of the world add a decision: enforce is what moves the log', () => {
+    const w = buildWorld();
+    const first = uaeRuleSnapshot(w).statement.decisions;
+    uaeRuleSnapshot(w);
+    expect(uaeRuleSnapshot(w).statement.decisions).toBe(first);
+    expect(w.rules.statement().decisions).toBe(first);
   });
 });

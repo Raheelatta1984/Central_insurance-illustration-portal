@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T09:35:25.095Z",
+  "capturedAt": "2026-10-04T09:58:04.368Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -2166,6 +2166,721 @@
         "unitHoldings": 9
       }
     },
+    "GET /api/regulatory/uae-rules": {
+      "status": 200,
+      "body": {
+        "country": "AE",
+        "rules": [
+          {
+            "id": "UAE-RI-01",
+            "title": "Reinsure only with a company licensed to carry the class",
+            "severity": "refuse",
+            "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "inForce": "30 November 2023",
+            "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+            "clause": "Article (42): The Company may not reinsure with another company unless the other company is licensed to carry out the insurance type entrusted to reinsure it.",
+            "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+            "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+            "evidence": [
+              "home-state licence certificate",
+              "CBUAE licence extract"
+            ]
+          },
+          {
+            "id": "UAE-RI-02",
+            "title": "A counterparty at or above the rating floor, or board diligence on file",
+            "severity": "refuse",
+            "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "inForce": "2019, as carried into the rulebook",
+            "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+            "clause": "Article (18): acceptance of reinsurance business is conditional on the reinsurer meeting the classification stipulated, and business exceeding retention must be covered with reinsurers who have that classification, subject to the stated exceptions.",
+            "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+            "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+            "evidence": [
+              "rating agency report",
+              "board-diligence-minute"
+            ]
+          },
+          {
+            "id": "UAE-RI-03",
+            "title": "Recoverables count as admissible assets only at or above the floor",
+            "severity": "disclose",
+            "instrument": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+            "inForce": "as carried into the rulebook",
+            "note": null,
+            "clause": "Assets available to meet insurance liabilities may include reinsurance recoverables where the reinsurer is rated BBB or better.",
+            "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+            "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+            "evidence": [
+              "solvency return extract",
+              "rating agency report"
+            ]
+          },
+          {
+            "id": "UAE-RI-04",
+            "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+            "severity": "refuse",
+            "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "inForce": "2019, as carried into the rulebook",
+            "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+            "clause": "The company shall prepare a three-year plan concerning retention and reinsurance for each type and class, approve it at the board, and review it annually during the three months before each year, covering retention and treaty limits, treaty types and facultative cessions.",
+            "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+            "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+            "evidence": [
+              "approved retention and reinsurance plan",
+              "board minute of the annual review"
+            ]
+          },
+          {
+            "id": "UAE-RI-05",
+            "title": "A foreign branch files its head-office reinsurance certificate every year",
+            "severity": "escalate",
+            "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "inForce": "2019, as carried into the rulebook",
+            "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+            "clause": "A foreign insurance company operating in the State through a branch shall annually submit a certified certificate from its head office supporting that the business subscribed within the State and exceeding its retention is covered by reinsurance with reinsurers who have the classification stipulated in Article (18).",
+            "requirement": "Where the counterparty is the branch of a foreign company, its annual certified certificate must be on file and no more than twelve months old.",
+            "requirementAr": "على فرع شركة التأمين الأجنبية العاملة في الدولة أن يقدم سنوياً شهادة معتمدة من المركز الرئيسي تفيد بأن الأعمال التي تتجاوز حد الاحتفاظ مغطاة لدى معيدي تأمين حاصلين على التصنيف المطلوب.",
+            "evidence": [
+              "head office certificate"
+            ]
+          },
+          {
+            "id": "UAE-RI-06",
+            "title": "Accepting treaty reinsurance needs approval and capital",
+            "severity": "refuse",
+            "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "inForce": "2019, as carried into the rulebook",
+            "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+            "clause": "Article (39): in order to accept the treaty reinsurance business, the insurance company established in the State is required to obtain approval from the Director General, and the minimum subscribed and paid-up capital of the company shall not be less than AED 350,000,000.",
+            "requirement": "Inward treaty business may only be accepted with the Director General's approval, articles that authorise accepting reinsurance, and at least AED 350,000,000 of subscribed and paid-up capital.",
+            "requirementAr": "لا يجوز قبول أعمال إعادة التأمين الاتفاقي إلا بعد الحصول على موافقة المدير العام، وبألا يقل رأس المال المكتتب المدفوع عن 350,000,000 درهم.",
+            "evidence": [
+              "director-general approval",
+              "articles of association",
+              "paid-up capital certificate"
+            ]
+          },
+          {
+            "id": "UAE-RI-07",
+            "title": "Facultative acceptance only within retention or under a treaty",
+            "severity": "refuse",
+            "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "inForce": "2019, as carried into the rulebook",
+            "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+            "clause": "Article (38): the accepted liabilities shall be either within the company's retention or exceeding it, in which case the company must have a reinsurance treaty that protects the surplus and contains a provision allowing it to accept facultative reinsurance within determined limits; re-ceding that surplus facultatively needs the prior approval of the ceding company.",
+            "requirement": "Facultative business may be accepted only inside the retention or under a treaty that protects the surplus and permits facultative acceptance; passing the surplus on needs the ceding company's prior approval.",
+            "requirementAr": "لا يجوز قبول أعمال إعادة التأمين الاختياري إلا في حدود حد الاحتفاظ أو في وجود اتفاقية تحمي الفائض وتجيز القبول، مع الحصول على موافقة مسبقة من الشركة المتنازلة عند إعادة التنازل.",
+            "evidence": [
+              "ceding company approval",
+              "treaty extract"
+            ]
+          },
+          {
+            "id": "UAE-RI-08",
+            "title": "A tender is only offered with a leading reinsurer behind the surplus",
+            "severity": "refuse",
+            "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "inForce": "2019, as carried into the rulebook",
+            "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+            "clause": "Article (31): the company shall obtain approval, before submitting its offer, from a leading reinsurer that meets the conditions stipulated in Article (18), where the tender's cover is one for which the company has no reinsurance treaty covering the surplus above its retention.",
+            "requirement": "Where a tender is not covered by treaty, written approval from a leading reinsurer that meets the classification requirement must be on file before the offer goes in.",
+            "requirementAr": "يجب الحصول على موافقة من معيد تأمين رائد يستوفي شروط المادة (18) قبل تقديم العرض إذا لم تكن تغطية المناقصة مشمولة باتفاقية إعادة تأمين.",
+            "evidence": [
+              "leading reinsurer approval"
+            ]
+          },
+          {
+            "id": "UAE-RI-09",
+            "title": "Participant risk money goes to retakaful only",
+            "severity": "refuse",
+            "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "inForce": "30 November 2023",
+            "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+            "clause": "Article (42), read with the takaful regulations: the class entrusted must be carried by the counterparty, and a takaful operator's participant risk fund may only be protected by retakaful.",
+            "requirement": "A takaful window cedes only to a retakaful operator or a Shariah-compliant retakaful window. Participant risk money never enters a conventional pool — a breach is refused at the register, not corrected afterwards.",
+            "requirementAr": "لا يجوز لصندوق مخاطر المشتركين في شركة تكافل أن يعيد التأمين إلا لدى معيد تكافل، ولا يجوز تحويل أموال المخاطر للمشتركين إلى صندوق تقليدي.",
+            "evidence": [
+              "retakaful certificate",
+              "shariah committee approval"
+            ]
+          },
+          {
+            "id": "UAE-RI-10",
+            "title": "A free-zone company reinsures, and does nothing else outside the zone",
+            "severity": "disclose",
+            "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "inForce": "30 November 2023",
+            "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+            "clause": "Article (64): insurance companies licensed to operate in the financial free zones may not carry out any activity outside such zones in the State, except for reinsurance.",
+            "requirement": "A free-zone counterparty is a permitted reinsurer: the placement may stand, and the decision records the limit on what that company may do outside its zone.",
+            "requirementAr": "لا يجوز لشركات التأمين المرخصة في المناطق المالية الحرة مزاولة أي نشاط خارج تلك المناطق داخل الدولة، باستثناء إعادة التأمين.",
+            "evidence": [
+              "free-zone licence extract"
+            ]
+          },
+          {
+            "id": "UAE-RI-11",
+            "title": "A foreign branch lodges the bank guarantee its licence requires",
+            "severity": "refuse",
+            "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "inForce": "30 November 2023",
+            "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+            "clause": "Article (50): the foreign insurance company's branch shall submit an irrevocable bank guarantee in favour of the CBUAE of not less than AED 100,000,000 where it carries on insurance activity, and not less than AED 250,000,000 where it carries on reinsurance activity.",
+            "requirement": "Where the counterparty is a foreign branch writing reinsurance, an irrevocable bank guarantee of at least AED 250,000,000 (AED 100,000,000 for insurance) must be lodged with the CBUAE.",
+            "requirementAr": "يقدم فرع شركة التأمين الأجنبية ضماناً مصرفياً غير قابل للإلغاء لصالح المصرف المركزي لا يقل عن 100,000,000 درهم لمزاولة التأمين و250,000,000 درهم لمزاولة إعادة التأمين.",
+            "evidence": [
+              "bank guarantee"
+            ]
+          },
+          {
+            "id": "UAE-RI-12",
+            "title": "UAE risk insured at home, protected anywhere",
+            "severity": "disclose",
+            "instrument": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+            "inForce": "16 September 2025",
+            "note": "consolidates the insurance law into the CBUAE mandate; the reinsurance freedoms and controls of the 2023 law are carried forward",
+            "clause": "Article (82)(2): a UAE insurer may reinsure its business with reinsurers located in the UAE or outside the State; a policy may not be concluded with a company outside the State to cover money or property within the State.",
+            "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+            "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+            "evidence": [
+              "placement file"
+            ]
+          }
+        ],
+        "decisions": [
+          {
+            "id": "UAE-RULE-000001",
+            "subject": "QS-25-2026 cession of LIFE-0001 and the motor book",
+            "at": "2026-09-30",
+            "by": "reinsurance/life-desk",
+            "basis": "conventional",
+            "counterparty": "Emirates Re",
+            "decision": "allow",
+            "evidence": "Allowed: every rule that applies to QS-25-2026 cession of LIFE-0001 and the motor book with Emirates Re is met with the evidence on file. Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities; Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions and 2 further citation(s). Decided by reinsurance/life-desk at 2026-09-30",
+            "blocking": [],
+            "findings": [
+              {
+                "ruleId": "UAE-RI-01",
+                "title": "Reinsure only with a company licensed to carry the class",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "Emirates Re holds a all licence in the UAE",
+                "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-03",
+                "title": "Recoverables count as admissible assets only at or above the floor",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "A means recoverables from Emirates Re may be admitted",
+                "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-04",
+                "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-12",
+                "title": "UAE risk insured at home, protected anywhere",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Emirates Re (QS-25-2026)",
+                "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              }
+            ]
+          },
+          {
+            "id": "UAE-RULE-000002",
+            "subject": "RTKF-QS-20 cession of TKF-0001",
+            "at": "2026-09-30",
+            "by": "takaful/reinsurance-desk",
+            "basis": "takaful",
+            "counterparty": "MENA Retakaful",
+            "decision": "allow",
+            "evidence": "Allowed: every rule that applies to RTKF-QS-20 cession of TKF-0001 with MENA Retakaful is met with the evidence on file. Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities; Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook) and 2 further citation(s). Decided by takaful/reinsurance-desk at 2026-09-30",
+            "blocking": [],
+            "findings": [
+              {
+                "ruleId": "UAE-RI-01",
+                "title": "Reinsure only with a company licensed to carry the class",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "MENA Retakaful holds a all licence in its home state",
+                "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-02",
+                "title": "A counterparty at or above the rating floor, or board diligence on file",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "A- (S&P) is at or above the BBB floor",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+                "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-03",
+                "title": "Recoverables count as admissible assets only at or above the floor",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "A- means recoverables from MENA Retakaful may be admitted",
+                "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-04",
+                "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-09",
+                "title": "Participant risk money goes to retakaful only",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "MENA Retakaful is a retakaful operator and the Shariah Committee has approved the treaty",
+                "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                "requirement": "A takaful window cedes only to a retakaful operator or a Shariah-compliant retakaful window. Participant risk money never enters a conventional pool — a breach is refused at the register, not corrected afterwards.",
+                "requirementAr": "لا يجوز لصندوق مخاطر المشتركين في شركة تكافل أن يعيد التأمين إلا لدى معيد تكافل، ولا يجوز تحويل أموال المخاطر للمشتركين إلى صندوق تقليدي.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-12",
+                "title": "UAE risk insured at home, protected anywhere",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with MENA Retakaful (RTKF-QS-20)",
+                "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              }
+            ]
+          },
+          {
+            "id": "UAE-RULE-000003",
+            "subject": "FAC-MOTOR facultative offer from Gulf Reinsurance PSC",
+            "at": "2026-10-02",
+            "by": "reinsurance/motor-desk",
+            "basis": "conventional",
+            "counterparty": "Gulf Reinsurance PSC",
+            "decision": "escalate",
+            "evidence": "Held for a named human: UAE-RI-02 (no rating for Gulf Reinsurance PSC is on file). Rests on Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook). Decided by reinsurance/motor-desk at 2026-10-02",
+            "blocking": [
+              {
+                "ruleId": "UAE-RI-02",
+                "state": "unproven",
+                "severity": "refuse",
+                "detail": "no rating for Gulf Reinsurance PSC is on file",
+                "missing": [
+                  "rating agency report",
+                  "board-diligence-minute"
+                ]
+              }
+            ],
+            "findings": [
+              {
+                "ruleId": "UAE-RI-01",
+                "title": "Reinsure only with a company licensed to carry the class",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "Gulf Reinsurance PSC holds a all licence in its home state",
+                "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-02",
+                "title": "A counterparty at or above the rating floor, or board diligence on file",
+                "state": "unproven",
+                "severity": "refuse",
+                "detail": "no rating for Gulf Reinsurance PSC is on file",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+                "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+                "evidenceRequired": [
+                  "rating agency report",
+                  "board-diligence-minute"
+                ],
+                "evidenceOnFile": [],
+                "evidenceMissing": [
+                  "rating agency report",
+                  "board-diligence-minute"
+                ]
+              },
+              {
+                "ruleId": "UAE-RI-03",
+                "title": "Recoverables count as admissible assets only at or above the floor",
+                "state": "unproven",
+                "severity": "disclose",
+                "detail": "the recoverable from Gulf Reinsurance PSC cannot be given credit until its rating is on file",
+                "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                "evidenceRequired": [
+                  "solvency return extract",
+                  "rating agency report"
+                ],
+                "evidenceOnFile": [],
+                "evidenceMissing": [
+                  "solvency return extract",
+                  "rating agency report"
+                ]
+              },
+              {
+                "ruleId": "UAE-RI-04",
+                "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-12",
+                "title": "UAE risk insured at home, protected anywhere",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Gulf Reinsurance PSC (FAC-MOTOR)",
+                "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              }
+            ]
+          },
+          {
+            "id": "UAE-RULE-000004",
+            "subject": "an attempt to place participant money with a conventional reinsurer",
+            "at": "2026-10-05",
+            "by": "takaful/reinsurance-desk",
+            "basis": "takaful",
+            "counterparty": "Emirates Re",
+            "decision": "refuse",
+            "evidence": "Refused: UAE-RI-09 (Emirates Re is not a retakaful operator, and an attempt to place participant money with a conventional reinsurer is participant risk money). Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities. Decided by takaful/reinsurance-desk at 2026-10-05",
+            "blocking": [
+              {
+                "ruleId": "UAE-RI-09",
+                "state": "breached",
+                "severity": "refuse",
+                "detail": "Emirates Re is not a retakaful operator, and an attempt to place participant money with a conventional reinsurer is participant risk money",
+                "missing": [
+                  "retakaful certificate"
+                ]
+              }
+            ],
+            "findings": [
+              {
+                "ruleId": "UAE-RI-01",
+                "title": "Reinsure only with a company licensed to carry the class",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "Emirates Re holds a all licence in the UAE",
+                "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-03",
+                "title": "Recoverables count as admissible assets only at or above the floor",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "A means recoverables from Emirates Re may be admitted",
+                "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-04",
+                "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-09",
+                "title": "Participant risk money goes to retakaful only",
+                "state": "breached",
+                "severity": "refuse",
+                "detail": "Emirates Re is not a retakaful operator, and an attempt to place participant money with a conventional reinsurer is participant risk money",
+                "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                "requirement": "A takaful window cedes only to a retakaful operator or a Shariah-compliant retakaful window. Participant risk money never enters a conventional pool — a breach is refused at the register, not corrected afterwards.",
+                "requirementAr": "لا يجوز لصندوق مخاطر المشتركين في شركة تكافل أن يعيد التأمين إلا لدى معيد تكافل، ولا يجوز تحويل أموال المخاطر للمشتركين إلى صندوق تقليدي.",
+                "evidenceRequired": [
+                  "retakaful certificate",
+                  "shariah committee approval"
+                ],
+                "evidenceOnFile": [
+                  "shariah committee approval"
+                ],
+                "evidenceMissing": [
+                  "retakaful certificate"
+                ]
+              },
+              {
+                "ruleId": "UAE-RI-12",
+                "title": "UAE risk insured at home, protected anywhere",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Emirates Re (RTKF-QS-20)",
+                "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              }
+            ]
+          },
+          {
+            "id": "UAE-RULE-000005",
+            "subject": "an offshore placement offered on the strength of a letterhead",
+            "at": "2026-10-05",
+            "by": "reinsurance/motor-desk",
+            "basis": "conventional",
+            "counterparty": "Oriana Re (unlicensed)",
+            "decision": "refuse",
+            "evidence": "Refused: UAE-RI-01 (Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand). Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities. Decided by reinsurance/motor-desk at 2026-10-05",
+            "blocking": [
+              {
+                "ruleId": "UAE-RI-01",
+                "state": "breached",
+                "severity": "refuse",
+                "detail": "Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand",
+                "missing": [
+                  "home-state licence certificate",
+                  "CBUAE licence extract"
+                ]
+              }
+            ],
+            "findings": [
+              {
+                "ruleId": "UAE-RI-01",
+                "title": "Reinsure only with a company licensed to carry the class",
+                "state": "breached",
+                "severity": "refuse",
+                "detail": "Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand",
+                "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                "evidenceRequired": [
+                  "home-state licence certificate",
+                  "CBUAE licence extract"
+                ],
+                "evidenceOnFile": [],
+                "evidenceMissing": [
+                  "home-state licence certificate",
+                  "CBUAE licence extract"
+                ]
+              },
+              {
+                "ruleId": "UAE-RI-02",
+                "title": "A counterparty at or above the rating floor, or board diligence on file",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "A (agency not stated) is at or above the BBB floor",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+                "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-03",
+                "title": "Recoverables count as admissible assets only at or above the floor",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "A means recoverables from Oriana Re (unlicensed) may be admitted",
+                "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-04",
+                "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                "state": "met",
+                "severity": "refuse",
+                "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              },
+              {
+                "ruleId": "UAE-RI-12",
+                "title": "UAE risk insured at home, protected anywhere",
+                "state": "met",
+                "severity": "disclose",
+                "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Oriana Re (unlicensed) (FAC-MOTOR)",
+                "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                "evidenceRequired": [],
+                "evidenceOnFile": [],
+                "evidenceMissing": []
+              }
+            ]
+          }
+        ],
+        "statement": {
+          "rules": 12,
+          "decisions": 5,
+          "allow": 2,
+          "escalate": 1,
+          "refuse": 2,
+          "byRule": [
+            {
+              "ruleId": "UAE-RI-01",
+              "title": "Reinsure only with a company licensed to carry the class",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-02",
+              "title": "A counterparty at or above the rating floor, or board diligence on file",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-03",
+              "title": "Recoverables count as admissible assets only at or above the floor",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-04",
+              "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-05",
+              "title": "A foreign branch files its head-office reinsurance certificate every year",
+              "severity": "escalate",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-06",
+              "title": "Accepting treaty reinsurance needs approval and capital",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-07",
+              "title": "Facultative acceptance only within retention or under a treaty",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-08",
+              "title": "A tender is only offered with a leading reinsurer behind the surplus",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-09",
+              "title": "Participant risk money goes to retakaful only",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-10",
+              "title": "A free-zone company reinsures, and does nothing else outside the zone",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-11",
+              "title": "A foreign branch lodges the bank guarantee its licence requires",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-12",
+              "title": "UAE risk insured at home, protected anywhere",
+              "severity": "disclose",
+              "raised": 0
+            }
+          ]
+        },
+        "limitation": "The rule book holds 12 rules as data, each citing its instrument and clause as published on 30 November 2023; Article numbers are not re-read from the rulebook by this engine, and a citation that has moved shows up as a finding to update rather than as silence. Decisions are append-only: a later placement is answered with a new decision."
+      }
+    },
     "GET /api/reinsurance": {
       "status": 200,
       "body": {
@@ -3193,8 +3908,8 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T09:35:18.259Z",
-        "fingerprint": "d118518ad7e605b1",
+        "takenAt": "2026-10-04T09:57:57.513Z",
+        "fingerprint": "a3ebfb2d03a93679",
         "accounts": 168,
         "journals": 87,
         "fxRates": 2,
@@ -7684,6 +8399,718 @@
           },
           "issued": 8
         },
+        "uaeRules": {
+          "country": "AE",
+          "rules": [
+            {
+              "id": "UAE-RI-01",
+              "title": "Reinsure only with a company licensed to carry the class",
+              "severity": "refuse",
+              "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+              "inForce": "30 November 2023",
+              "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+              "clause": "Article (42): The Company may not reinsure with another company unless the other company is licensed to carry out the insurance type entrusted to reinsure it.",
+              "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+              "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+              "evidence": [
+                "home-state licence certificate",
+                "CBUAE licence extract"
+              ]
+            },
+            {
+              "id": "UAE-RI-02",
+              "title": "A counterparty at or above the rating floor, or board diligence on file",
+              "severity": "refuse",
+              "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+              "inForce": "2019, as carried into the rulebook",
+              "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+              "clause": "Article (18): acceptance of reinsurance business is conditional on the reinsurer meeting the classification stipulated, and business exceeding retention must be covered with reinsurers who have that classification, subject to the stated exceptions.",
+              "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+              "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+              "evidence": [
+                "rating agency report",
+                "board-diligence-minute"
+              ]
+            },
+            {
+              "id": "UAE-RI-03",
+              "title": "Recoverables count as admissible assets only at or above the floor",
+              "severity": "disclose",
+              "instrument": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+              "inForce": "as carried into the rulebook",
+              "note": null,
+              "clause": "Assets available to meet insurance liabilities may include reinsurance recoverables where the reinsurer is rated BBB or better.",
+              "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+              "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+              "evidence": [
+                "solvency return extract",
+                "rating agency report"
+              ]
+            },
+            {
+              "id": "UAE-RI-04",
+              "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+              "severity": "refuse",
+              "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+              "inForce": "2019, as carried into the rulebook",
+              "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+              "clause": "The company shall prepare a three-year plan concerning retention and reinsurance for each type and class, approve it at the board, and review it annually during the three months before each year, covering retention and treaty limits, treaty types and facultative cessions.",
+              "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+              "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+              "evidence": [
+                "approved retention and reinsurance plan",
+                "board minute of the annual review"
+              ]
+            },
+            {
+              "id": "UAE-RI-05",
+              "title": "A foreign branch files its head-office reinsurance certificate every year",
+              "severity": "escalate",
+              "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+              "inForce": "2019, as carried into the rulebook",
+              "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+              "clause": "A foreign insurance company operating in the State through a branch shall annually submit a certified certificate from its head office supporting that the business subscribed within the State and exceeding its retention is covered by reinsurance with reinsurers who have the classification stipulated in Article (18).",
+              "requirement": "Where the counterparty is the branch of a foreign company, its annual certified certificate must be on file and no more than twelve months old.",
+              "requirementAr": "على فرع شركة التأمين الأجنبية العاملة في الدولة أن يقدم سنوياً شهادة معتمدة من المركز الرئيسي تفيد بأن الأعمال التي تتجاوز حد الاحتفاظ مغطاة لدى معيدي تأمين حاصلين على التصنيف المطلوب.",
+              "evidence": [
+                "head office certificate"
+              ]
+            },
+            {
+              "id": "UAE-RI-06",
+              "title": "Accepting treaty reinsurance needs approval and capital",
+              "severity": "refuse",
+              "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+              "inForce": "2019, as carried into the rulebook",
+              "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+              "clause": "Article (39): in order to accept the treaty reinsurance business, the insurance company established in the State is required to obtain approval from the Director General, and the minimum subscribed and paid-up capital of the company shall not be less than AED 350,000,000.",
+              "requirement": "Inward treaty business may only be accepted with the Director General's approval, articles that authorise accepting reinsurance, and at least AED 350,000,000 of subscribed and paid-up capital.",
+              "requirementAr": "لا يجوز قبول أعمال إعادة التأمين الاتفاقي إلا بعد الحصول على موافقة المدير العام، وبألا يقل رأس المال المكتتب المدفوع عن 350,000,000 درهم.",
+              "evidence": [
+                "director-general approval",
+                "articles of association",
+                "paid-up capital certificate"
+              ]
+            },
+            {
+              "id": "UAE-RI-07",
+              "title": "Facultative acceptance only within retention or under a treaty",
+              "severity": "refuse",
+              "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+              "inForce": "2019, as carried into the rulebook",
+              "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+              "clause": "Article (38): the accepted liabilities shall be either within the company's retention or exceeding it, in which case the company must have a reinsurance treaty that protects the surplus and contains a provision allowing it to accept facultative reinsurance within determined limits; re-ceding that surplus facultatively needs the prior approval of the ceding company.",
+              "requirement": "Facultative business may be accepted only inside the retention or under a treaty that protects the surplus and permits facultative acceptance; passing the surplus on needs the ceding company's prior approval.",
+              "requirementAr": "لا يجوز قبول أعمال إعادة التأمين الاختياري إلا في حدود حد الاحتفاظ أو في وجود اتفاقية تحمي الفائض وتجيز القبول، مع الحصول على موافقة مسبقة من الشركة المتنازلة عند إعادة التنازل.",
+              "evidence": [
+                "ceding company approval",
+                "treaty extract"
+              ]
+            },
+            {
+              "id": "UAE-RI-08",
+              "title": "A tender is only offered with a leading reinsurer behind the surplus",
+              "severity": "refuse",
+              "instrument": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+              "inForce": "2019, as carried into the rulebook",
+              "note": "Article (18) sets the classification requirement for reinsurers; Articles (31), (38) and (39) are cited by the rules that use them",
+              "clause": "Article (31): the company shall obtain approval, before submitting its offer, from a leading reinsurer that meets the conditions stipulated in Article (18), where the tender's cover is one for which the company has no reinsurance treaty covering the surplus above its retention.",
+              "requirement": "Where a tender is not covered by treaty, written approval from a leading reinsurer that meets the classification requirement must be on file before the offer goes in.",
+              "requirementAr": "يجب الحصول على موافقة من معيد تأمين رائد يستوفي شروط المادة (18) قبل تقديم العرض إذا لم تكن تغطية المناقصة مشمولة باتفاقية إعادة تأمين.",
+              "evidence": [
+                "leading reinsurer approval"
+              ]
+            },
+            {
+              "id": "UAE-RI-09",
+              "title": "Participant risk money goes to retakaful only",
+              "severity": "refuse",
+              "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+              "inForce": "30 November 2023",
+              "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+              "clause": "Article (42), read with the takaful regulations: the class entrusted must be carried by the counterparty, and a takaful operator's participant risk fund may only be protected by retakaful.",
+              "requirement": "A takaful window cedes only to a retakaful operator or a Shariah-compliant retakaful window. Participant risk money never enters a conventional pool — a breach is refused at the register, not corrected afterwards.",
+              "requirementAr": "لا يجوز لصندوق مخاطر المشتركين في شركة تكافل أن يعيد التأمين إلا لدى معيد تكافل، ولا يجوز تحويل أموال المخاطر للمشتركين إلى صندوق تقليدي.",
+              "evidence": [
+                "retakaful certificate",
+                "shariah committee approval"
+              ]
+            },
+            {
+              "id": "UAE-RI-10",
+              "title": "A free-zone company reinsures, and does nothing else outside the zone",
+              "severity": "disclose",
+              "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+              "inForce": "30 November 2023",
+              "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+              "clause": "Article (64): insurance companies licensed to operate in the financial free zones may not carry out any activity outside such zones in the State, except for reinsurance.",
+              "requirement": "A free-zone counterparty is a permitted reinsurer: the placement may stand, and the decision records the limit on what that company may do outside its zone.",
+              "requirementAr": "لا يجوز لشركات التأمين المرخصة في المناطق المالية الحرة مزاولة أي نشاط خارج تلك المناطق داخل الدولة، باستثناء إعادة التأمين.",
+              "evidence": [
+                "free-zone licence extract"
+              ]
+            },
+            {
+              "id": "UAE-RI-11",
+              "title": "A foreign branch lodges the bank guarantee its licence requires",
+              "severity": "refuse",
+              "instrument": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+              "inForce": "30 November 2023",
+              "note": "replaced by Federal Decree-Law No. 6 of 2025 from 16 September 2025, with a transition to 16 September 2026",
+              "clause": "Article (50): the foreign insurance company's branch shall submit an irrevocable bank guarantee in favour of the CBUAE of not less than AED 100,000,000 where it carries on insurance activity, and not less than AED 250,000,000 where it carries on reinsurance activity.",
+              "requirement": "Where the counterparty is a foreign branch writing reinsurance, an irrevocable bank guarantee of at least AED 250,000,000 (AED 100,000,000 for insurance) must be lodged with the CBUAE.",
+              "requirementAr": "يقدم فرع شركة التأمين الأجنبية ضماناً مصرفياً غير قابل للإلغاء لصالح المصرف المركزي لا يقل عن 100,000,000 درهم لمزاولة التأمين و250,000,000 درهم لمزاولة إعادة التأمين.",
+              "evidence": [
+                "bank guarantee"
+              ]
+            },
+            {
+              "id": "UAE-RI-12",
+              "title": "UAE risk insured at home, protected anywhere",
+              "severity": "disclose",
+              "instrument": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+              "inForce": "16 September 2025",
+              "note": "consolidates the insurance law into the CBUAE mandate; the reinsurance freedoms and controls of the 2023 law are carried forward",
+              "clause": "Article (82)(2): a UAE insurer may reinsure its business with reinsurers located in the UAE or outside the State; a policy may not be concluded with a company outside the State to cover money or property within the State.",
+              "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+              "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+              "evidence": [
+                "placement file"
+              ]
+            }
+          ],
+          "decisions": [
+            {
+              "id": "UAE-RULE-000001",
+              "subject": "QS-25-2026 cession of LIFE-0001 and the motor book",
+              "at": "2026-09-30",
+              "by": "reinsurance/life-desk",
+              "basis": "conventional",
+              "counterparty": "Emirates Re",
+              "decision": "allow",
+              "evidence": "Allowed: every rule that applies to QS-25-2026 cession of LIFE-0001 and the motor book with Emirates Re is met with the evidence on file. Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities; Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions and 2 further citation(s). Decided by reinsurance/life-desk at 2026-09-30",
+              "blocking": [],
+              "findings": [
+                {
+                  "ruleId": "UAE-RI-01",
+                  "title": "Reinsure only with a company licensed to carry the class",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "Emirates Re holds a all licence in the UAE",
+                  "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                  "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                  "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-03",
+                  "title": "Recoverables count as admissible assets only at or above the floor",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "A means recoverables from Emirates Re may be admitted",
+                  "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                  "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                  "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-04",
+                  "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                  "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-12",
+                  "title": "UAE risk insured at home, protected anywhere",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Emirates Re (QS-25-2026)",
+                  "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                  "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                  "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                }
+              ]
+            },
+            {
+              "id": "UAE-RULE-000002",
+              "subject": "RTKF-QS-20 cession of TKF-0001",
+              "at": "2026-09-30",
+              "by": "takaful/reinsurance-desk",
+              "basis": "takaful",
+              "counterparty": "MENA Retakaful",
+              "decision": "allow",
+              "evidence": "Allowed: every rule that applies to RTKF-QS-20 cession of TKF-0001 with MENA Retakaful is met with the evidence on file. Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities; Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook) and 2 further citation(s). Decided by takaful/reinsurance-desk at 2026-09-30",
+              "blocking": [],
+              "findings": [
+                {
+                  "ruleId": "UAE-RI-01",
+                  "title": "Reinsure only with a company licensed to carry the class",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "MENA Retakaful holds a all licence in its home state",
+                  "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                  "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                  "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-02",
+                  "title": "A counterparty at or above the rating floor, or board diligence on file",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "A- (S&P) is at or above the BBB floor",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+                  "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-03",
+                  "title": "Recoverables count as admissible assets only at or above the floor",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "A- means recoverables from MENA Retakaful may be admitted",
+                  "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                  "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                  "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-04",
+                  "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                  "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-09",
+                  "title": "Participant risk money goes to retakaful only",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "MENA Retakaful is a retakaful operator and the Shariah Committee has approved the treaty",
+                  "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                  "requirement": "A takaful window cedes only to a retakaful operator or a Shariah-compliant retakaful window. Participant risk money never enters a conventional pool — a breach is refused at the register, not corrected afterwards.",
+                  "requirementAr": "لا يجوز لصندوق مخاطر المشتركين في شركة تكافل أن يعيد التأمين إلا لدى معيد تكافل، ولا يجوز تحويل أموال المخاطر للمشتركين إلى صندوق تقليدي.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-12",
+                  "title": "UAE risk insured at home, protected anywhere",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with MENA Retakaful (RTKF-QS-20)",
+                  "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                  "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                  "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                }
+              ]
+            },
+            {
+              "id": "UAE-RULE-000003",
+              "subject": "FAC-MOTOR facultative offer from Gulf Reinsurance PSC",
+              "at": "2026-10-02",
+              "by": "reinsurance/motor-desk",
+              "basis": "conventional",
+              "counterparty": "Gulf Reinsurance PSC",
+              "decision": "escalate",
+              "evidence": "Held for a named human: UAE-RI-02 (no rating for Gulf Reinsurance PSC is on file). Rests on Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook). Decided by reinsurance/motor-desk at 2026-10-02",
+              "blocking": [
+                {
+                  "ruleId": "UAE-RI-02",
+                  "state": "unproven",
+                  "severity": "refuse",
+                  "detail": "no rating for Gulf Reinsurance PSC is on file",
+                  "missing": [
+                    "rating agency report",
+                    "board-diligence-minute"
+                  ]
+                }
+              ],
+              "findings": [
+                {
+                  "ruleId": "UAE-RI-01",
+                  "title": "Reinsure only with a company licensed to carry the class",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "Gulf Reinsurance PSC holds a all licence in its home state",
+                  "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                  "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                  "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-02",
+                  "title": "A counterparty at or above the rating floor, or board diligence on file",
+                  "state": "unproven",
+                  "severity": "refuse",
+                  "detail": "no rating for Gulf Reinsurance PSC is on file",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+                  "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+                  "evidenceRequired": [
+                    "rating agency report",
+                    "board-diligence-minute"
+                  ],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": [
+                    "rating agency report",
+                    "board-diligence-minute"
+                  ]
+                },
+                {
+                  "ruleId": "UAE-RI-03",
+                  "title": "Recoverables count as admissible assets only at or above the floor",
+                  "state": "unproven",
+                  "severity": "disclose",
+                  "detail": "the recoverable from Gulf Reinsurance PSC cannot be given credit until its rating is on file",
+                  "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                  "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                  "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                  "evidenceRequired": [
+                    "solvency return extract",
+                    "rating agency report"
+                  ],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": [
+                    "solvency return extract",
+                    "rating agency report"
+                  ]
+                },
+                {
+                  "ruleId": "UAE-RI-04",
+                  "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                  "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-12",
+                  "title": "UAE risk insured at home, protected anywhere",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Gulf Reinsurance PSC (FAC-MOTOR)",
+                  "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                  "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                  "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                }
+              ]
+            },
+            {
+              "id": "UAE-RULE-000004",
+              "subject": "an attempt to place participant money with a conventional reinsurer",
+              "at": "2026-10-05",
+              "by": "takaful/reinsurance-desk",
+              "basis": "takaful",
+              "counterparty": "Emirates Re",
+              "decision": "refuse",
+              "evidence": "Refused: UAE-RI-09 (Emirates Re is not a retakaful operator, and an attempt to place participant money with a conventional reinsurer is participant risk money). Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities. Decided by takaful/reinsurance-desk at 2026-10-05",
+              "blocking": [
+                {
+                  "ruleId": "UAE-RI-09",
+                  "state": "breached",
+                  "severity": "refuse",
+                  "detail": "Emirates Re is not a retakaful operator, and an attempt to place participant money with a conventional reinsurer is participant risk money",
+                  "missing": [
+                    "retakaful certificate"
+                  ]
+                }
+              ],
+              "findings": [
+                {
+                  "ruleId": "UAE-RI-01",
+                  "title": "Reinsure only with a company licensed to carry the class",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "Emirates Re holds a all licence in the UAE",
+                  "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                  "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                  "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-03",
+                  "title": "Recoverables count as admissible assets only at or above the floor",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "A means recoverables from Emirates Re may be admitted",
+                  "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                  "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                  "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-04",
+                  "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                  "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-09",
+                  "title": "Participant risk money goes to retakaful only",
+                  "state": "breached",
+                  "severity": "refuse",
+                  "detail": "Emirates Re is not a retakaful operator, and an attempt to place participant money with a conventional reinsurer is participant risk money",
+                  "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                  "requirement": "A takaful window cedes only to a retakaful operator or a Shariah-compliant retakaful window. Participant risk money never enters a conventional pool — a breach is refused at the register, not corrected afterwards.",
+                  "requirementAr": "لا يجوز لصندوق مخاطر المشتركين في شركة تكافل أن يعيد التأمين إلا لدى معيد تكافل، ولا يجوز تحويل أموال المخاطر للمشتركين إلى صندوق تقليدي.",
+                  "evidenceRequired": [
+                    "retakaful certificate",
+                    "shariah committee approval"
+                  ],
+                  "evidenceOnFile": [
+                    "shariah committee approval"
+                  ],
+                  "evidenceMissing": [
+                    "retakaful certificate"
+                  ]
+                },
+                {
+                  "ruleId": "UAE-RI-12",
+                  "title": "UAE risk insured at home, protected anywhere",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Emirates Re (RTKF-QS-20)",
+                  "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                  "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                  "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                }
+              ]
+            },
+            {
+              "id": "UAE-RULE-000005",
+              "subject": "an offshore placement offered on the strength of a letterhead",
+              "at": "2026-10-05",
+              "by": "reinsurance/motor-desk",
+              "basis": "conventional",
+              "counterparty": "Oriana Re (unlicensed)",
+              "decision": "refuse",
+              "evidence": "Refused: UAE-RI-01 (Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand). Rests on Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities. Decided by reinsurance/motor-desk at 2026-10-05",
+              "blocking": [
+                {
+                  "ruleId": "UAE-RI-01",
+                  "state": "breached",
+                  "severity": "refuse",
+                  "detail": "Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand",
+                  "missing": [
+                    "home-state licence certificate",
+                    "CBUAE licence extract"
+                  ]
+                }
+              ],
+              "findings": [
+                {
+                  "ruleId": "UAE-RI-01",
+                  "title": "Reinsure only with a company licensed to carry the class",
+                  "state": "breached",
+                  "severity": "refuse",
+                  "detail": "Oriana Re (unlicensed) holds no licence to carry the class ceded — a policy placed on an unlicensed company is void, so this placement cannot stand",
+                  "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+                  "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+                  "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+                  "evidenceRequired": [
+                    "home-state licence certificate",
+                    "CBUAE licence extract"
+                  ],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": [
+                    "home-state licence certificate",
+                    "CBUAE licence extract"
+                  ]
+                },
+                {
+                  "ruleId": "UAE-RI-02",
+                  "title": "A counterparty at or above the rating floor, or board diligence on file",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "A (agency not stated) is at or above the BBB floor",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+                  "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-03",
+                  "title": "Recoverables count as admissible assets only at or above the floor",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "A means recoverables from Oriana Re (unlicensed) may be admitted",
+                  "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+                  "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+                  "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-04",
+                  "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                  "state": "met",
+                  "severity": "refuse",
+                  "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+                  "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+                  "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+                  "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                },
+                {
+                  "ruleId": "UAE-RI-12",
+                  "title": "UAE risk insured at home, protected anywhere",
+                  "state": "met",
+                  "severity": "disclose",
+                  "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Oriana Re (unlicensed) (FAC-MOTOR)",
+                  "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+                  "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+                  "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+                  "evidenceRequired": [],
+                  "evidenceOnFile": [],
+                  "evidenceMissing": []
+                }
+              ]
+            }
+          ],
+          "statement": {
+            "rules": 12,
+            "decisions": 5,
+            "allow": 2,
+            "escalate": 1,
+            "refuse": 2,
+            "byRule": [
+              {
+                "ruleId": "UAE-RI-01",
+                "title": "Reinsure only with a company licensed to carry the class",
+                "severity": "refuse",
+                "raised": 1
+              },
+              {
+                "ruleId": "UAE-RI-02",
+                "title": "A counterparty at or above the rating floor, or board diligence on file",
+                "severity": "refuse",
+                "raised": 1
+              },
+              {
+                "ruleId": "UAE-RI-03",
+                "title": "Recoverables count as admissible assets only at or above the floor",
+                "severity": "disclose",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-04",
+                "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+                "severity": "refuse",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-05",
+                "title": "A foreign branch files its head-office reinsurance certificate every year",
+                "severity": "escalate",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-06",
+                "title": "Accepting treaty reinsurance needs approval and capital",
+                "severity": "refuse",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-07",
+                "title": "Facultative acceptance only within retention or under a treaty",
+                "severity": "refuse",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-08",
+                "title": "A tender is only offered with a leading reinsurer behind the surplus",
+                "severity": "refuse",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-09",
+                "title": "Participant risk money goes to retakaful only",
+                "severity": "refuse",
+                "raised": 1
+              },
+              {
+                "ruleId": "UAE-RI-10",
+                "title": "A free-zone company reinsures, and does nothing else outside the zone",
+                "severity": "disclose",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-11",
+                "title": "A foreign branch lodges the bank guarantee its licence requires",
+                "severity": "refuse",
+                "raised": 0
+              },
+              {
+                "ruleId": "UAE-RI-12",
+                "title": "UAE risk insured at home, protected anywhere",
+                "severity": "disclose",
+                "raised": 0
+              }
+            ]
+          },
+          "limitation": "The rule book holds 12 rules as data, each citing its instrument and clause as published on 30 November 2023; Article numbers are not re-read from the rulebook by this engine, and a citation that has moved shows up as a finding to update rather than as silence. Decisions are append-only: a later placement is answered with a new decision."
+        },
         "group": {
           "asOf": "2026-10-05",
           "periodStart": "2026-09-01",
@@ -8623,7 +10050,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T09:33:36.683Z"
+        "generatedAt": "2026-10-04T09:56:12.232Z"
       }
     },
     "POST /api/ai/approve": {
@@ -8892,7 +10319,7 @@
     "POST /api/ingest/commit": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791106492850",
+        "loadId": "LOAD-1791107848446",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
@@ -8905,7 +10332,7 @@
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791106492850"
+        "loadId": "LOAD-1791107848446"
       }
     },
     "POST /api/onboarding/ocr": {
@@ -9455,6 +10882,192 @@
         "remainingValueLabel": "13,328.28 AED"
       }
     },
+    "POST /api/regulatory/uae/check": {
+      "status": 200,
+      "body": {
+        "scenario": "unrated-counterparty",
+        "decision": "escalate",
+        "id": "UAE-RULE-000007",
+        "subject": "a motor facultative offer from a reinsurer with no rating on file",
+        "evidence": "Held for a named human: UAE-RI-02 (no rating for Gulf Reinsurance PSC is on file). Rests on Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook). Decided by reinsurance/motor-desk at 2026-10-05",
+        "blocking": [
+          {
+            "ruleId": "UAE-RI-02",
+            "state": "unproven",
+            "severity": "refuse",
+            "detail": "no rating for Gulf Reinsurance PSC is on file",
+            "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+            "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+            "evidenceMissing": [
+              "rating agency report",
+              "board-diligence-minute"
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "ruleId": "UAE-RI-01",
+            "title": "Reinsure only with a company licensed to carry the class",
+            "state": "met",
+            "severity": "refuse",
+            "detail": "Gulf Reinsurance PSC holds a all licence in its home state",
+            "clause": "Article (42) — Federal Decree-Law No. 48 of 2023 Regulating Insurance Activities",
+            "requirement": "The counterparty must be licensed for the class of business ceded — a UAE licence, or a home-state licence naming the class for a reinsurer abroad. A UAE carrier may reinsure inside or outside the State, but never with an unlicensed company.",
+            "requirementAr": "لا يجوز للشركة أن تعيد التأمين لدى شركة أخرى ما لم تكن تلك الشركة مرخصة لمزاولة نوع التأمين المطلوب إعادة تأمينه.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-02",
+            "title": "A counterparty at or above the rating floor, or board diligence on file",
+            "state": "unproven",
+            "severity": "refuse",
+            "detail": "no rating for Gulf Reinsurance PSC is on file",
+            "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "requirement": "A reinsurance counterparty should hold a financial strength rating of BBB (S&P) or equivalent — Baa2 or better — or, if it does not, the placement needs documented board-level due diligence before it is bound.",
+            "requirementAr": "يُشترط في شركة إعادة التأمين الحصول على تصنيف مالي لا يقل عن BBB أو ما يعادله، وإلا وجب توثيق العناية الواجبة على مستوى مجلس الإدارة.",
+            "evidenceRequired": [
+              "rating agency report",
+              "board-diligence-minute"
+            ],
+            "evidenceOnFile": [],
+            "evidenceMissing": [
+              "rating agency report",
+              "board-diligence-minute"
+            ]
+          },
+          {
+            "ruleId": "UAE-RI-03",
+            "title": "Recoverables count as admissible assets only at or above the floor",
+            "state": "unproven",
+            "severity": "disclose",
+            "detail": "the recoverable from Gulf Reinsurance PSC cannot be given credit until its rating is on file",
+            "clause": "Minimum capital requirement — CBUAE financial regulations — capital, assets and technical provisions",
+            "requirement": "Money due from a counterparty below the floor is not an admissible asset: the return must show the recoverable without credit for it, and the solvency position must be read with that in mind.",
+            "requirementAr": "لا تُعد المبالغ المستحقة من معيد تأمين دون التصنيف المطلوب أصولاً مقبولة، ويجب بيانها دون احتساب رصيد لها.",
+            "evidenceRequired": [
+              "solvency return extract",
+              "rating agency report"
+            ],
+            "evidenceOnFile": [],
+            "evidenceMissing": [
+              "solvency return extract",
+              "rating agency report"
+            ]
+          },
+          {
+            "ruleId": "UAE-RI-04",
+            "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+            "state": "met",
+            "severity": "refuse",
+            "detail": "the plan was reviewed on 2026-02-10, 7 month(s) before this placement",
+            "clause": "Article (18) — CBUAE reinsurance regulations (Insurance Authority Board Decision No. 23 of 2019, carried into the CBUAE rulebook)",
+            "requirement": "A cession must be permitted by the plan the board approved, and the plan must have been reviewed inside the year before the placement. A cession outside the plan is refused; a plan whose review window has passed is escalated.",
+            "requirementAr": "يجب أن تكون إعادة التأمين ضمن الخطة المعتمدة من مجلس الإدارة، وأن تُراجع الخطة سنوياً خلال الأشهر الثلاثة السابقة لكل سنة.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          },
+          {
+            "ruleId": "UAE-RI-12",
+            "title": "UAE risk insured at home, protected anywhere",
+            "state": "met",
+            "severity": "disclose",
+            "detail": "the risk is retained by a licensed UAE carrier and the reinsurance is placed with Gulf Reinsurance PSC (FAC-MOTOR)",
+            "clause": "Article (82) — Federal Decree-Law No. 6 of 2025 on the Central Bank, the Regulation of Financial Institutions and Activities, and Insurance Business",
+            "requirement": "The risk stays with a licensed UAE carrier and the reinsurance may be placed anywhere — the decision records which of the two this placement is.",
+            "requirementAr": "يجوز لشركة التأمين في الدولة إعادة تأمين أعمالها لدى معيدي تأمين داخل الدولة أو خارجها، دون جواز إبرام وثيقة لدى شركة خارج الدولة لتغطية أموال أو ممتلكات داخل الدولة.",
+            "evidenceRequired": [],
+            "evidenceOnFile": [],
+            "evidenceMissing": []
+          }
+        ],
+        "statement": {
+          "rules": 12,
+          "decisions": 7,
+          "allow": 3,
+          "escalate": 2,
+          "refuse": 2,
+          "byRule": [
+            {
+              "ruleId": "UAE-RI-01",
+              "title": "Reinsure only with a company licensed to carry the class",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-02",
+              "title": "A counterparty at or above the rating floor, or board diligence on file",
+              "severity": "refuse",
+              "raised": 2
+            },
+            {
+              "ruleId": "UAE-RI-03",
+              "title": "Recoverables count as admissible assets only at or above the floor",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-04",
+              "title": "Every cession sits inside the board-approved retention and reinsurance plan",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-05",
+              "title": "A foreign branch files its head-office reinsurance certificate every year",
+              "severity": "escalate",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-06",
+              "title": "Accepting treaty reinsurance needs approval and capital",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-07",
+              "title": "Facultative acceptance only within retention or under a treaty",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-08",
+              "title": "A tender is only offered with a leading reinsurer behind the surplus",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-09",
+              "title": "Participant risk money goes to retakaful only",
+              "severity": "refuse",
+              "raised": 1
+            },
+            {
+              "ruleId": "UAE-RI-10",
+              "title": "A free-zone company reinsures, and does nothing else outside the zone",
+              "severity": "disclose",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-11",
+              "title": "A foreign branch lodges the bank guarantee its licence requires",
+              "severity": "refuse",
+              "raised": 0
+            },
+            {
+              "ruleId": "UAE-RI-12",
+              "title": "UAE risk insured at home, protected anywhere",
+              "severity": "disclose",
+              "raised": 0
+            }
+          ]
+        },
+        "limitation": "The rule book holds 12 rules as data, each citing its instrument and clause as published on 30 November 2023; Article numbers are not re-read from the rulebook by this engine, and a citation that has moved shows up as a finding to update rather than as silence. Decisions are append-only: a later placement is answered with a new decision."
+      }
+    },
     "POST /api/reinsurance/cede": {
       "status": 200,
       "body": {
@@ -9599,12 +11212,12 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "0e4808c87594c8d8",
+        "fingerprint": "04327803b3cd6b20",
         "fingerprintStable": true,
         "journals": 87,
         "restoredJournals": 87,
         "bytes": 89049,
-        "restoreMs": 40,
+        "restoreMs": 43,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -9708,11 +11321,11 @@
       "extractId": "RI-EX-ALK-CONV-00001"
     },
     "POST /api/ingest/commit": {
-      "loadId": "LOAD-1791106492850"
+      "loadId": "LOAD-1791107848446"
     },
     "POST /api/ingest/submit": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791106492850"
+      "loadId": "LOAD-1791107848446"
     },
     "POST /api/onboarding/ocr": {
       "documentType": "emirates-id",
@@ -9743,6 +11356,9 @@
     "POST /api/preview/withdrawal": {
       "amountMinor": 150000,
       "fundId": "FBAL"
+    },
+    "POST /api/regulatory/uae/check": {
+      "scenario": "unrated-counterparty"
     },
     "POST /api/reinsurance/security/call": {
       "counterparty": "Emirates Re",

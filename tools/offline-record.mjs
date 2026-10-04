@@ -77,6 +77,7 @@ await page.waitForSelector('nav button');
 await sleep(1200);
 
 await direct('GET', '/reinsurance/security');
+await direct('GET', '/regulatory/uae-rules');
 await direct('GET', '/extracts');
 const issued = grab.get('GET /api/extracts')?.body;
 await direct('POST', '/extracts/verify', issued ? { extractId: issued.conventional.id } : {});
@@ -101,7 +102,7 @@ const script = [
   ['Onboarding', []],
   ['Ingestion', ['Validate & reconcile', 'Commit the accepted rows']],
   ['Parties & consent', ['Ask with consent', 'Ask without consent']],
-  ['Regulatory', ['Run the check']],
+  ['Regulatory', ['Run the check', 'Check a clean placement', 'Check a placement with an unrated reinsurer']],
   ['AI ledger', ['Approve', 'Execute']],   // Execute only renders once a human has approved the action
   ['Books', []],
   ['Labels & rename', []],
@@ -130,6 +131,8 @@ for (const [tab, actions] of script) {
    recognised premium into the return — so ask for the return once more, after the presses, so the
    recorded draft is the one an operator would see standing at the desk this afternoon. */
 await direct('GET', '/extracts');
+
+await direct('POST', '/regulatory/uae/check', { scenario: 'unlicensed-counterparty' });
 
 /* Some responses are only reachable by asking the API directly — a refusal, for instance, which
    the console renders as an error card. Mirror exactly what the console sends. */
