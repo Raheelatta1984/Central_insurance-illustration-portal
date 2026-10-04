@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { Chart, buildChart } from './chart.js';
 import { Ledger } from './ledger.js';
-import { money } from './money.js';
+import { Money, money } from './money.js';
 import { REINSURANCE_SEED, ReinsuranceError, TreatyRegister } from './reinsurance.js';
 
 function book(entityId = 'ALK-CONV', currency = 'AED') {
@@ -20,6 +20,26 @@ function seeded(basis: 'conventional' | 'takaful' = 'conventional', entityId = '
     if (treat.basis === basis) register.register({ ...treat, currency: 'AED' });
   }
   return { ledger, register };
+}
+
+
+/** A claims stub that posts exactly what the claims module posts, so the books are real. */
+function claimsStub(ledger: Ledger, entityId = 'ALK-CONV') {
+  return {
+    recover(claimId: string, input: { amount: Money; at: string; receivedInto?: string }) {
+      const account = input.receivedInto ?? `${entityId}:CASH`;
+      ledger.post({
+        id: `CL-STUB-${claimId}-${Math.random().toString(36).slice(2, 8)}`,
+        entityId, at: input.at, source: 'claims', sourceRef: claimId,
+        description: `reinsurance recovery on ${claimId}`,
+        postings: [
+          { accountId: account, side: 'debit', amount: input.amount, baseAmount: input.amount },
+          { accountId: `${entityId}:CLAIM-RECOVERY`, side: 'credit', amount: input.amount, baseAmount: input.amount },
+        ],
+      });
+      return { id: `REC-${claimId}`, amount: input.amount };
+    },
+  };
 }
 
 describe('treaty register', () => {
@@ -445,4 +465,504 @@ describe('deposit premium and adjustment', () => {
     expect(ledger.proof('ALK-CONV').balanced).toBe(true);
   });
 });
+
+describe('recovery tracking and ageing', () => {
+  const makeRecovery = (register: TreatyRegister, ledger: Ledger) => {
+    register.cedePremium({
+      treatyId: 'QS-25-2026', policyId: 'MTR-0441', riskId: 'MTR-0441',
+      sumInsured: money(250_000_00, 'AED'), premium: money(67_00, 'AED'),
+      lineOfBusiness: 'motor', at: '2026-01-05T10:00:00+04:00', basis: 'conventional',
+    });
+    return register.recoverClaim({
+      policyId: 'MTR-0441', claim: claimsStub(ledger), claimId: 'CLM-000001',
+      paid: money(1_150_00, 'AED'), at: '2026-01-10T10:00:00+04:00',
+    });
+  };
+
+  it('settles a recovery to cash, allows a part settlement, and refuses to collect it twice', () => {
+    const { ledger, register } = seeded();
+    const recovery = makeRecovery(register, ledger);
+    expect(register.recoveryList()[0]!.outstanding.minor).toBe(287_50n);
+
+    const part = register.settleRecovery({ recoveryId: recovery.recoveryId, amount: money(100_00, 'AED'), at: '2026-02-01T10:00:00+04:00', by: 'treasury' });
+    expect(part.settled.minor).toBe(100_00n);
+    expect(part.outstanding.minor).toBe(187_50n);
+    expect(ledger.balance('ALK-CONV:CASH').minor).toBe(100_00n);
+    // The receivable holds the recovery and this treaty's commission (25% of 67.00 = 16.75, at the
+    // seed's 1,500 bps = 2.51), less the 100.00 the counterparty has now paid.
+    expect(ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(28_750n + 251n - 10_000n);
+
+    const rest = register.settleRecovery({ recoveryId: recovery.recoveryId, at: '2026-03-01T10:00:00+04:00' });
+    expect(rest.outstanding.minor).toBe(0n);
+    expect(ledger.balance('ALK-CONV:CASH').minor).toBe(287_50n);
+    expect(ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(251n);   // only the commission is still owed
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+
+    expect(() => register.settleRecovery({ recoveryId: recovery.recoveryId, at: '2026-04-01T10:00:00+04:00' }))
+      .toThrow(/is already settled in full/);
+    expect(() => register.settleRecovery({ recoveryId: 'REC-NOPE', at: '2026-04-01T10:00:00+04:00' }))
+      .toThrow(/unknown recovery/);
+  });
+
+  it('refuses to collect more than is outstanding', () => {
+    const { ledger, register } = seeded();
+    const recovery = makeRecovery(register, ledger);
+    expect(() => register.settleRecovery({ recoveryId: recovery.recoveryId, amount: money(500_00, 'AED'), at: '2026-02-01T10:00:00+04:00' }))
+      .toThrow(/has 287\.50 AED outstanding; 500\.00 AED cannot be collected against it/);
+  });
+
+  it('ages what is still owed, against the treaty’s own settlement terms', () => {
+    const { ledger, register } = seeded();
+    makeRecovery(register, ledger);   // recorded 2026-01-10, default terms 60 days
+    const at30 = register.ageing({ asOf: '2026-02-01' });
+    expect(at30.items).toHaveLength(1);
+    expect(at30.items[0]!.ageDays).toBe(22);
+    expect(at30.items[0]!.bucket).toBe('0-30');
+    expect(at30.items[0]!.overdueDays).toBe(0);
+    expect(at30.overdue.minor).toBe(0n);
+    expect(at30.buckets.find((b) => b.bucket === '0-30')!.count).toBe(1);
+
+    const at90 = register.ageing({ asOf: '2026-04-15' });
+    expect(at90.items[0]!.ageDays).toBe(95);
+    expect(at90.items[0]!.bucket).toBe('90+');
+    expect(at90.items[0]!.overdueDays).toBe(35);
+    expect(at90.items[0]!.expectedBy).toBe('2026-03-11');
+    expect(at90.overdue.minor).toBe(287_50n);
+    expect(at90.worstOverdue[0]).toBe('QS-25-2026 (35d)');
+    expect(at90.oldestDays).toBe(95);
+  });
+
+  it('a settled recovery stops ageing, and a shorter settlement term makes an older debt overdue', () => {
+    const { ledger, register } = seeded();
+    const recovery = makeRecovery(register, ledger);
+    register.settleRecovery({ recoveryId: recovery.recoveryId, at: '2026-02-01T10:00:00+04:00' });
+    expect(register.ageing({ asOf: '2026-06-01' }).items).toHaveLength(0);
+    expect(register.ageing({ asOf: '2026-06-01' }).outstanding.minor).toBe(0n);
+
+    const { register: strict } = book();
+    strict.register({ ...REINSURANCE_SEED[0]!, currency: 'AED', settlementDays: 14 } as never);
+    strict.cedePremium({
+      treatyId: 'QS-25-2026', policyId: 'MTR-0441', riskId: 'MTR-0441',
+      sumInsured: money(250_000_00, 'AED'), premium: money(67_00, 'AED'),
+      lineOfBusiness: 'motor', at: '2026-01-05T10:00:00+04:00', basis: 'conventional',
+    });
+    strict.recoverClaim({ policyId: 'MTR-0441', claim: claimsStub(ledger), claimId: 'CLM-1', paid: money(1_150_00, 'AED'), at: '2026-01-10T10:00:00+04:00' });
+    const aged = strict.ageing({ asOf: '2026-02-01' });
+    expect(aged.items[0]!.expectedBy).toBe('2026-01-24');
+    expect(aged.items[0]!.overdueDays).toBe(8);
+    expect(aged.overdue.minor).toBe(287_50n);
+  });
+});
+
+describe('reconciliation and data quality', () => {
+  it('ties the register to the books, line by line, and states the difference rather than smoothing it', () => {
+    const { ledger, register } = seeded();
+    register.cedePremium({
+      treatyId: 'QS-25-2026', policyId: 'MTR-0441', riskId: 'MTR-0441',
+      sumInsured: money(250_000_00, 'AED'), premium: money(1_000_00, 'AED'),
+      lineOfBusiness: 'motor', at: '2026-01-05T10:00:00+04:00', basis: 'conventional',
+    });
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-1', loss: money(1_600_000_00, 'AED'), at: '2026-02-01T10:00:00+04:00' });
+    register.reinstate('XOL-CAT-5M', { at: '2026-02-02T10:00:00+04:00' });
+
+    const clean = register.reconcile({ asOf: '2026-03-01' });
+    expect(clean.agrees).toBe(true);
+    expect(clean.differences).toBe(0);
+    expect(clean.lines.map((l) => l.kind)).toContain('receivable');
+    expect(clean.lines.find((l) => l.kind === 'ceded-premium')!.register.minor).toBe(250_00n);   // 25% of 1,000.00
+    expect(clean.lines.find((l) => l.kind === 'event-recovery')!.register.minor).toBe(600_000_00n);
+    // 25% of 1,000.00 premium is 250.00 ceded; the commission is the seed's 1,500 bps of that, 37.50.
+    expect(clean.balanceSheet.receivable.minor).toBe(600_000_00n + 37_50n);
+    expect(clean.lines.find((l) => l.kind === 'receivable')!.difference.minor).toBe(0n);
+
+    // Now break it on purpose: a journal posted straight to the ledger that the register knows
+    // nothing about. A reconciliation that cannot see this is decoration.
+    ledger.post({
+      id: 'ROGUE-1', entityId: 'ALK-CONV', at: '2026-03-02T10:00:00+04:00', source: 'gl', sourceRef: 'manual',
+      description: 'manual adjustment, no register record',
+      postings: [
+        { accountId: 'ALK-CONV:REINS:CEDED-PREMIUM', side: 'debit', amount: money(999_00, 'AED'), baseAmount: money(999_00, 'AED') },
+        { accountId: 'ALK-CONV:REINS:PAYABLE', side: 'credit', amount: money(999_00, 'AED'), baseAmount: money(999_00, 'AED') },
+      ],
+    });
+    const broken = register.reconcile({ asOf: '2026-03-03' });
+    expect(broken.agrees).toBe(false);
+    const line = broken.lines.find((l) => l.kind === 'ceded-premium')!;
+    expect(line.status).toBe('difference');
+    expect(line.difference.minor).toBe(-999_00n);
+  });
+
+  it('reconciles policy recoveries against the claims account, taking salvage out of the comparison', () => {
+    const { ledger, register } = seeded();
+    register.cedePremium({
+      treatyId: 'QS-25-2026', policyId: 'MTR-0441', riskId: 'MTR-0441',
+      sumInsured: money(250_000_00, 'AED'), premium: money(67_00, 'AED'),
+      lineOfBusiness: 'motor', at: '2026-01-05T10:00:00+04:00', basis: 'conventional',
+    });
+    const recovery = register.recoverClaim({
+      policyId: 'MTR-0441', claim: claimsStub(ledger), claimId: 'CLM-000001',
+      paid: money(1_150_00, 'AED'), at: '2026-01-10T10:00:00+04:00',
+    });
+    // the stub above already posted the recovery the way claims does; add 180.00 of salvage beside it
+    ledger.post({
+      id: 'CL-REC-2', entityId: 'ALK-CONV', at: '2026-01-11T10:00:00+04:00', source: 'claims', sourceRef: 'CLM-000001',
+      description: 'salvage', postings: [
+        { accountId: 'ALK-CONV:CASH', side: 'debit', amount: money(180_00, 'AED'), baseAmount: money(180_00, 'AED') },
+        { accountId: 'ALK-CONV:CLAIM-RECOVERY', side: 'credit', amount: money(180_00, 'AED'), baseAmount: money(180_00, 'AED') },
+      ],
+    });
+    const result = register.reconcile({
+      asOf: '2026-03-01',
+      claimsRecoveries: [{ type: 'reinsurance', amount: recovery.amount }, { type: 'salvage', amount: money(180_00, 'AED') }],
+    });
+    const line = result.lines.find((l) => l.kind === 'policy-recovery')!;
+    expect(line.register.minor).toBe(287_50n);
+    expect(line.ledger.minor).toBe(287_50n);       // 467.50 in the account less 180.00 of salvage
+    expect(line.status).toBe('agrees');
+    expect(line.note).toMatch(/salvage \/ third-party recovery removed/);
+  });
+
+  it('finds a paid claim on a ceded risk whose recovery was never claimed', () => {
+    const { register } = seeded();
+    register.cedePremium({
+      treatyId: 'QS-25-2026', policyId: 'MTR-0441', riskId: 'MTR-0441',
+      sumInsured: money(250_000_00, 'AED'), premium: money(67_00, 'AED'),
+      lineOfBusiness: 'motor', at: '2026-01-05T10:00:00+04:00', basis: 'conventional',
+    });
+    const report = register.dataQuality({
+      asOf: '2026-03-01',
+      paidClaims: [{ claimId: 'CLM-FORGOTTEN', policyId: 'MTR-0441', paid: money(4_000_00, 'AED'), cause: 'motor' }],
+    });
+    const finding = report.findings.find((f) => f.code === 'REINS-020')!;
+    expect(finding.severity).toBe('error');
+    expect(finding.detail).toMatch(/1,000\.00 AED has not been claimed/);   // 25% of 4,000.00
+    expect(report.errors).toBeGreaterThan(0);
+    expect(report.checked).toContain('a paid claim on a ceded risk has had its recovery claimed');
+  });
+
+  it('flags a treaty whose period ended with premium still on account, and a cession that cedes nothing', () => {
+    const { register } = seeded();
+    // a treaty whose period ended on 2026-03-31, with a deposit never settled against it
+    register.register({
+      ...REINSURANCE_SEED[3]!, id: 'AGG-EXPIRED', currency: 'AED',
+      depositAccounted: true, depositPremium: money(50_000_00, 'AED'), rateOnLineBps: 350,
+      kind: 'excess-of-loss', attachment: money(100_000_00, 'AED'), limit: money(500_000_00, 'AED'),
+      commissionBps: 0, cessionBps: undefined, lineOfBusiness: 'all',
+      from: '2026-01-01', to: '2026-03-31',
+    } as never);
+    register.openDeposit('AGG-EXPIRED', { amount: money(50_000_00, 'AED'), at: '2026-01-15T10:00:00+04:00' });
+
+    // a surplus cession of a risk that sits inside the retention: it cedes nothing, and says so
+    register.cedePremium({
+      treatyId: 'SURPLUS-10', policyId: 'P-SMALL', riskId: 'P-SMALL',
+      sumInsured: money(50_000_00, 'AED'), premium: money(500_00, 'AED'),
+      lineOfBusiness: 'life', at: '2026-02-01T10:00:00+04:00', basis: 'conventional',
+    });
+
+    const report = register.dataQuality({ asOf: '2026-05-01' });
+    expect(report.findings.some((f) => f.code === 'REINS-040' && f.subject === 'AGG-EXPIRED')).toBe(true);
+    expect(report.findings.some((f) => f.code === 'REINS-011' && f.subject === 'P-SMALL')).toBe(true);
+    expect(report.findings.some((f) => f.code === 'REINS-003' && f.subject === 'XOL-CAT-5M')).toBe(false);   // it has an expiry
+    expect(report.checked).toContain('every treaty can be administered as written');
+    expect(report.checked).toContain('the register agrees with the books');
+    expect(report.errors).toBe(0);   // nothing here is an error: warnings are things a human decides on
+  });
+});
+});
+
+/**
+ * Capability 8 — cash calls and collateral. A reinsurer's promise is only worth the security behind
+ * it: these tests hold the arithmetic of what must be secured, the discipline of calling only the
+ * real shortfall, and the two rules a Shariah committee would look for — cash posted under a
+ * retakaful treaty earns no interest, and a deposit accounted treaty carries no security at all.
+ */
+describe('collateral, cash calls and release', () => {
+  /** A quota share with one cession on it: ceded premium 250.00, so the 3,000 bps security clause asks for 7.50. */
+  function withCession(premiumMinor = 1_000_00n) {
+    const { ledger, register } = seeded();
+    register.cedePremium({
+      treatyId: 'QS-25-2026', policyId: 'P-SEC-1', riskId: 'P-SEC-1',
+      sumInsured: money(1_000_000_00, 'AED'), premium: money(premiumMinor, 'AED'),
+      lineOfBusiness: 'life', at: '2026-02-01T10:00:00+04:00', basis: 'conventional', by: 'reinsurance/desk',
+    });
+    return { ledger, register };
+  }
+
+  it('posts cash security on both sides of the books, and keeps it out of the operating cash account', () => {
+    const { ledger, register } = withCession();
+    const instrument = register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', treatyId: 'QS-25-2026', kind: 'cash',
+      amount: money(100_00, 'AED'), at: '2026-02-02T10:00:00+04:00', reference: 'CASH-1', by: 'treasury',
+    });
+    expect(instrument.onBalanceSheet).toBe(true);
+    expect(ledger.balance('ALK-CONV:COLLATERAL:CASH').minor).toBe(100_00n);          // restricted, ours to hold
+    expect(ledger.balance('ALK-CONV:RECEIVED-AS-SECURITY').minor).toBe(100_00n);     // and theirs to have back
+    expect(ledger.balance('ALK-CONV:CASH').minor).toBe(0n);                          // never spending money
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+
+    const position = register.securityPosition('Gulf Reinsurance PSC', '2026-02-02');
+    expect(position.premiumRequirement.minor).toBe(75_00n);                          // 3,000 bps of the 250.00 ceded
+    expect(position.requirement.minor).toBe(75_00n);                                 // nothing recovered yet
+    expect(position.held.minor).toBe(100_00n);
+    expect(position.shortfall.minor).toBe(0n);
+    expect(position.surplus.minor).toBe(25_00n);
+    expect(position.coverBps).toBe(13_333);
+    expect(register.securityFindings('2026-02-02').some((f) => f.code === 'REINS-064')).toBe(true);
+  });
+
+  it('withholds premium instead of paying it: the payable moves, the cash never does', () => {
+    const { ledger, register } = withCession();
+    const before = ledger.balance('ALK-CONV:REINS:PAYABLE').minor;
+    register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', kind: 'funds-withheld',
+      amount: money(100_00, 'AED'), at: '2026-02-03T10:00:00+04:00', reference: 'FW-1',
+    });
+    expect(ledger.balance('ALK-CONV:REINS:PAYABLE').minor).toBe(before - 100_00n);
+    expect(ledger.balance('ALK-CONV:COLLATERAL:CASH').minor).toBe(0n);               // no cash moved
+    expect(ledger.balance('ALK-CONV:RECEIVED-AS-SECURITY').minor).toBe(100_00n);
+    expect(register.securityStatement({ asOf: '2026-02-03' }).ledger.restrictedCash.minor).toBe(0n);
+  });
+
+  it('refuses to withhold more premium than is owed, and refuses security from a name it cannot find', () => {
+    const { register } = withCession();
+    expect(() => register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', kind: 'funds-withheld',
+      amount: money(9_999_999_00, 'AED'), at: '2026-02-03T10:00:00+04:00',
+    })).toThrow(/only .* is payable to reinsurers, so .* cannot be withheld/);
+    expect(() => register.holdSecurity({
+      counterparty: 'Nowhere Re', kind: 'cash', amount: money(100_00, 'AED'), at: '2026-02-03T10:00:00+04:00',
+    })).toThrow(/security is held against a promise we can name/);
+    expect(() => register.holdSecurity({
+      counterparty: 'MENA Re', treatyId: 'QS-25-2026', kind: 'cash',
+      amount: money(100_00, 'AED'), at: '2026-02-03T10:00:00+04:00',
+    })).toThrow(/is written by Gulf Reinsurance PSC, not MENA Re/);
+    expect(() => register.holdSecurity({
+      counterparty: 'Emirates Re', kind: 'cash', amount: money(100_00, 'AED'),
+      at: '2026-02-03T10:00:00+04:00', expiresAt: '2026-01-31',
+    })).toThrow(/cannot expire on/);
+  });
+
+  it('counts a letter of credit without posting it, and says so', () => {
+    const { ledger, register } = withCession();
+    register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', kind: 'letter-of-credit',
+      amount: money(5_000_00, 'AED'), at: '2026-02-04T10:00:00+04:00', reference: 'LC-TEST', expiresAt: '2026-12-31',
+    });
+    const position = register.securityPosition('Gulf Reinsurance PSC', '2026-02-04');
+    expect(position.held.minor).toBe(5_000_00n);                                     // relied on
+    expect(position.heldOffBalanceSheet.minor).toBe(5_000_00n);
+    expect(position.heldOnBalanceSheet.minor).toBe(0n);
+    expect(ledger.balance('ALK-CONV:COLLATERAL:CASH').minor).toBe(0n);               // never posted as cash
+    const finding = register.securityFindings('2026-02-04').find((f) => f.code === 'REINS-065')!;
+    expect(finding.severity).toBe('info');
+    expect(finding.what).toMatch(/cannot be spent/);
+  });
+
+  it('requires a recoverable in full and calls exactly the shortfall, refusing anything more', () => {
+    const { register } = seeded();
+    register.recoverEvent('XOL-CAT-5M', {
+      eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00', by: 'catastrophe-desk',
+    });
+    register.holdSecurity({
+      counterparty: 'Emirates Re', treatyId: 'XOL-CAT-5M', kind: 'letter-of-credit',
+      amount: money(90_000_00, 'AED'), at: '2026-04-03T10:00:00+04:00', expiresAt: '2026-12-31',
+    });
+    const position = register.securityPosition('Emirates Re', '2026-04-04');
+    expect(position.recoverable.minor).toBe(600_000_00n);
+    expect(position.requirement.minor).toBe(600_000_00n);
+    expect(position.shortfall.minor).toBe(510_000_00n);
+    expect(position.coverBps).toBe(1_500);
+    const finding = register.securityFindings('2026-04-04').find((f) => f.code === 'REINS-060')!;
+    expect(finding.severity).toBe('error');
+    expect(finding.what).toMatch(/Emirates Re is 510,000\.00 AED short/);
+
+    const call = register.callSecurity({ counterparty: 'Emirates Re', at: '2026-04-04T11:00:00+04:00', by: 'treasury' });
+    expect(call.amount.minor).toBe(510_000_00n);
+    expect(call.dueBy).toBe('2026-05-04');
+    expect(call.status).toBe('open');
+    expect(() => register.callSecurity({
+      counterparty: 'Emirates Re', at: '2026-04-04T12:00:00+04:00', amount: money(1_00, 'AED'),
+    })).toThrow(/would double-count the same shortfall/);
+    expect(() => register.callSecurity({
+      counterparty: 'Emirates Re', at: '2026-04-05T09:00:00+04:00', amount: money(510_001_00, 'AED'), dueInDays: 15,
+    })).toThrow(/would take security beyond the exposure it secures/);
+  });
+
+  it('refuses to call when the security already covers it, or when nothing is owed at all', () => {
+    const { register } = seeded();
+    // MENA Re writes a treaty here and is owed nothing: no exposure, no call.
+    expect(() => register.callSecurity({ counterparty: 'MENA Re', at: '2026-04-04T11:00:00+04:00' }))
+      .toThrow(/there is nothing to secure/);
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00' });
+    register.holdSecurity({
+      counterparty: 'Emirates Re', kind: 'bank-guarantee', amount: money(600_000_00, 'AED'), at: '2026-04-03T10:00:00+04:00',
+    });
+    expect(() => register.callSecurity({ counterparty: 'Emirates Re', at: '2026-04-04T11:00:00+04:00', reason: 'routine' }))
+      .toThrow(/no shortfall to call/);
+  });
+
+  it('answers a call in part, then in full, and refuses a third answer or one larger than the call', () => {
+    const { ledger, register } = seeded();
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00' });
+    const call = register.callSecurity({ counterparty: 'Emirates Re', at: '2026-04-04T11:00:00+04:00' });
+    expect(call.amount.minor).toBe(600_000_00n);                                    // nothing was secured at all
+    expect(() => register.settleCall({ callId: call.id, at: '2026-04-05T09:00:00+04:00', amount: money(600_001_00, 'AED') }))
+      .toThrow(/answers more than was called/);
+
+    const part = register.settleCall({ callId: call.id, at: '2026-04-05T09:30:00+04:00', amount: money(200_000_00, 'AED'), kind: 'cash' });
+    expect(part.call.status).toBe('part-settled');
+    expect(part.instrument.kind).toBe('cash');
+    expect(ledger.balance('ALK-CONV:COLLATERAL:CASH').minor).toBe(200_000_00n);
+    expect(register.securityPosition('Emirates Re', '2026-04-05').shortfall.minor).toBe(400_000_00n);
+
+    const rest = register.settleCall({ callId: call.id, at: '2026-04-06T09:00:00+04:00', amount: money(400_000_00, 'AED'), kind: 'letter-of-credit', expiresAt: '2026-12-31' });
+    expect(rest.call.status).toBe('settled');
+    expect(rest.call.settlements).toHaveLength(2);
+    expect(register.securityPosition('Emirates Re', '2026-04-06').shortfall.minor).toBe(0n);
+    expect(() => register.settleCall({ callId: call.id, at: '2026-04-07T09:00:00+04:00' })).toThrow(/is settled in full/);
+    expect(() => register.settleCall({ callId: 'CALL-NOWHERE', at: '2026-04-07T09:00:00+04:00' })).toThrow(/unknown cash call/);
+  });
+
+  it('returns security and refuses to leave an exposure unsecured unless someone puts their name to it', () => {
+    const { ledger, register } = withCession();
+    const instrument = register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', kind: 'cash', amount: money(100_00, 'AED'), at: '2026-02-02T10:00:00+04:00',
+    });
+    // 75.00 is required; the 25.00 above it secures nothing and goes back without ceremony
+    const first = register.releaseSecurity({ instrumentId: instrument.id, at: '2026-02-05T10:00:00+04:00', amount: money(25_00, 'AED'), reason: 'surplus released to treasury' });
+    expect(first.released.minor).toBe(25_00n);
+    expect(ledger.balance('ALK-CONV:COLLATERAL:CASH').minor).toBe(75_00n);
+    expect(ledger.balance('ALK-CONV:RECEIVED-AS-SECURITY').minor).toBe(75_00n);
+    expect(register.securityPosition('Gulf Reinsurance PSC', '2026-02-05').shortfall.minor).toBe(0n);
+
+    expect(() => register.releaseSecurity({ instrumentId: instrument.id, at: '2026-02-06T10:00:00+04:00', amount: money(10_00, 'AED'), reason: 'treasury needs the cash' }))
+      .toThrow(/would leave Gulf Reinsurance PSC 10\.00 AED short of what its treaties require; name an approver/);
+    const waived = register.releaseSecurity({
+      instrumentId: instrument.id, at: '2026-02-07T10:00:00+04:00', amount: money(10_00, 'AED'),
+      reason: 'treasury needs the cash', approvedBy: 'chief-financial-officer',
+    });
+    expect(waived.released.minor).toBe(10_00n);
+    expect(register.releaseWaiverList()).toHaveLength(1);
+    const waiver = register.securityFindings('2026-02-07').find((f) => f.code === 'REINS-066')!;
+    expect(waiver.what).toMatch(/approved by chief-financial-officer/);
+    expect(() => register.releaseSecurity({ instrumentId: instrument.id, at: '2026-02-08T10:00:00+04:00', amount: money(65_00, 'AED'), reason: 'the rest of it' }))
+      .toThrow(/releasing 65\.00 AED would leave Gulf Reinsurance PSC 75\.00 AED short of what its treaties require; name an approver/);
+    register.releaseSecurity({
+      instrumentId: instrument.id, at: '2026-02-09T10:00:00+04:00', amount: money(65_00, 'AED'),
+      reason: 'the rest of it', approvedBy: 'chief-financial-officer',
+    });
+    expect(ledger.balance('ALK-CONV:COLLATERAL:CASH').minor).toBe(0n);
+    expect(() => register.releaseSecurity({ instrumentId: instrument.id, at: '2026-02-10T10:00:00+04:00', reason: 'again' }))
+      .toThrow(/has already been released in full/);
+  });
+
+  it('stops counting an instrument that has lapsed, reports it, and refuses to "return" it', () => {
+    const { register } = withCession();
+    const lapsed = register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', kind: 'letter-of-credit', amount: money(5_000_00, 'AED'),
+      at: '2026-01-10T10:00:00+04:00', expiresAt: '2026-06-30', reference: 'LC-LAPSED',
+    });
+    const live = register.securityPosition('Gulf Reinsurance PSC', '2026-06-01');
+    expect(live.held.minor).toBe(5_000_00n);
+    expect(live.expiringSoon.map((i) => i.id)).toContain(lapsed.id);                 // 30 days is the window
+
+    const after = register.securityPosition('Gulf Reinsurance PSC', '2026-07-01');
+    expect(after.held.minor).toBe(0n);                                              // lapsed: it secures nothing
+    expect(after.expired.map((i) => i.id)).toContain(lapsed.id);
+    const finding = register.securityFindings('2026-07-01').find((f) => f.code === 'REINS-062')!;
+    expect(finding.severity).toBe('error');                                         // and the exposure is unsecured
+    expect(() => register.releaseSecurity({ instrumentId: lapsed.id, at: '2026-07-02T10:00:00+04:00', reason: 'return it' }))
+      .toThrow(/lapsed on 2026-06-30: there is nothing to return/);
+    expect(register.securityFindings('2026-07-01').some((f) => f.code === 'REINS-061')).toBe(false);
+  });
+
+  it('flags a cash call that nobody answered by its due date', () => {
+    const { register } = seeded();
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00' });
+    register.callSecurity({ counterparty: 'Emirates Re', at: '2026-04-04T11:00:00+04:00', dueInDays: 10 });
+    expect(register.securityFindings('2026-04-14').some((f) => f.code === 'REINS-063')).toBe(false);
+    const overdue = register.securityFindings('2026-04-20').find((f) => f.code === 'REINS-063')!;
+    expect(overdue.what).toMatch(/was due on 2026-04-14 and is 6 days unanswered/);
+  });
+
+  it('pays no interest under a retakaful treaty, and credits it to the counterparty under a conventional one', () => {
+    const { register: retakaful } = seeded('takaful', 'ALK-TKF');
+    const retakafulCash = retakaful.holdSecurity({
+      counterparty: 'Takaful Re International', kind: 'cash', amount: money(90_00, 'AED'), at: '2026-02-02T10:00:00+04:00',
+    });
+    expect(() => retakaful.creditCollateralInterest({
+      instrumentId: retakafulCash.id, at: '2026-03-01T10:00:00+04:00', amount: money(1_00, 'AED'),
+    })).toThrow(/would be riba, and this engine will not post it/);
+
+    const { ledger, register } = withCession();
+    const cash = register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', kind: 'cash', amount: money(10_00, 'AED'), at: '2026-02-02T10:00:00+04:00',
+    });
+    const credited = register.creditCollateralInterest({ instrumentId: cash.id, at: '2026-02-28T10:00:00+04:00', amount: money(25n, 'AED') });
+    expect(credited.journalId).toBeTruthy();
+    expect(ledger.balance('ALK-CONV:COLLATERAL:INTEREST').minor).toBe(25n);
+    expect(ledger.balance('ALK-CONV:RECEIVED-AS-SECURITY').minor).toBe(1_025n);      // theirs, with interest on top
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+    const line = register.reconcile({ asOf: '2026-02-28' }).lines.find((l) => l.kind === 'security-liability')!;
+    expect(line.status).toBe('agrees');
+    expect(line.register.minor).toBe(1_025n);
+    expect(line.note).toMatch(/interest earned on their cash/);
+    expect(() => register.creditCollateralInterest({
+      instrumentId: cash.id, at: '2026-03-01T10:00:00+04:00', amount: money(0n, 'AED'),
+    })).toThrow(/interest on nothing is not a posting/);
+  });
+
+  it('refuses a security clause on a deposit accounted treaty, and reports the statement as a whole', () => {
+    const { register } = seeded();
+    expect(() => register.register({
+      id: 'DEP-SEC', name: 'Deposit with security', counterparty: 'Gulf Reinsurance PSC', kind: 'excess-of-loss',
+      basis: 'conventional', lineOfBusiness: 'all', currency: 'AED', from: '2026-01-01', to: '2026-12-31',
+      attachment: money(100_000_00, 'AED'), limit: money(500_000_00, 'AED'), commissionBps: 0,
+      depositAccounted: true, depositPremium: money(50_000_00, 'AED'), securityRequiredBps: 2_000,
+    })).toThrow(/there is no reinsurer exposure to secure, only the deposit we already hold/);
+    expect(() => register.register({
+      id: 'SEC-BPS', name: 'Security out of range', counterparty: 'MENA Re', kind: 'quota-share',
+      basis: 'conventional', lineOfBusiness: 'life', currency: 'AED', from: '2026-01-01', to: '2026-12-31',
+      cessionBps: 1_000, commissionBps: 0, securityRequiredBps: 12_000,
+    })).toThrow(/security of 12000 bps of ceded premium is not a share of it/);
+
+    register.recoverEvent('XOL-CAT-5M', { eventId: 'STORM-ALPHAI', loss: money(1_600_000_00, 'AED'), at: '2026-04-02T10:00:00+04:00' });
+    register.holdSecurity({
+      counterparty: 'Emirates Re', kind: 'letter-of-credit', amount: money(30_000_00, 'AED'),
+      at: '2026-04-03T10:00:00+04:00', expiresAt: '2026-10-20', reference: 'LC-SOON',
+    });
+    const statement = register.securityStatement({ asOf: '2026-10-05' });
+    expect(statement.requirement.minor).toBe(600_000_00n);
+    expect(statement.held.minor).toBe(30_000_00n);                                  // LC-SOON is still in force, with 15 days to run
+    expect(statement.positions.find((p) => p.counterparty === 'Emirates Re')!.expiringSoon).toHaveLength(1);
+    expect(statement.findings.some((f) => f.code === 'REINS-061')).toBe(true);
+    expect(statement.unsecured.join(' ')).toMatch(/Emirates Re 570,000\.00 AED/);
+    expect(statement.positions.map((p) => p.counterparty)).toContain('Gulf Reinsurance PSC');
+    expect(statement.positions.find((p) => p.counterparty === 'MENA Re')!.secured).toBe(true);
+    expect(statement.notes.some((n) => n.includes('deposit accounted'))).toBe(true);
+    expect(statement.ledger.receivedAsSecurity.minor).toBe(0n);
+    const reconcile = register.reconcile({ asOf: '2026-10-05' });
+    expect(reconcile.lines.some((l) => l.kind === 'collateral-cash')).toBe(true);
+    expect(reconcile.lines.some((l) => l.kind === 'security-liability')).toBe(true);
+    expect(reconcile.agrees).toBe(true);
+  });
+
+  it('ties the security accounts into the books, so collateral can never quietly disappear', () => {
+    const { ledger, register } = withCession();
+    const statement = register.securityStatement({ asOf: '2026-02-28' });
+    expect(statement.ledger.restrictedCash.minor).toBe(0n);
+    register.holdSecurity({
+      counterparty: 'Gulf Reinsurance PSC', kind: 'cash', amount: money(400_00, 'AED'), at: '2026-02-10T10:00:00+04:00',
+    });
+    const after = register.securityStatement({ asOf: '2026-02-28' });
+    expect(after.ledger.restrictedCash.minor).toBe(400_00n);
+    expect(after.ledger.receivedAsSecurity.minor).toBe(400_00n);
+    const reconcile = register.reconcile({ asOf: '2026-02-28' });
+    const cash = reconcile.lines.find((l) => l.kind === 'collateral-cash')!;
+    expect(cash.register.minor).toBe(400_00n);
+    expect(cash.status).toBe('agrees');
+    expect(reconcile.balanceSheet.restrictedCash.minor).toBe(400_00n);
+    expect(reconcile.balanceSheet.securityReceived.minor).toBe(400_00n);
+    expect(ledger.proof('ALK-CONV').balanced).toBe(true);
+  });
 });

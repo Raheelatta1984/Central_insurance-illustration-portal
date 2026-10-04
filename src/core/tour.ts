@@ -177,7 +177,7 @@ export const TOUR: TourStep[] = [
   },
   {
     at: '00:48', minutes: 5, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
-    why: 'An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code.',
+    why: 'An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, and the security behind every counterparty\'s promise measured against what it owes us.',
     doThis: [
       'Read the two statements: the conventional book and the takaful window, each with its own treaties.',
       'Press "Cede a further risk": the engine authorises the cession, prices it and posts it — and the utilisation statement moves. Naming the same risk twice is refused rather than double-counted.',
@@ -185,13 +185,20 @@ export const TOUR: TourStep[] = [
       'Read "The refusals": a risk the reinsurer has not accepted, and participant money offered to a conventional treaty.',
       'Press "Claim a catastrophe event", then "Reinstate the catastrophe cover": the layer pays above the retention, the cover is eaten, and the first reinstatement is free.',
       'Read the deposit card: premium paid on account is an asset, and the period settles against the real subject premium.',
+      'Press "Settle the outstanding recovery": what the reinsurer still owes turns into cash, and the ageing resets.',
+      'Read "Security behind the reinsurers\' promises": Emirates Re carries a 50,000.00 shortfall while being six days late on the recovery it already owes — and Gulf Reinsurance PSC is holding 516.61 more security than its treaties require.',
+      'Press "Answer the outstanding cash call": the shortfall is called, then answered, and the cover goes to 100.00% with the cash posted to restricted cash.',
+      'Press "Release the security we no longer need": the surplus goes back, the payable returns to the books, and the release is journaled.',
+      'Press "Credit the interest on their cash": interest earned on a counterparty\'s cash is theirs, and it is carried as more of what we owe them — a retakaful treaty refuses interest altogether.',
     ],
     expect: [
       'Ceded premium, commission, net retained premium and the recoverable appear in the books, not just on screen.',
       'Every cession names the journal it produced, and the recoverable on the statement equals the receivable in the ledger.',
       'A deposit-accounted treaty recognises no premium income and no claim expense at all — the balance sheet carries it until settlement.',
+      'Cash security and withheld premium appear as restricted cash and as security owed back; a letter of credit is disclosed and never posted as cash.',
+      'The cash call asks for the shortfall and nothing more, and a second call for the same gap is refused while the first is unanswered.',
     ],
-    api: ['GET /api/reinsurance', 'POST /api/reinsurance/cede', 'POST /api/reinsurance/facultative', 'POST /api/reinsurance/recover', 'POST /api/reinsurance/event', 'POST /api/reinsurance/reinstate', 'POST /api/reinsurance/deposit', 'POST /api/reinsurance/deposit/settle'],
+    api: ['GET /api/reinsurance', 'GET /api/reinsurance/security', 'POST /api/reinsurance/cede', 'POST /api/reinsurance/facultative', 'POST /api/reinsurance/recover', 'POST /api/reinsurance/event', 'POST /api/reinsurance/reinstate', 'POST /api/reinsurance/deposit', 'POST /api/reinsurance/deposit/settle', 'POST /api/reinsurance/settle', 'POST /api/reinsurance/security/hold', 'POST /api/reinsurance/security/call', 'POST /api/reinsurance/security/call/settle', 'POST /api/reinsurance/security/release', 'POST /api/reinsurance/security/interest'],
   },
   {
     at: '00:53', minutes: 3, tab: 'durability', title: 'Prove the books can be restored',

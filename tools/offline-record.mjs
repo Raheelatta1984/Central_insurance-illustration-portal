@@ -39,6 +39,22 @@ async function press(page, text, nth = 0) {
   return ok;
 }
 
+/* Read before anything is pressed: the security statement is most informative as it stands, with a
+   shortfall open, a call unanswered and a surplus everybody has forgotten about. */
+async function direct(method, path, body) {
+  const key = `${method} /api${path}`;
+  if (grab.has(key)) return;
+  const res = await fetch(`${BASE}/api${path}`, {
+    method,
+    ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+  });
+  let parsed;
+  try { parsed = await res.json(); } catch { parsed = { note: 'non-JSON response' }; }
+  grab.set(key, { status: res.status, body: parsed });
+  if (body !== undefined) bodies.set(key, body);
+  console.log(`   direct ${key} → ${res.status}`);
+}
+
 const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
 const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
 const page = await context.newPage();
@@ -60,6 +76,8 @@ await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 await page.waitForSelector('nav button');
 await sleep(1200);
 
+await direct('GET', '/reinsurance/security');
+
 /* Walk every module and press the things a customer would press. Real button labels, taken from
    the console itself. Each tab starts on a freshly loaded page: the world lives on the server, so
    a reload gives a clean view and stops one failed click from cascading into the rest. */
@@ -73,7 +91,7 @@ const script = [
   ['Group finance', ['Run the consolidation']],
   ['Underwriting', ['Ask the AI agent to decide']],
   ['Claims', ['Ask the AI to approve 25,000.00', 'Register a new claim']],
-  ['Reinsurance', ['Place a risk facultatively', 'Cede a further risk', 'Claim the reinsurance recovery', 'Claim a catastrophe event', 'Reinstate the catastrophe cover', 'Pay a deposit instalment', 'Settle the deposit premium']],
+  ['Reinsurance', ['Place a risk facultatively', 'Cede a further risk', 'Claim the reinsurance recovery', 'Claim a catastrophe event', 'Reinstate the catastrophe cover', 'Pay a deposit instalment', 'Settle the deposit premium', 'Settle the outstanding recovery', 'Answer the outstanding cash call', 'Release the security we no longer need', 'Credit the interest on their cash']],
   ['Onboarding', []],
   ['Ingestion', ['Validate & reconcile', 'Commit the accepted rows']],
   ['Parties & consent', ['Ask with consent', 'Ask without consent']],
@@ -104,20 +122,6 @@ for (const [tab, actions] of script) {
 
 /* Some responses are only reachable by asking the API directly — a refusal, for instance, which
    the console renders as an error card. Mirror exactly what the console sends. */
-const direct = async (method, path, body) => {
-  const key = `${method} /api${path}`;
-  if (grab.has(key)) return;
-  const res = await fetch(`${BASE}/api${path}`, {
-    method,
-    ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
-  });
-  let parsed;
-  try { parsed = await res.json(); } catch { parsed = { note: 'non-JSON response' }; }
-  grab.set(key, { status: res.status, body: parsed });
-  if (body !== undefined) bodies.set(key, body);
-  console.log(`   direct ${key} → ${res.status}`);
-};
-
 const claims = grab.get('GET /api/claims')?.body;
 const openClaim = claims?.conventional?.list?.find((c) => c.status === 'approved') ?? claims?.conventional?.list?.[0];
 if (openClaim) {
@@ -129,6 +133,15 @@ await direct('GET', '/units');
 await direct('POST', '/onboarding/ocr', { documentType: 'emirates-id', fields: { fullName: ['Ahmed Al Mansoori', 'Ahmed Al Mansoori'], idNumber: ['784-1985-1234567-1', '784-1985-1234567-1'] } });
 await direct('POST', '/partner/lookup', { withConsent: false });
 await direct('POST', '/pre-sale', { productLine: 'medical', hasNeedAnalysis: false, hasNeedId: false });
+/* Security: money posted by a counterparty, and a call on a shortfall. Both are the answers the
+   engine gives to the desk, recorded exactly as they came back. */
+await direct('POST', '/reinsurance/security/hold', {
+  counterparty: 'Emirates Re', treatyId: 'XOL-CAT-5M', kind: 'letter-of-credit',
+  amount: '25,000.00', reference: 'LC-RECORDED', expiresAt: '2027-03-31', by: 'treasury',
+});
+await direct('POST', '/reinsurance/security/call', {
+  counterparty: 'Emirates Re', reason: 'the catastrophe recovery is unsecured beyond the letters of credit in force',
+});
 
 const world = grab.get('GET /api/world')?.body;
 await browser.close();

@@ -7,6 +7,7 @@
 | Area | Evidence | Result |
 | --- | --- | --- |
 | Type safety | `npm run typecheck` over core, server and console | 0 errors |
+| Reinsurance and retakaful | `src/core/reinsurance.test.ts` (48 tests) — treaty authorisation for all four kinds, cession and exact-ratio premium, facultative before acceptance, catastrophe recovery and reinstatement pricing, deposit accounting, **recovery settlement and ageing against per-treaty terms**, **register-to-books reconciliation line by line**, **collateral and cash calls** (shortfall arithmetic, part answers, release, expiry, riba refusal), participant-money segregation | pass |
 | Money arithmetic | `src/core/money.test.ts` — rounding modes, basis-point percentages, currency conversion, a 200-iteration property check | pass |
 | Double-entry ledger | `src/core/ledger.test.ts` — balancing, idempotency, reversal-only corrections, fund-boundary enforcement, cross-entity refusal, per-currency proof | pass |
 | NAV and dealing rules | `src/core/fund.test.ts` — cut-off resolution (before/after/non-business day), floor pricing with explicit residual, revision history, staleness, look-through, Shariah composition warnings, FMC accrual | pass |
@@ -28,21 +29,32 @@
 
 ## Bugs this QA found and fixed (kept here on purpose)
 
-0. **An id could be re-used for a quietly different journal.** `Ledger.post` treated an id as a retry when entity, source and postings matched, so a second journal with the same postings but a different timestamp, reference or description was swallowed as a duplicate — money-safe today, but it would have hidden a real duplicate-key bug. The identity check now covers entity, source, source reference, economic time, fund, reversal link, description and postings; the restore path double-checks the journal count so a collapsed journal cannot pass. Test: `persistence.test.ts` ("keeps the id-collision guard on restore").
+0. **The recovery register counted the same money twice.** Event recoveries were held in one list and policy recoveries in another, and the utilisation statement summed both while the reconciliation summed a third figure. A test caught `1,200,287.50` where the receivable was `150,785.44`: the catastrophe recovery was in the total twice. Fix: **one** recovery register keyed by source (`policy`, `event`, `deposit`), every statement derived from it, and deposit draws marked settled and taken out of ageing and out of the receivable — a deposit draw is already the reinsurer's money. Regression tests: the ageing, reconciliation and deposit-draw cases in `reinsurance.test.ts`.
 
-1. **Journal id collision silently dropped money.** The unit-linked engine and the takaful engine each numbered journals from 1, so on a shared ledger the takaful entries reused ids the unit-linked engine had already posted, and the ledger's idempotency rule discarded them. Symptom: a takaful contribution reduced to a single cash movement — the tabarru, investment and operator legs vanished. Fix: ids are prefixed per module (`UL-…`, `TKF-…`) **and** `Ledger.post` now refuses an id reused for different content instead of silently returning the old entry. Regression tests: `ledger.test.ts` ("the silent-loss trap") and the "two engines, one ledger" money-proof case.
-2. **Fractional basis points truncated to zero** in daily accruals (150 bps / 365 became 0 bps). `applyBps` now works to micro-basis-point precision.
-3. **`nextBusinessDay` returned the same day** when the date given was already a business day, which made after-cut-off instructions price on the wrong day. Now strictly after, with the weekend-skip case asserted.
-4. **Amount parsing rounded against the customer** for fractional digits beyond the currency scale (`1,234.567` became `1,234.13`). Now the beyond-scale digits round half-up as a whole.
-5. **Fund amounts double-typed** (minor units vs micro-units) caught by tests before it reached the console — the unit conventions are now documented in `src/core/units.ts` and asserted.
+1. **A data-quality control that could never fire.** REINS-001 reported a reinstatement on a treaty with no annual premium — unreachable, because the register refuses such a treaty in the first place. Removed rather than kept as decoration: a control that cannot fire is not evidence of anything.
+
+2. **Funds withheld was first posted as if cash had moved.** The restricted-cash line counted every on-balance-sheet instrument, including premium withheld — where no money moves at all, only the payable falls. The reconciliation caught it immediately (register 1,500.00 against a books figure of 0.00 in an account nobody had debited). Cash security and withheld premium are now separated: the asset counts cash alone, the liability counts both, and both halves are asserted in `reinsurance.test.ts`.
+
+3. **An id could be re-used for a quietly different journal.** `Ledger.post` treated an id as a retry when entity, source and postings matched, so a second journal with the same postings but a different timestamp, reference or description was swallowed as a duplicate — money-safe today, but it would have hidden a real duplicate-key bug. The identity check now covers entity, source, source reference, economic time, fund, reversal link, description and postings; the restore path double-checks the journal count so a collapsed journal cannot pass. Test: `persistence.test.ts` ("keeps the id-collision guard on restore").
+
+4. **Journal id collision silently dropped money.** The unit-linked engine and the takaful engine each numbered journals from 1, so on a shared ledger the takaful entries reused ids the unit-linked engine had already posted, and the ledger's idempotency rule discarded them. Symptom: a takaful contribution reduced to a single cash movement — the tabarru, investment and operator legs vanished. Fix: ids are prefixed per module (`UL-…`, `TKF-…`) **and** `Ledger.post` now refuses an id reused for different content instead of silently returning the old entry. Regression tests: `ledger.test.ts` ("the silent-loss trap") and the "two engines, one ledger" money-proof case.
+
+5. **Fractional basis points truncated to zero in daily accruals.** 150 bps / 365 became 0 bps. `applyBps` now works to micro-basis-point precision.
+
+6. **`nextBusinessDay` returned the same day when the date given was already a business day.** which made after-cut-off instructions price on the wrong day. Now strictly after, with the weekend-skip case asserted.
+
+7. **Amount parsing rounded against the customer for fractional digits beyond the currency scale.** `1,234.567` became `1,234.13`. Now the beyond-scale digits round half-up as a whole.
+
+8. **Fund amounts double-typed (minor units vs micro-units).** caught by tests before it reached the console — the unit conventions are now documented in `src/core/units.ts` and asserted.
 
 ## What is deliberately not covered yet
 
 - Persistence: the domain runs in memory; Postgres schemas, migrations and the outbox are Phase 0/1 backlog chunks (open, and honestly reported as open by `tools/fleet.mjs`).
-- Reinsurance (treaty, cession, recovery), policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet implemented. Claims landed on 2026-10-04 (`src/core/claims.ts`).
+- Reinsurance is built through capability 8 (treaty register, cession, recovery, ageing, reconciliation, deposit accounting, collateral and cash calls). Still open inside the module, and reported as open: capability 10 (regulatory and actuarial reporting extracts) and capability 91 (UAE rule enforcement and evidence).
+- Policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet implemented.
 - Country packs beyond AE and MY; locales beyond en/ar.
 - Load and performance testing at book scale (the money proof runs 40 policies; a 10,000-policy run is a Phase 1 gate).
 
 ## How the fleet proves its own claims
 
-`node tools/fleet.mjs` claims a backlog chunk only when (a) its module is implemented, (b) its capability text matches something actually built, and (c) the evidence files exist and the module's test file passes. Everything else stays open — currently **1129 chunks done, 741 still open** on the critical path alone (1870 chunks). The ledger at `ledger/runs.jsonl` records every claimed chunk with its evidence and simulated cost, one row per chunk, and `backlog/status.jsonl` is the machine-readable state.
+`node tools/fleet.mjs` claims a backlog chunk only when (a) its module is implemented, (b) its capability text matches something actually built, and (c) the evidence files exist and the module's test file passes. Everything else stays open — currently **1201 chunks done, 669 still open** on the critical path alone (1870 chunks). The ledger at `ledger/runs.jsonl` records every claimed chunk with its evidence and simulated cost, one row per chunk, and `backlog/status.jsonl` is the machine-readable state.

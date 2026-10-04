@@ -330,19 +330,26 @@ describe('the console can render every view the API serves', () => {
   it('the reinsurer’s share of the claim is receivable, and the recoverable on the statement agrees with the ledger', () => {
     const w = buildWorld();
     const view = reinsuranceSnapshot(w);
-    expect(view.recoveries).toHaveLength(1);
-    expect(view.recoveries[0]!.amount).toBe('287.50 AED');
+    expect(view.recoveries).toHaveLength(2);              // the policy recovery and the catastrophe one
+    const policy = view.recoveries.find((r) => r.source === 'policy')!;
+    const storm = view.recoveries.find((r) => r.source === 'event')!;
+    expect(policy.amount).toBe('287.50 AED');
+    expect(policy.outstanding).toBe('287.50 AED');
+    expect(storm.amount).toBe('600,000.00 AED');
+    expect(storm.settled).toBe('450,000.00 AED');         // Emirates Re has paid most of it
+    expect(storm.outstanding).toBe('150,000.00 AED');
     // One policy recovery and one catastrophe recovery, both from Emirates Re.
     expect(view.events).toHaveLength(1);
     expect(view.events[0]!.eventId).toBe('STORM-ALPHAI');
     expect(view.events[0]!.amount).toBe('600,000.00 AED');
     expect(view.conventional.recoveries).toBe('600,287.50 AED');
     // Commission due plus recoveries due: the account a finance team reconciles against.
-    expect(w.ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(600_785_44n);
+    expect(w.ledger.balance('ALK-CONV:REINS:RECEIVABLE').minor).toBe(150_785_44n);   // 450,000 has been collected
     // Ceded premium is the cessions only: the deposit-accounted instalments are an asset, not an expense.
     expect(w.ledger.balance('ALK-CONV:REINS:CEDED-PREMIUM').minor).toBe(3_819_63n);
     expect(w.ledger.balance('ALK-CONV:REINS:COMMISSION').minor).toBe(497_94n);
-    expect(view.conventional.recoverable).toBe('600,785.44 AED');
+    // The recoverable is what is still owed: the 450,000 Emirates Re has already paid is out of it.
+    expect(view.conventional.recoverable).toBe('150,785.44 AED');
   });
 
   it('reinsurance: the fields the Reinsurance tab reads are all present, for both books', () => {
@@ -427,5 +434,126 @@ describe('the console can render every view the API serves', () => {
       }
     }
     for (const e of view.events) for (const key of ['eventId', 'treatyId', 'amount', 'at', 'journalId']) expect(Object.keys(e)).toContain(key);
+  });
+
+  it('ages what reinsurers still owe, against each treaty’s own terms, and flags what is late', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    expect(view.ageing.outstanding).toBe('150,287.50 AED');
+    expect(view.ageing.overdue).toBe('150,000.00 AED');       // only the catastrophe recovery is late
+    expect(view.ageing.oldestDays).toBe(20);
+    expect(view.ageing.worstOverdue).toEqual(['XOL-CAT-5M (6d)']);
+    expect(view.ageing.buckets.find((b) => b.bucket === '0-30')!.count).toBe(2);
+
+    const storm = view.ageing.items.find((i) => i.claimId === 'STORM-ALPHAI')!;
+    expect(storm.expectedBy).toBe('2026-09-29');              // 14-day terms, not the 60-day default
+    expect(storm.overdueDays).toBe(6);
+    expect(storm.bucket).toBe('0-30');
+    const policy = view.ageing.items.find((i) => i.claimId === 'CLM-000001')!;
+    expect(policy.overdueDays).toBe(0);                        // 60-day terms on the quota share
+    expect(policy.expectedBy).toBe('2026-12-01');
+  });
+
+  it('ties the register to the books line by line, and runs the controls that hunt for unclaimed money', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    expect(view.reconciliation.agrees).toBe(true);
+    expect(view.reconciliation.differences).toBe(0);
+    for (const line of view.reconciliation.lines) {
+      expect(line.status, `${line.kind}: register ${line.register} vs books ${line.ledger}`).toBe('agrees');
+    }
+    expect(view.reconciliation.lines.find((l) => l.kind === 'receivable')!.register).toBe('150,785.44 AED');
+    expect(view.reconciliation.balanceSheet.depositAsset).toBe('300,000.00 AED');
+    // Security is money we hold and owe back, and the books carry both halves of it.
+    expect(view.reconciliation.balanceSheet.restrictedCash).toBe('10,000.00 AED');
+    expect(view.reconciliation.balanceSheet.securityReceived).toBe('11,500.00 AED');
+    expect(view.reconciliation.lines.find((l) => l.kind === 'collateral-cash')!.register).toBe('10,000.00 AED');
+    expect(view.reconciliation.lines.find((l) => l.kind === 'security-liability')!.register).toBe('11,500.00 AED');
+    expect(view.reconciliation.lines).toHaveLength(8);
+
+    // The catastrophe recovery is 6 days past its terms: a warning a human decides on, not an error.
+    // The one error is the security shortfall, which is a fact rather than a judgement.
+    expect(view.reconciliation.quality.errors).toBe(1);
+    expect(view.reconciliation.quality.warnings).toBe(3);
+    const late = view.reconciliation.quality.findings.find((f) => f.code === 'REINS-030')!;
+    expect(late.detail).toMatch(/150,000\.00 AED from XOL-CAT-5M is 6 days past the settlement terms/);
+    const short = view.reconciliation.quality.findings.find((f) => f.code === 'REINS-060')!;
+    expect(short.severity).toBe('error');
+    expect(short.detail).toMatch(/Emirates Re is 50,000\.00 AED short of the security its treaties require/);
+    expect(view.reconciliation.quality.checked).toContain('a paid claim on a ceded risk has had its recovery claimed');
+    expect(view.reconciliation.quality.checked).toContain('the security behind every counterparty covers what that counterparty owes');
+  });
+
+  it('security: what each reinsurer must put up, what it has, and every reason the two do not match', () => {
+    const w = buildWorld();
+    const view = reinsuranceSnapshot(w);
+    const security = view.security;
+
+    expect(security.requirement).toBe('150,983.39 AED');       // 150,000 of recoverable plus the 983.39 premium margin
+    expect(security.held).toBe('101,500.00 AED');
+    expect(security.shortfall).toBe('50,000.00 AED');
+    expect(security.unsecured).toEqual(['Emirates Re 50,000.00 AED']);
+    expect(security.ledger.restrictedCash).toBe('10,000.00 AED');
+    expect(security.ledger.receivedAsSecurity).toBe('11,500.00 AED');
+    expect(security.ledger.offBalanceSheet).toBe('90,000.00 AED');   // two letters of credit, relied on and disclosed
+
+    const emirates = security.positions.find((p) => p.counterparty === 'Emirates Re')!;
+    expect(emirates.recoverable).toBe('150,000.00 AED');
+    expect(emirates.requirement).toBe('150,000.00 AED');       // no premium margin: an event treaty cedes no premium
+    expect(emirates.held).toBe('100,000.00 AED');              // 60,000 + 30,000 letters of credit and 10,000 cash
+    expect(emirates.shortfall).toBe('50,000.00 AED');
+    expect(emirates.coverPct).toBe(66.66);
+    expect(emirates.secured).toBe(false);
+    expect(emirates.instruments.filter((i) => i.inForce)).toHaveLength(3);
+    expect(emirates.instruments.find((i) => i.reference === 'LC-77420')!.expiresAt).toBe('2026-10-20');
+    expect(emirates.calls).toHaveLength(1);
+    expect(emirates.calls[0]!.amount).toBe('50,000.00 AED');
+    expect(emirates.calls[0]!.outstanding).toBe('50,000.00 AED');
+    expect(emirates.calls[0]!.status).toBe('open');
+    expect(emirates.calls[0]!.dueBy).toBe('2026-10-31');
+
+    const gulf = security.positions.find((p) => p.counterparty === 'Gulf Reinsurance PSC')!;
+    expect(gulf.requirement).toBe('983.39 AED');               // 287.50 of recovery plus 3,000 bps of 2,319.63 ceded
+    expect(gulf.held).toBe('1,500.00 AED');                    // premium withheld rather than paid
+    expect(gulf.surplus).toBe('516.61 AED');                   // and 516.61 of it secures nothing
+    expect(gulf.secured).toBe(true);
+    expect(gulf.notes.join(' ')).toMatch(/is doing nothing: release it/);
+
+    expect(security.positions.find((p) => p.counterparty === 'MENA Re')!.secured).toBe(true);
+    expect(security.findings.map((f) => `${f.severity}:${f.code}`)).toEqual([
+      'error:REINS-060', 'warning:REINS-061', 'warning:REINS-064', 'info:REINS-065',
+    ]);
+    // The retakaful operator posts cash and it sits in the participant risk fund, where participant money belongs.
+    expect(security.retakaful).toHaveLength(1);
+    expect(security.retakaful[0]!.requirement).toBe('90.00 AED');
+    expect(security.retakaful[0]!.held).toBe('90.00 AED');
+    expect(security.retakaful[0]!.shortfall).toBe('0.00 AED');
+    expect(w.ledger.balance('ALK-TKF:COLLATERAL:CASH').minor).toBe(90_00n);
+    const entry = w.ledger.entriesFor('ALK-TKF', { fundId: 'PRF' }).find((e) => e.source === 'reinsurance')!;
+    expect(entry.entityId).toBe('ALK-TKF');
+  });
+
+  it('reinsurance: the ageing and reconciliation fields the console reads are all present', () => {
+    const view = reinsuranceSnapshot(buildWorld());
+    for (const key of ['asOf', 'outstanding', 'overdue', 'oldestDays', 'worstOverdue', 'buckets', 'items']) {
+      expect(Object.keys(view.ageing), `ageing.${key}`).toContain(key);
+    }
+    for (const item of view.ageing.items) {
+      for (const key of ['recoveryId', 'claimId', 'treatyId', 'amount', 'settled', 'outstanding', 'ageDays', 'expectedBy', 'overdueDays', 'bucket']) {
+        expect(Object.keys(item), `item.${key}`).toContain(key);
+      }
+    }
+    for (const key of ['agrees', 'differences', 'lines', 'balanceSheet', 'quality']) expect(Object.keys(view.reconciliation)).toContain(key);
+    for (const line of view.reconciliation.lines) for (const key of ['kind', 'what', 'register', 'ledger', 'difference', 'status']) expect(Object.keys(line)).toContain(key);
+    for (const key of ['errors', 'warnings', 'findings', 'checked']) expect(Object.keys(view.reconciliation.quality)).toContain(key);
+    for (const key of ['asOf', 'requirement', 'held', 'shortfall', 'unsecured', 'positions', 'findings', 'notes', 'ledger', 'retakaful']) {
+      expect(Object.keys(view.security), `security.${key}`).toContain(key);
+    }
+    for (const position of view.security.positions) {
+      for (const key of ['counterparty', 'treaties', 'recoverable', 'premiumRequirement', 'requirement', 'held', 'shortfall', 'surplus', 'coverPct', 'secured', 'instruments', 'calls']) {
+        expect(Object.keys(position), `position.${key}`).toContain(key);
+      }
+    }
+    for (const key of ['restrictedCash', 'receivedAsSecurity', 'interestCredited', 'offBalanceSheet']) expect(Object.keys(view.security.ledger)).toContain(key);
   });
 });

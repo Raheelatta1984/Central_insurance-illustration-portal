@@ -131,7 +131,7 @@ const MODULES = [
       await sleep(2000);
     } },
   { id: 'reinsurance', label: 'Reinsurance', tour: '00:48',
-    blurb: 'Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss, and a retakaful treaty for the takaful window — all posted to the books, with participant-money segregation enforced in code.',
+    blurb: 'Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss and a retakaful treaty — plus ageing of what reinsurers owe against their own settlement terms, a register-to-books reconciliation that states every difference, and the security behind every counterparty: what it must put up, what it has, the cash call on the shortfall, and the release of security that was doing nothing.',
     async script(page) {
       await page.mouse.wheel(0, 900); await sleep(1200);
       await clickText(page, 'Place a risk facultatively', { optional: true });
@@ -142,6 +142,14 @@ const MODULES = [
       await sleep(2200);
       await clickText(page, 'Reinstate the catastrophe cover', { optional: true });
       await sleep(2000);
+      await clickText(page, 'Settle the outstanding recovery', { optional: true });
+      await sleep(2200);
+      await clickText(page, 'Answer the outstanding cash call', { optional: true });
+      await sleep(2200);
+      await clickText(page, 'Release the security we no longer need', { optional: true });
+      await sleep(2200);
+      await clickText(page, 'Credit the interest on their cash', { optional: true });
+      await sleep(2200);
     } },
   { id: 'durability', label: 'Durability', tour: '00:53',
     blurb: 'Seal the books into a canonical fingerprinted snapshot, rebuild a fresh ledger from that text and compare trial balances — a restore drill, not a promise.',

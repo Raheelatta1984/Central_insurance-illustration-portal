@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T06:47:56.990Z",
+  "capturedAt": "2026-10-04T08:46:33.984Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -310,7 +310,7 @@
             "translationReserve": "0.00 AED",
             "closingRate": "1/1 on 2026-10-05",
             "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
-            "accounts": 25
+            "accounts": 27
           },
           {
             "entityId": "ALK-TKF",
@@ -322,7 +322,7 @@
             "translationReserve": "0.00 AED",
             "closingRate": "1/1 on 2026-10-05",
             "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
-            "accounts": 13
+            "accounts": 15
           },
           {
             "entityId": "ALK-MY",
@@ -392,8 +392,8 @@
           "matched": "14,200.00 AED",
           "inTransit": "11,800.00 AED",
           "notes": [
-            "ALK-CONV: translated 25 account balance(s), translation reserve 0.00 AED",
-            "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
+            "ALK-CONV: translated 27 account balance(s), translation reserve 0.00 AED",
+            "ALK-TKF: translated 15 account balance(s), translation reserve 0.00 AED",
             "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
             "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
             "ALK-CONV ↔ ALK-MY: eliminated 4,600.00 AED of intercompany balances",
@@ -404,8 +404,8 @@
         },
         "group": {
           "totals": {
-            "assets": "17,894,027.44 AED",
-            "liabilities": "59,637.13 AED",
+            "assets": "17,904,117.44 AED",
+            "liabilities": "69,727.13 AED",
             "equity": "17,098,200.00 AED",
             "income": "768,519.94 AED",
             "expense": "32,329.63 AED",
@@ -418,7 +418,7 @@
             {
               "check": "consolidated balance sheet balances",
               "ok": true,
-              "detail": "assets 17,894,027.44 AED − liabilities 59,637.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
+              "detail": "assets 17,904,117.44 AED − liabilities 69,727.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
             },
             {
               "check": "group ledger proof",
@@ -445,7 +445,7 @@
               "accountId": "GRP:ALK-CONV:CASH",
               "name": "ALK-CONV — Cash at bank",
               "type": "asset",
-              "amount": "9,700,512.50 AED"
+              "amount": "10,150,512.50 AED"
             },
             {
               "accountId": "GRP:ALK-CONV:CLAIM-EXPENSE",
@@ -464,6 +464,12 @@
               "name": "ALK-CONV — Claim reserve (outstanding)",
               "type": "liability",
               "amount": "15,000.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-CONV:COLLATERAL:CASH",
+              "name": "ALK-CONV — Cash held as security (restricted)",
+              "type": "asset",
+              "amount": "10,000.00 AED"
             },
             {
               "accountId": "GRP:ALK-CONV:FBAL:INVESTMENTS",
@@ -520,6 +526,12 @@
               "amount": "6,687.50 AED"
             },
             {
+              "accountId": "GRP:ALK-CONV:RECEIVED-AS-SECURITY",
+              "name": "ALK-CONV — Security received from reinsurers, returnable",
+              "type": "liability",
+              "amount": "11,500.00 AED"
+            },
+            {
               "accountId": "GRP:ALK-CONV:REINS:CEDED-PREMIUM",
               "name": "ALK-CONV — Ceded premium / contribution (expense)",
               "type": "expense",
@@ -541,13 +553,13 @@
               "accountId": "GRP:ALK-CONV:REINS:PAYABLE",
               "name": "ALK-CONV — Payable to reinsurers / retakaful operators",
               "type": "liability",
-              "amount": "3,819.63 AED"
+              "amount": "2,319.63 AED"
             },
             {
               "accountId": "GRP:ALK-CONV:REINS:RECEIVABLE",
               "name": "ALK-CONV — Receivable from reinsurers / retakaful operators",
               "type": "asset",
-              "amount": "600,785.44 AED"
+              "amount": "150,785.44 AED"
             },
             {
               "accountId": "GRP:ALK-CONV:REINS:RECOVERY",
@@ -598,6 +610,12 @@
               "amount": "3,007,100.00 AED"
             },
             {
+              "accountId": "GRP:ALK-TKF:COLLATERAL:CASH",
+              "name": "ALK-TKF — Cash held as security (restricted)",
+              "type": "asset",
+              "amount": "90.00 AED"
+            },
+            {
               "accountId": "GRP:ALK-TKF:OPF:PARTICIPANTS",
               "name": "ALK-TKF — Participants' funds — OPF",
               "type": "liability",
@@ -620,6 +638,12 @@
               "name": "ALK-TKF — Qard hasan receivable from participants",
               "type": "asset",
               "amount": "40.00 AED"
+            },
+            {
+              "accountId": "GRP:ALK-TKF:RECEIVED-AS-SECURITY",
+              "name": "ALK-TKF — Security received from reinsurers, returnable",
+              "type": "liability",
+              "amount": "90.00 AED"
             },
             {
               "accountId": "GRP:ALK-TKF:REINS:CEDED-PREMIUM",
@@ -678,11 +702,11 @@
             {
               "currency": "AED",
               "debit": {
-                "minor": "1213961757",
+                "minor": "1280179418",
                 "currency": "AED"
               },
               "credit": {
-                "minor": "1213961757",
+                "minor": "1280179418",
                 "currency": "AED"
               }
             }
@@ -694,11 +718,11 @@
             {
               "currency": "AED",
               "debit": {
-                "minor": "302291200",
+                "minor": "302300200",
                 "currency": "AED"
               },
               "credit": {
-                "minor": "302291200",
+                "minor": "302300200",
                 "currency": "AED"
               }
             }
@@ -719,12 +743,15 @@
           "cessionPct": 27.07,
           "commissionIncome": "777.94 AED",
           "recoveries": "600,287.50 AED",
-          "recoverable": "601,065.44 AED",
+          "recoverable": "151,065.44 AED",
           "notes": [
-            "catastrophe-desk: 600,000.00 AED recovered for STORM-ALPHAI under XOL-CAT-5M (RI-ALK-CONV-000004)",
-            "reinsurance/desk: reinstatement 1 under XOL-CAT-5M restored 600,000.00 AED free of charge",
-            "deposit instalment 1 of 200,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000005)",
             "deposit instalment 2 of 100,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000006)",
+            "treasury: 450,000.00 AED settled on RI-ALK-CONV-000004 (RI-ALK-CONV-000007)",
+            "treasury: 1,500.00 AED of security held from Gulf Reinsurance PSC (funds-withheld, FUNDS-WITHHELD-Q3)",
+            "treasury: 60,000.00 AED of security held from Emirates Re (letter-of-credit, LC-88213)",
+            "treasury: 30,000.00 AED of security held from Emirates Re (letter-of-credit, LC-77420)",
+            "treasury: 10,000.00 AED of security held from Emirates Re (cash, CASH-SECURITY-2026)",
+            "treasury: cash call CALL-ALK-CONV-000001 on Emirates Re for 50,000.00 AED, due 2026-10-31 — the catastrophe recovery is unsecured beyond the letters of credit in force",
             "reinsurance/desk had MTR-ORION-77 accepted under FAC-MOTOR on 2026-10-05"
           ],
           "treaties": [
@@ -906,7 +933,9 @@
           "commissionIncome": "72.00 AED",
           "recoveries": "0.00 AED",
           "recoverable": "72.00 AED",
-          "notes": [],
+          "notes": [
+            "treasury: 90.00 AED of security held from Takaful Re International (cash, RTKF-SECURITY-2026)"
+          ],
           "treaties": [
             {
               "treatyId": "RTKF-QS-20",
@@ -999,7 +1028,7 @@
             "cededPremium": "2,240.00 AED",
             "commission": "280.00 AED",
             "netRetained": "3,640.00 AED",
-            "journalId": "RI-ALK-CONV-000007",
+            "journalId": "RI-ALK-CONV-000010",
             "at": "2026-10-05T09:00:00+04:00",
             "explanation": "Al Wathba Re accepted MTR-ORION-77 for 40% on 2026-10-05"
           }
@@ -1014,8 +1043,22 @@
             "claimId": "CLM-000001",
             "recoveryId": "REC-CLM-000001-2",
             "treatyId": "QS-25-2026",
+            "source": "policy",
             "amount": "287.50 AED",
+            "settled": "0.00 AED",
+            "outstanding": "287.50 AED",
             "at": "2026-10-02T09:00:00+04:00",
+            "treatment": "risk-transferring"
+          },
+          {
+            "claimId": "STORM-ALPHAI",
+            "recoveryId": "RI-ALK-CONV-000004",
+            "treatyId": "XOL-CAT-5M",
+            "source": "event",
+            "amount": "600,000.00 AED",
+            "settled": "450,000.00 AED",
+            "outstanding": "150,000.00 AED",
+            "at": "2026-09-15T10:00:00+04:00",
             "treatment": "risk-transferring"
           }
         ],
@@ -1045,19 +1088,682 @@
           "reinstatementsUsed": 1,
           "reinstatementsLeft": 1,
           "exhausted": false
+        },
+        "ageing": {
+          "asOf": "2026-10-05",
+          "outstanding": "150,287.50 AED",
+          "overdue": "150,000.00 AED",
+          "oldestDays": 20,
+          "worstOverdue": [
+            "XOL-CAT-5M (6d)"
+          ],
+          "buckets": [
+            {
+              "bucket": "0-30",
+              "count": 2,
+              "outstanding": "150,287.50 AED"
+            },
+            {
+              "bucket": "31-60",
+              "count": 0,
+              "outstanding": "0.00 AED"
+            },
+            {
+              "bucket": "61-90",
+              "count": 0,
+              "outstanding": "0.00 AED"
+            },
+            {
+              "bucket": "90+",
+              "count": 0,
+              "outstanding": "0.00 AED"
+            }
+          ],
+          "items": [
+            {
+              "recoveryId": "RI-ALK-CONV-000004",
+              "claimId": "STORM-ALPHAI",
+              "treatyId": "XOL-CAT-5M",
+              "outstanding": "150,000.00 AED",
+              "settled": "450,000.00 AED",
+              "amount": "600,000.00 AED",
+              "at": "2026-09-15T10:00:00+04:00",
+              "ageDays": 20,
+              "expectedBy": "2026-09-29",
+              "overdueDays": 6,
+              "bucket": "0-30"
+            },
+            {
+              "recoveryId": "REC-CLM-000001-2",
+              "claimId": "CLM-000001",
+              "treatyId": "QS-25-2026",
+              "outstanding": "287.50 AED",
+              "settled": "0.00 AED",
+              "amount": "287.50 AED",
+              "at": "2026-10-02T09:00:00+04:00",
+              "ageDays": 3,
+              "expectedBy": "2026-12-01",
+              "overdueDays": 0,
+              "bucket": "0-30"
+            }
+          ]
+        },
+        "security": {
+          "asOf": "2026-10-05",
+          "requirement": "150,983.39 AED",
+          "held": "101,500.00 AED",
+          "shortfall": "50,000.00 AED",
+          "unsecured": [
+            "Emirates Re 50,000.00 AED"
+          ],
+          "notes": [
+            "Emirates Re is 6 days past the settlement terms on 150,000.00 AED and the security behind it is 50,000.00 AED short: that is the exposure, dated",
+            "90,000.00 AED of the cover is letters of credit and guarantees: relied on, disclosed, and not posted as cash",
+            "a deposit accounted treaty holds no security because there is no transfer of risk to secure — the money is already in our hands"
+          ],
+          "ledger": {
+            "restrictedCash": "10,000.00 AED",
+            "receivedAsSecurity": "11,500.00 AED",
+            "interestCredited": "0.00 AED",
+            "offBalanceSheet": "90,000.00 AED"
+          },
+          "findings": [
+            {
+              "code": "REINS-060",
+              "severity": "error",
+              "what": "Emirates Re is 50,000.00 AED short of the security its treaties require: 150,000.00 AED required, 100,000.00 AED held, 66.66% covered",
+              "counterparty": "Emirates Re"
+            },
+            {
+              "code": "REINS-061",
+              "severity": "warning",
+              "what": "LC-77420 (30,000.00 AED) expires on 2026-10-20, 15 days from 2026-10-05: replace it or call the cash",
+              "counterparty": "Emirates Re"
+            },
+            {
+              "code": "REINS-064",
+              "severity": "warning",
+              "what": "516.61 AED of security is held beyond what Gulf Reinsurance PSC is required to give: it secures nothing and ties up their capacity",
+              "counterparty": "Gulf Reinsurance PSC"
+            },
+            {
+              "code": "REINS-065",
+              "severity": "info",
+              "what": "90,000.00 AED of security is held in letters of credit and guarantees: it is relied on, disclosed, and cannot be spent",
+              "counterparty": null
+            }
+          ],
+          "positions": [
+            {
+              "counterparty": "Emirates Re",
+              "treaties": [
+                "XOL-CAT-5M"
+              ],
+              "recoverable": "150,000.00 AED",
+              "premiumRequirement": "0.00 AED",
+              "requirement": "150,000.00 AED",
+              "held": "100,000.00 AED",
+              "heldOnBalanceSheet": "10,000.00 AED",
+              "heldOffBalanceSheet": "90,000.00 AED",
+              "shortfall": "50,000.00 AED",
+              "surplus": "0.00 AED",
+              "coverPct": 66.66,
+              "secured": false,
+              "notes": [
+                "150,000.00 AED of claims is still owed to us by Emirates Re; that is the first thing security has to cover"
+              ],
+              "instruments": [
+                {
+                  "id": "SEC-ALK-CONV-000002",
+                  "kind": "letter-of-credit",
+                  "reference": "LC-88213",
+                  "amount": "60,000.00 AED",
+                  "released": "0.00 AED",
+                  "interest": "0.00 AED",
+                  "at": "2026-06-01T09:00:00+04:00",
+                  "expiresAt": "2026-12-31",
+                  "inForce": true,
+                  "onBalanceSheet": false,
+                  "journalId": null
+                },
+                {
+                  "id": "SEC-ALK-CONV-000003",
+                  "kind": "letter-of-credit",
+                  "reference": "LC-77420",
+                  "amount": "30,000.00 AED",
+                  "released": "0.00 AED",
+                  "interest": "0.00 AED",
+                  "at": "2026-04-01T09:00:00+04:00",
+                  "expiresAt": "2026-10-20",
+                  "inForce": true,
+                  "onBalanceSheet": false,
+                  "journalId": null
+                },
+                {
+                  "id": "SEC-ALK-CONV-000004",
+                  "kind": "cash",
+                  "reference": "CASH-SECURITY-2026",
+                  "amount": "10,000.00 AED",
+                  "released": "0.00 AED",
+                  "interest": "0.00 AED",
+                  "at": "2026-01-05T09:00:00+04:00",
+                  "expiresAt": null,
+                  "inForce": true,
+                  "onBalanceSheet": true,
+                  "journalId": "RI-ALK-CONV-000009"
+                }
+              ],
+              "calls": [
+                {
+                  "id": "CALL-ALK-CONV-000001",
+                  "amount": "50,000.00 AED",
+                  "settled": "0.00 AED",
+                  "outstanding": "50,000.00 AED",
+                  "status": "open",
+                  "reason": "the catastrophe recovery is unsecured beyond the letters of credit in force",
+                  "at": "2026-10-01T11:00:00+04:00",
+                  "dueBy": "2026-10-31",
+                  "settlements": []
+                }
+              ]
+            },
+            {
+              "counterparty": "Al Wathba Re",
+              "treaties": [
+                "FAC-MOTOR"
+              ],
+              "recoverable": "0.00 AED",
+              "premiumRequirement": "0.00 AED",
+              "requirement": "0.00 AED",
+              "held": "0.00 AED",
+              "heldOnBalanceSheet": "0.00 AED",
+              "heldOffBalanceSheet": "0.00 AED",
+              "shortfall": "0.00 AED",
+              "surplus": "0.00 AED",
+              "coverPct": 100,
+              "secured": true,
+              "notes": [],
+              "instruments": [],
+              "calls": []
+            },
+            {
+              "counterparty": "Gulf Reinsurance PSC",
+              "treaties": [
+                "QS-25-2026",
+                "AGG-SL-DEPOSIT"
+              ],
+              "recoverable": "287.50 AED",
+              "premiumRequirement": "695.89 AED",
+              "requirement": "983.39 AED",
+              "held": "1,500.00 AED",
+              "heldOnBalanceSheet": "1,500.00 AED",
+              "heldOffBalanceSheet": "0.00 AED",
+              "shortfall": "0.00 AED",
+              "surplus": "516.61 AED",
+              "coverPct": 152.53,
+              "secured": true,
+              "notes": [
+                "287.50 AED of claims is still owed to us by Gulf Reinsurance PSC; that is the first thing security has to cover",
+                "a further 695.89 AED is required against premium still unearned under QS-25-2026, AGG-SL-DEPOSIT",
+                "AGG-SL-DEPOSIT is deposit accounted, so it carries no security requirement: the deposit on account is already ours to draw on",
+                "516.61 AED is held beyond the requirement and is doing nothing: release it, or the treaty is paying for cover it does not need"
+              ],
+              "instruments": [
+                {
+                  "id": "SEC-ALK-CONV-000001",
+                  "kind": "funds-withheld",
+                  "reference": "FUNDS-WITHHELD-Q3",
+                  "amount": "1,500.00 AED",
+                  "released": "0.00 AED",
+                  "interest": "0.00 AED",
+                  "at": "2026-10-01T09:00:00+04:00",
+                  "expiresAt": null,
+                  "inForce": true,
+                  "onBalanceSheet": true,
+                  "journalId": "RI-ALK-CONV-000008"
+                }
+              ],
+              "calls": []
+            },
+            {
+              "counterparty": "MENA Re",
+              "treaties": [
+                "SURPLUS-10"
+              ],
+              "recoverable": "0.00 AED",
+              "premiumRequirement": "0.00 AED",
+              "requirement": "0.00 AED",
+              "held": "0.00 AED",
+              "heldOnBalanceSheet": "0.00 AED",
+              "heldOffBalanceSheet": "0.00 AED",
+              "shortfall": "0.00 AED",
+              "surplus": "0.00 AED",
+              "coverPct": 100,
+              "secured": true,
+              "notes": [],
+              "instruments": [],
+              "calls": []
+            }
+          ],
+          "retakaful": [
+            {
+              "counterparty": "Takaful Re International",
+              "treaties": [
+                "RTKF-QS-20"
+              ],
+              "recoverable": "0.00 AED",
+              "premiumRequirement": "90.00 AED",
+              "requirement": "90.00 AED",
+              "held": "90.00 AED",
+              "heldOnBalanceSheet": "90.00 AED",
+              "heldOffBalanceSheet": "0.00 AED",
+              "shortfall": "0.00 AED",
+              "surplus": "0.00 AED",
+              "coverPct": 100,
+              "secured": true,
+              "notes": [
+                "a further 90.00 AED is required against premium still unearned under RTKF-QS-20"
+              ],
+              "instruments": [
+                {
+                  "id": "SEC-ALK-TKF-000001",
+                  "kind": "cash",
+                  "reference": "RTKF-SECURITY-2026",
+                  "amount": "90.00 AED",
+                  "released": "0.00 AED",
+                  "interest": "0.00 AED",
+                  "at": "2026-10-01T09:05:00+04:00",
+                  "expiresAt": null,
+                  "inForce": true,
+                  "onBalanceSheet": true,
+                  "journalId": "RI-ALK-TKF-000001"
+                }
+              ],
+              "calls": []
+            }
+          ]
+        },
+        "reconciliation": {
+          "asOf": "2026-10-05",
+          "agrees": true,
+          "differences": 0,
+          "balanceSheet": {
+            "receivable": "151,065.44 AED",
+            "payable": "4,559.63 AED",
+            "depositAsset": "300,000.00 AED",
+            "restrictedCash": "10,000.00 AED",
+            "securityReceived": "11,500.00 AED"
+          },
+          "lines": [
+            {
+              "kind": "ceded-premium",
+              "what": "Ceded premium and reinstatement premium (expense)",
+              "register": "6,059.63 AED",
+              "ledger": "6,059.63 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": null
+            },
+            {
+              "kind": "commission",
+              "what": "Commission / wakalah fee (income)",
+              "register": "777.94 AED",
+              "ledger": "777.94 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": null
+            },
+            {
+              "kind": "event-recovery",
+              "what": "Catastrophe and event recoveries (income)",
+              "register": "600,000.00 AED",
+              "ledger": "600,000.00 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": null
+            },
+            {
+              "kind": "policy-recovery",
+              "what": "Policy recoveries (income, claims account net of salvage and third parties)",
+              "register": "287.50 AED",
+              "ledger": "287.50 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": "180.00 AED of salvage / third-party recovery removed from the account to compare like with like"
+            },
+            {
+              "kind": "deposit-premium",
+              "what": "Deposit premium still on account (asset)",
+              "register": "300,000.00 AED",
+              "ledger": "300,000.00 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": null
+            },
+            {
+              "kind": "receivable",
+              "what": "Receivable from reinsurers (commission + recoveries − settlements)",
+              "register": "151,065.44 AED",
+              "ledger": "151,065.44 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": null
+            },
+            {
+              "kind": "collateral-cash",
+              "what": "Cash held as security (asset, restricted)",
+              "register": "10,000.00 AED",
+              "ledger": "10,000.00 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": null
+            },
+            {
+              "kind": "security-liability",
+              "what": "Security received, returnable to reinsurers (liability)",
+              "register": "11,500.00 AED",
+              "ledger": "11,500.00 AED",
+              "difference": "0.00 AED",
+              "status": "agrees",
+              "note": null
+            }
+          ],
+          "quality": {
+            "errors": 1,
+            "warnings": 3,
+            "checked": [
+              "every treaty can be administered as written",
+              "every cession was inside the treaty it used",
+              "a paid claim on a ceded risk has had its recovery claimed",
+              "recoveries are inside their settlement terms",
+              "deposit premium is settled against the period it belongs to",
+              "the security behind every counterparty covers what that counterparty owes",
+              "the register agrees with the books"
+            ],
+            "findings": [
+              {
+                "severity": "warning",
+                "code": "REINS-030",
+                "subject": "RI-ALK-CONV-000004",
+                "detail": "150,000.00 AED from XOL-CAT-5M is 6 days past the settlement terms (expected by 2026-09-29)"
+              },
+              {
+                "severity": "error",
+                "code": "REINS-060",
+                "subject": "Emirates Re",
+                "detail": "Emirates Re is 50,000.00 AED short of the security its treaties require: 150,000.00 AED required, 100,000.00 AED held, 66.66% covered"
+              },
+              {
+                "severity": "warning",
+                "code": "REINS-061",
+                "subject": "Emirates Re",
+                "detail": "LC-77420 (30,000.00 AED) expires on 2026-10-20, 15 days from 2026-10-05: replace it or call the cash"
+              },
+              {
+                "severity": "warning",
+                "code": "REINS-064",
+                "subject": "Gulf Reinsurance PSC",
+                "detail": "516.61 AED of security is held beyond what Gulf Reinsurance PSC is required to give: it secures nothing and ties up their capacity"
+              },
+              {
+                "severity": "info",
+                "code": "REINS-065",
+                "subject": "security",
+                "detail": "90,000.00 AED of security is held in letters of credit and guarantees: it is relied on, disclosed, and cannot be spent"
+              }
+            ]
+          }
         }
+      }
+    },
+    "GET /api/reinsurance/security": {
+      "status": 200,
+      "body": {
+        "asOf": "2026-10-05",
+        "requirement": "150,983.39 AED",
+        "held": "101,500.00 AED",
+        "shortfall": "50,000.00 AED",
+        "unsecured": [
+          "Emirates Re 50,000.00 AED"
+        ],
+        "notes": [
+          "Emirates Re is 6 days past the settlement terms on 150,000.00 AED and the security behind it is 50,000.00 AED short: that is the exposure, dated",
+          "90,000.00 AED of the cover is letters of credit and guarantees: relied on, disclosed, and not posted as cash",
+          "a deposit accounted treaty holds no security because there is no transfer of risk to secure — the money is already in our hands"
+        ],
+        "ledger": {
+          "restrictedCash": "10,000.00 AED",
+          "receivedAsSecurity": "11,500.00 AED",
+          "interestCredited": "0.00 AED",
+          "offBalanceSheet": "90,000.00 AED"
+        },
+        "findings": [
+          {
+            "code": "REINS-060",
+            "severity": "error",
+            "what": "Emirates Re is 50,000.00 AED short of the security its treaties require: 150,000.00 AED required, 100,000.00 AED held, 66.66% covered",
+            "counterparty": "Emirates Re"
+          },
+          {
+            "code": "REINS-061",
+            "severity": "warning",
+            "what": "LC-77420 (30,000.00 AED) expires on 2026-10-20, 15 days from 2026-10-05: replace it or call the cash",
+            "counterparty": "Emirates Re"
+          },
+          {
+            "code": "REINS-064",
+            "severity": "warning",
+            "what": "516.61 AED of security is held beyond what Gulf Reinsurance PSC is required to give: it secures nothing and ties up their capacity",
+            "counterparty": "Gulf Reinsurance PSC"
+          },
+          {
+            "code": "REINS-065",
+            "severity": "info",
+            "what": "90,000.00 AED of security is held in letters of credit and guarantees: it is relied on, disclosed, and cannot be spent",
+            "counterparty": null
+          }
+        ],
+        "positions": [
+          {
+            "counterparty": "Emirates Re",
+            "treaties": [
+              "XOL-CAT-5M"
+            ],
+            "recoverable": "150,000.00 AED",
+            "premiumRequirement": "0.00 AED",
+            "requirement": "150,000.00 AED",
+            "held": "100,000.00 AED",
+            "heldOnBalanceSheet": "10,000.00 AED",
+            "heldOffBalanceSheet": "90,000.00 AED",
+            "shortfall": "50,000.00 AED",
+            "surplus": "0.00 AED",
+            "coverPct": 66.66,
+            "secured": false,
+            "notes": [
+              "150,000.00 AED of claims is still owed to us by Emirates Re; that is the first thing security has to cover"
+            ],
+            "instruments": [
+              {
+                "id": "SEC-ALK-CONV-000002",
+                "kind": "letter-of-credit",
+                "reference": "LC-88213",
+                "amount": "60,000.00 AED",
+                "released": "0.00 AED",
+                "interest": "0.00 AED",
+                "at": "2026-06-01T09:00:00+04:00",
+                "expiresAt": "2026-12-31",
+                "inForce": true,
+                "onBalanceSheet": false,
+                "journalId": null
+              },
+              {
+                "id": "SEC-ALK-CONV-000003",
+                "kind": "letter-of-credit",
+                "reference": "LC-77420",
+                "amount": "30,000.00 AED",
+                "released": "0.00 AED",
+                "interest": "0.00 AED",
+                "at": "2026-04-01T09:00:00+04:00",
+                "expiresAt": "2026-10-20",
+                "inForce": true,
+                "onBalanceSheet": false,
+                "journalId": null
+              },
+              {
+                "id": "SEC-ALK-CONV-000004",
+                "kind": "cash",
+                "reference": "CASH-SECURITY-2026",
+                "amount": "10,000.00 AED",
+                "released": "0.00 AED",
+                "interest": "0.00 AED",
+                "at": "2026-01-05T09:00:00+04:00",
+                "expiresAt": null,
+                "inForce": true,
+                "onBalanceSheet": true,
+                "journalId": "RI-ALK-CONV-000009"
+              }
+            ],
+            "calls": [
+              {
+                "id": "CALL-ALK-CONV-000001",
+                "amount": "50,000.00 AED",
+                "settled": "0.00 AED",
+                "outstanding": "50,000.00 AED",
+                "status": "open",
+                "reason": "the catastrophe recovery is unsecured beyond the letters of credit in force",
+                "at": "2026-10-01T11:00:00+04:00",
+                "dueBy": "2026-10-31",
+                "settlements": []
+              }
+            ]
+          },
+          {
+            "counterparty": "Al Wathba Re",
+            "treaties": [
+              "FAC-MOTOR"
+            ],
+            "recoverable": "0.00 AED",
+            "premiumRequirement": "0.00 AED",
+            "requirement": "0.00 AED",
+            "held": "0.00 AED",
+            "heldOnBalanceSheet": "0.00 AED",
+            "heldOffBalanceSheet": "0.00 AED",
+            "shortfall": "0.00 AED",
+            "surplus": "0.00 AED",
+            "coverPct": 100,
+            "secured": true,
+            "notes": [],
+            "instruments": [],
+            "calls": []
+          },
+          {
+            "counterparty": "Gulf Reinsurance PSC",
+            "treaties": [
+              "QS-25-2026",
+              "AGG-SL-DEPOSIT"
+            ],
+            "recoverable": "287.50 AED",
+            "premiumRequirement": "695.89 AED",
+            "requirement": "983.39 AED",
+            "held": "1,500.00 AED",
+            "heldOnBalanceSheet": "1,500.00 AED",
+            "heldOffBalanceSheet": "0.00 AED",
+            "shortfall": "0.00 AED",
+            "surplus": "516.61 AED",
+            "coverPct": 152.53,
+            "secured": true,
+            "notes": [
+              "287.50 AED of claims is still owed to us by Gulf Reinsurance PSC; that is the first thing security has to cover",
+              "a further 695.89 AED is required against premium still unearned under QS-25-2026, AGG-SL-DEPOSIT",
+              "AGG-SL-DEPOSIT is deposit accounted, so it carries no security requirement: the deposit on account is already ours to draw on",
+              "516.61 AED is held beyond the requirement and is doing nothing: release it, or the treaty is paying for cover it does not need"
+            ],
+            "instruments": [
+              {
+                "id": "SEC-ALK-CONV-000001",
+                "kind": "funds-withheld",
+                "reference": "FUNDS-WITHHELD-Q3",
+                "amount": "1,500.00 AED",
+                "released": "0.00 AED",
+                "interest": "0.00 AED",
+                "at": "2026-10-01T09:00:00+04:00",
+                "expiresAt": null,
+                "inForce": true,
+                "onBalanceSheet": true,
+                "journalId": "RI-ALK-CONV-000008"
+              }
+            ],
+            "calls": []
+          },
+          {
+            "counterparty": "MENA Re",
+            "treaties": [
+              "SURPLUS-10"
+            ],
+            "recoverable": "0.00 AED",
+            "premiumRequirement": "0.00 AED",
+            "requirement": "0.00 AED",
+            "held": "0.00 AED",
+            "heldOnBalanceSheet": "0.00 AED",
+            "heldOffBalanceSheet": "0.00 AED",
+            "shortfall": "0.00 AED",
+            "surplus": "0.00 AED",
+            "coverPct": 100,
+            "secured": true,
+            "notes": [],
+            "instruments": [],
+            "calls": []
+          }
+        ],
+        "retakaful": [
+          {
+            "counterparty": "Takaful Re International",
+            "treaties": [
+              "RTKF-QS-20"
+            ],
+            "recoverable": "0.00 AED",
+            "premiumRequirement": "90.00 AED",
+            "requirement": "90.00 AED",
+            "held": "90.00 AED",
+            "heldOnBalanceSheet": "90.00 AED",
+            "heldOffBalanceSheet": "0.00 AED",
+            "shortfall": "0.00 AED",
+            "surplus": "0.00 AED",
+            "coverPct": 100,
+            "secured": true,
+            "notes": [
+              "a further 90.00 AED is required against premium still unearned under RTKF-QS-20"
+            ],
+            "instruments": [
+              {
+                "id": "SEC-ALK-TKF-000001",
+                "kind": "cash",
+                "reference": "RTKF-SECURITY-2026",
+                "amount": "90.00 AED",
+                "released": "0.00 AED",
+                "interest": "0.00 AED",
+                "at": "2026-10-01T09:05:00+04:00",
+                "expiresAt": null,
+                "inForce": true,
+                "onBalanceSheet": true,
+                "journalId": "RI-ALK-TKF-000001"
+              }
+            ],
+            "calls": []
+          }
+        ]
       }
     },
     "GET /api/state": {
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T06:47:50.052Z",
-        "fingerprint": "d92884255c00ad2b",
-        "accounts": 157,
-        "journals": 78,
+        "takenAt": "2026-10-04T08:46:27.101Z",
+        "fingerprint": "613462fc0ed477a1",
+        "accounts": 168,
+        "journals": 86,
         "fxRates": 2,
-        "bytes": 80227
+        "bytes": 88367
       }
     },
     "GET /api/underwriting": {
@@ -3357,12 +4063,16 @@
             "cessionPct": 22.76,
             "commissionIncome": "497.94 AED",
             "recoveries": "600,287.50 AED",
-            "recoverable": "600,785.44 AED",
+            "recoverable": "150,785.44 AED",
             "notes": [
-              "catastrophe-desk: 600,000.00 AED recovered for STORM-ALPHAI under XOL-CAT-5M (RI-ALK-CONV-000004)",
-              "reinsurance/desk: reinstatement 1 under XOL-CAT-5M restored 600,000.00 AED free of charge",
               "deposit instalment 1 of 200,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000005)",
-              "deposit instalment 2 of 100,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000006)"
+              "deposit instalment 2 of 100,000.00 AED paid under AGG-SL-DEPOSIT (RI-ALK-CONV-000006)",
+              "treasury: 450,000.00 AED settled on RI-ALK-CONV-000004 (RI-ALK-CONV-000007)",
+              "treasury: 1,500.00 AED of security held from Gulf Reinsurance PSC (funds-withheld, FUNDS-WITHHELD-Q3)",
+              "treasury: 60,000.00 AED of security held from Emirates Re (letter-of-credit, LC-88213)",
+              "treasury: 30,000.00 AED of security held from Emirates Re (letter-of-credit, LC-77420)",
+              "treasury: 10,000.00 AED of security held from Emirates Re (cash, CASH-SECURITY-2026)",
+              "treasury: cash call CALL-ALK-CONV-000001 on Emirates Re for 50,000.00 AED, due 2026-10-31 — the catastrophe recovery is unsecured beyond the letters of credit in force"
             ],
             "treaties": [
               {
@@ -3543,7 +4253,9 @@
             "commissionIncome": "72.00 AED",
             "recoveries": "0.00 AED",
             "recoverable": "72.00 AED",
-            "notes": [],
+            "notes": [
+              "treasury: 90.00 AED of security held from Takaful Re International (cash, RTKF-SECURITY-2026)"
+            ],
             "treaties": [
               {
                 "treatyId": "RTKF-QS-20",
@@ -3633,8 +4345,22 @@
               "claimId": "CLM-000001",
               "recoveryId": "REC-CLM-000001-2",
               "treatyId": "QS-25-2026",
+              "source": "policy",
               "amount": "287.50 AED",
+              "settled": "0.00 AED",
+              "outstanding": "287.50 AED",
               "at": "2026-10-02T09:00:00+04:00",
+              "treatment": "risk-transferring"
+            },
+            {
+              "claimId": "STORM-ALPHAI",
+              "recoveryId": "RI-ALK-CONV-000004",
+              "treatyId": "XOL-CAT-5M",
+              "source": "event",
+              "amount": "600,000.00 AED",
+              "settled": "450,000.00 AED",
+              "outstanding": "150,000.00 AED",
+              "at": "2026-09-15T10:00:00+04:00",
               "treatment": "risk-transferring"
             }
           ],
@@ -3664,6 +4390,431 @@
             "reinstatementsUsed": 1,
             "reinstatementsLeft": 1,
             "exhausted": false
+          },
+          "ageing": {
+            "asOf": "2026-10-05",
+            "outstanding": "150,287.50 AED",
+            "overdue": "150,000.00 AED",
+            "oldestDays": 20,
+            "worstOverdue": [
+              "XOL-CAT-5M (6d)"
+            ],
+            "buckets": [
+              {
+                "bucket": "0-30",
+                "count": 2,
+                "outstanding": "150,287.50 AED"
+              },
+              {
+                "bucket": "31-60",
+                "count": 0,
+                "outstanding": "0.00 AED"
+              },
+              {
+                "bucket": "61-90",
+                "count": 0,
+                "outstanding": "0.00 AED"
+              },
+              {
+                "bucket": "90+",
+                "count": 0,
+                "outstanding": "0.00 AED"
+              }
+            ],
+            "items": [
+              {
+                "recoveryId": "RI-ALK-CONV-000004",
+                "claimId": "STORM-ALPHAI",
+                "treatyId": "XOL-CAT-5M",
+                "outstanding": "150,000.00 AED",
+                "settled": "450,000.00 AED",
+                "amount": "600,000.00 AED",
+                "at": "2026-09-15T10:00:00+04:00",
+                "ageDays": 20,
+                "expectedBy": "2026-09-29",
+                "overdueDays": 6,
+                "bucket": "0-30"
+              },
+              {
+                "recoveryId": "REC-CLM-000001-2",
+                "claimId": "CLM-000001",
+                "treatyId": "QS-25-2026",
+                "outstanding": "287.50 AED",
+                "settled": "0.00 AED",
+                "amount": "287.50 AED",
+                "at": "2026-10-02T09:00:00+04:00",
+                "ageDays": 3,
+                "expectedBy": "2026-12-01",
+                "overdueDays": 0,
+                "bucket": "0-30"
+              }
+            ]
+          },
+          "security": {
+            "asOf": "2026-10-05",
+            "requirement": "150,983.39 AED",
+            "held": "101,500.00 AED",
+            "shortfall": "50,000.00 AED",
+            "unsecured": [
+              "Emirates Re 50,000.00 AED"
+            ],
+            "notes": [
+              "Emirates Re is 6 days past the settlement terms on 150,000.00 AED and the security behind it is 50,000.00 AED short: that is the exposure, dated",
+              "90,000.00 AED of the cover is letters of credit and guarantees: relied on, disclosed, and not posted as cash",
+              "a deposit accounted treaty holds no security because there is no transfer of risk to secure — the money is already in our hands"
+            ],
+            "ledger": {
+              "restrictedCash": "10,000.00 AED",
+              "receivedAsSecurity": "11,500.00 AED",
+              "interestCredited": "0.00 AED",
+              "offBalanceSheet": "90,000.00 AED"
+            },
+            "findings": [
+              {
+                "code": "REINS-060",
+                "severity": "error",
+                "what": "Emirates Re is 50,000.00 AED short of the security its treaties require: 150,000.00 AED required, 100,000.00 AED held, 66.66% covered",
+                "counterparty": "Emirates Re"
+              },
+              {
+                "code": "REINS-061",
+                "severity": "warning",
+                "what": "LC-77420 (30,000.00 AED) expires on 2026-10-20, 15 days from 2026-10-05: replace it or call the cash",
+                "counterparty": "Emirates Re"
+              },
+              {
+                "code": "REINS-064",
+                "severity": "warning",
+                "what": "516.61 AED of security is held beyond what Gulf Reinsurance PSC is required to give: it secures nothing and ties up their capacity",
+                "counterparty": "Gulf Reinsurance PSC"
+              },
+              {
+                "code": "REINS-065",
+                "severity": "info",
+                "what": "90,000.00 AED of security is held in letters of credit and guarantees: it is relied on, disclosed, and cannot be spent",
+                "counterparty": null
+              }
+            ],
+            "positions": [
+              {
+                "counterparty": "Emirates Re",
+                "treaties": [
+                  "XOL-CAT-5M"
+                ],
+                "recoverable": "150,000.00 AED",
+                "premiumRequirement": "0.00 AED",
+                "requirement": "150,000.00 AED",
+                "held": "100,000.00 AED",
+                "heldOnBalanceSheet": "10,000.00 AED",
+                "heldOffBalanceSheet": "90,000.00 AED",
+                "shortfall": "50,000.00 AED",
+                "surplus": "0.00 AED",
+                "coverPct": 66.66,
+                "secured": false,
+                "notes": [
+                  "150,000.00 AED of claims is still owed to us by Emirates Re; that is the first thing security has to cover"
+                ],
+                "instruments": [
+                  {
+                    "id": "SEC-ALK-CONV-000002",
+                    "kind": "letter-of-credit",
+                    "reference": "LC-88213",
+                    "amount": "60,000.00 AED",
+                    "released": "0.00 AED",
+                    "interest": "0.00 AED",
+                    "at": "2026-06-01T09:00:00+04:00",
+                    "expiresAt": "2026-12-31",
+                    "inForce": true,
+                    "onBalanceSheet": false,
+                    "journalId": null
+                  },
+                  {
+                    "id": "SEC-ALK-CONV-000003",
+                    "kind": "letter-of-credit",
+                    "reference": "LC-77420",
+                    "amount": "30,000.00 AED",
+                    "released": "0.00 AED",
+                    "interest": "0.00 AED",
+                    "at": "2026-04-01T09:00:00+04:00",
+                    "expiresAt": "2026-10-20",
+                    "inForce": true,
+                    "onBalanceSheet": false,
+                    "journalId": null
+                  },
+                  {
+                    "id": "SEC-ALK-CONV-000004",
+                    "kind": "cash",
+                    "reference": "CASH-SECURITY-2026",
+                    "amount": "10,000.00 AED",
+                    "released": "0.00 AED",
+                    "interest": "0.00 AED",
+                    "at": "2026-01-05T09:00:00+04:00",
+                    "expiresAt": null,
+                    "inForce": true,
+                    "onBalanceSheet": true,
+                    "journalId": "RI-ALK-CONV-000009"
+                  }
+                ],
+                "calls": [
+                  {
+                    "id": "CALL-ALK-CONV-000001",
+                    "amount": "50,000.00 AED",
+                    "settled": "0.00 AED",
+                    "outstanding": "50,000.00 AED",
+                    "status": "open",
+                    "reason": "the catastrophe recovery is unsecured beyond the letters of credit in force",
+                    "at": "2026-10-01T11:00:00+04:00",
+                    "dueBy": "2026-10-31",
+                    "settlements": []
+                  }
+                ]
+              },
+              {
+                "counterparty": "Al Wathba Re",
+                "treaties": [
+                  "FAC-MOTOR"
+                ],
+                "recoverable": "0.00 AED",
+                "premiumRequirement": "0.00 AED",
+                "requirement": "0.00 AED",
+                "held": "0.00 AED",
+                "heldOnBalanceSheet": "0.00 AED",
+                "heldOffBalanceSheet": "0.00 AED",
+                "shortfall": "0.00 AED",
+                "surplus": "0.00 AED",
+                "coverPct": 100,
+                "secured": true,
+                "notes": [],
+                "instruments": [],
+                "calls": []
+              },
+              {
+                "counterparty": "Gulf Reinsurance PSC",
+                "treaties": [
+                  "QS-25-2026",
+                  "AGG-SL-DEPOSIT"
+                ],
+                "recoverable": "287.50 AED",
+                "premiumRequirement": "695.89 AED",
+                "requirement": "983.39 AED",
+                "held": "1,500.00 AED",
+                "heldOnBalanceSheet": "1,500.00 AED",
+                "heldOffBalanceSheet": "0.00 AED",
+                "shortfall": "0.00 AED",
+                "surplus": "516.61 AED",
+                "coverPct": 152.53,
+                "secured": true,
+                "notes": [
+                  "287.50 AED of claims is still owed to us by Gulf Reinsurance PSC; that is the first thing security has to cover",
+                  "a further 695.89 AED is required against premium still unearned under QS-25-2026, AGG-SL-DEPOSIT",
+                  "AGG-SL-DEPOSIT is deposit accounted, so it carries no security requirement: the deposit on account is already ours to draw on",
+                  "516.61 AED is held beyond the requirement and is doing nothing: release it, or the treaty is paying for cover it does not need"
+                ],
+                "instruments": [
+                  {
+                    "id": "SEC-ALK-CONV-000001",
+                    "kind": "funds-withheld",
+                    "reference": "FUNDS-WITHHELD-Q3",
+                    "amount": "1,500.00 AED",
+                    "released": "0.00 AED",
+                    "interest": "0.00 AED",
+                    "at": "2026-10-01T09:00:00+04:00",
+                    "expiresAt": null,
+                    "inForce": true,
+                    "onBalanceSheet": true,
+                    "journalId": "RI-ALK-CONV-000008"
+                  }
+                ],
+                "calls": []
+              },
+              {
+                "counterparty": "MENA Re",
+                "treaties": [
+                  "SURPLUS-10"
+                ],
+                "recoverable": "0.00 AED",
+                "premiumRequirement": "0.00 AED",
+                "requirement": "0.00 AED",
+                "held": "0.00 AED",
+                "heldOnBalanceSheet": "0.00 AED",
+                "heldOffBalanceSheet": "0.00 AED",
+                "shortfall": "0.00 AED",
+                "surplus": "0.00 AED",
+                "coverPct": 100,
+                "secured": true,
+                "notes": [],
+                "instruments": [],
+                "calls": []
+              }
+            ],
+            "retakaful": [
+              {
+                "counterparty": "Takaful Re International",
+                "treaties": [
+                  "RTKF-QS-20"
+                ],
+                "recoverable": "0.00 AED",
+                "premiumRequirement": "90.00 AED",
+                "requirement": "90.00 AED",
+                "held": "90.00 AED",
+                "heldOnBalanceSheet": "90.00 AED",
+                "heldOffBalanceSheet": "0.00 AED",
+                "shortfall": "0.00 AED",
+                "surplus": "0.00 AED",
+                "coverPct": 100,
+                "secured": true,
+                "notes": [
+                  "a further 90.00 AED is required against premium still unearned under RTKF-QS-20"
+                ],
+                "instruments": [
+                  {
+                    "id": "SEC-ALK-TKF-000001",
+                    "kind": "cash",
+                    "reference": "RTKF-SECURITY-2026",
+                    "amount": "90.00 AED",
+                    "released": "0.00 AED",
+                    "interest": "0.00 AED",
+                    "at": "2026-10-01T09:05:00+04:00",
+                    "expiresAt": null,
+                    "inForce": true,
+                    "onBalanceSheet": true,
+                    "journalId": "RI-ALK-TKF-000001"
+                  }
+                ],
+                "calls": []
+              }
+            ]
+          },
+          "reconciliation": {
+            "asOf": "2026-10-05",
+            "agrees": true,
+            "differences": 0,
+            "balanceSheet": {
+              "receivable": "150,785.44 AED",
+              "payable": "2,319.63 AED",
+              "depositAsset": "300,000.00 AED",
+              "restrictedCash": "10,000.00 AED",
+              "securityReceived": "11,500.00 AED"
+            },
+            "lines": [
+              {
+                "kind": "ceded-premium",
+                "what": "Ceded premium and reinstatement premium (expense)",
+                "register": "3,819.63 AED",
+                "ledger": "3,819.63 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": null
+              },
+              {
+                "kind": "commission",
+                "what": "Commission / wakalah fee (income)",
+                "register": "497.94 AED",
+                "ledger": "497.94 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": null
+              },
+              {
+                "kind": "event-recovery",
+                "what": "Catastrophe and event recoveries (income)",
+                "register": "600,000.00 AED",
+                "ledger": "600,000.00 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": null
+              },
+              {
+                "kind": "policy-recovery",
+                "what": "Policy recoveries (income, claims account net of salvage and third parties)",
+                "register": "287.50 AED",
+                "ledger": "287.50 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": "180.00 AED of salvage / third-party recovery removed from the account to compare like with like"
+              },
+              {
+                "kind": "deposit-premium",
+                "what": "Deposit premium still on account (asset)",
+                "register": "300,000.00 AED",
+                "ledger": "300,000.00 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": null
+              },
+              {
+                "kind": "receivable",
+                "what": "Receivable from reinsurers (commission + recoveries − settlements)",
+                "register": "150,785.44 AED",
+                "ledger": "150,785.44 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": null
+              },
+              {
+                "kind": "collateral-cash",
+                "what": "Cash held as security (asset, restricted)",
+                "register": "10,000.00 AED",
+                "ledger": "10,000.00 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": null
+              },
+              {
+                "kind": "security-liability",
+                "what": "Security received, returnable to reinsurers (liability)",
+                "register": "11,500.00 AED",
+                "ledger": "11,500.00 AED",
+                "difference": "0.00 AED",
+                "status": "agrees",
+                "note": null
+              }
+            ],
+            "quality": {
+              "errors": 1,
+              "warnings": 3,
+              "checked": [
+                "every treaty can be administered as written",
+                "every cession was inside the treaty it used",
+                "a paid claim on a ceded risk has had its recovery claimed",
+                "recoveries are inside their settlement terms",
+                "deposit premium is settled against the period it belongs to",
+                "the security behind every counterparty covers what that counterparty owes",
+                "the register agrees with the books"
+              ],
+              "findings": [
+                {
+                  "severity": "warning",
+                  "code": "REINS-030",
+                  "subject": "RI-ALK-CONV-000004",
+                  "detail": "150,000.00 AED from XOL-CAT-5M is 6 days past the settlement terms (expected by 2026-09-29)"
+                },
+                {
+                  "severity": "error",
+                  "code": "REINS-060",
+                  "subject": "Emirates Re",
+                  "detail": "Emirates Re is 50,000.00 AED short of the security its treaties require: 150,000.00 AED required, 100,000.00 AED held, 66.66% covered"
+                },
+                {
+                  "severity": "warning",
+                  "code": "REINS-061",
+                  "subject": "Emirates Re",
+                  "detail": "LC-77420 (30,000.00 AED) expires on 2026-10-20, 15 days from 2026-10-05: replace it or call the cash"
+                },
+                {
+                  "severity": "warning",
+                  "code": "REINS-064",
+                  "subject": "Gulf Reinsurance PSC",
+                  "detail": "516.61 AED of security is held beyond what Gulf Reinsurance PSC is required to give: it secures nothing and ties up their capacity"
+                },
+                {
+                  "severity": "info",
+                  "code": "REINS-065",
+                  "subject": "security",
+                  "detail": "90,000.00 AED of security is held in letters of credit and guarantees: it is relied on, disclosed, and cannot be spent"
+                }
+              ]
+            }
           }
         },
         "group": {
@@ -3681,7 +4832,7 @@
               "translationReserve": "0.00 AED",
               "closingRate": "1/1 on 2026-10-05",
               "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
-              "accounts": 25
+              "accounts": 27
             },
             {
               "entityId": "ALK-TKF",
@@ -3693,7 +4844,7 @@
               "translationReserve": "0.00 AED",
               "closingRate": "1/1 on 2026-10-05",
               "averageRate": "1/1 over 2026-09-01..2026-10-05 (2026-10-05)",
-              "accounts": 13
+              "accounts": 15
             },
             {
               "entityId": "ALK-MY",
@@ -3763,8 +4914,8 @@
             "matched": "14,200.00 AED",
             "inTransit": "11,800.00 AED",
             "notes": [
-              "ALK-CONV: translated 25 account balance(s), translation reserve 0.00 AED",
-              "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
+              "ALK-CONV: translated 27 account balance(s), translation reserve 0.00 AED",
+              "ALK-TKF: translated 15 account balance(s), translation reserve 0.00 AED",
               "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
               "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
               "ALK-CONV ↔ ALK-MY: eliminated 4,600.00 AED of intercompany balances",
@@ -3775,8 +4926,8 @@
           },
           "group": {
             "totals": {
-              "assets": "17,894,027.44 AED",
-              "liabilities": "59,637.13 AED",
+              "assets": "17,904,117.44 AED",
+              "liabilities": "69,727.13 AED",
               "equity": "17,098,200.00 AED",
               "income": "768,519.94 AED",
               "expense": "32,329.63 AED",
@@ -3789,7 +4940,7 @@
               {
                 "check": "consolidated balance sheet balances",
                 "ok": true,
-                "detail": "assets 17,894,027.44 AED − liabilities 59,637.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
+                "detail": "assets 17,904,117.44 AED − liabilities 69,727.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
               },
               {
                 "check": "group ledger proof",
@@ -3816,7 +4967,7 @@
                 "accountId": "GRP:ALK-CONV:CASH",
                 "name": "ALK-CONV — Cash at bank",
                 "type": "asset",
-                "amount": "9,700,512.50 AED"
+                "amount": "10,150,512.50 AED"
               },
               {
                 "accountId": "GRP:ALK-CONV:CLAIM-EXPENSE",
@@ -3835,6 +4986,12 @@
                 "name": "ALK-CONV — Claim reserve (outstanding)",
                 "type": "liability",
                 "amount": "15,000.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-CONV:COLLATERAL:CASH",
+                "name": "ALK-CONV — Cash held as security (restricted)",
+                "type": "asset",
+                "amount": "10,000.00 AED"
               },
               {
                 "accountId": "GRP:ALK-CONV:FBAL:INVESTMENTS",
@@ -3891,6 +5048,12 @@
                 "amount": "6,687.50 AED"
               },
               {
+                "accountId": "GRP:ALK-CONV:RECEIVED-AS-SECURITY",
+                "name": "ALK-CONV — Security received from reinsurers, returnable",
+                "type": "liability",
+                "amount": "11,500.00 AED"
+              },
+              {
                 "accountId": "GRP:ALK-CONV:REINS:CEDED-PREMIUM",
                 "name": "ALK-CONV — Ceded premium / contribution (expense)",
                 "type": "expense",
@@ -3912,13 +5075,13 @@
                 "accountId": "GRP:ALK-CONV:REINS:PAYABLE",
                 "name": "ALK-CONV — Payable to reinsurers / retakaful operators",
                 "type": "liability",
-                "amount": "3,819.63 AED"
+                "amount": "2,319.63 AED"
               },
               {
                 "accountId": "GRP:ALK-CONV:REINS:RECEIVABLE",
                 "name": "ALK-CONV — Receivable from reinsurers / retakaful operators",
                 "type": "asset",
-                "amount": "600,785.44 AED"
+                "amount": "150,785.44 AED"
               },
               {
                 "accountId": "GRP:ALK-CONV:REINS:RECOVERY",
@@ -3969,6 +5132,12 @@
                 "amount": "3,007,100.00 AED"
               },
               {
+                "accountId": "GRP:ALK-TKF:COLLATERAL:CASH",
+                "name": "ALK-TKF — Cash held as security (restricted)",
+                "type": "asset",
+                "amount": "90.00 AED"
+              },
+              {
                 "accountId": "GRP:ALK-TKF:OPF:PARTICIPANTS",
                 "name": "ALK-TKF — Participants' funds — OPF",
                 "type": "liability",
@@ -3991,6 +5160,12 @@
                 "name": "ALK-TKF — Qard hasan receivable from participants",
                 "type": "asset",
                 "amount": "40.00 AED"
+              },
+              {
+                "accountId": "GRP:ALK-TKF:RECEIVED-AS-SECURITY",
+                "name": "ALK-TKF — Security received from reinsurers, returnable",
+                "type": "liability",
+                "amount": "90.00 AED"
               },
               {
                 "accountId": "GRP:ALK-TKF:REINS:CEDED-PREMIUM",
@@ -4323,11 +5498,11 @@
               {
                 "currency": "AED",
                 "debit": {
-                  "minor": "1102175257",
+                  "minor": "1148325257",
                   "currency": "AED"
                 },
                 "credit": {
-                  "minor": "1102175257",
+                  "minor": "1148325257",
                   "currency": "AED"
                 }
               }
@@ -4339,11 +5514,11 @@
               {
                 "currency": "AED",
                 "debit": {
-                  "minor": "302291200",
+                  "minor": "302300200",
                   "currency": "AED"
                 },
                 "credit": {
-                  "minor": "302291200",
+                  "minor": "302300200",
                   "currency": "AED"
                 }
               }
@@ -4352,7 +5527,7 @@
           "trialBalance": [
             {
               "account": "Cash at bank",
-              "balance": "9,700,512.50 AED"
+              "balance": "10,150,512.50 AED"
             },
             {
               "account": "Fund clearing",
@@ -4480,11 +5655,11 @@
             },
             {
               "account": "Payable to reinsurers / retakaful operators",
-              "balance": "3,819.63 AED"
+              "balance": "2,319.63 AED"
             },
             {
               "account": "Receivable from reinsurers / retakaful operators",
-              "balance": "600,785.44 AED"
+              "balance": "150,785.44 AED"
             },
             {
               "account": "Ceding commission / wakalah fee",
@@ -4497,30 +5672,21 @@
             {
               "account": "Deposit premium paid on account",
               "balance": "300,000.00 AED"
+            },
+            {
+              "account": "Cash held as security (restricted)",
+              "balance": "10,000.00 AED"
+            },
+            {
+              "account": "Security received from reinsurers, returnable",
+              "balance": "11,500.00 AED"
+            },
+            {
+              "account": "Interest earned on cash collateral held",
+              "balance": "0.00 AED"
             }
           ],
           "journals": [
-            {
-              "id": "RI-ALK-CONV-000002",
-              "at": "2026-09-30T09:05:00+04:00",
-              "description": "Cession of 1,500.00 AED premium (20% of 7,500.00 AED) to MENA Re under SURPLUS-10",
-              "source": "reinsurance",
-              "fundId": "—"
-            },
-            {
-              "id": "RI-ALK-CONV-000003",
-              "at": "2026-09-30T09:10:00+04:00",
-              "description": "Cession of 16.75 AED premium (25% of 67.00 AED) to Gulf Reinsurance PSC under QS-25-2026",
-              "source": "reinsurance",
-              "fundId": "—"
-            },
-            {
-              "id": "CL-ALK-CONV-000007",
-              "at": "2026-10-02T09:00:00+04:00",
-              "description": "reinsurance recovery on CLM-000001 for 287.50 AED",
-              "source": "claims",
-              "fundId": "—"
-            },
             {
               "id": "RI-ALK-CONV-000004",
               "at": "2026-09-15T10:00:00+04:00",
@@ -4539,6 +5705,27 @@
               "id": "RI-ALK-CONV-000006",
               "at": "2026-07-01T10:00:00+04:00",
               "description": "Deposit premium instalment 2 of 100,000.00 AED under AGG-SL-DEPOSIT",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000007",
+              "at": "2026-09-30T10:00:00+04:00",
+              "description": "450,000.00 AED received from Emirates Re against recovery RI-ALK-CONV-000004 (part settlement, 150,000.00 AED still outstanding)",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000008",
+              "at": "2026-10-01T09:00:00+04:00",
+              "description": "1,500.00 AED payable to Gulf Reinsurance PSC withheld as security (FUNDS-WITHHELD-Q3)",
+              "source": "reinsurance",
+              "fundId": "—"
+            },
+            {
+              "id": "RI-ALK-CONV-000009",
+              "at": "2026-01-05T09:00:00+04:00",
+              "description": "10,000.00 AED posted by Emirates Re as cash security (CASH-SECURITY-2026)",
               "source": "reinsurance",
               "fundId": "—"
             },
@@ -4569,7 +5756,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T06:46:17.382Z"
+        "generatedAt": "2026-10-04T08:44:47.108Z"
       }
     },
     "POST /api/ai/approve": {
@@ -4756,8 +5943,8 @@
           "matched": "14,200.00 AED",
           "inTransit": "11,800.00 AED",
           "notes": [
-            "ALK-CONV: translated 25 account balance(s), translation reserve 0.00 AED",
-            "ALK-TKF: translated 13 account balance(s), translation reserve 0.00 AED",
+            "ALK-CONV: translated 27 account balance(s), translation reserve 0.00 AED",
+            "ALK-TKF: translated 15 account balance(s), translation reserve 0.00 AED",
             "ALK-MY: translated 5 account balance(s), translation reserve -151,800.00 AED",
             "ALK-CONV ↔ ALK-TKF: eliminated 2,500.00 AED of intercompany balances",
             "ALK-CONV ↔ ALK-MY: eliminated 4,600.00 AED of intercompany balances",
@@ -4775,8 +5962,8 @@
           }
         ],
         "totals": {
-          "assets": "17,894,027.44 AED",
-          "liabilities": "59,637.13 AED",
+          "assets": "17,904,117.44 AED",
+          "liabilities": "69,727.13 AED",
           "equity": "17,098,200.00 AED",
           "income": "768,519.94 AED",
           "expense": "32,329.63 AED",
@@ -4791,7 +5978,7 @@
           {
             "check": "consolidated balance sheet balances",
             "ok": true,
-            "detail": "assets 17,894,027.44 AED − liabilities 59,637.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
+            "detail": "assets 17,904,117.44 AED − liabilities 69,727.13 AED = 17,834,390.31 AED; equity 17,098,200.00 AED (of which the translation reserve is -151,800.00 AED) plus result 736,190.31 AED; difference 0.00 AED"
           },
           {
             "check": "group ledger proof",
@@ -4814,7 +6001,7 @@
     "POST /api/ingest/commit": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791096444574",
+        "loadId": "LOAD-1791103561576",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
@@ -4827,7 +6014,7 @@
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791096444574"
+        "loadId": "LOAD-1791103561576"
       }
     },
     "POST /api/onboarding/ocr": {
@@ -5387,7 +6574,7 @@
         "cededPremium": "300.00 AED",
         "commission": "45.00 AED",
         "netRetainedPremium": "945.00 AED",
-        "journalId": "RI-ALK-CONV-000008",
+        "journalId": "RI-ALK-CONV-000011",
         "explanation": "25% of every risk is ceded as it is written"
       }
     },
@@ -5434,7 +6621,7 @@
         "sharePct": 40,
         "cededPremium": "2,240.00 AED",
         "commission": "280.00 AED",
-        "journalId": "RI-ALK-CONV-000007"
+        "journalId": "RI-ALK-CONV-000010"
       }
     },
     "POST /api/reinsurance/recover": {
@@ -5452,31 +6639,100 @@
         "premium": "15,000.00 AED",
         "free": false,
         "available": "5,000,000.00 AED",
-        "journalId": "RI-ALK-CONV-000010"
+        "journalId": "RI-ALK-CONV-000013"
+      }
+    },
+    "POST /api/reinsurance/security/call": {
+      "status": 200,
+      "body": {
+        "callId": "CALL-ALK-CONV-000002",
+        "counterparty": "Emirates Re",
+        "amount": "425,000.00 AED",
+        "shortfallAtRaise": "425,000.00 AED",
+        "reason": "the catastrophe recovery is unsecured beyond the letters of credit in force",
+        "at": "2026-10-05T11:00:00+04:00",
+        "dueBy": "2026-11-04",
+        "status": "open"
+      }
+    },
+    "POST /api/reinsurance/security/call/settle": {
+      "status": 200,
+      "body": {
+        "callId": "CALL-ALK-CONV-000001",
+        "status": "settled",
+        "asked": "50,000.00 AED",
+        "settled": "50,000.00 AED",
+        "outstanding": "0.00 AED",
+        "instrumentId": "SEC-ALK-CONV-000005",
+        "instrumentKind": "cash",
+        "instrumentAmount": "50,000.00 AED",
+        "journalId": "RI-ALK-CONV-000017"
+      }
+    },
+    "POST /api/reinsurance/security/hold": {
+      "status": 200,
+      "body": {
+        "instrumentId": "SEC-ALK-CONV-000006",
+        "counterparty": "Emirates Re",
+        "kind": "letter-of-credit",
+        "amount": "25,000.00 AED",
+        "onBalanceSheet": false,
+        "reference": "LC-RECORDED",
+        "expiresAt": "2027-03-31",
+        "journalId": null
+      }
+    },
+    "POST /api/reinsurance/security/interest": {
+      "status": 200,
+      "body": {
+        "instrumentId": "SEC-ALK-CONV-000004",
+        "counterparty": "Emirates Re",
+        "interest": "250.00 AED",
+        "journalId": "RI-ALK-CONV-000019"
+      }
+    },
+    "POST /api/reinsurance/security/release": {
+      "status": 200,
+      "body": {
+        "instrumentId": "SEC-ALK-CONV-000001",
+        "counterparty": "Gulf Reinsurance PSC",
+        "kind": "funds-withheld",
+        "released": "426.61 AED",
+        "remaining": "1,073.39 AED",
+        "journalId": "RI-ALK-CONV-000018"
+      }
+    },
+    "POST /api/reinsurance/settle": {
+      "status": 200,
+      "body": {
+        "recoveryId": "RI-ALK-CONV-000004",
+        "settled": "600,000.00 AED",
+        "outstanding": "0.00 AED",
+        "journalId": "RI-ALK-CONV-000016"
       }
     },
     "POST /api/state/drill": {
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "79a69268a5e10c65",
+        "fingerprint": "8d3767dfbad403b8",
         "fingerprintStable": true,
-        "journals": 78,
-        "restoredJournals": 78,
-        "bytes": 80227,
+        "journals": 86,
+        "restoredJournals": 86,
+        "bytes": 88367,
         "restoreMs": 67,
         "balances": [
           {
             "entityId": "ALK-CONV",
             "balanced": true,
             "trialBalanceAgrees": true,
-            "accounts": 37
+            "accounts": 40
           },
           {
             "entityId": "ALK-TKF",
             "balanced": true,
             "trialBalanceAgrees": true,
-            "accounts": 39
+            "accounts": 42
           },
           {
             "entityId": "ALK-MY",
@@ -5488,7 +6744,7 @@
             "entityId": "GRP",
             "balanced": true,
             "trialBalanceAgrees": true,
-            "accounts": 60
+            "accounts": 65
           }
         ]
       }
@@ -5565,11 +6821,11 @@
       "at": "2026-10-05T10:00:00+04:00"
     },
     "POST /api/ingest/commit": {
-      "loadId": "LOAD-1791096444574"
+      "loadId": "LOAD-1791103561576"
     },
     "POST /api/ingest/submit": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791096444574"
+      "loadId": "LOAD-1791103561576"
     },
     "POST /api/onboarding/ocr": {
       "documentType": "emirates-id",
@@ -5600,6 +6856,19 @@
     "POST /api/preview/withdrawal": {
       "amountMinor": 150000,
       "fundId": "FBAL"
+    },
+    "POST /api/reinsurance/security/call": {
+      "counterparty": "Emirates Re",
+      "reason": "the catastrophe recovery is unsecured beyond the letters of credit in force"
+    },
+    "POST /api/reinsurance/security/hold": {
+      "counterparty": "Emirates Re",
+      "treatyId": "XOL-CAT-5M",
+      "kind": "letter-of-credit",
+      "amount": "25,000.00",
+      "reference": "LC-RECORDED",
+      "expiresAt": "2027-03-31",
+      "by": "treasury"
     },
     "POST /api/takaful/approve": {
       "role": "board",

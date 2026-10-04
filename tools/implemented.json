@@ -472,7 +472,9 @@
         "reinsurance data quality and reconciliation",
         "retakaful variants",
         "reinstatement premium",
-        "deposit accounting"
+        "deposit accounting",
+        "cash call and collateral",
+        "security valuation"
       ],
       "layers": [
         "design",
@@ -486,6 +488,7 @@
       ],
       "evidence": [
         "src/core/reinsurance.ts",
+        "src/core/reinsurance.test.ts",
         "src/core/claims.ts",
         "src/server/main.ts",
         "src/ui/main.tsx",

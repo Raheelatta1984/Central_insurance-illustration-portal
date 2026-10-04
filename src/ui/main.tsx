@@ -1071,6 +1071,10 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
           <button disabled={busy !== null} onClick={() => call('Reinstate the catastrophe cover', '/reinsurance/reinstate')}>Reinstate the catastrophe cover</button>
           <button disabled={busy !== null} onClick={() => call('Pay a deposit instalment', '/reinsurance/deposit')}>Pay a deposit instalment</button>
           <button disabled={busy !== null} onClick={() => call('Settle the deposit premium', '/reinsurance/deposit/settle')}>Settle the deposit premium</button>
+          <button disabled={busy !== null} onClick={() => call('Settle the outstanding recovery', '/reinsurance/settle')}>Settle the outstanding recovery</button>
+          <button disabled={busy !== null} onClick={() => call('Answer the outstanding cash call', '/reinsurance/security/call/settle')}>Answer the outstanding cash call</button>
+          <button disabled={busy !== null} onClick={() => call('Release the security we no longer need', '/reinsurance/security/release')}>Release the security we no longer need</button>
+          <button disabled={busy !== null} onClick={() => call('Credit the interest the reinsurer earns on its cash', '/reinsurance/security/interest')}>Credit the interest on their cash</button>
         </div>
         {note && <p className="small">{note}</p>}
         {error && <p className="bad small">{error}</p>}
@@ -1132,10 +1136,96 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
         </p>
       </Card>
 
+      <Card title="Ageing of what reinsurers owe us" subtitle="Against each treaty's own settlement terms — a catastrophe cover settles in 14 days or it does not settle" wide>
+        <div className="row">
+          {view.ageing.buckets.map((b) => (
+            <div className="stat" key={b.bucket}><span>{b.bucket} days ({b.count})</span><b>{b.outstanding}</b></div>
+          ))}
+          <div className="stat"><span>Outstanding</span><b>{view.ageing.outstanding}</b></div>
+          <div className="stat"><span>Past terms</span><b className={view.ageing.overdue === '0.00 AED' ? '' : 'bad'}>{view.ageing.overdue}</b></div>
+        </div>
+        <Table
+          head={['Recovery', 'Event / claim', 'Treaty', 'Amount', 'Settled', 'Outstanding', 'Age', 'Expected by', 'Bucket', 'Overdue']}
+          rows={view.ageing.items.map((i) => [
+            <span className="muted small">{i.recoveryId}</span>, i.claimId, i.treatyId, i.amount, i.settled, i.outstanding,
+            `${i.ageDays}d`, i.expectedBy, i.bucket,
+            i.overdueDays > 0 ? <Pill tone="bad">{i.overdueDays} days late</Pill> : <Pill tone="ok">inside terms</Pill>,
+          ])}
+          empty="Nothing outstanding: every recovery has been collected."
+        />
+        {view.ageing.worstOverdue.length > 0 && <p className="small muted">Worst first: {view.ageing.worstOverdue.join(' · ')}</p>}
+      </Card>
+
+      <Card title="Security behind the reinsurers' promises" subtitle="What each counterparty must put up, what it has actually put up, and every reason the two do not match" wide>
+        <div className="row">
+          <div className="stat"><span>Required</span><b>{view.security.requirement}</b></div>
+          <div className="stat"><span>Held</span><b>{view.security.held}</b></div>
+          <div className="stat"><span>Shortfall</span><b className={view.security.shortfall === '0.00 AED' ? '' : 'bad'}>{view.security.shortfall}</b></div>
+          <div className="stat"><span>Restricted cash</span><b>{view.security.ledger.restrictedCash}</b></div>
+          <div className="stat"><span>Received as security</span><b>{view.security.ledger.receivedAsSecurity}</b></div>
+          <div className="stat"><span>Off balance sheet</span><b>{view.security.ledger.offBalanceSheet}</b></div>
+        </div>
+        <Table
+          head={['Counterparty', 'Recoverable', 'Premium margin', 'Required', 'Held', 'Cover', 'Shortfall', 'Surplus', 'Open calls']}
+          rows={view.security.positions.map((p) => [
+            p.counterparty, p.recoverable, p.premiumRequirement, p.requirement, p.held,
+            p.secured ? <Pill tone="ok">{p.coverPct.toFixed(2)}%</Pill> : <Pill tone="bad">{p.coverPct.toFixed(2)}%</Pill>,
+            p.shortfall, p.surplus,
+            p.calls.filter((c) => c.status !== 'settled').map((c) => <span className="muted small" key={c.id}>{c.id} {c.outstanding} due {c.dueBy} · </span>),
+          ])}
+        />
+        <Table
+          head={['Instrument', 'Kind', 'Reference', 'Amount', 'Released', 'Interest', 'Expires', 'Books']}
+          rows={view.security.positions.flatMap((p) => p.instruments.filter((i) => i.inForce).map((i) => [
+            p.counterparty, i.kind, <span className="muted small">{i.reference}</span>, i.amount, i.released, i.interest,
+            i.expiresAt ?? '—',
+            i.onBalanceSheet ? <Pill tone="ok">posted</Pill> : <Pill tone="info">disclosed</Pill>,
+          ]))}
+          empty="No security held: every counterparty is owed nothing, or is not covered at all."
+        />
+        <Table
+          head={['Severity', 'Code', 'Counterparty', 'Finding']}
+          rows={view.security.findings.map((f) => [
+            f.severity === 'error' ? <Pill tone="bad">error</Pill> : f.severity === 'warning' ? <Pill tone="warn">warning</Pill> : <Pill tone="info">info</Pill>,
+            <span className="muted small">{f.code}</span>, f.counterparty ?? '—', f.what,
+          ])}
+          empty="Nothing to report: the security covers what it has to cover."
+        />
+        {view.security.notes.map((n, i) => <p className="small muted" key={i}>{n}</p>)}
+      </Card>
+
+      <Card title="Reconciliation and data quality"subtitle="The register against the books, line by line — and the checks that look for money that should be moving" wide>
+        <div className="stat"><span>Reconciliation</span><b>{view.reconciliation.agrees ? <Pill tone="ok">every line agrees</Pill> : <Pill tone="bad">{view.reconciliation.differences} difference(s)</Pill>}</b></div>
+        <Table
+          head={['Line', 'What', 'Register', 'Books', 'Difference']}
+          rows={view.reconciliation.lines.map((l) => [
+            <span className="muted small">{l.kind}</span>, l.what, l.register, l.ledger,
+            l.status === 'agrees' ? <Pill tone="ok">agrees</Pill> : <Pill tone="bad">{l.difference}</Pill>,
+          ])}
+        />
+        <Table
+          head={['Severity', 'Code', 'Subject', 'Finding']}
+          rows={view.reconciliation.quality.findings.map((f) => [
+            f.severity === 'error' ? <Pill tone="bad">error</Pill> : f.severity === 'warning' ? <Pill tone="warn">warning</Pill> : <Pill tone="info">info</Pill>,
+            <span className="muted small">{f.code}</span>, f.subject, f.detail,
+          ])}
+          empty="No findings: the register is clean for this date."
+        />
+        <p className="small muted">Controls that ran: {view.reconciliation.quality.checked.join(' · ')}</p>
+        <p className="small muted">
+          Security held in cash and premium withheld is money we have and owe back: it sits in restricted cash and in the
+          security liability, and the reconciliation above proves both halves. A letter of credit is relied on and
+          disclosed — never posted as if it were cash.
+        </p>
+      </Card>
+
       <Card title="Recoveries from reinsurers" subtitle="Owed to us, not in the bank — the receivable is the proof">
         <Table
-          head={['Claim', 'Treaty', 'Amount', 'Recovery', 'At']}
-          rows={view.recoveries.map((r) => [r.claimId, r.treatyId, r.amount, <span className="muted small">{r.recoveryId}</span>, r.at.slice(0, 10)])}
+          head={['Claim / event', 'Treaty', 'Source', 'Amount', 'Settled', 'Outstanding', 'Recovery', 'At']}
+          rows={view.recoveries.map((r) => [
+            r.claimId, r.treatyId, <span className="muted small">{r.source}</span>, r.amount, r.settled, r.outstanding,
+            <span className="muted small">{r.recoveryId}</span>, r.at.slice(0, 10),
+          ])}
           empty="No recoveries claimed yet."
         />
       </Card>

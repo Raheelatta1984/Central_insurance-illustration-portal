@@ -227,6 +227,12 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       return true;
     }
 
+    case 'GET /reinsurance/security': {
+      // The security statement on its own: who owes what, who has secured it, and what is missing.
+      json(res, 200, reinsuranceSnapshot(state.world).security);
+      return true;
+    }
+
     case 'POST /reinsurance/cede': {
       const basis = String(payload['basis'] ?? 'conventional') === 'takaful' ? 'takaful' as const : 'conventional' as const;
       const register = basis === 'takaful' ? state.world.retakaful : state.world.reinsurance;
@@ -272,6 +278,23 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
         acceptedRisk: riskId, treatyId: cession.treatyId, sharePct: cession.shareBps / 100,
         cededPremium: formatAmount(cession.cededPremium), commission: formatAmount(cession.commission),
         journalId: cession.journalId,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/settle': {
+      // The counterparty pays: the receivable becomes cash, and a part settlement is fine.
+      const ageing = state.world.reinsurance.ageing({ asOf: state.world.asOf });
+      const target = String(payload['recoveryId'] ?? ageing.items[0]?.recoveryId ?? '');
+      const result = state.world.reinsurance.settleRecovery({
+        recoveryId: target,
+        at: String(payload['at'] ?? `${state.world.asOf}T14:00:00+04:00`),
+        ...(payload['amount'] ? { amount: parseAmount(String(payload['amount']), 'AED') } : {}),
+        by: String(payload['by'] ?? 'treasury'),
+      });
+      json(res, 200, {
+        recoveryId: result.recoveryId, settled: formatAmount(result.settled),
+        outstanding: formatAmount(result.outstanding), journalId: result.journalId ?? null,
       });
       return true;
     }
@@ -338,6 +361,112 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
         adjustment: account.adjustments.at(-1) ? {
           kind: account.adjustments.at(-1)!.kind, amount: formatAmount(account.adjustments.at(-1)!.amount),
         } : null,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/security/hold': {
+      // Security arrives: cash, premium withheld, a letter of credit or a guarantee. Cash and withheld
+      // premium move the books; a letter of credit is recorded and disclosed, never posted as money.
+      const instrument = state.world.reinsurance.holdSecurity({
+        counterparty: String(payload['counterparty'] ?? 'Emirates Re'),
+        kind: String(payload['kind'] ?? 'cash') as 'cash' | 'funds-withheld' | 'letter-of-credit' | 'bank-guarantee',
+        amount: parseAmount(String(payload['amount'] ?? '10,000.00'), 'AED'),
+        at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`),
+        reference: String(payload['reference'] ?? `SEC-${new Date().toISOString().slice(0, 10)}`),
+        by: String(payload['by'] ?? 'treasury'),
+        ...(payload['treatyId'] ? { treatyId: String(payload['treatyId']) } : {}),
+        ...(payload['expiresAt'] ? { expiresAt: String(payload['expiresAt']) } : {}),
+      });
+      json(res, 200, {
+        instrumentId: instrument.id, counterparty: instrument.counterparty, kind: instrument.kind,
+        amount: formatAmount(instrument.amount), onBalanceSheet: instrument.onBalanceSheet,
+        reference: instrument.reference, expiresAt: instrument.expiresAt ?? null,
+        journalId: instrument.journalId ?? null,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/security/call': {
+      // Call the shortfall, and only the shortfall: the engine refuses more, or a second call for the
+      // same gap while the first is still unanswered.
+      const call = state.world.reinsurance.callSecurity({
+        counterparty: String(payload['counterparty'] ?? 'Emirates Re'),
+        at: String(payload['at'] ?? `${state.world.asOf}T11:00:00+04:00`),
+        reason: String(payload['reason'] ?? 'security held is below what the treaties require'),
+        by: String(payload['by'] ?? 'treasury'),
+        ...(payload['amount'] ? { amount: parseAmount(String(payload['amount']), 'AED') } : {}),
+        ...(payload['dueInDays'] ? { dueInDays: Number(payload['dueInDays']) } : {}),
+      });
+      json(res, 200, {
+        callId: call.id, counterparty: call.counterparty, amount: formatAmount(call.amount),
+        shortfallAtRaise: formatAmount(call.shortfallAtRaise), reason: call.reason,
+        at: call.at, dueBy: call.dueBy, status: call.status,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/security/call/settle': {
+      // The counterparty answers, in cash or with an instrument. A part answer leaves the call open.
+      const open = state.world.reinsurance.cashCallList().filter((c) => c.status !== 'settled');
+      const callId = String(payload['callId'] ?? open[0]?.id ?? '');
+      const result = state.world.reinsurance.settleCall({
+        callId,
+        at: String(payload['at'] ?? `${state.world.asOf}T15:30:00+04:00`),
+        kind: String(payload['kind'] ?? 'cash') as 'cash' | 'funds-withheld' | 'letter-of-credit' | 'bank-guarantee',
+        reference: String(payload['reference'] ?? 'CALL-ANSWER'),
+        by: String(payload['by'] ?? 'treasury'),
+        ...(payload['amount'] ? { amount: parseAmount(String(payload['amount']), 'AED') } : {}),
+        ...(payload['expiresAt'] ? { expiresAt: String(payload['expiresAt']) } : {}),
+      });
+      json(res, 200, {
+        callId: result.call.id, status: result.call.status, asked: formatAmount(result.call.amount),
+        settled: formatAmount(result.call.settled),
+        outstanding: formatAmount({ minor: result.call.amount.minor - result.call.settled.minor, currency: 'AED' }),
+        instrumentId: result.instrument.id, instrumentKind: result.instrument.kind,
+        instrumentAmount: formatAmount(result.instrument.amount), journalId: result.instrument.journalId ?? null,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/security/release': {
+      // Give security back. A release that would leave the exposure unsecured needs a name against it,
+      // and both the release and the waiver are reported afterwards.
+      const position = state.world.reinsurance.securityPositions(state.world.asOf)
+        .find((p) => p.surplus.minor > 0n && p.instruments.some((i) => i.onBalanceSheet));
+      const instrument = position?.instruments.find((i) => i.onBalanceSheet && i.amount.minor > i.released.minor);
+      const result = state.world.reinsurance.releaseSecurity({
+        instrumentId: String(payload['instrumentId'] ?? instrument?.id ?? ''),
+        at: String(payload['at'] ?? `${state.world.asOf}T16:00:00+04:00`),
+        amount: payload['amount'] ? parseAmount(String(payload['amount']), 'AED') : (position?.surplus ?? parseAmount('0.00', 'AED')),
+        reason: String(payload['reason'] ?? 'the security held is above what the treaties require'),
+        by: String(payload['by'] ?? 'treasury'),
+        ...(payload['approvedBy'] ? { approvedBy: String(payload['approvedBy']) } : {}),
+      });
+      json(res, 200, {
+        instrumentId: result.instrument.id, counterparty: result.instrument.counterparty,
+        kind: result.instrument.kind, released: formatAmount(result.released),
+        remaining: formatAmount({ minor: result.instrument.amount.minor - result.instrument.released.minor, currency: 'AED' }),
+        journalId: result.journalId ?? null,
+      });
+      return true;
+    }
+
+    case 'POST /reinsurance/security/interest': {
+      // Interest on cash held as security belongs to the counterparty — unless the treaty is retakaful,
+      // where a return on cash posted for a participant's risk would be riba and is refused outright.
+      const register = String(payload['basis'] ?? 'conventional') === 'takaful' ? state.world.retakaful : state.world.reinsurance;
+      const cash = register.securityPositions(state.world.asOf)
+        .flatMap((p) => p.instruments).find((i) => i.kind === 'cash' && i.onBalanceSheet);
+      const result = register.creditCollateralInterest({
+        instrumentId: String(payload['instrumentId'] ?? cash?.id ?? ''),
+        at: String(payload['at'] ?? `${state.world.asOf}T16:30:00+04:00`),
+        amount: parseAmount(String(payload['amount'] ?? '250.00'), 'AED'),
+        by: String(payload['by'] ?? 'treasury'),
+      });
+      json(res, 200, {
+        instrumentId: result.instrument.id, counterparty: result.instrument.counterparty,
+        interest: formatAmount(result.instrument.interest), journalId: result.journalId,
       });
       return true;
     }

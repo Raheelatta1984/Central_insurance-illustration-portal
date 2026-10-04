@@ -12,7 +12,7 @@ import { buildChart, defineIntercompany } from './chart.js';
 import { ClaimsEngine } from './claims.js';
 import { ProductRules, RiskProfile, UnderwritingEngine } from './underwriting.js';
 import { DatedFx, GroupConsolidator, RateTable, ConsolidatedReport } from './groupfinance.js';
-import { Money, money, zero, formatAmount, toDecimalString, abs as absMoney } from './money.js';
+import { Money, money, zero, formatAmount, toDecimalString, sub, abs as absMoney } from './money.js';
 import { unitsFromDecimal, unitsToDecimal } from './units.js';
 import { NavEngine, singlePriceFund, FundDef } from './fund.js';
 import { DEFAULT_CHARGES, UnitLinkedEngine, PolicyMeta } from './unitlinked.js';
@@ -352,6 +352,42 @@ export function buildWorld(): World {
   // screen that shows the return premium appear is worth more than a figure already baked in.
   reinsurance.openDeposit('AGG-SL-DEPOSIT', { amount: money(200_000_00, currency), at: '2026-01-12T10:00:00+04:00', instalment: 1 });
   reinsurance.openDeposit('AGG-SL-DEPOSIT', { amount: money(100_000_00, currency), at: '2026-07-01T10:00:00+04:00', instalment: 2 });
+
+  // Emirates Re pays 450,000 of the 600,000 during September; the rest is still owed, and by the
+  // time the console is opened it is past the treaty's 60-day terms. That is what ageing is for.
+  const stormRecovery = reinsurance.eventRecoveryList()[0]!;
+  reinsurance.settleRecovery({ recoveryId: stormRecovery.journalId, amount: money(450_000_00, currency), at: '2026-09-30T10:00:00+04:00', by: 'treasury' });
+
+  // Security behind the reinsurers' promises. A quarter share of the ceded premium is withheld rather
+  // than paid; behind the catastrophe treaty sit two letters of credit, one of which lapses inside
+  // thirty days; and the retakaful operator posts cash, which earns no interest here and never will.
+  // Emirates Re then turns out to be 60,000 short of what its own treaty requires — while it is already
+  // six days late paying us 150,000 — and the desk calls for it.
+  reinsurance.holdSecurity({
+    counterparty: 'Gulf Reinsurance PSC', treatyId: 'QS-25-2026', kind: 'funds-withheld',
+    amount: money(1_500_00, currency), at: '2026-10-01T09:00:00+04:00', reference: 'FUNDS-WITHHELD-Q3', by: 'treasury',
+  });
+  reinsurance.holdSecurity({
+    counterparty: 'Emirates Re', treatyId: 'XOL-CAT-5M', kind: 'letter-of-credit',
+    amount: money(60_000_00, currency), at: '2026-06-01T09:00:00+04:00', expiresAt: '2026-12-31', reference: 'LC-88213', by: 'treasury',
+  });
+  reinsurance.holdSecurity({
+    counterparty: 'Emirates Re', treatyId: 'XOL-CAT-5M', kind: 'letter-of-credit',
+    amount: money(30_000_00, currency), at: '2026-04-01T09:00:00+04:00', expiresAt: '2026-10-20', reference: 'LC-77420', by: 'treasury',
+  });
+  reinsurance.holdSecurity({
+    counterparty: 'Emirates Re', treatyId: 'XOL-CAT-5M', kind: 'cash',
+    amount: money(10_000_00, currency), at: '2026-01-05T09:00:00+04:00', reference: 'CASH-SECURITY-2026', by: 'treasury',
+  });
+  retakaful.holdSecurity({
+    counterparty: 'Takaful Re International', treatyId: 'RTKF-QS-20', kind: 'cash', fundId: 'PRF',
+    amount: money(90_00, currency), at: '2026-10-01T09:05:00+04:00', reference: 'RTKF-SECURITY-2026', by: 'treasury',
+  });
+  reinsurance.callSecurity({
+    counterparty: 'Emirates Re', at: '2026-10-01T11:00:00+04:00',
+    reason: 'the catastrophe recovery is unsecured beyond the letters of credit in force',
+    by: 'treasury',
+  });
 
   // Retakaful is ceded on the tabarru that went into the risk fund, and the journal carries the fund.
   const tabarru = applyBps(money(6000_00, currency), tkfConfig.tabarruBps);   // the two TK-9001 contributions
@@ -743,13 +779,95 @@ export function reinsuranceSnapshot(w: World) {
       }
     })(),
     recoveries: w.reinsurance.recoveryList().map((r) => ({
-      claimId: r.claimId, recoveryId: r.recoveryId, treatyId: r.treatyId,
-      amount: formatAmount(r.amount), at: r.at, treatment: r.treatment,
+      claimId: r.claimId, recoveryId: r.recoveryId, treatyId: r.treatyId, source: r.source,
+      amount: formatAmount(r.amount), settled: formatAmount(r.settled), outstanding: formatAmount(r.outstanding),
+      at: r.at, treatment: r.treatment,
     })),
     events: w.reinsurance.eventRecoveryList().map((e) => ({
       eventId: e.eventId, treatyId: e.treatyId, amount: formatAmount(e.amount), at: e.at, journalId: e.journalId,
     })),
     cover: w.reinsurance.coverState('XOL-CAT-5M'),
+    ageing: (() => {
+      const statement = w.reinsurance.ageing({ asOf: w.asOf });
+      return {
+        asOf: statement.asOf,
+        outstanding: formatAmount(statement.outstanding),
+        overdue: formatAmount(statement.overdue),
+        oldestDays: statement.oldestDays,
+        worstOverdue: [...statement.worstOverdue],
+        buckets: statement.buckets.map((b) => ({ bucket: b.bucket, count: b.count, outstanding: formatAmount(b.outstanding) })),
+        items: statement.items.map((i) => ({
+          recoveryId: i.recoveryId, claimId: i.claimId, treatyId: i.treatyId,
+          outstanding: formatAmount(i.outstanding), settled: formatAmount(i.settled), amount: formatAmount(i.amount),
+          at: i.at, ageDays: i.ageDays, expectedBy: i.expectedBy, overdueDays: i.overdueDays, bucket: i.bucket,
+        })),
+      };
+    })(),
+    security: (() => {
+      const statement = w.reinsurance.securityStatement({ asOf: w.asOf });
+      const position = (p: (typeof statement.positions)[number]) => ({
+        counterparty: p.counterparty, treaties: [...p.treaties],
+        recoverable: formatAmount(p.recoverable), premiumRequirement: formatAmount(p.premiumRequirement),
+        requirement: formatAmount(p.requirement), held: formatAmount(p.held),
+        heldOnBalanceSheet: formatAmount(p.heldOnBalanceSheet), heldOffBalanceSheet: formatAmount(p.heldOffBalanceSheet),
+        shortfall: formatAmount(p.shortfall), surplus: formatAmount(p.surplus), coverPct: p.coverBps / 100,
+        secured: p.secured, notes: [...p.notes],
+        instruments: p.instruments.map((i) => ({
+          id: i.id, kind: i.kind, reference: i.reference, amount: formatAmount(i.amount),
+          released: formatAmount(i.released), interest: formatAmount(i.interest),
+          at: i.at, expiresAt: i.expiresAt ?? null, inForce: p.held.minor >= 0n && statement.asOf >= i.at.slice(0, 10)
+            && (!i.expiresAt || i.expiresAt >= statement.asOf) && sub(i.amount, i.released).minor > 0n,
+          onBalanceSheet: i.onBalanceSheet, journalId: i.journalId ?? null,
+        })),
+        calls: p.calls.map((c) => ({
+          id: c.id, amount: formatAmount(c.amount), settled: formatAmount(c.settled),
+          outstanding: formatAmount(sub(c.amount, c.settled)), status: c.status, reason: c.reason,
+          at: c.at, dueBy: c.dueBy,
+          settlements: c.settlements.map((x) => ({ at: x.at, amount: formatAmount(x.amount), kind: x.kind, instrumentId: x.instrumentId })),
+        })),
+      });
+      return {
+        asOf: statement.asOf,
+        requirement: formatAmount(statement.requirement), held: formatAmount(statement.held),
+        shortfall: formatAmount(statement.shortfall), unsecured: [...statement.unsecured],
+        notes: [...statement.notes],
+        ledger: {
+          restrictedCash: formatAmount(statement.ledger.restrictedCash),
+          receivedAsSecurity: formatAmount(statement.ledger.receivedAsSecurity),
+          interestCredited: formatAmount(statement.ledger.interestCredited),
+          offBalanceSheet: formatAmount(statement.ledger.offBalanceSheet),
+        },
+        findings: statement.findings.map((f) => ({ code: f.code, severity: f.severity, what: f.what, counterparty: f.counterparty ?? null })),
+        positions: statement.positions.map(position),
+        retakaful: w.retakaful.securityStatement({ asOf: w.asOf }).positions.map(position),
+      };
+    })(),
+    reconciliation: (() => {
+      const paid = w.claims.list().flatMap((c) => c.paid.minor > 0n ? [{ claimId: c.id, policyId: c.policyId, paid: c.paid, cause: c.cause }] : []);
+      const statement = w.reinsurance.reconcile({
+        asOf: w.asOf,
+        claimsRecoveries: w.claims.list().flatMap((c) => c.recoveries.map((r) => ({ type: r.type, amount: r.amount }))),
+      });
+      const quality = w.reinsurance.dataQuality({ asOf: w.asOf, paidClaims: paid });
+      return {
+        asOf: statement.asOf, agrees: statement.agrees, differences: statement.differences,
+        balanceSheet: {
+          receivable: formatAmount(statement.balanceSheet.receivable),
+          payable: formatAmount(statement.balanceSheet.payable),
+          depositAsset: formatAmount(statement.balanceSheet.depositAsset),
+          restrictedCash: formatAmount(statement.balanceSheet.restrictedCash),
+          securityReceived: formatAmount(statement.balanceSheet.securityReceived),
+        },
+        lines: statement.lines.map((l) => ({
+          kind: l.kind, what: l.what, register: formatAmount(l.register), ledger: formatAmount(l.ledger),
+          difference: formatAmount(l.difference), status: l.status, note: l.note ?? null,
+        })),
+        quality: {
+          errors: quality.errors, warnings: quality.warnings, checked: [...quality.checked],
+          findings: quality.findings.map((f) => ({ severity: f.severity, code: f.code, subject: f.subject, detail: f.detail })),
+        },
+      };
+    })(),
   };
 }
 

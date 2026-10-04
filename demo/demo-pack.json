@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T06:52:28.903Z",
+  "generatedAt": "2026-10-04T08:51:21.437Z",
   "base": "http://127.0.0.1:8787",
   "viewport": {
     "width": 1600,
@@ -15,7 +15,7 @@
       "screenshotFull": "screens/overview-full.png",
       "video": "video/overview.mp4",
       "videoFallback": "video/overview.webm",
-      "bytes": 469221
+      "bytes": 477429
     },
     {
       "id": "policyholder",
@@ -26,7 +26,7 @@
       "screenshotFull": "screens/policyholder-full.png",
       "video": "video/policyholder.mp4",
       "videoFallback": "video/policyholder.webm",
-      "bytes": 1051136
+      "bytes": 1167923
     },
     {
       "id": "decisions",
@@ -37,7 +37,7 @@
       "screenshotFull": "screens/decisions-full.png",
       "video": "video/decisions.mp4",
       "videoFallback": "video/decisions.webm",
-      "bytes": 1306535
+      "bytes": 1272297
     },
     {
       "id": "cover",
@@ -48,7 +48,7 @@
       "screenshotFull": "screens/cover-full.png",
       "video": "video/cover.mp4",
       "videoFallback": "video/cover.webm",
-      "bytes": 1171229
+      "bytes": 1119818
     },
     {
       "id": "funds",
@@ -59,7 +59,7 @@
       "screenshotFull": "screens/funds-full.png",
       "video": "video/funds.mp4",
       "videoFallback": "video/funds.webm",
-      "bytes": 494558
+      "bytes": 503253
     },
     {
       "id": "takaful",
@@ -70,7 +70,7 @@
       "screenshotFull": "screens/takaful-full.png",
       "video": "video/takaful.mp4",
       "videoFallback": "video/takaful.webm",
-      "bytes": 1435432
+      "bytes": 1432583
     },
     {
       "id": "group",
@@ -81,7 +81,7 @@
       "screenshotFull": "screens/group-full.png",
       "video": "video/group.mp4",
       "videoFallback": "video/group.webm",
-      "bytes": 1102515
+      "bytes": 1114423
     },
     {
       "id": "underwriting",
@@ -92,7 +92,7 @@
       "screenshotFull": "screens/underwriting-full.png",
       "video": "video/underwriting.mp4",
       "videoFallback": "video/underwriting.webm",
-      "bytes": 1392268
+      "bytes": 1295737
     },
     {
       "id": "claims",
@@ -103,18 +103,18 @@
       "screenshotFull": "screens/claims-full.png",
       "video": "video/claims.mp4",
       "videoFallback": "video/claims.webm",
-      "bytes": 1351891
+      "bytes": 1408840
     },
     {
       "id": "reinsurance",
       "label": "Reinsurance",
       "tour": "00:48",
-      "blurb": "Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss, and a retakaful treaty for the takaful window — all posted to the books, with participant-money segregation enforced in code.",
+      "blurb": "Treaty register and utilisation: a quota share, a surplus treaty above a retention, catastrophe cover with free and paid reinstatements, a deposit-accounted aggregate stop loss and a retakaful treaty — plus ageing of what reinsurers owe against their own settlement terms, a register-to-books reconciliation that states every difference, and the security behind every counterparty: what it must put up, what it has, the cash call on the shortfall, and the release of security that was doing nothing.",
       "screenshot": "screens/reinsurance.png",
       "screenshotFull": "screens/reinsurance-full.png",
       "video": "video/reinsurance.mp4",
       "videoFallback": "video/reinsurance.webm",
-      "bytes": 1795286
+      "bytes": 3010242
     },
     {
       "id": "durability",
@@ -125,7 +125,7 @@
       "screenshotFull": "screens/durability-full.png",
       "video": "video/durability.mp4",
       "videoFallback": "video/durability.webm",
-      "bytes": 726855
+      "bytes": 738585
     },
     {
       "id": "onboarding",
@@ -136,7 +136,7 @@
       "screenshotFull": "screens/onboarding-full.png",
       "video": "video/onboarding.mp4",
       "videoFallback": "video/onboarding.webm",
-      "bytes": 460986
+      "bytes": 438947
     },
     {
       "id": "ingest",
@@ -147,7 +147,7 @@
       "screenshotFull": "screens/ingest-full.png",
       "video": "video/ingest.mp4",
       "videoFallback": "video/ingest.webm",
-      "bytes": 1079808
+      "bytes": 1051159
     },
     {
       "id": "parties",
@@ -158,7 +158,7 @@
       "screenshotFull": "screens/parties-full.png",
       "video": "video/parties.mp4",
       "videoFallback": "video/parties.webm",
-      "bytes": 1066259
+      "bytes": 1011939
     },
     {
       "id": "regulatory",
@@ -169,7 +169,7 @@
       "screenshotFull": "screens/regulatory-full.png",
       "video": "video/regulatory.mp4",
       "videoFallback": "video/regulatory.webm",
-      "bytes": 401163
+      "bytes": 419615
     },
     {
       "id": "ai",
@@ -180,7 +180,7 @@
       "screenshotFull": "screens/ai-full.png",
       "video": "video/ai.mp4",
       "videoFallback": "video/ai.webm",
-      "bytes": 787081
+      "bytes": 782155
     },
     {
       "id": "ledger",
@@ -191,7 +191,7 @@
       "screenshotFull": "screens/ledger-full.png",
       "video": "video/ledger.mp4",
       "videoFallback": "video/ledger.webm",
-      "bytes": 529278
+      "bytes": 552001
     },
     {
       "id": "labels",
@@ -202,7 +202,7 @@
       "screenshotFull": "screens/labels-full.png",
       "video": "video/labels.mp4",
       "videoFallback": "video/labels.webm",
-      "bytes": 563792
+      "bytes": 519088
     },
     {
       "id": "tour",
@@ -213,7 +213,7 @@
       "screenshotFull": "screens/tour-full.png",
       "video": "video/tour.mp4",
       "videoFallback": "video/tour.webm",
-      "bytes": 1115649
+      "bytes": 1066339
     }
   ]
 }
