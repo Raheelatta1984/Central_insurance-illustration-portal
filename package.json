@@ -14,7 +14,8 @@
     "start": "node dist-server/server/main.js",
     "verify": "npm run typecheck && npm run test && npm run build",
     "fleet": "node tools/fleet.mjs --limit=5",
-    "backlog": "node tools/generate-backlog.mjs"
+    "backlog": "node tools/generate-backlog.mjs",
+    "tour:doc": "node tools/render-tour.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

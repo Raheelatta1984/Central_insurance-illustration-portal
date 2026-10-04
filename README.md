@@ -9,6 +9,7 @@ npm install
 npm run verify     # typecheck + 73 tests + build
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
+npm run tour:doc   # regenerate the guided tour from its data
 
 # activate CI (needs a token with the `workflow` scope, or paste it in the GitHub UI):
 mkdir -p .github/workflows && cp docs/ci-workflow.yml .github/workflows/ci.yml
@@ -31,6 +32,7 @@ This platform is built the other way round: **takaful-native, group-finance-nati
 | [`docs/04-PHASES.md`](docs/04-PHASES.md) | Phase 0–5 plan, critical path, risk register |
 | [`AGENTS.md`](AGENTS.md) | The worker contract every agent follows: claiming, ownership, evidence, risk gates, ledger row |
 | [`docs/05-DECISIONS.md`](docs/05-DECISIONS.md) | The decisions I took on your behalf, each with its rationale and how to reverse it |
+| [`docs/07-TOUR.md`](docs/07-TOUR.md) | The sixty-minute guided tour of the live app, generated from `src/core/tour.ts` (the same data the console's Tour tab runs) |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
@@ -62,6 +64,7 @@ node tools/generate-backlog.mjs --long-tail=99999999   # open the tap fully (lar
 | Surface | What it does |
 | --- | --- |
 | Console, Policyholder tab | Live fund value, penetration of units into underlying instruments with market prices, and the full transaction log with the dealing rule that priced each movement |
+| Console, Tour | A sixty-minute guided walkthrough with a clock and a checklist, held as data in `src/core/tour.ts`: eleven steps, each saying where to go, what to press, what you should see and why it matters |
 | Console, Group finance | Three entities in two currencies consolidated into one balance sheet: assets and liabilities at the closing rate, income and expenses at the period average, equity at the rate on the day it moved; the gap becomes a translation reserve on its own line instead of a rounding account; intercompany balances and trading are eliminated with anything that does not agree shown as in transit; a 30% minority is stated, not absorbed; and the whole thing balances in a group ledger that proves itself like any other |
 | Console, Underwriting | Risk scoring from a manual held as data (age, build, occupation, pursuits, medical history, family history, financial underwriting and evidence bands), with the loading shown line by line; the case goes to a named human when the rules say refer; anything over the automatic binding limit is flagged for the reinsurer before issue; and an AI agent may accept or rate inside its own limit but never decline |
 | Console, Claims | Triage decides straight-through, referral or decline; reserves are booked movements, not notes; approvals are checked against a real authority table (an AI agent is capped below any human); settlement releases the reserve, recoveries are posted as their own income and the position is read back from the ledger. In the takaful window the same workflow is wired to the participants' risk fund, so a pooled claim moves cash exactly once |

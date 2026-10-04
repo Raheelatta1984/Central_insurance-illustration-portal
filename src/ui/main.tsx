@@ -8,29 +8,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { WorldSnapshot } from '../core/demo';
 
-type Tab =
-  | 'overview' | 'policyholder' | 'decisions' | 'cover' | 'funds' | 'takaful'
-  | 'group' | 'underwriting' | 'claims' | 'onboarding' | 'ingest' | 'parties' | 'regulatory' | 'ai' | 'ledger' | 'labels' | 'durability';
+import { CONSOLE_TABS, ConsoleTab, TOUR, TourStep, tourMinutes } from '../core/tour';
 
-const TABS: Array<{ id: Tab; label: string; icon: string }> = [
-  { id: 'overview', label: 'Overview', icon: '◈' },
-  { id: 'policyholder', label: 'Policyholder', icon: '◉' },
-  { id: 'decisions', label: 'Decision theatre', icon: '⇄' },
-  { id: 'cover', label: 'Cover control', icon: '⏻' },
-  { id: 'funds', label: 'Funds & NAV', icon: '≣' },
-  { id: 'takaful', label: 'Takaful', icon: '☾' },
-  { id: 'group', label: 'Group finance', icon: '⌂' },
-  { id: 'underwriting', label: 'Underwriting', icon: '⚖' },
-  { id: 'claims', label: 'Claims', icon: '✚' },
-  { id: 'onboarding', label: 'Onboarding', icon: '⛨' },
-  { id: 'ingest', label: 'Ingestion', icon: '⇥' },
-  { id: 'parties', label: 'Parties & consent', icon: '⚖' },
-  { id: 'regulatory', label: 'Regulatory', icon: '§' },
-  { id: 'ai', label: 'AI ledger', icon: '✳' },
-  { id: 'ledger', label: 'Books', icon: '∑' },
-  { id: 'labels', label: 'Labels & rename', icon: '⌘' },
-  { id: 'durability', label: 'Durability', icon: '⟲' },
-];
+type Tab = ConsoleTab;
+
+const TABS = CONSOLE_TABS;
 
 async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -509,6 +491,7 @@ function App() {
   const body = useMemo(() => {
     if (!data) return null;
     switch (tab) {
+      case 'tour': return <Tour />;
       case 'overview': return <Overview data={data} />;
       case 'policyholder': return <Policyholder data={data} />;
       case 'decisions': return <Decisions data={data} />;
@@ -888,6 +871,101 @@ function Underwriting({ data }: { data: WorldSnapshot }) {
 
       {note && <Card title="Last call" wide><div className="code">{note}</div></Card>}
       {error && <Card title="Refused" wide><div className="errorBox">{error}</div></Card>}
+    </div>
+  );
+}
+
+
+/* ------------------------------------------------------------------ tour */
+
+/** The 60-minute tour, run as a live walkthrough with a clock and a checklist. */
+function Tour() {
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
+  const [done, setDone] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (startedAt === null) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
+
+  const elapsedMinutes = startedAt === null ? 0 : Math.floor((now - startedAt) / 60_000);
+  const elapsedLabel = `${String(elapsedMinutes).padStart(2, '0')}:${String(startedAt === null ? 0 : Math.floor(((now - startedAt) % 60_000) / 1000)).padStart(2, '0')}`;
+  const currentIndex = TOUR.reduce((index, step, i) => {
+    const at = Number(step.at.slice(0, 2)) * 60 + Number(step.at.slice(3, 5));
+    return at <= elapsedMinutes ? i : index;
+  }, 0);
+  const doneCount = Object.values(done).filter(Boolean).length;
+
+  return (
+    <div className="grid">
+      <Card title="Sixty minutes, end to end" subtitle={`${TOUR.length} steps · ${tourMinutes()} minutes of walking · every number live from the engine`} wide>
+        <p className="muted small">
+          Start the clock below and work down the list. Each step says where to go, what to press, what you
+          should see, and why that is the part worth seeing. Nothing here is a mock-up: if a number is on
+          the screen, an engine computed it, and if a rule is enforced, you can try to break it.
+        </p>
+        <div className="row">
+          <button onClick={() => { setStartedAt(Date.now()); setNow(Date.now()); setDone({}); }}>
+            {startedAt === null ? 'Start the tour' : 'Restart the tour'}
+          </button>
+          {startedAt !== null && <button className="ghost" onClick={() => setStartedAt(null)}>Stop the clock</button>}
+          <span className="muted small">
+            {startedAt === null ? 'Clock not running' : `Elapsed ${elapsedLabel} of ${tourMinutes()} minutes · step ${currentIndex + 1} of ${TOUR.length}`}
+          </span>
+          <span className="muted small">{doneCount} of {TOUR.length} ticked off</span>
+        </div>
+        {startedAt !== null && (
+          <div className="stat">
+            <span>Do this now</span>
+            <b>Step {currentIndex + 1}: open the {TABS.find((t) => t.id === TOUR[currentIndex]!.tab)?.label} tab — {TOUR[currentIndex]!.title}</b>
+          </div>
+        )}
+      </Card>
+
+      {TOUR.map((step, i) => (
+        <Card
+          key={step.at}
+          title={`${step.at} · ${step.title}`}
+          subtitle={`On the ${TABS.find((t) => t.id === step.tab)?.label} tab · ${step.minutes} minutes`}
+          wide
+        >
+          <p>{step.why}</p>
+          <div className="stat">
+            <span>Do this</span>
+            <b className="small">
+              <ol className="list">
+                {step.doThis.map((line) => <li key={line}>{line}</li>)}
+              </ol>
+            </b>
+          </div>
+          <div className="stat">
+            <span>You should see</span>
+            <b className="small">
+              <ul className="list">
+                {step.expect.map((line) => <li key={line}>{line}</li>)}
+              </ul>
+            </b>
+          </div>
+          {step.api && step.api.length > 0 && <p className="muted small">Endpoints behind this step: {step.api.join(' · ')}</p>}
+          <div className="row">
+            <button className="ghost" onClick={() => setDone((d) => ({ ...d, [step.at]: !d[step.at] }))}>
+              {done[step.at] ? '✓ done' : 'Mark done'}
+            </button>
+            {i === currentIndex && startedAt !== null && <Pill tone="info">you are here</Pill>}
+          </div>
+        </Card>
+      ))}
+
+      <Card title="If something refuses you" subtitle="That is the product working" wide>
+        <ul className="list">
+          <li>An AI approval is refused above its limit: the refusal names the limit, and the attempt stays on the record.</li>
+          <li>A surplus distribution is blocked: it names the gate that is missing — actuary, Shariah Committee or board.</li>
+          <li>A reserve cannot be reduced silently: the only way is to settle or release it explicitly.</li>
+          <li>After cover stops, no day charges: there is no daily restart unless someone elected one.</li>
+        </ul>
+      </Card>
     </div>
   );
 }
