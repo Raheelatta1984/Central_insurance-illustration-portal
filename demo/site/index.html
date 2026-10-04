@@ -33,12 +33,12 @@
   <p class="lede">One tenant, three legal entities, two currencies, a takaful window — insurance ERP with the AI in every module, centralised group finance, unit-linked funds with real NAV, pay-as-you-go cover, claims, underwriting and reinsurance.</p>
 
   <div class="grid">
-    <a class="card" href="console.html">
+    <a class="card" href="console.html" data-href-repo="../offline.html">
       <span class="tag">Start here</span>
       <h3>Open the console →</h3>
       <p>The real application, all nineteen tabs. Works in this tab: no server, no port, no access token — the engine's own answers are replayed, refusals included.</p>
     </a>
-    <a class="card" href="gallery.html">
+    <a class="card" href="gallery.html" data-href-repo="../index.html">
       <span class="tag">Two minutes</span>
       <h3>Watch the module gallery →</h3>
       <p>Nineteen short recordings captured from the running app: open a tab, press the button, watch the engine answer.</p>
@@ -77,5 +77,15 @@
 
   <footer>Generated from the repository's own build — the same bundle the server serves, with the engine's recorded answers.</footer>
 </div>
+
+<script>
+  // This page is served from two places: GitHub Pages (console.html and gallery.html beside it) and
+  // a raw-code host such as raw.githack or jsDelivr, which serves the repository layout instead
+  // (../offline.html and ../index.html). Point the cards at whichever files actually exist, so no
+  // link is ever dead whichever way the demo was opened.
+  if (!location.hostname.endsWith('github.io')) {
+    for (const a of document.querySelectorAll('[data-href-repo]')) a.href = a.getAttribute('data-href-repo');
+  }
+</script>
 </body>
 </html>
