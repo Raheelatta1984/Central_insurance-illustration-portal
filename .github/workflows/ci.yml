@@ -1,0 +1,21 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: npm }
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests (money proof included)
+        run: npm run test
+      - name: Build UI and server
+        run: npm run build
+      - name: Fleet backlog check (claimable chunks must still be verified)
+        run: node tools/fleet.mjs --limit=5 --dry
