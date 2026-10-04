@@ -1,0 +1,66 @@
+# Publish the demo to GitHub Pages: a landing page, the offline console (the real application with
+# the engine's recorded answers) and the module gallery. Nothing here needs a server, a port, a
+# tunnel or an access token — a plain HTTPS page a customer can open from any browser.
+#
+# The console and the gallery are built and committed by `npm run demo:pack`, `npm run demo:offline`
+# and `npm run demo:gallery`; this workflow only assembles and publishes them, so what is online is
+# always exactly what the repository holds.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'demo/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the demo files are present
+        run: |
+          set -e
+          for f in demo/site/index.html demo/offline.html demo/index.html; do
+            test -s "$f" || { echo "missing $f — run npm run demo:pack && npm run demo:offline && npm run demo:gallery"; exit 1; }
+          done
+          ls -l demo/site/index.html demo/offline.html demo/index.html
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp demo/site/index.html _site/index.html
+          cp demo/offline.html _site/console.html
+          cp demo/index.html _site/gallery.html
+          cp docs/07-TOUR.md _site/tour.md
+          du -sh _site
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
