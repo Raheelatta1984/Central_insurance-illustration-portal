@@ -76,6 +76,8 @@ export interface Submission {
   readonly rejectionReason: string | null;
   readonly rejectedAt: string | null;
   readonly rejectedBy: string | null;
+  /** How far the books had got when this return went out — see `IssuedExtract.booksThrough`. */
+  readonly booksThrough: number;
   readonly resubmissionOf: string | null;
   readonly pack: SubmissionPack;
 }
@@ -112,6 +114,12 @@ export class SubmissionRegister {
      * supersession route exists for.
      */
     readonly verify?: (extractId: string) => { readonly intact: boolean; readonly detail: string };
+    /**
+     * How far the books have got, read at the moment a return is filed. The register recomputes the
+     * return from the books before it accepts the pack, so the filing has to remember the books it
+     * was accepted against for the same reason an extract does.
+     */
+    readonly booksThrough?: () => number;
     /** Days after filing at which an unacknowledged submission becomes a finding. */
     readonly acknowledgementDays?: number;
     /** Filing an earlier period after a later one needs the same treatment as a late filing. */
@@ -243,6 +251,7 @@ export class SubmissionRegister {
       lateReason: late ? input.lateReason! : null,
       acknowledgedAt: null, acknowledgedBy: null, supervisorReference: null,
       rejectionReason: null, rejectedAt: null, rejectedBy: null,
+      booksThrough: this.options.booksThrough?.() ?? 0,
       resubmissionOf: input.resubmissionOf ?? null,
       pack,
     });

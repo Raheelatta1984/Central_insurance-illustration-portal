@@ -14,6 +14,7 @@ import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { UaeRuleError } from '../core/uae.js';
 import { WordingError } from '../core/wording.js';
 import { SubmissionError } from '../core/submission.js';
+import { openBooksTimeline, REGISTER_STORE_LIMITATION, exportReporting, openReporting, restoreReporting, sealReporting, verifyOutbox } from '../core/registerstore.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
 import { ClaimsEngine, ClaimCause } from '../core/claims.js';
@@ -227,6 +228,63 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     case 'GET /reinsurance': {
       // Exactly the shape the console renders, so the two can never drift apart.
       json(res, 200, reinsuranceSnapshot(state.world));
+      return true;
+    }
+
+    case 'GET /state/registers': {
+      // What the reporting registers hold, and the outbox that will prove on restore that nothing
+      // was dropped between snapshots.
+      const registers = exportReporting(state.world);
+      const sealed = sealReporting(registers, new Date().toISOString());
+      const chain = verifyOutbox(sealed.outbox);
+      json(res, 200, {
+        registers: {
+          conventional: {
+            extracts: registers.conventional.extracts.length,
+            decisions: registers.conventional.decisions.length,
+            letters: registers.conventional.letters.length,
+            filings: registers.conventional.filings.length,
+          },
+          takaful: { extracts: registers.takaful.extracts.length, filings: registers.takaful.filings.length },
+        },
+        schemaVersion: sealed.snapshot.schemaVersion,
+        fingerprint: sealed.snapshot.fingerprint,
+        bytes: sealed.text.length,
+        outbox: { entries: sealed.outbox.length, intact: chain.intact, detail: chain.detail },
+        limitation: REGISTER_STORE_LIMITATION,
+      });
+      return true;
+    }
+
+    case 'POST /state/registers/drill': {
+      // The restart drill: seal the registers, throw the live objects away, rebuild them in a fresh
+      // world from the text alone, and report what came back — including the outbox chain.
+      const world = state.world;
+      const started = Date.now();
+      const payload = exportReporting(world);
+      const sealed = sealReporting(payload, `${world.asOf}T20:30:00+04:00`);
+      const reopened = openReporting(JSON.parse(sealed.text));
+      const restarted = buildWorld();
+      const target = {
+        ledger: restarted.ledger, extracts: restarted.extracts, takafulExtracts: restarted.takafulExtracts,
+        rules: restarted.rules, wording: restarted.wording,
+        submissions: restarted.submissions, takafulSubmissions: restarted.takafulSubmissions,
+      };
+      // the books come with the registers: opened as a timeline so each return is replayed against
+      // the books as they stood when it was issued, then settled so the end state is compared
+      const books = openBooksTimeline(target, exportLedger(world.ledger));
+      const report = restoreReporting(reopened.state, target, { outbox: reopened.outbox, books });
+      json(res, 200, {
+        ok: report.ok,
+        detail: report.detail,
+        books: report.books,
+        fingerprint: sealed.snapshot.fingerprint,
+        schemaVersion: sealed.snapshot.schemaVersion,
+        bytes: sealed.text.length,
+        restoreMs: Date.now() - started,
+        registers: report,
+        limitation: REGISTER_STORE_LIMITATION,
+      });
       return true;
     }
 

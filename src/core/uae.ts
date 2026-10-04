@@ -403,6 +403,12 @@ export interface RuleFinding {
 
 export interface RuleDecision {
   readonly id: string;
+  /**
+   * The facts the decision was taken on, kept with it. Without these a decision can be quoted but
+   * not re-derived, and a register that cannot be re-derived cannot be restored with any confidence:
+   * the store replays the facts and checks it gets the same answer.
+   */
+  readonly facts: PlacementFacts;
   readonly subject: string;
   readonly at: string;
   readonly by: string;
@@ -466,6 +472,7 @@ export class UaeRuleBook {
     const held = findings.filter((f) => f.severity !== 'disclose' && (f.state === 'unproven' || (f.state === 'breached' && f.severity === 'escalate')));
     const decision: RuleDecision = Object.freeze({
       id: `UAE-RULE-${String(++this.seq).padStart(6, '0')}`,
+      facts: Object.freeze({ ...facts, documents: Object.freeze([...facts.documents]) }) as PlacementFacts,
       subject: facts.subject, at: facts.at, by: facts.by, basis: facts.basis,
       counterparty: facts.counterparty.name,
       decision: refused.length > 0 ? 'refuse' : held.length > 0 ? 'escalate' : 'allow',

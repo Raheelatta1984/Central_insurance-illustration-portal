@@ -47,6 +47,9 @@ export class BillingError extends Error {}
 let seq = 0;
 const nextId = (p: string) => `${p}-${String(++seq).padStart(6, '0')}`;
 
+/** Restart the document sequence, so a world built twice in one process carries the same ids. */
+export function resetBillingIds(): void { seq = 0; }
+
 export class BillingEngine {
   private readonly segments = new Map<string, CoverSegment>();
   private readonly events: ChargeEvent[] = [];

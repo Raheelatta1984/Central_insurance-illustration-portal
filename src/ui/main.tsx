@@ -1782,6 +1782,81 @@ interface DrillResult {
 }
 
 /** Durability: seal the books, write them to text, read them back, rebuild and compare. */
+type RegisterSummary = {
+  registers: { conventional: { extracts: number; decisions: number; letters: number; filings: number }; takaful: { extracts: number; filings: number } };
+  schemaVersion: number; fingerprint: string; bytes: number;
+  outbox: { entries: number; intact: boolean; detail: string };
+  limitation: string;
+};
+
+type RegisterDrill = {
+  ok: boolean; detail: string; fingerprint: string; schemaVersion: number; bytes: number; restoreMs: number;
+  registers: {
+    extracts: { expected: number; restored: number; fingerprintsAgree: boolean };
+    decisions: { expected: number; restored: number; agree: number; disagreements: string[] };
+    letters: { expected: number; restored: number; fingerprintsAgree: boolean };
+    filings: { expected: number; restored: number; statusesAgree: boolean };
+    outbox: { intact: boolean; entries: number; detail: string };
+  };
+  limitation: string;
+};
+
+/** The reporting registers: what they hold, and the drill that rebuilds them from text alone. */
+function RegisterStore() {
+  const [summary, setSummary] = useState<RegisterSummary | null>(null);
+  const [drill, setDrill] = useState<RegisterDrill | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api<RegisterSummary>('/state/registers').then(setSummary).catch(() => undefined); }, []);
+  const run = async () => {
+    setBusy(true);
+    try {
+      setDrill(await api<RegisterDrill>('/state/registers/drill', 'POST'));
+      setSummary(await api<RegisterSummary>('/state/registers'));
+    } finally { setBusy(false); }
+  };
+  return (
+    <Card
+      title="The reporting registers, and the restart they have to survive"
+      subtitle="Returns, rule decisions, letters and filings sealed into one canonical snapshot, with an outbox that proves nothing was dropped between snapshots"
+      wide
+    >
+      {summary && (
+        <>
+          <div className="stat"><span>Conventional</span><b>{summary.registers.conventional.extracts} returns · {summary.registers.conventional.decisions} decisions · {summary.registers.conventional.letters} letters · {summary.registers.conventional.filings} filings</b></div>
+          <div className="stat"><span>Takaful window</span><b>{summary.registers.takaful.extracts} returns · {summary.registers.takaful.filings} filings</b></div>
+          <div className="stat"><span>Schema</span><b>v{summary.schemaVersion} · {(summary.bytes / 1024).toFixed(1)} KB</b></div>
+          <div className="stat"><span>Outbox</span><b>{summary.outbox.entries} entries {summary.outbox.intact ? <Pill tone="ok">chained</Pill> : <Pill tone="bad">broken</Pill>}</b></div>
+        </>
+      )}
+      <p className="muted small">{summary?.outbox.detail}</p>
+      <div className="row">
+        <button onClick={run} disabled={busy}>{busy ? 'Rebuilding…' : 'Rebuild every register from the snapshot'}</button>
+      </div>
+      {drill && (
+        <>
+          <div className="stat"><span>Result</span><b>{drill.ok ? <Pill tone="ok">every register replayed</Pill> : <Pill tone="bad">did not reproduce</Pill>}</b></div>
+          <div className="stat"><span>Restore time</span><b>{drill.restoreMs} ms</b></div>
+          <p className="small">{drill.detail}</p>
+          <Table
+            head={['Register', 'In the snapshot', 'Rebuilt', 'Same']}
+            rows={[
+              ['Returns', drill.registers.extracts.expected, drill.registers.extracts.restored, drill.registers.extracts.fingerprintsAgree],
+              ['Rule decisions', drill.registers.decisions.expected, drill.registers.decisions.agree, drill.registers.decisions.disagreements.length === 0],
+              ['Letters', drill.registers.letters.expected, drill.registers.letters.restored, drill.registers.letters.fingerprintsAgree],
+              ['Filings', drill.registers.filings.expected, drill.registers.filings.restored, drill.registers.filings.statusesAgree],
+            ].map((r) => [
+              String(r[0]), String(r[1]), String(r[2]),
+              r[3] ? <Pill key={String(r[0])} tone="ok">yes</Pill> : <Pill key={String(r[0])} tone="bad">no</Pill>,
+            ])}
+          />
+          <p className="muted small">{drill.registers.outbox.detail}</p>
+          <p className="muted small">{drill.limitation}</p>
+        </>
+      )}
+    </Card>
+  );
+}
+
 function Durability() {
   const [summary, setSummary] = useState<StateSummary | null>(null);
   const [drill, setDrill] = useState<DrillResult | null>(null);
@@ -1853,6 +1928,7 @@ function Durability() {
           </>
         )}
       </Card>
+      <RegisterStore />
     </div>
   );
 }

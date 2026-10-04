@@ -499,7 +499,11 @@
         "regulatory and actuarial reporting extracts",
         "uae rule enforcement and evidence",
         "uae wording and disclaimer generation",
-        "uae regulator return and submission"
+        "uae regulator return and submission",
+        "register persistence and restore",
+        "snapshot migration",
+        "outbox hash chain",
+        "idempotent restore"
       ],
       "layers": [
         "design",
@@ -527,7 +531,9 @@
         "src/core/wording.ts",
         "src/core/wording.test.ts",
         "src/core/submission.ts",
-        "src/core/submission.test.ts"
+        "src/core/submission.test.ts",
+        "src/core/registerstore.ts",
+        "src/core/registerstore.test.ts"
       ]
     }
   },

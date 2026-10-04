@@ -94,6 +94,8 @@ export interface WordingDocument {
   readonly by: string;
   readonly tiesTo: readonly string[];
   readonly limitation: string;
+  /** The facts the letter was generated from, kept so the store can regenerate and compare it. */
+  readonly facts: WordingFacts;
   readonly supersedes?: string;
   readonly changesSummary?: string;
 }
@@ -347,6 +349,7 @@ export class WordingBook {
       fingerprint,
       generatedAt: input.facts.at, by: input.facts.by,
       tiesTo: Object.freeze([...input.facts.tiesTo]),
+      facts: Object.freeze({ ...input.facts, fields: Object.freeze(input.facts.fields.map((f) => Object.freeze({ ...f }))), tiesTo: Object.freeze([...input.facts.tiesTo]) }) as WordingFacts,
       limitation: `Generated from ${this.catalogue().templates.length} templates and ${this.catalogue().disclaimers.length} mandated paragraphs held as data under pack `
         + `${input.facts.packVersion}; the Arabic is the translation of record and travels with the English in the same document, and a rename may change a `
         + 'label but never a mandated paragraph.',

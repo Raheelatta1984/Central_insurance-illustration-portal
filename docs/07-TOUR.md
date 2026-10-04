@@ -18,8 +18,8 @@
 | 8 | 00:38 | Underwriting | Underwrite against a manual held as data |
 | 9 | 00:43 | Claims | Pay a claim through authority, not through a spreadsheet |
 | 10 | 00:48 | Reinsurance | Hand part of the risk to someone else, on the record |
-| 11 | 00:53 | Durability | Prove the books can be restored |
-| 12 | 00:56 | Overview | The remainder of the hour: the fabric around the money |
+| 11 | 00:54 | Durability | Prove the books, and the reporting registers, can be restored |
+| 12 | 00:57 | Overview | The remainder of the hour: the fabric around the money |
 
 ## 1. 00:00 — Land on the whole book in one screen
 
@@ -201,7 +201,7 @@ Triage decides straight-through, referral or decline; a reserve is a booked liab
 
 ## 10. 00:48 — Hand part of the risk to someone else, on the record
 
-**Tab:** Reinsurance · **5 minutes**
+**Tab:** Reinsurance · **6 minutes**
 
 An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty's promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary's exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.
 
@@ -235,39 +235,43 @@ An insurer that keeps every risk whole is one bad quarter from ruin. This is the
 
 *Endpoints: GET /api/reinsurance · GET /api/reinsurance/security · GET /api/extracts · POST /api/extracts/issue · POST /api/extracts/verify · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover · POST /api/reinsurance/event · POST /api/reinsurance/reinstate · POST /api/reinsurance/deposit · POST /api/reinsurance/deposit/settle · POST /api/reinsurance/settle · POST /api/reinsurance/security/hold · POST /api/reinsurance/security/call · POST /api/reinsurance/security/call/settle · POST /api/reinsurance/security/release · POST /api/reinsurance/security/interest*
 
-## 11. 00:53 — Prove the books can be restored
+## 11. 00:54 — Prove the books, and the reporting registers, can be restored
 
 **Tab:** Durability · **3 minutes**
 
-A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text, comparing trial balances.
+A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text — and does the same for the reporting registers: the returns, rule decisions, letters and filings are sealed together, replayed into a fresh world and checked one by one, with a hash-chained outbox proving nothing was dropped between snapshots.
 
 **Do this**
 
 - Read the snapshot summary: accounts, journals, size, fingerprint.
 - Press "Run durability drill".
 - Read the per-entity result: balanced, trial balance agrees, restore time.
+- Read the reporting register card: how many returns, decisions, letters and filings it holds, and the outbox chain.
+- Press "Rebuild every register from the snapshot" and read what came back.
 
 **You should see**
 
 - The restore reports the same journals and the same balances, in milliseconds.
 - The fingerprint is stable across runs, so a tampered payload would be caught.
+- Every reporting register replays: each return keeps its fingerprint, each rule decision follows again from its own facts, each letter regenerates from its own facts, and each filing carries the answer it got — with the outbox chaining from the beginning.
 
-*Endpoints: GET /api/state · POST /api/state/drill*
+*Endpoints: GET /api/state · POST /api/state/drill · GET /api/state/registers · POST /api/state/registers/drill*
 
-## 12. 00:56 — The remainder of the hour: the fabric around the money
+## 12. 00:57 — The remainder of the hour: the fabric around the money
 
-**Tab:** Overview · **4 minutes**
+**Tab:** Overview · **3 minutes**
 
-The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.
+The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs, and the submission log with the supervisor’s references — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.
 
 **Do this**
 
 - Onboarding: read the chip read, the government lookup and the OCR consensus, then find the field in the review queue.
 - Ingestion: submit a file of any shape, watch it map its own columns, quarantine the bad rows and suppress the duplicate.
 - Parties & consent: run a partner lookup with consent, then without it, and read the access log.
-- Regulatory: read the pre-sale gates for motor and medical, the comparison matrix behind a motor quote, the UAE reinsurance rule book — put a placement past it and read the answer — and the wording book, which drafts the letters with their mandated paragraphs in both languages.
+- Regulatory: read the pre-sale gates for motor and medical, the comparison matrix behind a motor quote, the UAE reinsurance rule book — put a placement past it and read the answer — the wording book, which drafts the letters with their mandated paragraphs in both languages, and the submission log — file the return, and record the reference that comes back.
 - Labels & rename: rename a label in one scope only and watch the other scope keep its own word.
 - Regulatory rule book: a clean placement is allowed and an unrated counterparty is held for a named human with the missing evidence listed — the two buttons give different answers on purpose.
+- Filing: the return goes through the CBUAE channel with its cover letter attached, and the filing stays outstanding until the supervisor’s reference is recorded against it.
 - Wording: the note to the policyholder is drafted with three mandated paragraphs in English and Arabic, and the window’s treaty note says Contribution where the conventional book says Premium — with the same segregation paragraph, word for word.
 - AI ledger: read the prohibited intents, then try to get one executed and read the refusal.
 - Books: read the trial balance and the journal list for an entity.
@@ -277,7 +281,7 @@ The modules an insurer actually runs on — onboarding, ingestion, consent, regu
 - Quarantined rows carry a reason per column; duplicates are suppressed, not double-counted.
 - A refused AI action stays refused, and the attempt is still on the record.
 
-*Endpoints: POST /api/ingest/submit · POST /api/ingest/commit · POST /api/partner/lookup · POST /api/pre-sale · GET /api/regulatory/uae-rules · POST /api/regulatory/uae/check · GET /api/wording · POST /api/wording/generate · POST /api/ai/approve · POST /api/ai/execute*
+*Endpoints: POST /api/ingest/submit · POST /api/ingest/commit · POST /api/partner/lookup · POST /api/pre-sale · GET /api/regulatory/uae-rules · POST /api/regulatory/uae/check · GET /api/wording · POST /api/wording/generate · GET /api/submissions · POST /api/submissions/file · POST /api/submissions/acknowledge · POST /api/ai/approve · POST /api/ai/execute*
 
 ## If something refuses you
 

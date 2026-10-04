@@ -95,6 +95,13 @@ export interface IssuedExtract extends ExtractDraft {
   readonly changesSummary: string | null;
   readonly differencesAccepted: { readonly by: string; readonly reason: string } | null;
   readonly tiesToBooks: boolean;
+  /**
+   * How many journals were in the books when this return was issued. A return is re-proved against
+   * the books of its own moment, so the register has to remember how far the books had got: the
+   * end-of-day books include transactions that happened after this return was prepared, and a
+   * return measured against them would be refused for being right at the time.
+   */
+  readonly booksThrough: number;
 }
 
 export interface IssuedExtractSummary {
@@ -789,6 +796,7 @@ export class ExtractEngine {
 
     const extract: IssuedExtract = {
       ...draft,
+      booksThrough: this.deps.ledger.allJournals().length,
       id: `RI-EX-${this.deps.entityId}-${String(++this.seq).padStart(5, '0')}`,
       version: previous ? previous.version + 1 : 1,
       fingerprint,

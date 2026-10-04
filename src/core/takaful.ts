@@ -58,6 +58,14 @@ export class TakafulError extends Error {}
 let seq = 0;
 const nextId = (p: string) => `TKF-${p}-${String(++seq).padStart(6, '0')}`;
 
+/**
+ * Restart the document sequence. The sequence is what makes the ids a takaful window writes
+ * deterministic, and a world built twice in one process has to come out twice the same: the
+ * durability drill builds a second world and compares it with the first, which means nothing if the
+ * same journal is `TKF-J-000023` in one world and `TKF-J-000031` in the other.
+ */
+export function resetTakafulIds(): void { seq = 0; }
+
 export const RISK_FUND = 'PRF';
 export const INVESTMENT_FUND = 'PIF';
 export const OPERATOR_FUND = 'OPF';

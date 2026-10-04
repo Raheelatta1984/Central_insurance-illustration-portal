@@ -119,7 +119,7 @@ const script = [
   ['AI ledger', ['Approve', 'Execute']],   // Execute only renders once a human has approved the action
   ['Books', []],
   ['Labels & rename', []],
-  ['Durability', ['Run durability drill']],
+  ['Durability', ['Run durability drill', 'Rebuild every register from the snapshot']],
   ['Tour', ['Start the tour']],
 ];
 

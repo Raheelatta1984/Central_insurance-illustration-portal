@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T10:25:16.720Z",
+  "capturedAt": "2026-10-04T12:23:00.301Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -3908,12 +3908,38 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T10:25:09.850Z",
-        "fingerprint": "5101f34b6c76f48d",
+        "takenAt": "2026-10-04T12:22:51.639Z",
+        "fingerprint": "969d47303ccf668c",
         "accounts": 168,
         "journals": 87,
         "fxRates": 2,
         "bytes": 89049
+      }
+    },
+    "GET /api/state/registers": {
+      "status": 200,
+      "body": {
+        "registers": {
+          "conventional": {
+            "extracts": 7,
+            "decisions": 7,
+            "letters": 4,
+            "filings": 2
+          },
+          "takaful": {
+            "extracts": 2,
+            "filings": 1
+          }
+        },
+        "schemaVersion": 2,
+        "fingerprint": "e04a8f52fb30d9ad",
+        "bytes": 20326,
+        "outbox": {
+          "entries": 25,
+          "intact": true,
+          "detail": "25 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
+        },
+        "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots. It is not yet a database: there is no transactional write, no concurrent-reader isolation and no incremental streaming of the outbox — those belong to the Postgres and outbox chunks this shape is built to hold."
       }
     },
     "GET /api/submissions": {
@@ -5845,7 +5871,7 @@
             }
           ],
           "proposal": {
-            "id": "TKF-SRP-000019",
+            "id": "TKF-SRP-000020",
             "grossSurplus": "1,250.00 AED",
             "distributable": "0.00 AED",
             "participantShare": "0.00 AED",
@@ -6205,6 +6231,35 @@
             "reason": "a consent token is required before any disclosure"
           },
           "accessLog": [
+            {
+              "at": "2026-10-05T09:00:00+04:00",
+              "consentId": "CNS-00001",
+              "partyId": "PTY-0001",
+              "requestedBy": "DXB-BROKER-01",
+              "scopesRequested": [
+                "customer.exists",
+                "customer.name",
+                "customer.holdings"
+              ],
+              "scopesGranted": [
+                "customer.exists",
+                "customer.name",
+                "customer.holdings"
+              ],
+              "outcome": "granted",
+              "reason": "disclosed customer.exists, customer.name, customer.holdings"
+            },
+            {
+              "at": "2026-10-05T09:01:00+04:00",
+              "partyId": "PTY-0001",
+              "requestedBy": "DXB-BROKER-01",
+              "scopesRequested": [
+                "customer.exists"
+              ],
+              "scopesGranted": [],
+              "outcome": "denied-no-consent",
+              "reason": "a consent token is required before any disclosure"
+            },
             {
               "at": "2026-10-05T09:00:00+04:00",
               "consentId": "CNS-00001",
@@ -11198,7 +11253,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T10:23:15.429Z"
+        "generatedAt": "2026-10-04T12:20:57.307Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {
@@ -11470,23 +11525,23 @@
         ]
       }
     },
-    "POST /api/ingest/commit 70ec0dd8": {
+    "POST /api/ingest/commit d1929206": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791109471711",
+        "loadId": "LOAD-1791116533547",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
       }
     },
-    "POST /api/ingest/submit f91ce92a": {
+    "POST /api/ingest/submit d6f006d0": {
       "status": 200,
       "body": {
         "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791109471711"
+        "loadId": "LOAD-1791116533547"
       }
     },
     "POST /api/onboarding/ocr 4d38892d": {
@@ -12738,12 +12793,12 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "637caca2916c3308",
+        "fingerprint": "ac0f7c743d3aaa3b",
         "fingerprintStable": true,
         "journals": 87,
         "restoredJournals": 87,
         "bytes": 89049,
-        "restoreMs": 37,
+        "restoreMs": 32,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -12770,6 +12825,48 @@
             "accounts": 65
           }
         ]
+      }
+    },
+    "POST /api/state/registers/drill": {
+      "status": 200,
+      "body": {
+        "ok": false,
+        "detail": "the restore did not reproduce: ",
+        "fingerprint": "74e7e6c658b73a6d",
+        "schemaVersion": 2,
+        "bytes": 20327,
+        "restoreMs": 27,
+        "registers": {
+          "extracts": {
+            "expected": 9,
+            "restored": 8,
+            "fingerprintsAgree": false
+          },
+          "decisions": {
+            "expected": 7,
+            "restored": 7,
+            "agree": 7,
+            "disagreements": []
+          },
+          "letters": {
+            "expected": 4,
+            "restored": 4,
+            "fingerprintsAgree": true
+          },
+          "filings": {
+            "expected": 3,
+            "restored": 3,
+            "statusesAgree": true
+          },
+          "outbox": {
+            "intact": true,
+            "entries": 25,
+            "detail": "25 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
+          },
+          "ok": false,
+          "detail": "the restore did not reproduce: "
+        },
+        "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots. It is not yet a database: there is no transactional write, no concurrent-reader isolation and no incremental streaming of the outbox — those belong to the Postgres and outbox chunks this shape is built to hold."
       }
     },
     "POST /api/submissions/acknowledge e63c438e": {
@@ -12875,7 +12972,7 @@
     "POST /api/takaful/approve 75447b0d": {
       "status": 200,
       "body": {
-        "id": "TKF-SRP-000032",
+        "id": "TKF-SRP-000033",
         "approvals": {
           "actuary": false,
           "shariah": false,
@@ -12892,7 +12989,7 @@
     "POST /api/takaful/approve 7dbf4aa1": {
       "status": 200,
       "body": {
-        "id": "TKF-SRP-000031",
+        "id": "TKF-SRP-000032",
         "approvals": {
           "actuary": false,
           "shariah": true,
@@ -12909,7 +13006,7 @@
     "POST /api/takaful/approve 821f1d59": {
       "status": 200,
       "body": {
-        "id": "TKF-SRP-000030",
+        "id": "TKF-SRP-000031",
         "approvals": {
           "actuary": true,
           "shariah": false,
@@ -13291,12 +13388,12 @@
     "POST /api/extracts/verify c36ca302": {
       "extractId": "RI-EX-ALK-CONV-00001"
     },
-    "POST /api/ingest/commit 70ec0dd8": {
-      "loadId": "LOAD-1791109471711"
+    "POST /api/ingest/commit d1929206": {
+      "loadId": "LOAD-1791116533547"
     },
-    "POST /api/ingest/submit f91ce92a": {
+    "POST /api/ingest/submit d6f006d0": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791109471711"
+      "loadId": "LOAD-1791116533547"
     },
     "POST /api/onboarding/ocr 4d38892d": {
       "documentType": "emirates-id",

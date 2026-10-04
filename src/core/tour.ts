@@ -176,7 +176,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/claims', 'POST /api/claims/register', 'POST /api/claims/approve', 'POST /api/claims/settle'],
   },
   {
-    at: '00:48', minutes: 5, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
+    at: '00:48', minutes: 6, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
     why: 'An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty\'s promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary\'s exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.',
     doThis: [
       'Read the two statements: the conventional book and the takaful window, each with its own treaties.',
@@ -207,21 +207,24 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/reinsurance', 'GET /api/reinsurance/security', 'GET /api/extracts', 'POST /api/extracts/issue', 'POST /api/extracts/verify', 'POST /api/reinsurance/cede', 'POST /api/reinsurance/facultative', 'POST /api/reinsurance/recover', 'POST /api/reinsurance/event', 'POST /api/reinsurance/reinstate', 'POST /api/reinsurance/deposit', 'POST /api/reinsurance/deposit/settle', 'POST /api/reinsurance/settle', 'POST /api/reinsurance/security/hold', 'POST /api/reinsurance/security/call', 'POST /api/reinsurance/security/call/settle', 'POST /api/reinsurance/security/release', 'POST /api/reinsurance/security/interest'],
   },
   {
-    at: '00:53', minutes: 3, tab: 'durability', title: 'Prove the books can be restored',
-    why: 'A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text, comparing trial balances.',
+    at: '00:54', minutes: 3, tab: 'durability', title: 'Prove the books, and the reporting registers, can be restored',
+    why: 'A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text — and does the same for the reporting registers: the returns, rule decisions, letters and filings are sealed together, replayed into a fresh world and checked one by one, with a hash-chained outbox proving nothing was dropped between snapshots.',
     doThis: [
       'Read the snapshot summary: accounts, journals, size, fingerprint.',
       'Press "Run durability drill".',
       'Read the per-entity result: balanced, trial balance agrees, restore time.',
+      'Read the reporting register card: how many returns, decisions, letters and filings it holds, and the outbox chain.',
+      'Press "Rebuild every register from the snapshot" and read what came back.',
     ],
     expect: [
       'The restore reports the same journals and the same balances, in milliseconds.',
       'The fingerprint is stable across runs, so a tampered payload would be caught.',
+      'Every reporting register replays: each return keeps its fingerprint, each rule decision follows again from its own facts, each letter regenerates from its own facts, and each filing carries the answer it got — with the outbox chaining from the beginning.',
     ],
-    api: ['GET /api/state', 'POST /api/state/drill'],
+    api: ['GET /api/state', 'POST /api/state/drill', 'GET /api/state/registers', 'POST /api/state/registers/drill'],
   },
   {
-    at: '00:56', minutes: 4, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
+    at: '00:57', minutes: 3, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
     why: 'The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs, and the submission log with the supervisor’s references — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.',
     doThis: [
       'Onboarding: read the chip read, the government lookup and the OCR consensus, then find the field in the review queue.',

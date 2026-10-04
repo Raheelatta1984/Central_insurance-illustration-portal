@@ -16,8 +16,8 @@ import { Money, money, zero, formatAmount, toDecimalString, sub, abs as absMoney
 import { unitsFromDecimal, unitsToDecimal } from './units.js';
 import { NavEngine, singlePriceFund, FundDef } from './fund.js';
 import { DEFAULT_CHARGES, UnitLinkedEngine, PolicyMeta } from './unitlinked.js';
-import { BillingEngine } from './billing.js';
-import { TakafulEngine, TakafulProductConfig } from './takaful.js';
+import { BillingEngine, resetBillingIds } from './billing.js';
+import { TakafulEngine, TakafulProductConfig, resetTakafulIds } from './takaful.js';
 import { Party, PartyRegistry } from './party.js';
 import { LabelRegistry, Locale } from './labels.js';
 import { applyBps } from './money.js';
@@ -72,6 +72,11 @@ export interface World {
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
 
 export function buildWorld(): World {
+  // The same world built twice in one process must come out the same, ids included: the durability
+  // drill and the restore tooling build a second world and compare it with the first record by
+  // record, which is only a proof if the two worlds are the same world.
+  resetTakafulIds();
+  resetBillingIds();
   const tenant = { id: 'alkhaleej', name: 'Al Khaleej Insurance Group' };
   const currency = 'AED';
   const ledger = new Ledger(currency);
@@ -381,10 +386,12 @@ export function buildWorld(): World {
   const submissions = new SubmissionRegister({
     windows: AE_FILING_WINDOWS,
     verify: (extractId) => extracts.verify(extractId),
+    booksThrough: () => ledger.allJournals().length,
   });
   const takafulSubmissions = new SubmissionRegister({
     windows: AE_FILING_WINDOWS,
     verify: (extractId) => takafulExtracts.verify(extractId),
+    booksThrough: () => ledger.allJournals().length,
   });
 
   // Wording, generated from the same label registry the screens read: a rename in the takaful scope
