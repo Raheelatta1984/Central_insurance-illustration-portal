@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T20:50:53.956Z",
+  "generatedAt": "2026-10-05T05:39:15.026Z",
   "base": "http://127.0.0.1:8787",
   "viewport": {
     "width": 1600,
@@ -15,7 +15,7 @@
       "screenshotFull": "screens/overview-full.png",
       "video": "video/overview.mp4",
       "videoFallback": "video/overview.webm",
-      "bytes": 459685
+      "bytes": 450915
     },
     {
       "id": "policyholder",
@@ -26,7 +26,7 @@
       "screenshotFull": "screens/policyholder-full.png",
       "video": "video/policyholder.mp4",
       "videoFallback": "video/policyholder.webm",
-      "bytes": 1034069
+      "bytes": 1073476
     },
     {
       "id": "decisions",
@@ -37,7 +37,7 @@
       "screenshotFull": "screens/decisions-full.png",
       "video": "video/decisions.mp4",
       "videoFallback": "video/decisions.webm",
-      "bytes": 1236767
+      "bytes": 1237458
     },
     {
       "id": "cover",
@@ -48,7 +48,7 @@
       "screenshotFull": "screens/cover-full.png",
       "video": "video/cover.mp4",
       "videoFallback": "video/cover.webm",
-      "bytes": 1144715
+      "bytes": 1129264
     },
     {
       "id": "funds",
@@ -59,7 +59,7 @@
       "screenshotFull": "screens/funds-full.png",
       "video": "video/funds.mp4",
       "videoFallback": "video/funds.webm",
-      "bytes": 504204
+      "bytes": 494217
     },
     {
       "id": "takaful",
@@ -70,7 +70,7 @@
       "screenshotFull": "screens/takaful-full.png",
       "video": "video/takaful.mp4",
       "videoFallback": "video/takaful.webm",
-      "bytes": 1430751
+      "bytes": 1431249
     },
     {
       "id": "group",
@@ -81,7 +81,7 @@
       "screenshotFull": "screens/group-full.png",
       "video": "video/group.mp4",
       "videoFallback": "video/group.webm",
-      "bytes": 1040860
+      "bytes": 1083802
     },
     {
       "id": "underwriting",
@@ -92,7 +92,7 @@
       "screenshotFull": "screens/underwriting-full.png",
       "video": "video/underwriting.mp4",
       "videoFallback": "video/underwriting.webm",
-      "bytes": 1282357
+      "bytes": 1235030
     },
     {
       "id": "claims",
@@ -103,7 +103,7 @@
       "screenshotFull": "screens/claims-full.png",
       "video": "video/claims.mp4",
       "videoFallback": "video/claims.webm",
-      "bytes": 1480816
+      "bytes": 1388453
     },
     {
       "id": "reinsurance",
@@ -114,7 +114,7 @@
       "screenshotFull": "screens/reinsurance-full.png",
       "video": "video/reinsurance.mp4",
       "videoFallback": "video/reinsurance.webm",
-      "bytes": 3273065
+      "bytes": 3148679
     },
     {
       "id": "durability",
@@ -125,7 +125,7 @@
       "screenshotFull": "screens/durability-full.png",
       "video": "video/durability.mp4",
       "videoFallback": "video/durability.webm",
-      "bytes": 883166
+      "bytes": 902023
     },
     {
       "id": "onboarding",
@@ -136,7 +136,7 @@
       "screenshotFull": "screens/onboarding-full.png",
       "video": "video/onboarding.mp4",
       "videoFallback": "video/onboarding.webm",
-      "bytes": 437579
+      "bytes": 449238
     },
     {
       "id": "ingest",
@@ -147,7 +147,7 @@
       "screenshotFull": "screens/ingest-full.png",
       "video": "video/ingest.mp4",
       "videoFallback": "video/ingest.webm",
-      "bytes": 1021482
+      "bytes": 1057150
     },
     {
       "id": "parties",
@@ -158,7 +158,7 @@
       "screenshotFull": "screens/parties-full.png",
       "video": "video/parties.mp4",
       "videoFallback": "video/parties.webm",
-      "bytes": 1091745
+      "bytes": 1009557
     },
     {
       "id": "regulatory",
@@ -169,7 +169,7 @@
       "screenshotFull": "screens/regulatory-full.png",
       "video": "video/regulatory.mp4",
       "videoFallback": "video/regulatory.webm",
-      "bytes": 679271
+      "bytes": 674212
     },
     {
       "id": "ai",
@@ -180,7 +180,7 @@
       "screenshotFull": "screens/ai-full.png",
       "video": "video/ai.mp4",
       "videoFallback": "video/ai.webm",
-      "bytes": 797470
+      "bytes": 781440
     },
     {
       "id": "ledger",
@@ -191,7 +191,7 @@
       "screenshotFull": "screens/ledger-full.png",
       "video": "video/ledger.mp4",
       "videoFallback": "video/ledger.webm",
-      "bytes": 541634
+      "bytes": 535745
     },
     {
       "id": "labels",
@@ -202,7 +202,7 @@
       "screenshotFull": "screens/labels-full.png",
       "video": "video/labels.mp4",
       "videoFallback": "video/labels.webm",
-      "bytes": 557377
+      "bytes": 410880
     },
     {
       "id": "tour",
@@ -213,7 +213,7 @@
       "screenshotFull": "screens/tour-full.png",
       "video": "video/tour.mp4",
       "videoFallback": "video/tour.webm",
-      "bytes": 1111271
+      "bytes": 1050436
     }
   ]
 }
