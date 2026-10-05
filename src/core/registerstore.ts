@@ -117,6 +117,12 @@ export interface ReportingState {
 export interface OutboxEntry {
   readonly seq: number;
   readonly at: string;
+  /**
+   * Which book reported it. Two filings can carry the same reference — the conventional and the
+   * takaful returns both number from SUB-000001 — so a record's identity is the book it was reported
+   * in, the register that reported it and its own id, and the chain hashes all three.
+   */
+  readonly book: 'conventional' | 'takaful';
   readonly register: 'extract' | 'decision' | 'letter' | 'filing';
   readonly recordId: string;
   readonly contentHash: string;
@@ -129,37 +135,89 @@ const GENESIS = '0'.repeat(16);
 /** One entry's hash covers its own content and the entry before it, so order is part of the proof. */
 export function outboxHash(entry: Omit<OutboxEntry, 'hash'>): string {
   return fingerprint(toJson({
-    seq: entry.seq, at: entry.at, register: entry.register, recordId: entry.recordId,
-    contentHash: entry.contentHash, prevHash: entry.prevHash,
+    seq: entry.seq, at: entry.at, book: entry.book, register: entry.register,
+    recordId: entry.recordId, contentHash: entry.contentHash, prevHash: entry.prevHash,
   }));
 }
 
-export function buildOutbox(state: ReportingState, at: string): OutboxEntry[] {
+export interface OutboxItem {
+  readonly book: OutboxEntry['book'];
+  readonly register: OutboxEntry['register'];
+  readonly recordId: string;
+  readonly content: unknown;
+  readonly at: string;
+}
+
+/** What identifies a record in the outbox: one register, one id, recorded once and never again. */
+export function outboxKey(record: {
+  readonly book: string; readonly register: string; readonly recordId: string;
+}): string {
+  return `${record.book}|${record.register}|${record.recordId}`;
+}
+
+/**
+ * Every reportable record the registers hold, in the order the outbox chains them. `buildOutbox` and
+ * `extendOutbox` both fold over this one list, so the incremental path cannot walk a different order
+ * from the full one — they are the same walk, one of them starting from the last entry instead of
+ * from the beginning.
+ */
+export function outboxItems(state: ReportingState): OutboxItem[] {
+  const items: OutboxItem[] = [];
+  const push = (book: OutboxEntry['book'], register: OutboxEntry['register'], recordId: string, content: unknown, when: string) => {
+    items.push({ book, register, recordId, content, at: when });
+  };
+  for (const extract of state.conventional.extracts) push('conventional', 'extract', extract.id, extract, extract.at);
+  for (const decision of state.conventional.decisions) push('conventional', 'decision', decision.id, decision, decision.facts.at);
+  for (const letter of state.conventional.letters) push('conventional', 'letter', letter.id, letter, letter.facts.at);
+  for (const filing of state.conventional.filings) push('conventional', 'filing', `${filing.id}:filed`, filing, filing.at);
+  for (const filing of state.conventional.filings) {
+    if (filing.acknowledgedAt) push('conventional', 'filing', `${filing.id}:acknowledged`, { reference: filing.supervisorReference }, filing.acknowledgedAt);
+    if (filing.rejectedAt) push('conventional', 'filing', `${filing.id}:rejected`, { reason: filing.rejectionReason }, filing.rejectedAt);
+  }
+  for (const extract of state.takaful.extracts) push('takaful', 'extract', extract.id, extract, extract.at);
+  for (const filing of state.takaful.filings) push('takaful', 'filing', `${filing.id}:filed`, filing, filing.at);
+  for (const filing of state.takaful.filings) {
+    if (filing.acknowledgedAt) push('takaful', 'filing', `${filing.id}:acknowledged`, { reference: filing.supervisorReference }, filing.acknowledgedAt);
+  }
+  return items;
+}
+
+/**
+ * Chain a list of records onto the end of a log: entry numbers continue, each entry carries the hash
+ * of the one before it, and the entries come back frozen.
+ */
+export function chainOutbox(items: readonly OutboxItem[], from: readonly OutboxEntry[] = []): OutboxEntry[] {
   const entries: OutboxEntry[] = [];
-  let prevHash = GENESIS;
-  const push = (register: OutboxEntry['register'], recordId: string, content: unknown, when: string) => {
-    const seq = entries.length + 1;
-    const contentHash = fingerprintOf(content);
-    const base = { seq, at: when, register, recordId, contentHash, prevHash };
+  let prevHash = from.length ? from[from.length - 1]!.hash : GENESIS;
+  const seqBase = from.length ? from[from.length - 1]!.seq : 0;
+  for (const item of items) {
+    const seq = seqBase + entries.length + 1;
+    const contentHash = fingerprintOf(item.content);
+    const base = { seq, at: item.at, book: item.book, register: item.register, recordId: item.recordId, contentHash, prevHash };
     const hash = outboxHash(base);
     entries.push(Object.freeze({ ...base, hash }));
     prevHash = hash;
-  };
-  for (const extract of state.conventional.extracts) push('extract', extract.id, extract, extract.at);
-  for (const decision of state.conventional.decisions) push('decision', decision.id, decision, decision.facts.at);
-  for (const letter of state.conventional.letters) push('letter', letter.id, letter, letter.facts.at);
-  for (const filing of state.conventional.filings) push('filing', `${filing.id}:filed`, filing, filing.at);
-  for (const filing of state.conventional.filings) {
-    if (filing.acknowledgedAt) push('filing', `${filing.id}:acknowledged`, { reference: filing.supervisorReference }, filing.acknowledgedAt);
-    if (filing.rejectedAt) push('filing', `${filing.id}:rejected`, { reason: filing.rejectionReason }, filing.rejectedAt);
   }
-  for (const extract of state.takaful.extracts) push('extract', extract.id, extract, extract.at);
-  for (const filing of state.takaful.filings) push('filing', `${filing.id}:filed`, filing, filing.at);
-  for (const filing of state.takaful.filings) {
-    if (filing.acknowledgedAt) push('filing', `${filing.id}:acknowledged`, { reference: filing.supervisorReference }, filing.acknowledgedAt);
-  }
-  void at;
   return entries;
+}
+
+/** The whole log, from the beginning. What the drill verifies and what a reader who wants proof asks for. */
+export function buildOutbox(state: ReportingState, at: string): OutboxEntry[] {
+  void at;
+  return chainOutbox(outboxItems(state));
+}
+
+/**
+ * The same log, built by adding only what the log does not already hold. The console reports a thing
+ * the moment it happens; rebuilding the whole chain to say so is work that grows with the day, so the
+ * store keeps the chain and this walks the registers for the difference. A record is identified by
+ * its register and id, which is why a thing is recorded once and a repeat is refused rather than
+ * chained twice.
+ */
+export function extendOutbox(prev: readonly OutboxEntry[], state: ReportingState): OutboxEntry[] {
+  const held = new Set(prev.map((entry) => outboxKey(entry)));
+  const fresh = outboxItems(state).filter((item) => !held.has(outboxKey(item)));
+  return chainOutbox(fresh, prev);
 }
 
 export interface ChainVerdict {
@@ -179,7 +237,7 @@ export function verifyOutbox(entries: readonly OutboxEntry[]): ChainVerdict {
     if (entry.prevHash !== prevHash) {
       return { intact: false, entries: entries.length, brokenAt: entry.seq, detail: `entry ${entry.seq} does not carry the hash of the entry before it: the log has a gap` };
     }
-    const expected = outboxHash({ seq: entry.seq, at: entry.at, register: entry.register, recordId: entry.recordId, contentHash: entry.contentHash, prevHash: entry.prevHash });
+    const expected = outboxHash({ seq: entry.seq, at: entry.at, book: entry.book, register: entry.register, recordId: entry.recordId, contentHash: entry.contentHash, prevHash: entry.prevHash });
     if (expected !== entry.hash) {
       return { intact: false, entries: entries.length, brokenAt: entry.seq, detail: `entry ${entry.seq} has been edited: its hash does not match its content` };
     }
