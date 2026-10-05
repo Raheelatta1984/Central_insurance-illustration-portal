@@ -355,9 +355,10 @@ describe('the envelope', () => {
     const text = snapshotText(booksOnly);
     const parsed = JSON.parse(text);
     const plan = planMigrations(1, REPORTING_SCHEMA_VERSION, REPORTING_MIGRATIONS);
-    expect(plan.length).toBe(2);
+    expect(plan.length).toBe(3);
     expect(plan[0]!.describe).toContain('reporting registers');
     expect(plan[1]!.describe).toContain('action');
+    expect(plan[2]!.describe).toContain('clock');
     // the migration runs as part of opening, so a books-only snapshot opens as a valid, empty store
     const migratedSnapshot = { ...booksOnly, schemaVersion: REPORTING_SCHEMA_VERSION };
     void open(parsed, { expectSchema: REPORTING_SCHEMA_VERSION, migrations: REPORTING_MIGRATIONS });

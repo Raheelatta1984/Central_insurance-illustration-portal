@@ -23,7 +23,7 @@ import { LabelRegistry, Locale } from './labels.js';
 import { applyBps } from './money.js';
 import { AE_PACK, comparisonMatrix, preSaleCheck, QuoteOffer } from './regulatory.js';
 import { REINSURANCE_SEED, TreatyRegister } from './reinsurance.js';
-import { ReplayableRegister } from './actionlog.js';
+import { ActionClock, ReplayableRegister } from './actionlog.js';
 import { ExtractEngine, IssuedExtract, formatCell } from './extracts.js';
 import { PlacementFacts, UAE_RULES, UaeRuleBook, ratingRank } from './uae.js';
 import { WordingBook, WordingDocument, WordingFacts } from './wording.js';
@@ -84,6 +84,9 @@ export function buildWorld(): World {
   // record, which is only a proof if the two worlds are the same world.
   resetTakafulIds();
   resetBillingIds();
+  // One clock for the whole world. Every register takes a ticket from it, so the order between two
+  // actions — and between an action and a return issued around it — is a fact and not a guess.
+  const clock = new ActionClock();
   const tenant = { id: 'alkhaleej', name: 'Al Khaleej Insurance Group' };
   const currency = 'AED';
   const ledger = new Ledger(currency);
@@ -245,7 +248,7 @@ export function buildWorld(): World {
 
   /* Claims. The live claim is routed through the same pool settler the takaful engine exposes,
      so a takaful claim keeps the workflow here and the money in the participants' risk fund. */
-  const claims = new ClaimsEngine(ledger, convChart, conventionalEntity, currency);
+  const claims = new ClaimsEngine(ledger, convChart, conventionalEntity, currency, { clock });
   const motorClaim = claims.register({
     policyId: 'MTR-0441', cause: 'motor', lossDate: '2026-09-18', reportedAt: '2026-09-19',
     description: 'Rear-end collision on Sheikh Zayed Road; third-party report and photos attached',
@@ -266,6 +269,7 @@ export function buildWorld(): World {
 
   const takafulClaims = new ClaimsEngine(ledger, tkfChart, takafulEntity, currency, {
     engineName: 'takaful-claims',
+    clock,
     poolSettler: (c, amount, at) => takaful.settlePoolClaim(c, amount, at),
   });
   const tkfClaim = takafulClaims.register({
@@ -324,11 +328,11 @@ export function buildWorld(): World {
      quarter of it, a surplus treaty takes the lines above a 200,000 retention, a catastrophe cover
      stands behind the whole book, and the retakaful operator carries a fifth of the takaful window's
      risk. Every cession is posted, so the books show what was given away and what came back. */
-  const reinsurance = new TreatyRegister(ledger, conventionalEntity, currency, 'reinsurance');
+  const reinsurance = new TreatyRegister(ledger, conventionalEntity, currency, 'reinsurance', clock);
   for (const treaty of REINSURANCE_SEED) {
     if (treaty.basis === 'conventional') reinsurance.register({ ...treaty, currency });
   }
-  const retakaful = new TreatyRegister(ledger, takafulEntity, currency, 'retakaful');
+  const retakaful = new TreatyRegister(ledger, takafulEntity, currency, 'retakaful', clock);
   for (const treaty of REINSURANCE_SEED) {
     if (treaty.basis === 'takaful') retakaful.register({ ...treaty, currency });
   }
@@ -336,11 +340,11 @@ export function buildWorld(): World {
   // participant risk fund can never report a dirham of the operator's money.
   const extracts = new ExtractEngine({
     ledger, entityId: conventionalEntity, currency, basis: 'conventional', jurisdiction: 'AE',
-    register: reinsurance, claims,
+    register: reinsurance, claims, actionClock: clock,
   });
   const takafulExtracts = new ExtractEngine({
     ledger, entityId: takafulEntity, currency, basis: 'takaful', jurisdiction: 'AE',
-    register: retakaful, claims: takafulClaims,
+    register: retakaful, claims: takafulClaims, actionClock: clock,
   });
 
   // The UAE reinsurance rule book. Every placement the desk makes goes past it, and what it answers
@@ -395,11 +399,13 @@ export function buildWorld(): World {
     windows: AE_FILING_WINDOWS,
     verify: (extractId) => extracts.verify(extractId),
     booksThrough: () => ledger.allJournals().length,
+    actionsThrough: () => clock.count,
   });
   const takafulSubmissions = new SubmissionRegister({
     windows: AE_FILING_WINDOWS,
     verify: (extractId) => takafulExtracts.verify(extractId),
     booksThrough: () => ledger.allJournals().length,
+    actionsThrough: () => clock.count,
   });
 
   // Wording, generated from the same label registry the screens read: a rename in the takaful scope

@@ -33,7 +33,7 @@ import {
 export class RegisterStoreError extends Error {}
 
 /** Schema 1 is "the books only". Schema 2 is the books plus the reporting registers. */
-export const REPORTING_SCHEMA_VERSION = 3;
+export const REPORTING_SCHEMA_VERSION = 4;
 
 /** The registers this store holds, named so a restore can say what it is about to put back. */
 export const REGISTER_NAMES = ['extracts', 'decisions', 'letters', 'filings'] as const;
@@ -41,6 +41,8 @@ export const REGISTER_NAMES = ['extracts', 'decisions', 'letters', 'filings'] as
 export interface ExtractRecord {
   /** How far the books had got when this return was issued. */
   readonly booksThrough: number;
+  /** How many register actions had been taken when this return was issued. */
+  readonly actionsThrough?: number;
   readonly kind: ExtractKind;
   readonly period: ExtractPeriod;
   readonly asOf: string;
@@ -75,6 +77,8 @@ export interface FilingRecord {
   readonly pack: SubmissionPack;
   /** How far the books had got when this return went out. */
   readonly booksThrough: number;
+  /** How many register actions had been taken when this return went out. */
+  readonly actionsThrough?: number;
   readonly at: string;
   readonly by: string;
   readonly lateApprovedBy?: string;
@@ -204,12 +208,20 @@ export const REPORTING_MIGRATIONS: readonly Migration[] = [
     describe: 'every register action the store holds, so a restart can put the registers back and not only their rows',
     apply: (payload: any) => ({ ...payload, actions: payload.actions ?? [] }),
   },
+  {
+    from: 3,
+    to: 4,
+    describe: "the registers' own clock, so an action that posts no journal can be ordered against a return issued around it",
+    // a v3 payload has the actions but not their tickets; absent tickets are treated as unknown and
+    // the record sorts after the actions at the same book position, which is what v3 could say
+    apply: (payload: any) => payload,
+  },
 ];
 
 /* ------------------------------------------------------------------ export */
 
 const extractRecord = (e: IssuedExtract): ExtractRecord => ({
-  booksThrough: e.booksThrough,
+  booksThrough: e.booksThrough, actionsThrough: e.actionsThrough,
   kind: e.kind, period: { ...e.period }, asOf: e.asOf, by: e.preparedBy, at: e.issuedAt,
   ...(e.counterparty ? { counterparty: e.counterparty } : {}),
   ...(e.changesSummary ? { changesSummary: e.changesSummary } : {}),
@@ -218,7 +230,7 @@ const extractRecord = (e: IssuedExtract): ExtractRecord => ({
 });
 
 const filingRecord = (s: ReturnType<SubmissionRegister['submissions']>[number]): FilingRecord => ({
-  pack: s.pack, booksThrough: s.booksThrough, at: s.filedAt, by: s.filedBy,
+  pack: s.pack, booksThrough: s.booksThrough, actionsThrough: s.actionsThrough, at: s.filedAt, by: s.filedBy,
   ...(s.lateApprovedBy ? { lateApprovedBy: s.lateApprovedBy } : {}),
   ...(s.lateReason ? { lateReason: s.lateReason } : {}),
   ...(s.resubmissionOf ? { resubmissionOf: s.resubmissionOf } : {}),
@@ -466,7 +478,9 @@ export function restoreReporting(
 
   interface Timed {
     readonly mark: number;
-    /** Actions before returns at the same mark, as the world lived them. */
+    /** Where this item sits on the registers' own clock. */
+    readonly clock: number;
+    /** Actions before returns when both clocks agree. */
     readonly phase: 0 | 1;
     readonly order: number;
     readonly label: string;
@@ -496,6 +510,7 @@ export function restoreReporting(
     }
     timeline.push({
       mark: action.mark,
+      clock: action.seq ?? Number.MAX_SAFE_INTEGER,
       phase: 0,
       order: order++,
       label: `${action.engine} ${action.kind}`,
@@ -526,6 +541,7 @@ export function restoreReporting(
   ): void => {
     timeline.push({
       mark,
+      clock: record.actionsThrough ?? Number.MAX_SAFE_INTEGER,
       phase: 1,
       order: order++,
       label: `${label} extract ${record.id}`,
@@ -578,6 +594,7 @@ export function restoreReporting(
   const replayFiling = (record: FilingRecord, register: SubmissionRegister, mark: number): void => {
     timeline.push({
       mark,
+      clock: record.actionsThrough ?? Number.MAX_SAFE_INTEGER,
       phase: 1,
       order: order++,
       label: `filing ${record.reference}`,
@@ -620,7 +637,10 @@ export function restoreReporting(
 
   /* ---------------------------------------------------------------- run it */
 
-  timeline.sort((a, b) => (a.mark - b.mark) || (a.phase - b.phase) || (a.order - b.order));
+  // Two clocks and one order. The books say where in the ledger a thing belongs; the registers' clock
+  // says where it belongs among the actions, which is the only way an action that posts no journal
+  // can be placed against a return issued around it. When both agree, the action came first.
+  timeline.sort((a, b) => (a.mark - b.mark) || (a.clock - b.clock) || (a.phase - b.phase) || (a.order - b.order));
   for (const item of timeline) item.run();
 
   // the books, all the way to the end, then checked journal for journal

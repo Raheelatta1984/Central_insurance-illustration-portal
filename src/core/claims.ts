@@ -15,7 +15,7 @@
  * money of its own — there is exactly one movement of cash for every claim.
  */
 import { Ledger, posting } from './ledger.js';
-import { captureInput, RegisterAction, ReplayContext, ReplayableRegister } from './actionlog.js';
+import { ActionClock, captureInput, RegisterAction, ReplayContext, ReplayableRegister } from './actionlog.js';
 import { Money, add, applyBps, compare, formatAmount, gte, isNegative, money, sub, zero } from './money.js';
 
 export type ClaimStatus = 'registered' | 'under-review' | 'approved' | 'settled' | 'declined' | 'withdrawn';
@@ -99,6 +99,8 @@ export interface PoolSettler {
 export interface ClaimsOptions {
   /** Which register this is, in the snapshot's vocabulary: `claims` or `takaful-claims`. */
   readonly engineName?: string;
+  /** The registers' clock, shared with the other registers in the world. */
+  readonly clock?: ActionClock;
   readonly authority?: Authority[];
   readonly notificationGraceDays?: number;
   readonly slaDays?: number;
@@ -111,6 +113,7 @@ export class ClaimsError extends Error {}
 export class ClaimsEngine implements ReplayableRegister {
   private readonly claims = new Map<string, Claim>();
   private readonly actions: RegisterAction[] = [];
+  private readonly clock?: ActionClock;
   /** Set while an action is being taken again: the journal it posted, and whether to record it. */
   private replayJournalId: string | null = null;
   private replaying = false;
@@ -129,6 +132,7 @@ export class ClaimsEngine implements ReplayableRegister {
     options: ClaimsOptions = {},
   ) {
     this.engineName = options.engineName ?? 'claims';
+    this.clock = options.clock;
     this.authority = [...(options.authority ?? DEFAULT_AUTHORITY)];
     this.grace = options.notificationGraceDays ?? 30;
     this.sla = options.slaDays ?? 45;
@@ -175,6 +179,7 @@ export class ClaimsEngine implements ReplayableRegister {
     // which is where it belongs.
     this.actions.push(Object.freeze({
       engine: this.engineName, kind, at, journalId,
+      seq: this.clock?.next() ?? 0,
       mark: this.ledger.allJournals().length,
       input: captureInput(input) as Readonly<Record<string, unknown>>,
     }));

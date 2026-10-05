@@ -20,7 +20,7 @@
  *    (takaful); it is never participant money.
  */
 import { Ledger, posting } from './ledger.js';
-import { captureInput, RegisterAction, ReplayContext, ReplayableRegister } from './actionlog.js';
+import { ActionClock, captureInput, RegisterAction, ReplayContext, ReplayableRegister } from './actionlog.js';
 import {
   Currency, Money, abs, add, applyBps, applyRatio, compare, formatAmount, isNegative, lte, money, sub, zero,
 } from './money.js';
@@ -353,6 +353,7 @@ export class TreatyRegister implements ReplayableRegister {
     private readonly entityId: string,
     private readonly currency: Currency,
     private readonly engineNameIn?: string,
+    private readonly clock?: ActionClock,
   ) {
     const id = (n: string) => `${entityId}:${n}`;
     this.ledger.defineAccount({ id: id('REINS:CEDED-PREMIUM'), name: 'Ceded premium / contribution (expense)', type: 'expense', entityId, currency });
@@ -439,6 +440,7 @@ export class TreatyRegister implements ReplayableRegister {
       kind,
       at,
       journalId,
+      seq: this.clock?.next() ?? 0,
       mark: this.ledger.allJournals().length,
       input: captureInput(input) as Readonly<Record<string, unknown>>,
     }));

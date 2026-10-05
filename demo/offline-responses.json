@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-04T20:46:11.429Z",
+  "capturedAt": "2026-10-05T05:34:46.563Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -3908,12 +3908,12 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-04T20:44:13.310Z",
-        "fingerprint": "22fcf75e1fb9eb90",
-        "accounts": 167,
-        "journals": 76,
+        "takenAt": "2026-10-05T05:34:37.939Z",
+        "fingerprint": "6d6e41b9bd56d76a",
+        "accounts": 168,
+        "journals": 87,
         "fxRates": 2,
-        "bytes": 80102
+        "bytes": 89049
       }
     },
     "GET /api/state/registers": {
@@ -3921,23 +3921,23 @@
       "body": {
         "registers": {
           "conventional": {
-            "extracts": 6,
-            "decisions": 5,
-            "letters": 2,
-            "filings": 1
+            "extracts": 7,
+            "decisions": 7,
+            "letters": 4,
+            "filings": 2
           },
           "takaful": {
             "extracts": 2,
             "filings": 1
           }
         },
-        "schemaVersion": 3,
-        "fingerprint": "cfeb3a2d96d48558",
-        "bytes": 23614,
+        "schemaVersion": 4,
+        "fingerprint": "09caca059da46f39",
+        "bytes": 34492,
         "outbox": {
-          "entries": 18,
+          "entries": 25,
           "intact": true,
-          "detail": "18 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
+          "detail": "25 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
         },
         "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots; every record remembers how far the books had got when it was made and is re-proved against the books of its own moment; and the registers carry the actions they took, so a restart puts them back by taking those actions again, checked journal for journal. Two limits are stated rather than papered over: it is not yet a database (no transactional write, no concurrent-reader isolation, no incremental streaming of the outbox), and an action that posts no journal — a cash call, a free reinstatement — is anchored by the number of journals the books held when it happened, which places it in the right window but cannot order two such actions that land inside the same journal."
       }
@@ -11224,7 +11224,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-04T20:44:07.729Z"
+        "generatedAt": "2026-10-05T05:32:43.747Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {
@@ -11496,23 +11496,23 @@
         ]
       }
     },
-    "POST /api/ingest/commit 9685ebc7": {
+    "POST /api/ingest/commit d47018ce": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791146726392",
+        "loadId": "LOAD-1791178439915",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
       }
     },
-    "POST /api/ingest/submit 5136c911": {
+    "POST /api/ingest/submit 20d12d38": {
       "status": 200,
       "body": {
         "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791146726392"
+        "loadId": "LOAD-1791178439915"
       }
     },
     "POST /api/onboarding/ocr 4d38892d": {
@@ -12764,12 +12764,12 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "5b03eacc6f730d33",
+        "fingerprint": "6026f6702f0511a1",
         "fingerprintStable": true,
         "journals": 87,
         "restoredJournals": 87,
         "bytes": 89049,
-        "restoreMs": 73,
+        "restoreMs": 43,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -12802,17 +12802,17 @@
       "status": 200,
       "body": {
         "ok": true,
-        "detail": "every register replayed: 0 action(s) taken again and 8 extract(s), 5 decision(s), 2 letter(s) and 2 filing(s) came back the same, the books were replayed with them, and the outbox chains from the beginning",
+        "detail": "every register replayed: 14 action(s) taken again and 9 extract(s), 7 decision(s), 4 letter(s) and 3 filing(s) came back the same, the books were replayed with them, and the outbox chains from the beginning",
         "actions": {
-          "expected": 31,
-          "replayed": 0,
+          "expected": 45,
+          "replayed": 14,
           "skipped": 31,
           "disagreements": []
         },
         "books": {
           "posted": 0,
           "agree": true,
-          "detail": "the books came back journal for journal: 76 journal(s), 0 of them posted by the restore as it replayed the registers, every posting the same and every entity's trial balance the one the snapshot had"
+          "detail": "the books came back journal for journal: 87 journal(s), 0 of them posted by the restore as it replayed the registers, every posting the same and every entity's trial balance the one the snapshot had"
         },
         "replays": [
           "reinsurance cede-premium at 2026-09-30T09:00:00+04:00 → already taken here, left alone",
@@ -12855,53 +12855,69 @@
           "takaful extract RI-EX-ALK-TKF-00001 → RI-EX-ALK-TKF-00001",
           "takaful extract RI-EX-ALK-TKF-00002 → RI-EX-ALK-TKF-00002",
           "filing CBUAE-MONTHLY/2026-10-05/001 → SUB-000001 (acknowledged)",
-          "filing CBUAE-MONTHLY/2026-10-05/001 → SUB-000001 (filed)"
+          "filing CBUAE-MONTHLY/2026-10-05/001 → SUB-000001 (acknowledged)",
+          "claims register-claim at 2026-10-02 → no journal",
+          "claims triage-claim at 2026-10-02 → no journal",
+          "reinsurance accept-facultative at 2026-10-05T09:00:00+04:00 → no journal",
+          "reinsurance cede-premium at 2026-10-05T09:00:00+04:00 → RI-ALK-CONV-000010, journal reproduced",
+          "reinsurance cede-premium at 2026-10-05T09:00:00+04:00 → RI-ALK-CONV-000011, journal reproduced",
+          "reinsurance event-recovery at 2026-10-05T11:00:00+04:00 → RI-ALK-CONV-000012, journal reproduced",
+          "reinsurance reinstate at 2026-10-05T12:00:00+04:00 → RI-ALK-CONV-000013, journal reproduced",
+          "reinsurance open-deposit at 2026-10-05T13:00:00+04:00 → RI-ALK-CONV-000014, journal reproduced",
+          "reinsurance settle-deposit at 2026-10-05T15:00:00+04:00 → RI-ALK-CONV-000015, journal reproduced",
+          "reinsurance settle-recovery at 2026-10-05T14:00:00+04:00 → RI-ALK-CONV-000016, journal reproduced",
+          "reinsurance hold-security at 2026-10-05T15:30:00+04:00 → RI-ALK-CONV-000017, journal reproduced",
+          "reinsurance release-security at 2026-10-05T16:00:00+04:00 → RI-ALK-CONV-000018, journal reproduced",
+          "reinsurance credit-collateral-interest at 2026-10-05T16:30:00+04:00 → RI-ALK-CONV-000019, journal reproduced",
+          "reinsurance event-recovery at 2026-10-05T13:00:00+04:00 → RI-ALK-CONV-000020, journal reproduced",
+          "conventional extract RI-EX-ALK-CONV-00007 → RI-EX-ALK-CONV-00007",
+          "filing CBUAE-MONTHLY/2026-10-05/002 → SUB-000002 (filed)"
         ],
-        "fingerprint": "4143dd706aac920b",
-        "schemaVersion": 3,
-        "bytes": 23615,
-        "restoreMs": 57,
+        "fingerprint": "746fbf65a3053da2",
+        "schemaVersion": 4,
+        "bytes": 34493,
+        "restoreMs": 60,
         "registers": {
           "actions": {
-            "expected": 31,
-            "replayed": 0,
+            "expected": 45,
+            "replayed": 14,
             "skipped": 31,
             "disagreements": []
           },
           "books": {
             "posted": 0,
             "agree": true,
-            "detail": "the books came back journal for journal: 76 journal(s), 0 of them posted by the restore as it replayed the registers, every posting the same and every entity's trial balance the one the snapshot had"
+            "detail": "the books came back journal for journal: 87 journal(s), 0 of them posted by the restore as it replayed the registers, every posting the same and every entity's trial balance the one the snapshot had"
           },
           "extracts": {
-            "expected": 8,
-            "restored": 8,
+            "expected": 9,
+            "restored": 9,
             "fingerprintsAgree": true,
             "duplicates": 0
           },
           "decisions": {
-            "expected": 5,
-            "restored": 5,
-            "agree": 5,
+            "expected": 7,
+            "restored": 7,
+            "agree": 7,
             "disagreements": []
           },
           "letters": {
-            "expected": 2,
-            "restored": 2,
+            "expected": 4,
+            "restored": 4,
             "fingerprintsAgree": true
           },
           "filings": {
-            "expected": 2,
-            "restored": 2,
+            "expected": 3,
+            "restored": 3,
             "statusesAgree": true
           },
           "outbox": {
             "intact": true,
-            "entries": 18,
-            "detail": "18 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
+            "entries": 25,
+            "detail": "25 record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited"
           },
           "ok": true,
-          "detail": "every register replayed: 0 action(s) taken again and 8 extract(s), 5 decision(s), 2 letter(s) and 2 filing(s) came back the same, the books were replayed with them, and the outbox chains from the beginning",
+          "detail": "every register replayed: 14 action(s) taken again and 9 extract(s), 7 decision(s), 4 letter(s) and 3 filing(s) came back the same, the books were replayed with them, and the outbox chains from the beginning",
           "replays": [
             "reinsurance cede-premium at 2026-09-30T09:00:00+04:00 → already taken here, left alone",
             "reinsurance cede-premium at 2026-09-30T09:05:00+04:00 → already taken here, left alone",
@@ -12943,7 +12959,23 @@
             "takaful extract RI-EX-ALK-TKF-00001 → RI-EX-ALK-TKF-00001",
             "takaful extract RI-EX-ALK-TKF-00002 → RI-EX-ALK-TKF-00002",
             "filing CBUAE-MONTHLY/2026-10-05/001 → SUB-000001 (acknowledged)",
-            "filing CBUAE-MONTHLY/2026-10-05/001 → SUB-000001 (filed)"
+            "filing CBUAE-MONTHLY/2026-10-05/001 → SUB-000001 (acknowledged)",
+            "claims register-claim at 2026-10-02 → no journal",
+            "claims triage-claim at 2026-10-02 → no journal",
+            "reinsurance accept-facultative at 2026-10-05T09:00:00+04:00 → no journal",
+            "reinsurance cede-premium at 2026-10-05T09:00:00+04:00 → RI-ALK-CONV-000010, journal reproduced",
+            "reinsurance cede-premium at 2026-10-05T09:00:00+04:00 → RI-ALK-CONV-000011, journal reproduced",
+            "reinsurance event-recovery at 2026-10-05T11:00:00+04:00 → RI-ALK-CONV-000012, journal reproduced",
+            "reinsurance reinstate at 2026-10-05T12:00:00+04:00 → RI-ALK-CONV-000013, journal reproduced",
+            "reinsurance open-deposit at 2026-10-05T13:00:00+04:00 → RI-ALK-CONV-000014, journal reproduced",
+            "reinsurance settle-deposit at 2026-10-05T15:00:00+04:00 → RI-ALK-CONV-000015, journal reproduced",
+            "reinsurance settle-recovery at 2026-10-05T14:00:00+04:00 → RI-ALK-CONV-000016, journal reproduced",
+            "reinsurance hold-security at 2026-10-05T15:30:00+04:00 → RI-ALK-CONV-000017, journal reproduced",
+            "reinsurance release-security at 2026-10-05T16:00:00+04:00 → RI-ALK-CONV-000018, journal reproduced",
+            "reinsurance credit-collateral-interest at 2026-10-05T16:30:00+04:00 → RI-ALK-CONV-000019, journal reproduced",
+            "reinsurance event-recovery at 2026-10-05T13:00:00+04:00 → RI-ALK-CONV-000020, journal reproduced",
+            "conventional extract RI-EX-ALK-CONV-00007 → RI-EX-ALK-CONV-00007",
+            "filing CBUAE-MONTHLY/2026-10-05/002 → SUB-000002 (filed)"
           ]
         },
         "limitation": "The registers are sealed into a canonical, checksummed snapshot with a migration path and replayed into a fresh world on restore; the outbox proves nothing was dropped between snapshots; every record remembers how far the books had got when it was made and is re-proved against the books of its own moment; and the registers carry the actions they took, so a restart puts them back by taking those actions again, checked journal for journal. Two limits are stated rather than papered over: it is not yet a database (no transactional write, no concurrent-reader isolation, no incremental streaming of the outbox), and an action that posts no journal — a cash call, a free reinstatement — is anchored by the number of journals the books held when it happened, which places it in the right window but cannot order two such actions that land inside the same journal."
@@ -13468,12 +13500,12 @@
     "POST /api/extracts/verify c36ca302": {
       "extractId": "RI-EX-ALK-CONV-00001"
     },
-    "POST /api/ingest/commit 9685ebc7": {
-      "loadId": "LOAD-1791146726392"
+    "POST /api/ingest/commit d47018ce": {
+      "loadId": "LOAD-1791178439915"
     },
-    "POST /api/ingest/submit 5136c911": {
+    "POST /api/ingest/submit 20d12d38": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791146726392"
+      "loadId": "LOAD-1791178439915"
     },
     "POST /api/onboarding/ocr 4d38892d": {
       "documentType": "emirates-id",

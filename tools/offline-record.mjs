@@ -87,11 +87,6 @@ await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 await page.waitForSelector('nav button');
 await sleep(1200);
 
-// The register drill, captured first, on the world exactly as it seeds itself and before anything
-// in the session has traded it. That is the state the store can prove, and the pack shows the proof
-// it has rather than a prettier one it does not: the same drill after the session's trades is the
-// next chunk, where the target world has to be built empty rather than seeded.
-await direct('POST', '/state/registers/drill');
 await direct('GET', '/reinsurance/security');
 await direct('GET', '/regulatory/uae-rules');
 await direct('GET', '/wording');
@@ -108,7 +103,6 @@ await direct('POST', '/reinsurance/security/call', {
    a reload gives a clean view and stops one failed click from cascading into the rest. */
 const script = [
   ['Overview', []],
-  ['Durability', []],
   ['Policyholder', []],
   ['Decision theatre', ['Price the switch', 'Price the withdrawal']],
   ['Cover control', ['Stop cover', 'Advance the clock one day', 'Start cover now', 'Advance the clock one day']],
@@ -129,7 +123,10 @@ const script = [
   // that is what these pages show. The harder case — the same drill after the desk has traded — is
   // green except for one seeded exhibit whose re-issue reads journals posted after it was prepared;
   // that is the next chunk, and the pack records what it can prove rather than what it hopes.
-  ['Durability', ['Run durability drill']],
+  // The register drill runs last, on the world the session has traded. The store carries the actions
+  // the registers took and the registers' own clock, so the drill is green here as well — and this
+  // is the harder proof: a restart of an afternoon's work, not of a world that has just seeded.
+  ['Durability', ['Run durability drill', 'Rebuild every register from the snapshot']],
   ['Tour', ['Start the tour']],
 ];
 

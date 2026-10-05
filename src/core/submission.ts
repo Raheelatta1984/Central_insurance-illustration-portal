@@ -78,6 +78,8 @@ export interface Submission {
   readonly rejectedBy: string | null;
   /** How far the books had got when this return went out — see `IssuedExtract.booksThrough`. */
   readonly booksThrough: number;
+  /** How many register actions had been taken when this return went out. */
+  readonly actionsThrough: number;
   readonly resubmissionOf: string | null;
   readonly pack: SubmissionPack;
 }
@@ -120,6 +122,8 @@ export class SubmissionRegister {
      * was accepted against for the same reason an extract does.
      */
     readonly booksThrough?: () => number;
+    /** How many register actions have been taken, read at the moment a return is filed. */
+    readonly actionsThrough?: () => number;
     /** Days after filing at which an unacknowledged submission becomes a finding. */
     readonly acknowledgementDays?: number;
     /** Filing an earlier period after a later one needs the same treatment as a late filing. */
@@ -252,6 +256,7 @@ export class SubmissionRegister {
       acknowledgedAt: null, acknowledgedBy: null, supervisorReference: null,
       rejectionReason: null, rejectedAt: null, rejectedBy: null,
       booksThrough: this.options.booksThrough?.() ?? 0,
+      actionsThrough: this.options.actionsThrough?.() ?? 0,
       resubmissionOf: input.resubmissionOf ?? null,
       pack,
     });

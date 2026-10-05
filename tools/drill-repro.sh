@@ -17,7 +17,9 @@ post cover/stop
 post cover/tick
 post cover/start
 post cover/tick
-post takaful/approve
+post takaful/approve '{"role":"actuary"}'
+post takaful/approve '{"role":"shariah"}'
+post takaful/approve '{"role":"board"}'
 post group/consolidate
 post underwriting/decide
 post claims/approve

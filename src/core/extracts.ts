@@ -23,6 +23,7 @@
  *    money is never reported inside the operator's numbers.
  */
 import { Ledger } from './ledger.js';
+import { ActionClock } from './actionlog.js';
 import { Currency, Money, add, compare, formatAmount, sub, zero } from './money.js';
 import { Basis, TreatyRegister } from './reinsurance.js';
 import { Claim, ClaimsEngine } from './claims.js';
@@ -102,6 +103,12 @@ export interface IssuedExtract extends ExtractDraft {
    * return measured against them would be refused for being right at the time.
    */
   readonly booksThrough: number;
+  /**
+   * How many register actions had been taken when this return was issued. A return issued before the
+   * console registered a new claim must be re-issued before that claim exists again, and the book
+   * position cannot say so: an unjournaled action shares a book position with what came before it.
+   */
+  readonly actionsThrough: number;
 }
 
 export interface IssuedExtractSummary {
@@ -120,6 +127,8 @@ export interface IssuedExtractSummary {
 
 export interface ExtractEngineOptions {
   readonly ledger: Ledger;
+  /** The registers' clock, read at the moment a return is issued. */
+  readonly actionClock?: ActionClock;
   readonly entityId: string;
   readonly currency: Currency;
   readonly basis: Basis;
@@ -797,6 +806,7 @@ export class ExtractEngine {
     const extract: IssuedExtract = {
       ...draft,
       booksThrough: this.deps.ledger.allJournals().length,
+      actionsThrough: this.deps.actionClock?.count ?? 0,
       id: `RI-EX-${this.deps.entityId}-${String(++this.seq).padStart(5, '0')}`,
       version: previous ? previous.version + 1 : 1,
       fingerprint,

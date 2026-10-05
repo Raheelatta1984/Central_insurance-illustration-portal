@@ -20,7 +20,20 @@
  * say. Actions that move money all post journals, so the returns themselves are anchored exactly.
  */
 
+/**
+ * The registers' clock. Every recorded action takes the next ticket, so the order the registers
+ * lived their actions in survives a restart — including the actions that post no journal and
+ * therefore share a book position with whatever else happened at the same moment.
+ */
+export class ActionClock {
+  private taken = 0;
+  next(): number { return ++this.taken; }
+  get count(): number { return this.taken; }
+}
+
 export interface RegisterAction {
+  /** The place this action took on the registers' own clock. */
+  readonly seq: number;
   /** Which register took the action: `reinsurance`, `retakaful`, `claims`, `takaful-claims`. */
   readonly engine: string;
   /** What it did, in the register's own vocabulary: `cede-premium`, `event-recovery`, … */
