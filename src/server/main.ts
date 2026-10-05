@@ -36,14 +36,21 @@ let state: State = started();
  * so the cost of reporting does not grow with the length of the day. A register that refuses to be
  * read — a return the store cannot place — is reported as a fact rather than thrown at the caller.
  */
-function syncStore(): { head: ReturnType<ReportingStore['headReport']>; tail: ReturnType<ReportingStore['verifySinceCheckpoint']>; written: number; error?: string } {
+function syncStore(): {
+  head: ReturnType<ReportingStore['headReport']>;
+  tail: ReturnType<ReportingStore['verifySinceCheckpoint']>;
+  written: number; rebased: boolean; note?: string; error?: string;
+} {
   try {
-    const written = state.store.appendFrom(exportReporting(state.world));
+    const write = state.store.appendFrom(exportReporting(state.world));
     state.storeError = undefined;
-    return { head: state.store.headReport(), tail: state.store.verifySinceCheckpoint(), written };
+    return {
+      head: state.store.headReport(), tail: state.store.verifySinceCheckpoint(),
+      written: write.written, rebased: write.rebased, ...(write.note ? { note: write.note } : {}),
+    };
   } catch (error) {
     state.storeError = error instanceof Error ? error.message : String(error);
-    return { head: state.store.headReport(), tail: state.store.verifySinceCheckpoint(), written: 0, error: state.storeError };
+    return { head: state.store.headReport(), tail: state.store.verifySinceCheckpoint(), written: 0, rebased: false, error: state.storeError };
   }
 }
 
@@ -281,7 +288,8 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       const sync = syncStore();
       json(res, 200, {
         version: sync.head.version, entries: sync.head.seq, headHash: sync.head.hash,
-        checkpoints: sync.head.checkpoints, written: sync.written,
+        checkpoints: sync.head.checkpoints, written: sync.written, rebased: sync.rebased,
+        ...(sync.note ? { note: sync.note } : {}),
         tail: sync.tail,
         ...(sync.error ? { error: sync.error } : {}),
         limitation: 'the store lives with the process: the registers themselves are what a restart restores, and this log is the running proof that nothing they reported was dropped',
@@ -317,8 +325,8 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       const batchSize = Number(payload['batchSize'] ?? 25);
       if (!Number.isInteger(batchSize) || batchSize < 1) { json(res, 400, { error: `batchSize must be a whole number of records from 1, not ${String(payload['batchSize'])}` }); return true; }
       try {
-        const written = state.store.appendFrom(exportReporting(state.world), { batchSize });
-        json(res, 200, { written, ...state.store.headReport(), tail: state.store.verifySinceCheckpoint() });
+        const write = state.store.appendFrom(exportReporting(state.world), { batchSize });
+        json(res, 200, { ...write, ...state.store.headReport(), tail: state.store.verifySinceCheckpoint() });
       } catch (error) {
         json(res, 409, { error: error instanceof Error ? error.message : String(error) });
       }
@@ -368,7 +376,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
         detail: logOk ? `${report.detail}; the log agrees with itself` : `${report.detail}; THE LOG DIFFERS — ${rebuiltAgainstSnapshot.agrees ? storeAgainstRebuilt.detail : rebuiltAgainstSnapshot.detail}`,
         actions: report.actions,
         store: {
-          ...sync.head, written: sync.written, tail,
+          ...sync.head, written: sync.written, rebased: sync.rebased, ...(sync.note ? { note: sync.note } : {}), tail,
           entries: sync.head.seq,
           snapshotAgrees: { ...rebuiltAgainstSnapshot, ...(records ? { records } : {}) },
           rebuiltAgrees: storeAgainstRebuilt,

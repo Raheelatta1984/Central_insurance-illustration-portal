@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-05T06:51:54.145Z",
+  "capturedAt": "2026-10-05T07:08:43.381Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -3910,7 +3910,7 @@
         "from": 1,
         "to": 5,
         "version": 2,
-        "headHash": "8fc5bfc012cfa9f3",
+        "headHash": "8295fee44300fa58",
         "entries": [
           {
             "seq": 1,
@@ -3966,7 +3966,7 @@
         "head": {
           "version": 2,
           "seq": 25,
-          "hash": "8fc5bfc012cfa9f3",
+          "hash": "8295fee44300fa58",
           "checkpoints": 1
         },
         "checked": true,
@@ -4050,6 +4050,7 @@
         "headHash": "8264b2001ed2435c",
         "checkpoints": 1,
         "written": 18,
+        "rebased": false,
         "tail": {
           "intact": true,
           "entries": 18,
@@ -4062,8 +4063,8 @@
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-05T06:51:41.842Z",
-        "fingerprint": "672abfa9aa486dfb",
+        "takenAt": "2026-10-05T07:08:31.138Z",
+        "fingerprint": "7eec11e2a437b83c",
         "accounts": 168,
         "journals": 87,
         "fxRates": 2,
@@ -4086,7 +4087,7 @@
           }
         },
         "schemaVersion": 4,
-        "fingerprint": "9adcdc5e786ddd65",
+        "fingerprint": "f7922db824393e78",
         "bytes": 35022,
         "outbox": {
           "entries": 25,
@@ -11378,7 +11379,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-05T06:49:47.401Z"
+        "generatedAt": "2026-10-05T07:06:36.617Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {
@@ -11650,23 +11651,23 @@
         ]
       }
     },
-    "POST /api/ingest/commit 2da99bf4": {
+    "POST /api/ingest/commit c7ac56ca": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791183063729",
+        "loadId": "LOAD-1791184073053",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
       }
     },
-    "POST /api/ingest/submit 21b293b2": {
+    "POST /api/ingest/submit 2779a218": {
       "status": 200,
       "body": {
         "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791183063729"
+        "loadId": "LOAD-1791184073053"
       }
     },
     "POST /api/onboarding/ocr 4d38892d": {
@@ -12918,9 +12919,11 @@
       "status": 200,
       "body": {
         "written": 0,
+        "rebased": false,
+        "note": "",
         "version": 2,
         "seq": 25,
-        "hash": "8fc5bfc012cfa9f3",
+        "hash": "8295fee44300fa58",
         "checkpoints": 1,
         "tail": {
           "intact": true,
@@ -12933,12 +12936,12 @@
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "b6972ec1ea8344d8",
+        "fingerprint": "3da00e3987ab60fa",
         "fingerprintStable": true,
         "journals": 87,
         "restoredJournals": 87,
         "bytes": 89049,
-        "restoreMs": 45,
+        "restoreMs": 43,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -12971,7 +12974,7 @@
       "status": 200,
       "body": {
         "ok": true,
-        "detail": "every register replayed: 14 action(s) taken again and 9 extract(s), 7 decision(s), 4 letter(s) and 3 filing(s) came back the same, the books were replayed with them, and the outbox chains from the beginning",
+        "detail": "every register replayed: 14 action(s) taken again and 9 extract(s), 7 decision(s), 4 letter(s) and 3 filing(s) came back the same, the books were replayed with them, and the outbox chains from the beginning; the log agrees with itself",
         "actions": {
           "expected": 45,
           "replayed": 14,
@@ -12981,13 +12984,25 @@
         "store": {
           "version": 2,
           "seq": 25,
-          "hash": "8fc5bfc012cfa9f3",
+          "hash": "8295fee44300fa58",
           "checkpoints": 1,
           "written": 0,
+          "rebased": false,
           "tail": {
             "intact": true,
             "entries": 25,
             "detail": "the tail verifies from the checkpoint at entry 0: 25 entr(ies) after it are chained from the checkpoint's own hash"
+          },
+          "entries": 25,
+          "snapshotAgrees": {
+            "agrees": true,
+            "detail": "25 entr(ies) agree entry for entry, hash for hash: nothing dropped, nothing re-created differently, nothing reordered"
+          },
+          "rebuiltAgrees": {
+            "agrees": true,
+            "detail": "25 entr(ies) agree entry for entry, hash for hash: nothing dropped, nothing re-created differently, nothing reordered",
+            "held": 25,
+            "rebuilt": 25
           },
           "current": true
         },
@@ -13058,7 +13073,7 @@
         "fingerprint": "21c0340b6c8f1dff",
         "schemaVersion": 4,
         "bytes": 35023,
-        "restoreMs": 57,
+        "restoreMs": 66,
         "registers": {
           "actions": {
             "expected": 45,
@@ -13079,7 +13094,8 @@
           },
           "decisions": {
             "expected": 7,
-            "restored": 7,
+            "matched": 5,
+            "restored": 2,
             "agree": 7,
             "disagreements": []
           },
@@ -13682,12 +13698,12 @@
     "POST /api/extracts/verify c36ca302": {
       "extractId": "RI-EX-ALK-CONV-00001"
     },
-    "POST /api/ingest/commit 2da99bf4": {
-      "loadId": "LOAD-1791183063729"
+    "POST /api/ingest/commit c7ac56ca": {
+      "loadId": "LOAD-1791184073053"
     },
-    "POST /api/ingest/submit 21b293b2": {
+    "POST /api/ingest/submit 2779a218": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791183063729"
+      "loadId": "LOAD-1791184073053"
     },
     "POST /api/onboarding/ocr 4d38892d": {
       "documentType": "emirates-id",

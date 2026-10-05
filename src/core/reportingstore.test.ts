@@ -27,22 +27,23 @@ describe('the reporting store', () => {
     const state = exportReporting(world);
     const store = new ReportingStore();
     const written = store.appendFrom(state);
-    expect(written).toBeGreaterThan(0);
-    expect(store.head.seq).toBe(written);
+    expect(written.written).toBeGreaterThan(0);
+    expect(written.rebased).toBe(false);
+    expect(store.head.seq).toBe(written.written);
     // the same log, built two ways: from the beginning and by adding the difference
     const whole = buildOutbox(state, '2026-10-05');
     expect(store.head.entries.map((e) => e.hash)).toEqual(whole.map((e) => e.hash));
     const verdict = verifyOutbox(store.head.entries);
     expect(verdict.intact, verdict.detail).toBe(true);
-    expect(verdict.entries).toBe(written);
+    expect(verdict.entries).toBe(written.written);
   });
 
   it('adds only what is new, and refuses a record it already holds rather than chaining it twice', () => {
     const world = live();
     const state = exportReporting(world);
     const store = new ReportingStore();
-    const written = store.appendFrom(state);
-    expect(store.appendFrom(state)).toBe(0);
+    const written = store.appendFrom(state).written;
+    expect(store.appendFrom(state).written).toBe(0);
     expect(store.head.seq).toBe(written);
     // a repeat is a stop: the log answers 'already recorded' with the entry that holds it
     expect(() => store.append([{ book: 'conventional', register: 'extract', recordId: state.conventional.extracts[0]!.id, content: {}, at: '2026-10-05T10:00:00+04:00' }]))
@@ -278,5 +279,36 @@ describe('the log across a restart', () => {
     // and the report says so honestly: matched decisions are matched, replayed ones are replayed
     expect(report.decisions.matched + report.decisions.restored).toBe(report.decisions.expected);
     expect(report.decisions.restored).toBeGreaterThan(0);
+  });
+
+  it('rebuilds the log when a record is created that belongs before entries already logged', () => {
+    // The recorder's own session hit this: a conventional extract issued *after* the log already held
+    // decisions belongs before those decisions in the records' own walk, and an appended log would
+    // then read 'conventional decision' at entry 7 where a fresh walk reads 'conventional extract'.
+    // An append-only log cannot carry that order, so the store rebuilds in the records' order and says
+    // why — and the identical entries keep their identical hashes.
+    const world = live();
+    const state = exportReporting(world);
+    const store = new ReportingStore();
+    const first = store.appendFrom({ ...state, conventional: { ...state.conventional, extracts: [] } });
+    expect(first.rebased).toBe(false);
+    const partial = store.head.entries.map((e) => e.hash);
+    // now the returns appear, and they belong at the head of the walk
+    const second = store.appendFrom(state);
+    expect(second.rebased).toBe(true);
+    expect(second.note).toMatch(/rebuilt in the records' own order/);
+    expect(second.note).toMatch(/entry 1 is/);
+    // the store now equals a fresh whole-log build, entry for entry
+    const whole = buildOutbox(state, '2026-10-05');
+    expect(store.head.entries.map((e) => e.hash)).toEqual(whole.map((e) => e.hash));
+    expect(store.reconcile(whole).agrees).toBe(true);
+    expect(store.head.seq).toBe(whole.length);
+    // an entry that did not move keeps its hash: the decisions were at 1..n before and sit at m..n+m-1
+    // now, so their numbers moved and their hashes moved with them — but the record itself is the same
+    const moved = whole.filter((e) => partial.length > 0 && e.register === 'decision' && e.recordId === 'UAE-RULE-000001');
+    expect(moved.length).toBe(1);
+    expect(moved[0]!.contentHash).toBe(store.head.entries.find((e) => e.recordId === 'UAE-RULE-000001')!.contentHash);
+    // and the version the reader already had is still readable, unchanged
+    expect(store.read(1)!.entries.length).toBe(partial.length);
   });
 });

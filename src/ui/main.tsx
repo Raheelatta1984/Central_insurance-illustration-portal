@@ -1803,7 +1803,11 @@ type OutboxPage = {
 
 type RegisterDrill = {
   ok: boolean; detail: string; fingerprint: string; schemaVersion: number; bytes: number; restoreMs: number;
-  store?: StoreHead & { current: boolean };
+  store?: StoreHead & {
+    current: boolean;
+    snapshotAgrees?: { agrees: boolean; detail: string; divergedAt?: number };
+    rebuiltAgrees?: { agrees: boolean; detail: string; divergedAt?: number };
+  };
   actions?: { expected: number; replayed: number; skipped: number; disagreements: string[] };
   books: { posted: number; agree: boolean; detail: string };
   replays: string[];
@@ -1902,7 +1906,16 @@ function RegisterStore() {
           <div className="stat"><span>Result</span><b>{drill.ok ? <Pill tone="ok">every register replayed</Pill> : <Pill tone="bad">did not reproduce</Pill>}</b></div>
           <div className="stat"><span>Restore time</span><b>{drill.restoreMs} ms</b></div>
           {drill.store && (
-            <div className="stat"><span>The log the drill carried</span><b>v{drill.store.version} · {drill.store.entries} entr(ies) {drill.store.current ? <Pill tone="ok">the snapshot and the store agree</Pill> : <Pill tone="warn">the store is ahead of the snapshot</Pill>}</b></div>
+            <>
+              <div className="stat"><span>The log the drill carried</span><b>v{drill.store.version} · {drill.store.entries} entr(ies) {drill.store.current ? <Pill tone="ok">all three copies of the log agree</Pill> : <Pill tone="bad">the logs part company</Pill>}</b></div>
+              {drill.store.snapshotAgrees && (
+                <div className="stat"><span>The snapshot's log against the rebuilt registers</span><b>{drill.store.snapshotAgrees.agrees ? <Pill tone="ok">entry for entry</Pill> : <Pill tone="bad">differs at entry {drill.store.snapshotAgrees.divergedAt}</Pill>}</b></div>
+              )}
+              {drill.store.rebuiltAgrees && (
+                <div className="stat"><span>The running store against the rebuilt registers</span><b>{drill.store.rebuiltAgrees.agrees ? <Pill tone="ok">entry for entry</Pill> : <Pill tone="bad">differs at entry {drill.store.rebuiltAgrees.divergedAt}</Pill>}</b></div>
+              )}
+              <p className="muted small">{drill.store.snapshotAgrees?.detail}</p>
+            </>
           )}
           <div className="stat"><span>Actions taken again</span><b>{drill.actions?.replayed ?? 0} replayed · {drill.actions?.skipped ?? 0} already here</b></div>
           <div className="stat"><span>Books under the registers</span><b>{drill.books.agree ? <Pill tone="ok">replayed with them</Pill> : <Pill tone="bad">did not come back the same</Pill>}</b></div>

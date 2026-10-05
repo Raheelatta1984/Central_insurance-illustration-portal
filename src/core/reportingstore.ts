@@ -22,8 +22,8 @@
  */
 
 import {
-  RegisterStoreError, OutboxEntry, OutboxComparison, outboxKey, chainOutbox, outboxItems, outboxHash,
-  compareOutboxes, verifyOutbox,
+  RegisterStoreError, OutboxEntry, OutboxItem, OutboxComparison, outboxKey, chainOutbox, outboxItems,
+  outboxHash, compareOutboxes, verifyOutbox,
 } from './registerstore.js';
 import { ReportingState } from './registerstore.js';
 
@@ -97,11 +97,38 @@ export class ReportingStore {
   private readonly index = new Map<string, number>();
   private readonly marks: StoreCheckpoint[] = [];
   private readonly checkpointEvery: number;
+  /** Why the last write did what it did, in a sentence — empty when the log simply grew. */
+  private lastNote = '';
 
   constructor(options: { readonly checkpointEvery?: number } = {}) {
     this.checkpointEvery = Math.max(1, options.checkpointEvery ?? 100);
     this.versions.push(Object.freeze({ version: 0, entries: Object.freeze([]), headHash: '0'.repeat(16), seq: 0 }));
     this.marks.push(Object.freeze({ version: 0, seq: 0, hash: '0'.repeat(16) }));
+  }
+
+  /**
+   * Rebuild the log in the records' own order. A log is a chain: an entry can only follow the entries
+   * before it, so a record created *later* that belongs **before** entries already logged cannot be
+   * appended — the log would then carry an order that disagrees with the records it stands for, and a
+   * reader comparing it with a fresh walk would find entry 7 to be a decision in one and an extract in
+   * the other. When that happens the store rebuilds the log from the whole walk as a new version. The
+   * chain is deterministic, so every entry that did not move keeps its hash; only the order is put
+   * right. Older versions stay readable, so a reader mid-stream is never surprised.
+   */
+  private rebase(items: readonly OutboxItem[], note: string): StoreVersion {
+    const entries = Object.freeze(chainOutbox(items));
+    const version: StoreVersion = Object.freeze({
+      version: this.head.version + 1, entries, headHash: entries[entries.length - 1]!.hash, seq: entries.length,
+    });
+    this.versions.push(version);
+    this.index.clear();
+    for (const entry of entries) this.index.set(outboxKey(entry), entry.seq);
+    const last = this.marks[this.marks.length - 1]!;
+    if (entries.length - last.seq >= this.checkpointEvery || entries.length < last.seq) {
+      this.marks.push(Object.freeze({ version: version.version, seq: entries.length, hash: version.headHash }));
+    }
+    this.lastNote = note;
+    return version;
   }
 
   /** Take a verified log as the store's own. Only the chain's own verdict opens this door. */
@@ -234,10 +261,33 @@ export class ReportingStore {
     return version;
   }
 
-  /** Write every record the registers hold that the store does not — the console's own catch-up. */
-  appendFrom(state: ReportingState, options: { readonly batchSize?: number } = {}): number {
-    const held = new Set(this.head.entries.map((entry) => outboxKey(entry)));
-    const fresh = outboxItems(state).filter((item) => !held.has(outboxKey(item)));
+  /**
+   * Write every record the registers hold that the store does not — the console's own catch-up. The
+   * held log has to be a **prefix** of the records' own order for an append to be honest; when it is
+   * not, the log is rebuilt rather than grown, and the answer says so.
+   */
+  appendFrom(state: ReportingState, options: { readonly batchSize?: number } = {}): {
+    readonly written: number; readonly rebased: boolean; readonly note: string;
+  } {
+    const canonical = outboxItems(state);
+    const heldKeys = this.head.entries.map((entry) => outboxKey(entry));
+    const prefix = heldKeys.length <= canonical.length
+      && heldKeys.every((key, i) => outboxKey(canonical[i]!) === key);
+    if (!prefix) {
+      const where = heldKeys.findIndex((key, i) => canonical[i] === undefined || outboxKey(canonical[i]!) !== key);
+      const held = this.head.entries[where];
+      const wanted = canonical[where];
+      this.rebase(canonical, `the log was rebuilt in the records' own order: entry ${where + 1} is `
+        + `${held ? `${held.book} ${held.register} ${held.recordId}` : 'absent'} in the log as it stood and `
+        + `${wanted ? `${wanted.book} ${wanted.register} ${wanted.recordId}` : 'absent'} in the walk over the registers`);
+      return { written: canonical.length, rebased: true, note: this.lastNote };
+    }
+    const fresh = canonical.slice(heldKeys.length);
+    if (fresh.length === 0) {
+      // nothing new is a real answer, not an error: the registers have not reported since the last write
+      this.lastNote = '';
+      return { written: 0, rebased: false, note: '' };
+    }
     const size = Math.max(1, options.batchSize ?? 25);
     let written = 0;
     for (let i = 0; i < fresh.length; i += size) {
@@ -245,12 +295,12 @@ export class ReportingStore {
       this.append(batch.map((item) => ({ book: item.book, register: item.register, recordId: item.recordId, content: item.content, at: item.at })));
       written += batch.length;
     }
-    if (fresh.length === 0) {
-      // nothing new is a real answer, not an error: the registers have not reported since the last write
-      return 0;
-    }
-    return written;
+    this.lastNote = '';
+    return { written, rebased: false, note: '' };
   }
+
+  /** What the last write had to say about itself. */
+  get note(): string { return this.lastNote; }
 
   /**
    * Prove the tail: everything after the last checkpoint, starting from the checkpoint's own hash.
