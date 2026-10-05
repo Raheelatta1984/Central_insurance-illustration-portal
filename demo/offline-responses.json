@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-05T05:34:46.563Z",
+  "capturedAt": "2026-10-05T06:51:54.145Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -3904,12 +3904,166 @@
         ]
       }
     },
+    "GET /api/reporting/outbox": {
+      "status": 200,
+      "body": {
+        "from": 1,
+        "to": 5,
+        "version": 2,
+        "headHash": "8fc5bfc012cfa9f3",
+        "entries": [
+          {
+            "seq": 1,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00001",
+            "contentHash": "5df766477a2404f4",
+            "prevHash": "0000000000000000",
+            "hash": "2a46bd6117d46982"
+          },
+          {
+            "seq": 2,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00002",
+            "contentHash": "c956889836fa8195",
+            "prevHash": "2a46bd6117d46982",
+            "hash": "3537f427ffc8f693"
+          },
+          {
+            "seq": 3,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00003",
+            "contentHash": "520f5fdfb4568614",
+            "prevHash": "3537f427ffc8f693",
+            "hash": "1de6eea632b92219"
+          },
+          {
+            "seq": 4,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00004",
+            "contentHash": "d0f6989461db2447",
+            "prevHash": "1de6eea632b92219",
+            "hash": "985db1892bb6e0fc"
+          },
+          {
+            "seq": 5,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00005",
+            "contentHash": "c951de79f70d8312",
+            "prevHash": "985db1892bb6e0fc",
+            "hash": "9361faa1dbba377f"
+          }
+        ],
+        "head": {
+          "version": 2,
+          "seq": 25,
+          "hash": "8fc5bfc012cfa9f3",
+          "checkpoints": 1
+        },
+        "checked": true,
+        "current": true
+      }
+    },
+    "GET /api/reporting/outbox?since=0&limit=5": {
+      "status": 200,
+      "body": {
+        "from": 1,
+        "to": 5,
+        "version": 1,
+        "headHash": "8264b2001ed2435c",
+        "entries": [
+          {
+            "seq": 1,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00001",
+            "contentHash": "5df766477a2404f4",
+            "prevHash": "0000000000000000",
+            "hash": "2a46bd6117d46982"
+          },
+          {
+            "seq": 2,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00002",
+            "contentHash": "c956889836fa8195",
+            "prevHash": "2a46bd6117d46982",
+            "hash": "3537f427ffc8f693"
+          },
+          {
+            "seq": 3,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00003",
+            "contentHash": "520f5fdfb4568614",
+            "prevHash": "3537f427ffc8f693",
+            "hash": "1de6eea632b92219"
+          },
+          {
+            "seq": 4,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00004",
+            "contentHash": "d0f6989461db2447",
+            "prevHash": "1de6eea632b92219",
+            "hash": "985db1892bb6e0fc"
+          },
+          {
+            "seq": 5,
+            "at": "2026-10-05T17:00:00+04:00",
+            "book": "conventional",
+            "register": "extract",
+            "recordId": "RI-EX-ALK-CONV-00005",
+            "contentHash": "c951de79f70d8312",
+            "prevHash": "985db1892bb6e0fc",
+            "hash": "9361faa1dbba377f"
+          }
+        ],
+        "head": {
+          "version": 1,
+          "seq": 18,
+          "hash": "8264b2001ed2435c",
+          "checkpoints": 1
+        },
+        "checked": true,
+        "current": true
+      }
+    },
+    "GET /api/reporting/store": {
+      "status": 200,
+      "body": {
+        "version": 1,
+        "entries": 18,
+        "headHash": "8264b2001ed2435c",
+        "checkpoints": 1,
+        "written": 18,
+        "tail": {
+          "intact": true,
+          "entries": 18,
+          "detail": "the tail verifies from the checkpoint at entry 0: 18 entr(ies) after it are chained from the checkpoint's own hash"
+        },
+        "limitation": "the store lives with the process: the registers themselves are what a restart restores, and this log is the running proof that nothing they reported was dropped"
+      }
+    },
     "GET /api/state": {
       "status": 200,
       "body": {
         "ledgerSchemaVersion": 1,
-        "takenAt": "2026-10-05T05:34:37.939Z",
-        "fingerprint": "6d6e41b9bd56d76a",
+        "takenAt": "2026-10-05T06:51:41.842Z",
+        "fingerprint": "672abfa9aa486dfb",
         "accounts": 168,
         "journals": 87,
         "fxRates": 2,
@@ -3932,8 +4086,8 @@
           }
         },
         "schemaVersion": 4,
-        "fingerprint": "09caca059da46f39",
-        "bytes": 34492,
+        "fingerprint": "9adcdc5e786ddd65",
+        "bytes": 35022,
         "outbox": {
           "entries": 25,
           "intact": true,
@@ -11224,7 +11378,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-05T05:32:43.747Z"
+        "generatedAt": "2026-10-05T06:49:47.401Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {
@@ -11496,23 +11650,23 @@
         ]
       }
     },
-    "POST /api/ingest/commit d47018ce": {
+    "POST /api/ingest/commit 2da99bf4": {
       "status": 200,
       "body": {
-        "loadId": "LOAD-1791178439915",
+        "loadId": "LOAD-1791183063729",
         "committed": true,
         "committedKeys": 2,
         "duplicates": 0
       }
     },
-    "POST /api/ingest/submit 20d12d38": {
+    "POST /api/ingest/submit 21b293b2": {
       "status": 200,
       "body": {
         "summary": "2/2 rows accepted, 0 quarantined, 0 duplicates suppressed, not yet committed",
         "anomalies": [],
         "quarantine": [],
         "supervisorNotes": [],
-        "loadId": "LOAD-1791178439915"
+        "loadId": "LOAD-1791183063729"
       }
     },
     "POST /api/onboarding/ocr 4d38892d": {
@@ -12760,16 +12914,31 @@
         "journalId": "RI-ALK-CONV-000016"
       }
     },
+    "POST /api/reporting/store/append 5ae57dd3": {
+      "status": 200,
+      "body": {
+        "written": 0,
+        "version": 2,
+        "seq": 25,
+        "hash": "8fc5bfc012cfa9f3",
+        "checkpoints": 1,
+        "tail": {
+          "intact": true,
+          "entries": 25,
+          "detail": "the tail verifies from the checkpoint at entry 0: 25 entr(ies) after it are chained from the checkpoint's own hash"
+        }
+      }
+    },
     "POST /api/state/drill": {
       "status": 200,
       "body": {
         "ok": true,
-        "fingerprint": "6026f6702f0511a1",
+        "fingerprint": "b6972ec1ea8344d8",
         "fingerprintStable": true,
         "journals": 87,
         "restoredJournals": 87,
         "bytes": 89049,
-        "restoreMs": 43,
+        "restoreMs": 45,
         "balances": [
           {
             "entityId": "ALK-CONV",
@@ -12808,6 +12977,19 @@
           "replayed": 14,
           "skipped": 31,
           "disagreements": []
+        },
+        "store": {
+          "version": 2,
+          "seq": 25,
+          "hash": "8fc5bfc012cfa9f3",
+          "checkpoints": 1,
+          "written": 0,
+          "tail": {
+            "intact": true,
+            "entries": 25,
+            "detail": "the tail verifies from the checkpoint at entry 0: 25 entr(ies) after it are chained from the checkpoint's own hash"
+          },
+          "current": true
         },
         "books": {
           "posted": 0,
@@ -12873,10 +13055,10 @@
           "conventional extract RI-EX-ALK-CONV-00007 → RI-EX-ALK-CONV-00007",
           "filing CBUAE-MONTHLY/2026-10-05/002 → SUB-000002 (filed)"
         ],
-        "fingerprint": "746fbf65a3053da2",
+        "fingerprint": "21c0340b6c8f1dff",
         "schemaVersion": 4,
-        "bytes": 34493,
-        "restoreMs": 60,
+        "bytes": 35023,
+        "restoreMs": 57,
         "registers": {
           "actions": {
             "expected": 45,
@@ -13500,12 +13682,12 @@
     "POST /api/extracts/verify c36ca302": {
       "extractId": "RI-EX-ALK-CONV-00001"
     },
-    "POST /api/ingest/commit d47018ce": {
-      "loadId": "LOAD-1791178439915"
+    "POST /api/ingest/commit 2da99bf4": {
+      "loadId": "LOAD-1791183063729"
     },
-    "POST /api/ingest/submit 20d12d38": {
+    "POST /api/ingest/submit 21b293b2": {
       "text": "full_name,emirates_id,email,phone,date_of_birth\nKhalid Rashed,784-1992-5556667-8,khalid@example.ae,+971 56 555 6667,1992-02-02\nBad Row,784-0000-0000000-0,wrong-email,+971 50 000 0000,not-a-date",
-      "loadId": "LOAD-1791178439915"
+      "loadId": "LOAD-1791183063729"
     },
     "POST /api/onboarding/ocr 4d38892d": {
       "documentType": "emirates-id",
@@ -13561,6 +13743,9 @@
       "reference": "LC-RECORDED",
       "expiresAt": "2027-03-31",
       "by": "treasury"
+    },
+    "POST /api/reporting/store/append 5ae57dd3": {
+      "batchSize": 25
     },
     "POST /api/submissions/acknowledge e63c438e": {
       "entity": "takaful"

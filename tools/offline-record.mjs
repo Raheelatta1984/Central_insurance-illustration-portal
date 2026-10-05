@@ -92,6 +92,12 @@ await direct('GET', '/regulatory/uae-rules');
 await direct('GET', '/wording');
 await direct('GET', '/submissions');
 await direct('GET', '/extracts');
+/* The reporting log: what the store holds, a page of it read from the beginning and from the end,
+   a catch-up write, and the refusal a reader gets when it asks for entries past the end. The card
+   presses the same three readers, so the replay has to answer for all of them. */
+await direct('GET', '/reporting/store');
+await direct('GET', '/reporting/outbox?since=0&limit=5');
+await direct('POST', '/reporting/store/append', { batchSize: 25 });
 const issued = grab.get('GET /api/extracts')?.body;
 await direct('POST', '/extracts/verify', issued ? { extractId: issued.conventional.id } : {});
 await direct('POST', '/reinsurance/security/call', {
@@ -126,7 +132,7 @@ const script = [
   // The register drill runs last, on the world the session has traded. The store carries the actions
   // the registers took and the registers' own clock, so the drill is green here as well — and this
   // is the harder proof: a restart of an afternoon's work, not of a world that has just seeded.
-  ['Durability', ['Run durability drill', 'Rebuild every register from the snapshot']],
+  ['Durability', ['Catch the log up with the registers', 'Read the log from the beginning', 'Run durability drill', 'Rebuild every register from the snapshot']],
   ['Tour', ['Start the tour']],
 ];
 
