@@ -377,4 +377,42 @@ describe('the envelope', () => {
     expect(() => open(wrongCodec, { expectSchema: LEDGER_SCHEMA_VERSION })).toThrow(/codec 99/);
     expect(() => open(parsed, { expectSchema: 5, migrations: REPORTING_MIGRATIONS })).toThrow(/no migration path/);
   });
+
+  it('places a return issued before an unjournaled action by the registers\u2019 clock, the record the browser proved red', () => {
+    // RI-EX-ALK-CONV-00002 is the record the full console session left behind: a return issued, and
+    // then a claim registered and triaged around it. Neither of those posts a journal, so the books
+    // alone cannot say which came first and a rebuild guessed. The clock can say, and this pins it.
+    const world = live();
+    const target = bundle(world);
+    const before = world.extracts.list()[0]!;
+    const held = world.ledger.allJournals().length;
+    // a claim registered after that return was issued: actions that post no journal at all, so the
+    // books are no help in saying whether they came before the return or after it
+    const claim = world.claims.register({
+      policyId: 'POL-1001', cause: 'medical', lossDate: '2026-04-02', reportedAt: '2026-04-02',
+      description: 'Notified after the return was issued and before the rebuild.',
+    });
+    world.claims.triage(claim.id, {
+      coverInForce: true, exclusionsApplied: [], daysLate: 0, fraudSignals: 0,
+    });
+    // nothing reached the books, which is exactly why the book position cannot order this
+    expect(world.ledger.allJournals().length).toBe(held);
+    const snapshot = sealReporting(exportReporting(target), '2026-10-05T20:30:00+04:00');
+    const reopened = openReporting(JSON.parse(snapshot.text));
+    const restarted = fresh();
+    const restartTarget = bundle(restarted);
+    const books = openBooksTimeline(restartTarget, exportLedger(world.ledger));
+    const report = restoreReporting(reopened.state, restartTarget, { outbox: reopened.outbox, books });
+    expect(report.ok, report.detail).toBe(true);
+    expect(report.detail).toContain('every register replayed');
+    expect(report.books.agree).toBe(true);
+    // the return that was issued before the claim is back with the same fingerprint and the same
+    // clock position: it was re-issued before the claim existed again
+    const back = restarted.extracts.list().find((e) => e.id === before.id)!;
+    expect(back.fingerprint).toBe(before.fingerprint);
+    expect(back.actionsThrough).toBe(before.actionsThrough);
+    expect(back.booksThrough).toBe(before.booksThrough);
+    const claimBack = restarted.claims.list().find((c) => c.id === claim.id)!;
+    expect(claimBack.decisions.length).toBe(world.claims.list().find((c) => c.id === claim.id)!.decisions.length);
+  });
 });
