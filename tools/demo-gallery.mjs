@@ -23,8 +23,12 @@ const cards = pack.modules.map((m, i) => {
   const posterJpg = resolve(ROOT, 'demo', m.screenshot.replace('.png', '-poster.jpg'));
   const posterPng = resolve(ROOT, 'demo', m.screenshot);
   const poster = existsSync(posterJpg) ? b64(posterJpg, 'image/jpeg') : b64(posterPng, 'image/png');
+  // Recordings are the heaviest thing a repo can carry and the least worth carrying: they are
+  // regenerated from the live app in one command. DEMO_NO_VIDEO=1 builds the gallery with its
+  // screenshots embedded and no video at all, which is what the committed pack uses.
+  const noVideo = process.env.DEMO_NO_VIDEO === '1';
   const smallMp4 = resolve(ROOT, 'demo/video/small', `${m.id}.mp4`);
-  const video = existsSync(smallMp4) ? b64(smallMp4, 'video/mp4') : null;
+  const video = !noVideo && existsSync(smallMp4) ? b64(smallMp4, 'video/mp4') : null;
   return `
   <section class="card" id="${m.id}">
     <div class="head">
@@ -39,8 +43,8 @@ const cards = pack.modules.map((m, i) => {
       : `<img alt="Screenshot of the ${m.label} module" src="${poster}">`}
     <div class="links">
       <a href="${m.screenshotFull}" target="_blank" rel="noopener">full-page screenshot</a>
-      <a href="${m.video}" target="_blank" rel="noopener">full-quality recording</a>
-      ${m.videoFallback ? `<a href="${m.videoFallback}" target="_blank" rel="noopener">webm version</a>` : ''}
+      ${noVideo ? '<span class="muted">recording produced by <code>npm run demo:pack</code></span>' : `<a href="${m.video}" target="_blank" rel="noopener">full-quality recording</a>`}
+      ${!noVideo && m.videoFallback ? `<a href="${m.videoFallback}" target="_blank" rel="noopener">webm version</a>` : ''}
     </div>
   </section>`;
 }).join('\n');
