@@ -18,3 +18,9 @@ demo/video/raw/
 # Anchored to the repository root on purpose: an unanchored "site/" would also ignore
 # demo/site/index.html, which is the landing page and must be committed.
 /site/
+
+# recording artefacts: the pack cuts them locally on demand and they are never committed.
+# Committing them once cost this repository 188 MiB of history; the rules are repeated here, at the
+# end of the file, so nothing above them can leave the directory silently unignored again.
+demo/screens/
+demo/video/
