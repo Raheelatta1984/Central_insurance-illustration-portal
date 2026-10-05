@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ReportingStore } from './reportingstore.js';
-import { RegisterStoreError, buildOutbox, outboxKey, verifyOutbox } from './registerstore.js';
+import {
+  RegisterStoreError, buildOutbox, compareOutboxes, openBooksTimeline, openReporting,
+  outboxKey, restoreReporting, sealReporting, verifyOutbox,
+} from './registerstore.js';
+import { exportLedger } from './persistence.js';
 import { buildWorld, ensureFilings, extractSnapshot, submissionSnapshot, uaeRuleSnapshot, wordingSnapshot } from './demo.js';
 import { exportReporting } from './registerstore.js';
 
@@ -163,5 +167,116 @@ describe('the reporting store', () => {
       .toThrow(/a record identity is required/);
     expect(() => store.append([item('E-1', 'sometime last Tuesday')])).toThrow(/not a timestamp/);
     expect(store.head.seq).toBe(0);
+  });
+
+describe('the log across a restart', () => {
+  const bundle = (world: ReturnType<typeof live>) => ({
+    ledger: world.ledger, extracts: world.extracts, takafulExtracts: world.takafulExtracts,
+    rules: world.rules, wording: world.wording, submissions: world.submissions,
+    takafulSubmissions: world.takafulSubmissions, registers: world.registers,
+  });
+
+  it('adopts a snapshot\u2019s log only when the chain verifies, and refuses one that does not', () => {
+    const state = exportReporting(live());
+    const whole = buildOutbox(state, '2026-10-05');
+    const adopted = ReportingStore.fromSnapshot(whole);
+    expect(adopted.head.seq).toBe(whole.length);
+    expect(adopted.head.headHash).toBe(whole[whole.length - 1]!.hash);
+    // a log whose entry 2 was edited is refused outright: an unverified log is not half-adopted
+    const edited = whole.map((e, i) => (i === 1 ? { ...e, contentHash: 'x'.repeat(16) } : e));
+    expect(() => ReportingStore.fromSnapshot(edited)).toThrow(/does not verify, so it is not adopted/);
+    // an empty log is a store with nothing in it, which is a real state, not a failure
+    expect(ReportingStore.fromSnapshot([]).head.seq).toBe(0);
+  });
+
+  it('reconciles the running log against a rebuilt one, naming the entry that differs', () => {
+    const state = exportReporting(live());
+    const whole = buildOutbox(state, '2026-10-05');
+    const store = ReportingStore.fromSnapshot(whole.slice(0, whole.length));
+    // the same walk, over the same records: they agree entry for entry
+    const agree = store.reconcile(buildOutbox(state, '2026-10-05'));
+    expect(agree.agrees, agree.detail).toBe(true);
+    expect(agree.held).toBe(whole.length);
+    // a record the rebuild dropped
+    const dropped = whole.filter((_, i) => i !== 3);
+    const droppedVerdict = store.reconcile(dropped);
+    expect(droppedVerdict.agrees, JSON.stringify({ dropped: droppedVerdict, n: whole.length })).toBe(false);
+    expect(droppedVerdict.divergedAt).toBe(4);
+    // a record the rebuild re-created differently
+    const altered = whole.map((e, i) => (i === 2 ? { ...e, recordId: `${e.recordId}-again` } : e));
+    const alteredVerdict = store.reconcile(altered);
+    expect(alteredVerdict.agrees).toBe(false);
+    expect(alteredVerdict.detail).toMatch(/records .* in one log and/);
+    // a rebuild that stopped early is a difference too, and the detail says which side is longer
+    const short = store.reconcile(whole.slice(0, 5));
+    expect(short.agrees).toBe(false);
+    expect(short.detail).toMatch(/the held one carries \d+ entr\(ies\) and the other 5/);
+  });
+
+  it('survives a restart: the rebuilt registers produce the snapshot\u2019s log entry for entry', () => {
+    // the whole console's session, then the drill's own steps: seal, open, rebuild in a fresh world,
+    // and the log the rebuilt registers produce has to be the log the snapshot carried
+    const world = live();
+    const state = exportReporting(world);
+    const sealed = sealReporting(state, '2026-10-05T20:30:00+04:00');
+    const reopened = openReporting(JSON.parse(sealed.text));
+    const restarted = live();
+    const target = bundle(restarted);
+    const books = openBooksTimeline(target, exportLedger(world.ledger));
+    const report = restoreReporting(reopened.state, target, { outbox: reopened.outbox, books });
+    expect(report.ok, report.detail).toBe(true);
+    const rebuilt = buildOutbox(exportReporting(target), '2026-10-05T20:30:00+04:00');
+    const against = compareOutboxes(reopened.outbox, rebuilt);
+    expect(against.agrees, against.detail).toBe(true);
+    expect(rebuilt.length).toBe(reopened.outbox.length);
+    // and a store rebuilt from the snapshot holds exactly that log
+    const store = ReportingStore.fromSnapshot(reopened.outbox);
+    expect(store.reconcile(rebuilt).agrees).toBe(true);
+    expect(store.head.entries.map((e) => e.hash)).toEqual(rebuilt.map((e) => e.hash));
+  });
+});
+
+  it('keeps two decisions taken on identical facts as two records — the collapse this fixed', () => {
+    // The console ran the same unrated-counterparty check twice on one day. They are two decisions:
+    // an append-only log holds both, and a restore that matched a decision by its content folded them
+    // into one, so the rebuilt log came back a record short and its seventh entry was a different
+    // decision from the seventh entry of the log it was given. This is that case, pinned.
+    const world = live();
+    const facts = {
+      at: '2026-10-05', by: 'reinsurance/motor-desk', basis: 'conventional' as const,
+      subject: 'a motor facultative offer from a reinsurer with no rating on file',
+      retentionPlan: { approved: true, reviewedAt: '2026-02-10' },
+      counterparty: { name: 'Gulf Reinsurance PSC', licensedIn: 'foreign' as const, licenceClass: 'all' },
+      cession: { treatyId: 'FAC-MOTOR', kind: 'facultative' as const, lineOfBusiness: 'motor', shareBps: 4_000 },
+      documents: ['home-state licence certificate', 'CBUAE licence extract', 'approved retention and reinsurance plan', 'board minute of the annual review'],
+    };
+    const first = world.rules.enforce(facts);
+    const second = world.rules.enforce(facts);
+    expect(first.id).not.toBe(second.id);
+    expect(first.evidence).toBe(second.evidence);
+    const sealed = sealReporting(exportReporting(world), '2026-10-05T20:30:00+04:00');
+    const reopened = openReporting(JSON.parse(sealed.text));
+    const restarted = live();
+    const target = {
+      ledger: restarted.ledger, extracts: restarted.extracts, takafulExtracts: restarted.takafulExtracts,
+      rules: restarted.rules, wording: restarted.wording, submissions: restarted.submissions,
+      takafulSubmissions: restarted.takafulSubmissions, registers: restarted.registers,
+    };
+    const books = openBooksTimeline(target, exportLedger(world.ledger));
+    const report = restoreReporting(reopened.state, target, { outbox: reopened.outbox, books });
+    expect(report.ok, report.detail).toBe(true);
+    // both survive, under their own ids, and the log the rebuilt registers produce agrees entry for entry
+    const held = restarted.rules.decisions();
+    expect(held.length).toBe(world.rules.decisions().length);
+    for (const id of [first.id, second.id]) {
+      expect(held.some((d) => d.id === id), `${id} is missing from the rebuilt rules log`).toBe(true);
+    }
+    expect(held.filter((d) => d.evidence === first.evidence).length).toBe(2);
+    const rebuilt = buildOutbox(exportReporting(target), '2026-10-05T20:30:00+04:00');
+    const verdict = compareOutboxes(reopened.outbox, rebuilt);
+    expect(verdict.agrees, verdict.detail).toBe(true);
+    // and the report says so honestly: matched decisions are matched, replayed ones are replayed
+    expect(report.decisions.matched + report.decisions.restored).toBe(report.decisions.expected);
+    expect(report.decisions.restored).toBeGreaterThan(0);
   });
 });

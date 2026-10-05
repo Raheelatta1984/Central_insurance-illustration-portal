@@ -22,7 +22,8 @@
  */
 
 import {
-  RegisterStoreError, OutboxEntry, outboxKey, chainOutbox, outboxItems, outboxHash,
+  RegisterStoreError, OutboxEntry, OutboxComparison, outboxKey, chainOutbox, outboxItems, outboxHash,
+  compareOutboxes, verifyOutbox,
 } from './registerstore.js';
 import { ReportingState } from './registerstore.js';
 
@@ -76,6 +77,22 @@ export interface AppendOptions {
 const ISO = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?/;
 
 export class ReportingStore {
+  /**
+   * A store rebuilt from a snapshot's log. The snapshot is the durable artefact and this is the
+   * running one, so a restart gets them back in step by construction: the chain is verified before it
+   * is adopted, and a log that does not verify is refused outright rather than half-adopted.
+   */
+  static fromSnapshot(entries: readonly OutboxEntry[]): ReportingStore {
+    const store = new ReportingStore();
+    if (entries.length === 0) return store;
+    const verdict = verifyOutbox(entries);
+    if (!verdict.intact) {
+      throw new RegisterStoreError(`the snapshot's log does not verify, so it is not adopted: ${verdict.detail}`);
+    }
+    store.adopt(entries);
+    return store;
+  }
+
   private readonly versions: StoreVersion[] = [];
   private readonly index = new Map<string, number>();
   private readonly marks: StoreCheckpoint[] = [];
@@ -85,6 +102,25 @@ export class ReportingStore {
     this.checkpointEvery = Math.max(1, options.checkpointEvery ?? 100);
     this.versions.push(Object.freeze({ version: 0, entries: Object.freeze([]), headHash: '0'.repeat(16), seq: 0 }));
     this.marks.push(Object.freeze({ version: 0, seq: 0, hash: '0'.repeat(16) }));
+  }
+
+  /** Take a verified log as the store's own. Only the chain's own verdict opens this door. */
+  private adopt(entries: readonly OutboxEntry[]): void {
+    const merged = Object.freeze([...entries]);
+    this.versions.push(Object.freeze({
+      version: 1, entries: merged, headHash: merged[merged.length - 1]!.hash, seq: merged.length,
+    }));
+    for (const entry of entries) this.index.set(outboxKey(entry), entry.seq);
+    this.marks.push(Object.freeze({ version: 1, seq: merged.length, hash: merged[merged.length - 1]!.hash }));
+  }
+
+  /**
+   * Compare what the store holds with a log rebuilt from the registers. The rebuilt log is an
+   * independent witness: same walk, same records, and if the two part company the entry is named.
+   */
+  reconcile(rebuilt: readonly OutboxEntry[]): OutboxComparison & { readonly held: number; readonly rebuilt: number } {
+    const verdict = compareOutboxes(this.head.entries, rebuilt);
+    return { ...verdict, held: this.head.entries.length, rebuilt: rebuilt.length };
   }
 
   /** The version a fresh reader gets. */

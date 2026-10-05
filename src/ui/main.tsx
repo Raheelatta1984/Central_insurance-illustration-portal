@@ -1809,7 +1809,7 @@ type RegisterDrill = {
   replays: string[];
   registers: {
     extracts: { expected: number; restored: number; fingerprintsAgree: boolean; duplicates: number };
-    decisions: { expected: number; restored: number; agree: number; disagreements: string[] };
+    decisions: { expected: number; matched?: number; restored: number; agree: number; disagreements: string[] };
     letters: { expected: number; restored: number; fingerprintsAgree: boolean };
     filings: { expected: number; restored: number; statusesAgree: boolean };
     outbox: { intact: boolean; entries: number; detail: string };
@@ -1912,7 +1912,7 @@ function RegisterStore() {
             head={['Register', 'In the snapshot', 'Rebuilt', 'Same']}
             rows={[
               ['Returns', drill.registers.extracts.expected, drill.registers.extracts.restored, drill.registers.extracts.fingerprintsAgree],
-              ['Rule decisions', drill.registers.decisions.expected, drill.registers.decisions.agree, drill.registers.decisions.disagreements.length === 0],
+              ['Rule decisions', drill.registers.decisions.expected, `${drill.registers.decisions.matched ? `${drill.registers.decisions.matched} matched · ` : ''}${drill.registers.decisions.agree} the same`, drill.registers.decisions.disagreements.length === 0],
               ['Letters', drill.registers.letters.expected, drill.registers.letters.restored, drill.registers.letters.fingerprintsAgree],
               ['Filings', drill.registers.filings.expected, drill.registers.filings.restored, drill.registers.filings.statusesAgree],
             ].map((r) => [

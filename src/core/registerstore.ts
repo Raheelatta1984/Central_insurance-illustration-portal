@@ -246,6 +246,90 @@ export function verifyOutbox(entries: readonly OutboxEntry[]): ChainVerdict {
   return { intact: true, entries: entries.length, detail: `${entries.length} record(s) chained from the beginning: nothing dropped, nothing reordered, nothing edited` };
 }
 
+/**
+ * Compare two logs entry for entry. This is the check the store cannot do for itself: a log that was
+ * rebuilt from the registers after a restart is an independent witness to what the registers held —
+ * the same walk, from the same records — and if one entry differs, a record was dropped, re-created
+ * differently or reordered, and the difference is named rather than counted.
+ */
+/**
+ * The record an entry stands for, found by its book, register and id. A comparison can only say two
+ * entries differ; this is what a reader needs to see *what* differs — the return's version, the
+ * decision's facts, the letter's fingerprint — without opening a snapshot by hand.
+ */
+export function recordForEntry(state: ReportingState, entry: OutboxEntry): unknown {
+  const book = entry.book === 'takaful' ? state.takaful : state.conventional;
+  switch (entry.register) {
+    case 'extract': return book.extracts.find((e) => e.id === entry.recordId);
+    case 'filing': {
+      const id = entry.recordId.split(':')[0]!;
+      const filing = book.filings.find((f) => f.id === id);
+      if (!filing) return undefined;
+      // one filing is three possible entries: filed, acknowledged, rejected
+      const part = entry.recordId.split(':')[1];
+      if (part === 'acknowledged') return { id: filing.id, acknowledgedAt: filing.acknowledgedAt, supervisorReference: filing.supervisorReference };
+      if (part === 'rejected') return { id: filing.id, rejectedAt: filing.rejectedAt, rejectionReason: filing.rejectionReason };
+      return filing;
+    }
+    case 'decision': {
+      const decisions = (state.conventional.decisions as readonly { id: string }[]);
+      const inBook = (book as unknown as { decisions?: readonly { id: string }[] }).decisions;
+      return (inBook ?? decisions).find((d) => d.id === entry.recordId);
+    }
+    case 'letter': {
+      const inBook = (book as unknown as { letters?: readonly { id: string }[] }).letters;
+      return inBook?.find((d) => d.id === entry.recordId);
+    }
+    default: return undefined;
+  }
+}
+
+export interface OutboxComparison {
+  readonly agrees: boolean;
+  readonly detail: string;
+  readonly divergedAt?: number;
+  /** When the two logs part company, the two entries, so a reader sees what differs and not only that
+   *  something does. An entry a reader cannot inspect is a difference a reader cannot act on. */
+  readonly divergence?: { readonly held: OutboxEntry; readonly rebuilt: OutboxEntry };
+}
+
+export function compareOutboxes(
+  held: readonly OutboxEntry[],
+  rebuilt: readonly OutboxEntry[],
+): OutboxComparison {
+  const limit = Math.min(held.length, rebuilt.length);
+  /** Every field an entry is, in the order a reader would notice them differing. */
+  const FIELDS: readonly (keyof OutboxEntry)[] = ['seq', 'book', 'register', 'recordId', 'contentHash', 'prevHash', 'hash'];
+  for (let i = 0; i < limit; i += 1) {
+    const a = held[i]!;
+    const b = rebuilt[i]!;
+    const differs = FIELDS.filter((field) => a[field] !== b[field]);
+    if (differs.length === 0) continue;
+    const field = differs[0]!;
+    const why = field === 'seq'
+      ? `entry ${i + 1} is numbered ${a.seq} in one log and ${b.seq} in the other`
+      : field === 'recordId'
+        ? `entry ${a.seq} records ${a.recordId} in one log and ${b.recordId} in the other${differs.includes('hash') ? '' : ', under the hash of the record it replaced'}`
+        : field === 'contentHash'
+          ? `entry ${a.seq} (${a.book} ${a.register} ${a.recordId}) carries different content: ${a.contentHash} against ${b.contentHash}`
+          : field === 'book' || field === 'register'
+            ? `entry ${a.seq} belongs to ${a.book} ${a.register} in one log and ${b.book} ${b.register} in the other`
+            : `entry ${a.seq} ${field === 'prevHash' ? 'does not carry the same hash of the entry before it' : 'carries a different hash'}: ${String(a[field])} against ${String(b[field])}`;
+    return { agrees: false, detail: why, divergedAt: a.seq, divergence: { held: a, rebuilt: b } };
+  }
+  if (held.length !== rebuilt.length) {
+    const longer = held.length > rebuilt.length ? 'held' : 'rebuilt';
+    return {
+      agrees: false, divergedAt: limit + 1,
+      detail: `the two logs part company after entry ${limit}: the ${longer} one carries ${Math.max(held.length, rebuilt.length)} entr(ies) and the other ${Math.min(held.length, rebuilt.length)}`,
+    };
+  }
+  return {
+    agrees: true,
+    detail: `${held.length} entr(ies) agree entry for entry, hash for hash: nothing dropped, nothing re-created differently, nothing reordered`,
+  };
+}
+
 /** Schema 1 held the books and nothing else; schema 2 adds the four reporting registers. */
 export const REPORTING_MIGRATIONS: readonly Migration[] = [
   {
@@ -473,7 +557,15 @@ export function openBooksTimeline(target: RegisterBundle, books: LedgerState): B
 export interface RestoreReport {
   readonly actions: { expected: number; replayed: number; skipped: number; disagreements: readonly string[] };
   readonly extracts: { expected: number; restored: number; fingerprintsAgree: boolean; duplicates: number };
-  readonly decisions: { expected: number; restored: number; agree: number; disagreements: readonly string[] };
+  readonly decisions: {
+    expected: number;
+    /** Decisions the target already held under the same id, compared rather than taken again. */
+    matched: number;
+    /** Decisions the replay took, because the target did not hold them. */
+    restored: number;
+    agree: number;
+    disagreements: readonly string[];
+  };
   readonly letters: { expected: number; restored: number; fingerprintsAgree: boolean };
   readonly filings: { expected: number; restored: number; statusesAgree: boolean };
   readonly books: { posted: number; agree: boolean; detail: string };
@@ -729,21 +821,40 @@ export function restoreReporting(
 
   /* ------------------------------------------------------- decisions and letters */
 
-  // Rule decisions: replay the facts and check the same answer comes back. A decision the register
-  // already holds is not taken twice — a restore may run against a world that is partly there, and a
-  // restore is the one operation that must never duplicate a record.
+  // Rule decisions: replay the facts, in the order they were taken, and check that the same decision
+  // comes back **under the same id**. A decision is matched by its id and never by its content: two
+  // decisions taken the same day with the same facts are two records, and a restore that folded them
+  // into one would hand back a log that is shorter than the one it was given. (That is not a
+  // hypothesis — it is the defect this loop was rewritten for: the console ran the same unrated
+  // counterparty check twice, and the rebuilt rules log came back one decision short.)
   let decisionAgreements = 0;
-  let skippedDecisions = 0;
+  let matchedDecisions = 0;
+  let replayedDecisions = 0;
   for (const record of state.conventional.decisions) {
-    const present = target.rules.decisions().find((d) => d.subject === record.facts.subject
-      && d.at === record.facts.at && d.by === record.facts.by && d.evidence === record.evidence);
-    if (present) { skippedDecisions += 1; decisionAgreements += 1; continue; }
-    try {
-      const replayed = target.rules.enforce(record.facts);
-      if (replayed.decision === record.decision && replayed.findings.length === record.findingCount && replayed.evidence === record.evidence) {
+    const present = target.rules.decisions().find((d) => d.id === record.id);
+    if (present) {
+      matchedDecisions += 1;
+      const sameFacts = toJson(present.facts) === toJson(record.facts);
+      if (present.decision === record.decision && present.findings.length === record.findingCount
+        && present.evidence === record.evidence && sameFacts) {
         decisionAgreements += 1;
       } else {
+        disagreements.push(`${record.id}: the register already holds a different decision under this id — `
+          + `${present.decision} against ${record.decision}${sameFacts ? '' : ', taken on different facts'}`);
+      }
+      continue;
+    }
+    try {
+      const replayed = target.rules.enforce(record.facts);
+      replayedDecisions += 1;
+      const sameFacts = toJson(replayed.facts) === toJson(record.facts);
+      if (replayed.id !== record.id) {
+        disagreements.push(`${record.id}: the replay numbered this decision ${replayed.id} — decisions are replayed in the order they were taken, so the registers have lost their place`);
+      } else if (replayed.decision !== record.decision || replayed.findings.length !== record.findingCount
+        || replayed.evidence !== record.evidence || !sameFacts) {
         disagreements.push(`${record.id}: the facts now answer ${replayed.decision}, not ${record.decision}`);
+      } else {
+        decisionAgreements += 1;
       }
     } catch (err) {
       disagreements.push(`${record.id}: ${String((err as Error).message)}`);
@@ -763,7 +874,6 @@ export function restoreReporting(
   }
   const lettersAgree = state.conventional.letters.every((record) =>
     target.wording.documents().some((d) => d.id === record.id && d.fingerprint === record.fingerprint));
-  void skippedDecisions;
 
   /* ---------------------------------------------------------------------- verdict */
 
@@ -790,7 +900,8 @@ export function restoreReporting(
     extracts: { expected: expectedExtracts, restored: restoredExtracts, fingerprintsAgree, duplicates },
     decisions: {
       expected: state.conventional.decisions.length,
-      restored: new Set(state.conventional.decisions.map((d) => d.facts.subject)).size,
+      matched: matchedDecisions,
+      restored: replayedDecisions,
       agree: decisionAgreements,
       disagreements: Object.freeze(disagreements.filter((d) => /^UAE-RULE/.test(d))),
     },

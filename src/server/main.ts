@@ -14,7 +14,7 @@ import { AE_PACK, preSaleCheck } from '../core/regulatory.js';
 import { UaeRuleError } from '../core/uae.js';
 import { WordingError } from '../core/wording.js';
 import { SubmissionError } from '../core/submission.js';
-import { openBooksTimeline, REGISTER_STORE_LIMITATION, exportReporting, openReporting, restoreReporting, sealReporting, verifyOutbox } from '../core/registerstore.js';
+import { buildOutbox, compareOutboxes, openBooksTimeline, recordForEntry, REGISTER_STORE_LIMITATION, exportReporting, openReporting, restoreReporting, sealReporting, verifyOutbox } from '../core/registerstore.js';
 import { ReportingStore } from '../core/reportingstore.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
@@ -344,14 +344,36 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       // the books as they stood when it was issued, then settled so the end state is compared
       const books = openBooksTimeline(target, exportLedger(world.ledger));
       const report = restoreReporting(reopened.state, target, { outbox: reopened.outbox, books });
-      // the log the snapshot carried, and the tail the running store can prove without walking it
-      const tail = state.store.verifySinceCheckpoint();
+      // Three copies of one log, and they all have to agree: the one the snapshot carried, the one the
+      // rebuilt registers produce from the records they now hold — an independent witness, since it is
+      // the same walk over the state the restart put back — and the one the running store holds. The
+      // snapshot's log is verified where it is opened, and the running store's is verified at load; this
+      // is the comparison that catches a record the replay dropped or re-created differently.
+      const rebuiltLog = buildOutbox(exportReporting(target), `${world.asOf}T20:30:00+04:00`);
+      const rebuiltAgainstSnapshot = compareOutboxes(reopened.outbox, rebuiltLog);
+      // when the two logs part company, hand the reader both records rather than both hashes
+      const rebuiltState = exportReporting(target);
+      const records = rebuiltAgainstSnapshot.divergence
+        ? {
+          held: recordForEntry(reopened.state, rebuiltAgainstSnapshot.divergence.held),
+          rebuilt: recordForEntry(rebuiltState, rebuiltAgainstSnapshot.divergence.rebuilt),
+        }
+        : undefined;
       const sync = syncStore();
+      const storeAgainstRebuilt = state.store.reconcile(rebuiltLog);
+      const tail = state.store.verifySinceCheckpoint();
+      const logOk = rebuiltAgainstSnapshot.agrees && storeAgainstRebuilt.agrees;
       json(res, 200, {
-        ok: report.ok,
-        detail: report.detail,
+        ok: report.ok && logOk,
+        detail: logOk ? `${report.detail}; the log agrees with itself` : `${report.detail}; THE LOG DIFFERS — ${rebuiltAgainstSnapshot.agrees ? storeAgainstRebuilt.detail : rebuiltAgainstSnapshot.detail}`,
         actions: report.actions,
-        store: { ...sync.head, written: sync.written, tail, current: sync.head.seq === reopened.outbox.length },
+        store: {
+          ...sync.head, written: sync.written, tail,
+          entries: sync.head.seq,
+          snapshotAgrees: { ...rebuiltAgainstSnapshot, ...(records ? { records } : {}) },
+          rebuiltAgrees: storeAgainstRebuilt,
+          current: rebuiltAgainstSnapshot.agrees && storeAgainstRebuilt.agrees,
+        },
         books: report.books,
         replays: report.replays,
         fingerprint: sealed.snapshot.fingerprint,
