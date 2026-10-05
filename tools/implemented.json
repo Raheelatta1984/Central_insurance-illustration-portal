@@ -1,5 +1,5 @@
 {
-  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done \u2014 but only if the evidence files exist and the module's tests pass.",
+  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done — but only if the evidence files exist and the module's tests pass. A module's test list may name more than one file: every listed file must pass before anything is claimed.",
   "modules": {
     "PLAT": {
       "keywords": [
@@ -14,7 +14,13 @@
         "restore",
         "recovery drill",
         "schema migration",
-        "point-in-time"
+        "point-in-time",
+        "transactional write",
+        "reader isolation",
+        "outbox streaming",
+        "incremental outbox",
+        "checkpoint",
+        "version a reader opens"
       ],
       "layers": [
         "design",
@@ -28,7 +34,9 @@
         "src/core/ledger.ts",
         "src/core/labels.ts",
         "src/core/persistence.ts",
-        "src/server/main.ts"
+        "src/server/main.ts",
+        "src/core/reportingstore.ts",
+        "src/core/reportingstore.test.ts"
       ],
       "tests": [
         "src/core/ledger.test.ts",
@@ -543,7 +551,10 @@
   },
   "testCommand": "npx vitest run --reporter=dot",
   "testFiles": {
-    "PLAT": "src/core/ledger.test.ts",
+    "PLAT": [
+      "src/core/ledger.test.ts",
+      "src/core/reportingstore.test.ts"
+    ],
     "PARTY": "src/core/party.test.ts",
     "PROD": "src/core/unitlinked.test.ts",
     "QUOT": "src/core/regulatory.test.ts",

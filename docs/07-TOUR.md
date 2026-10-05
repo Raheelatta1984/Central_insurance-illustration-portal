@@ -297,6 +297,24 @@ That is the product working, not a bug. The refusals worth trying on purpose:
 
 This is an honest inventory, mirrored in `docs/06-QA-REPORT.md`: policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet built. `ledger/runs.jsonl` records every backlog chunk the fleet has claimed with its evidence; `node tools/fleet.mjs` prints how many are still open.
 
+## Step 13 — the reporting log, and what it is for (5 min)
+
+Open **Durability** and look above the two drill buttons. Under *"The log, as the store holds it"* the
+console reports the version a reader would open, how many entries it holds, the head hash that proves
+them and how many were written by the last catch-up. The line beneath is the one worth reading aloud:
+the tail is verified **from the last checkpoint**, so a reader proves what has happened since without
+walking the whole chain — and the checkpoint's own hash still stands behind it, which is why a rewrite
+below the checkpoint fails loudly.
+
+Then press the readers. *Read the log from the beginning* shows the first five entries with the book
+they were reported in, the register, the record id and the time; *Read the last five* opens the end of
+the log and says whether the reader is current. Ask the room to find the two filings: the conventional
+and the takaful return **both number from SUB-000001**, and the log holds both because a record's
+identity is the book, the register and the id — the defect this chunk found, visible as two rows.
+
+Finally *Rebuild every register from the snapshot*: the drill's result now carries the log it sealed
+and says whether the snapshot and the store agree on the same records.
+
 ## Where the numbers live
 
 | Surface | Where it is computed |
@@ -310,3 +328,4 @@ This is an honest inventory, mirrored in `docs/06-QA-REPORT.md`: policy administ
 | Group consolidation | `src/core/groupfinance.ts` |
 | Micro-duration cover | `src/core/billing.ts` |
 | Snapshot and restore | `src/core/persistence.ts` |
+| The reporting log: versions, streaming, checkpoints | `src/core/reportingstore.ts`, `src/core/registerstore.ts` |

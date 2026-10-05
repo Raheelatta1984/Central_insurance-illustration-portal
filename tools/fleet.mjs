@@ -58,18 +58,23 @@ function evidenceFilesOk(files) {
 const testCache = new Map();
 function moduleTestsPass(module, files) {
   if (testCache.has(module)) return testCache.get(module);
-  const testFile = implemented.testFiles[module];
-  if (!testFile) { testCache.set(module, { ok: false, note: 'no test file mapped' }); return testCache.get(module); }
-  try {
-    execFileSync('npx', ['vitest', 'run', testFile, '--reporter=dot'], { cwd: root, stdio: 'pipe', timeout: 180_000 });
-    const result = { ok: true, note: `${testFile} passed`, evidence: [testFile, ...files] };
-    testCache.set(module, result);
-    return result;
-  } catch (err) {
-    const result = { ok: false, note: `${testFile} FAILED: ${String(err).slice(0, 200)}`, evidence: files };
-    testCache.set(module, result);
-    return result;
+  const mapped = implemented.testFiles[module];
+  // A module may be proved by more than one file, and every one of them has to pass: a capability
+  // that spans the books and the reporting log is not proved by the books alone.
+  const testFiles = Array.isArray(mapped) ? mapped : mapped ? [mapped] : [];
+  if (testFiles.length === 0) { testCache.set(module, { ok: false, note: 'no test file mapped' }); return testCache.get(module); }
+  for (const testFile of testFiles) {
+    try {
+      execFileSync('npx', ['vitest', 'run', testFile, '--reporter=dot'], { cwd: root, stdio: 'pipe', timeout: 180_000 });
+    } catch (err) {
+      const result = { ok: false, note: `${testFile} FAILED: ${String(err).slice(0, 200)}`, evidence: files };
+      testCache.set(module, result);
+      return result;
+    }
   }
+  const result = { ok: true, note: `${testFiles.join(' + ')} passed`, evidence: [...testFiles, ...files] };
+  testCache.set(module, result);
+  return result;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
