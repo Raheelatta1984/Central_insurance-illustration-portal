@@ -15,6 +15,7 @@ import { UaeRuleError } from '../core/uae.js';
 import { WordingError } from '../core/wording.js';
 import { SubmissionError } from '../core/submission.js';
 import { openBooksTimeline, REGISTER_STORE_LIMITATION, exportReporting, openReporting, restoreReporting, sealReporting, verifyOutbox } from '../core/registerstore.js';
+import { ReportingStore } from '../core/reportingstore.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
 import { ClaimsEngine, ClaimCause } from '../core/claims.js';
@@ -25,8 +26,26 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '0.0.0.0';
 const DIST = resolve(process.cwd(), 'dist');
 
-interface State { world: World; version: number }
-let state: State = { world: buildWorld(), version: 1 };
+interface State { world: World; version: number; store: ReportingStore; storeError?: string }
+const started = (): State => ({ world: buildWorld(), version: 1, store: new ReportingStore() });
+let state: State = started();
+
+/**
+ * Bring the store up to date with the registers and report where it stands. The registers report a
+ * thing the moment it happens; this walks them for what the log does not hold and chains only that,
+ * so the cost of reporting does not grow with the length of the day. A register that refuses to be
+ * read — a return the store cannot place — is reported as a fact rather than thrown at the caller.
+ */
+function syncStore(): { head: ReturnType<ReportingStore['headReport']>; tail: ReturnType<ReportingStore['verifySinceCheckpoint']>; written: number; error?: string } {
+  try {
+    const written = state.store.appendFrom(exportReporting(state.world));
+    state.storeError = undefined;
+    return { head: state.store.headReport(), tail: state.store.verifySinceCheckpoint(), written };
+  } catch (error) {
+    state.storeError = error instanceof Error ? error.message : String(error);
+    return { head: state.store.headReport(), tail: state.store.verifySinceCheckpoint(), written: 0, error: state.storeError };
+  }
+}
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -256,6 +275,56 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       return true;
     }
 
+    case 'GET /reporting/store': {
+      // Where the store stands: the version a reader would open, how far the outbox goes, the head
+      // hash that proves it, and the tail verified from the last checkpoint rather than from genesis.
+      const sync = syncStore();
+      json(res, 200, {
+        version: sync.head.version, entries: sync.head.seq, headHash: sync.head.hash,
+        checkpoints: sync.head.checkpoints, written: sync.written,
+        tail: sync.tail,
+        ...(sync.error ? { error: sync.error } : {}),
+        limitation: 'the store lives with the process: the registers themselves are what a restart restores, and this log is the running proof that nothing they reported was dropped',
+      });
+      return true;
+    }
+
+    case 'GET /reporting/outbox': {
+      // The log, streamed from an entry number. A reader that has already proved entry 200 asks for
+      // everything after it and gets a page with the head hash it can compare against its own.
+      const sync = syncStore();
+      const since = Number(url.searchParams.get('since') ?? '0');
+      const limitRaw = url.searchParams.get('limit');
+      const limit = limitRaw === null ? undefined : Number(limitRaw);
+      if (!Number.isInteger(since) || since < 0) { json(res, 400, { error: `since must be a whole number of entries from 0, not ${url.searchParams.get('since')}` }); return true; }
+      if (limit !== undefined && (!Number.isInteger(limit) || limit < 0)) { json(res, 400, { error: `limit must be a whole number of entries, not ${limitRaw}` }); return true; }
+      try {
+        const page = state.store.outboxSince(since, limit);
+        json(res, 200, {
+          ...page, head: sync.head, checked: sync.tail.intact,
+          current: page.headHash === sync.head.hash,
+          ...(sync.error ? { error: sync.error } : {}),
+        });
+      } catch (error) {
+        json(res, 409, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return true;
+    }
+
+    case 'POST /reporting/store/append': {
+      // Catch the log up with the registers on demand, in batches of the caller's size, so a console
+      // that has been busy can be brought current without one large write.
+      const batchSize = Number(payload['batchSize'] ?? 25);
+      if (!Number.isInteger(batchSize) || batchSize < 1) { json(res, 400, { error: `batchSize must be a whole number of records from 1, not ${String(payload['batchSize'])}` }); return true; }
+      try {
+        const written = state.store.appendFrom(exportReporting(state.world), { batchSize });
+        json(res, 200, { written, ...state.store.headReport(), tail: state.store.verifySinceCheckpoint() });
+      } catch (error) {
+        json(res, 409, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return true;
+    }
+
     case 'POST /state/registers/drill': {
       // The restart drill: seal the registers, throw the live objects away, rebuild them in a fresh
       // world from the text alone, and report what came back — including the outbox chain.
@@ -275,10 +344,14 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       // the books as they stood when it was issued, then settled so the end state is compared
       const books = openBooksTimeline(target, exportLedger(world.ledger));
       const report = restoreReporting(reopened.state, target, { outbox: reopened.outbox, books });
+      // the log the snapshot carried, and the tail the running store can prove without walking it
+      const tail = state.store.verifySinceCheckpoint();
+      const sync = syncStore();
       json(res, 200, {
         ok: report.ok,
         detail: report.detail,
         actions: report.actions,
+        store: { ...sync.head, written: sync.written, tail, current: sync.head.seq === reopened.outbox.length },
         books: report.books,
         replays: report.replays,
         fingerprint: sealed.snapshot.fingerprint,
@@ -871,7 +944,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     }
 
     case 'POST /reset':
-      state = { world: buildWorld(), version: state.version + 1 };
+      state = { world: buildWorld(), version: state.version + 1, store: new ReportingStore() };
       json(res, 200, { ok: true, version: state.version });
       return true;
 

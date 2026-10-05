@@ -1789,8 +1789,21 @@ type RegisterSummary = {
   limitation: string;
 };
 
+type StoreHead = {
+  version: number; entries: number; headHash: string; checkpoints: number; written: number;
+  tail: { intact: boolean; entries: number; detail: string };
+  current?: boolean;
+  error?: string;
+};
+
+type OutboxPage = {
+  from: number; to: number; version: number; headHash: string; current: boolean; checked: boolean;
+  entries: Array<{ seq: number; at: string; book: string; register: string; recordId: string }>;
+};
+
 type RegisterDrill = {
   ok: boolean; detail: string; fingerprint: string; schemaVersion: number; bytes: number; restoreMs: number;
+  store?: StoreHead & { current: boolean };
   actions?: { expected: number; replayed: number; skipped: number; disagreements: string[] };
   books: { posted: number; agree: boolean; detail: string };
   replays: string[];
@@ -1808,14 +1821,34 @@ type RegisterDrill = {
 function RegisterStore() {
   const [summary, setSummary] = useState<RegisterSummary | null>(null);
   const [drill, setDrill] = useState<RegisterDrill | null>(null);
+  const [store, setStore] = useState<StoreHead | null>(null);
+  const [page, setPage] = useState<OutboxPage | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api<RegisterSummary>('/state/registers').then(setSummary).catch(() => undefined); }, []);
+  const refreshStore = useCallback(async () => {
+    setStore(await api<StoreHead>('/reporting/store'));
+  }, []);
+  useEffect(() => {
+    api<RegisterSummary>('/state/registers').then(setSummary).catch(() => undefined);
+    refreshStore().catch(() => undefined);
+  }, [refreshStore]);
   const run = async () => {
     setBusy(true);
     try {
       setDrill(await api<RegisterDrill>('/state/registers/drill', 'POST'));
       setSummary(await api<RegisterSummary>('/state/registers'));
+      await refreshStore();
     } finally { setBusy(false); }
+  };
+  const write = async () => {
+    setBusy(true);
+    try {
+      await api<StoreHead>('/reporting/store/append', 'POST', { batchSize: 25 });
+      await refreshStore();
+    } finally { setBusy(false); }
+  };
+  const readPage = async (since: number, limit?: number) => {
+    const query = `/reporting/outbox?since=${since}${limit === undefined ? '' : `&limit=${limit}`}`;
+    try { setPage(await api<OutboxPage>(query)); } catch { setPage(null); }
   };
   return (
     <Card
@@ -1832,6 +1865,35 @@ function RegisterStore() {
         </>
       )}
       <p className="muted small">{summary?.outbox.detail}</p>
+      {store && (
+        <>
+          <h4 className="small">The log, as the store holds it</h4>
+          <div className="stat"><span>Version a reader opens</span><b>v{store.version} · {store.entries} entr(ies)</b></div>
+          <div className="stat"><span>Head hash</span><b>{store.headHash}</b></div>
+          <div className="stat"><span>Written by the last catch-up</span><b>{store.written} record(s)</b></div>
+          <div className="stat"><span>Tail from the checkpoint</span><b>{store.tail.intact ? <Pill tone="ok">{store.tail.entries} proved without the whole chain</Pill> : <Pill tone="bad">tail does not verify</Pill>}</b></div>
+          <p className="muted small">{store.tail.detail} · {store.checkpoints} checkpoint(s) held</p>
+          {store.error && <p className="small">The store stopped: {store.error}</p>}
+          <div className="row">
+            <button onClick={write} disabled={busy}>Catch the log up with the registers</button>
+            <button onClick={() => readPage(0, 5)} disabled={busy}>Read the log from the beginning</button>
+            <button onClick={() => store && readPage(Math.max(0, store.entries - 5))} disabled={busy}>Read the last five</button>
+          </div>
+          {page && (
+            <>
+              <p className="muted small">Entries {page.from}–{page.to} of {page.version === store.version ? 'this' : 'an earlier'} version · {page.current ? 'the reader is current' : 'more to come'} · {page.checked ? 'the tail verifies' : 'the tail does not verify'}</p>
+              <table>
+                <thead><tr><th>#</th><th>Book</th><th>Register</th><th>Record</th><th>At</th></tr></thead>
+                <tbody>
+                  {page.entries.map((entry) => (
+                    <tr key={`${entry.seq}-${entry.recordId}`}><td>{entry.seq}</td><td>{entry.book}</td><td>{entry.register}</td><td className="mono small">{entry.recordId}</td><td className="small">{entry.at}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </>
+      )}
       <div className="row">
         <button onClick={run} disabled={busy}>{busy ? 'Rebuilding…' : 'Rebuild every register from the snapshot'}</button>
       </div>
@@ -1839,6 +1901,9 @@ function RegisterStore() {
         <>
           <div className="stat"><span>Result</span><b>{drill.ok ? <Pill tone="ok">every register replayed</Pill> : <Pill tone="bad">did not reproduce</Pill>}</b></div>
           <div className="stat"><span>Restore time</span><b>{drill.restoreMs} ms</b></div>
+          {drill.store && (
+            <div className="stat"><span>The log the drill carried</span><b>v{drill.store.version} · {drill.store.entries} entr(ies) {drill.store.current ? <Pill tone="ok">the snapshot and the store agree</Pill> : <Pill tone="warn">the store is ahead of the snapshot</Pill>}</b></div>
+          )}
           <div className="stat"><span>Actions taken again</span><b>{drill.actions?.replayed ?? 0} replayed · {drill.actions?.skipped ?? 0} already here</b></div>
           <div className="stat"><span>Books under the registers</span><b>{drill.books.agree ? <Pill tone="ok">replayed with them</Pill> : <Pill tone="bad">did not come back the same</Pill>}</b></div>
           <p className="small">{drill.detail}</p>
