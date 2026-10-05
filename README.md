@@ -80,3 +80,5 @@ node tools/generate-backlog.mjs --long-tail=99999999   # open the tap fully (lar
 ## Contributing / working here
 
 Read `AGENTS.md` first. One chunk per change, evidence stored, contracts frozen before implementation, high-risk chunks (money, units, NAV, charges, claims payouts, regulatory wording, Shariah) require named human approval.
+
+- `docs/08-COMMIT-ERROR-LEDGER.md` — every commit whose message admits an error or an open item, and where each one stands now, verified against the tree rather than the message.
