@@ -20,7 +20,11 @@
         "outbox streaming",
         "incremental outbox",
         "checkpoint",
-        "version a reader opens"
+        "version a reader opens",
+        "log survives",
+        "reconcile",
+        "rebuild in the records",
+        "three copies"
       ],
       "layers": [
         "design",

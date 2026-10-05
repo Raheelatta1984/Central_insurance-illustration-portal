@@ -315,6 +315,21 @@ identity is the book, the register and the id — the defect this chunk found, v
 Finally *Rebuild every register from the snapshot*: the drill's result now carries the log it sealed
 and says whether the snapshot and the store agree on the same records.
 
+## Step 14 — three copies of one log (4 min)
+
+Press *Rebuild every register from the snapshot* and read the drill's numbers above the result. Two
+rows matter here: **the snapshot's log against the rebuilt registers** and **the running store against
+the rebuilt registers**. They are the same log three times over — the copy the snapshot carried, the
+copy the rebuilt registers produce from the records they now hold, and the copy the running store has
+been keeping all session — compared **entry for entry, hash for hash**. A reader who wants the whole
+story of what that check has already caught can read it in the ledger: a restore that folded two
+identical decisions into one, and a log whose entry 7 was a decision where the records said extract.
+
+Under it, the rule decisions now read *"5 matched · 7 the same"*: decisions the rebuilt register already
+held under the same id were compared rather than taken again, and the rest were replayed in the order
+they were taken. Then press *Read the log from the beginning* again — the entries are in the records'
+own order, which is the order a fresh walk produces, not the order they happened to be written in.
+
 ## Where the numbers live
 
 | Surface | Where it is computed |
