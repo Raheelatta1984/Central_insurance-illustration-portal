@@ -24,7 +24,10 @@
         "log survives",
         "reconcile",
         "rebuild in the records",
-        "three copies"
+        "three copies",
+        "idempotency key",
+        "idempotency keys",
+        "retry"
       ],
       "layers": [
         "design",
@@ -40,7 +43,8 @@
         "src/core/persistence.ts",
         "src/server/main.ts",
         "src/core/reportingstore.ts",
-        "src/core/reportingstore.test.ts"
+        "src/core/reportingstore.test.ts",
+        "src/core/idempotency.ts"
       ],
       "tests": [
         "src/core/ledger.test.ts",
@@ -557,7 +561,8 @@
   "testFiles": {
     "PLAT": [
       "src/core/ledger.test.ts",
-      "src/core/reportingstore.test.ts"
+      "src/core/reportingstore.test.ts",
+      "src/core/idempotency.test.ts"
     ],
     "PARTY": "src/core/party.test.ts",
     "PROD": "src/core/unitlinked.test.ts",

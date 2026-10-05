@@ -6,6 +6,7 @@
  * lives here, which is why the tests and the console can never drift apart.
  */
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import { buildWorld, worldSnapshot, World, groupSnapshot, underwritingSnapshot, claimsSnapshot, reinsuranceSnapshot, extractSnapshot, uaeRuleSnapshot, wordingSnapshot, submissionSnapshot } from '../core/demo.js';
@@ -16,6 +17,7 @@ import { WordingError } from '../core/wording.js';
 import { SubmissionError } from '../core/submission.js';
 import { buildOutbox, compareOutboxes, openBooksTimeline, recordForEntry, REGISTER_STORE_LIMITATION, exportReporting, openReporting, restoreReporting, sealReporting, verifyOutbox } from '../core/registerstore.js';
 import { ReportingStore } from '../core/reportingstore.js';
+import { IdempotencyError, IdempotencyKeys } from '../core/idempotency.js';
 import { ocrDocument } from '../core/onboarding.js';
 import { unitsToDecimal } from '../core/units.js';
 import { ClaimsEngine, ClaimCause } from '../core/claims.js';
@@ -26,8 +28,8 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '0.0.0.0';
 const DIST = resolve(process.cwd(), 'dist');
 
-interface State { world: World; version: number; store: ReportingStore; storeError?: string }
-const started = (): State => ({ world: buildWorld(), version: 1, store: new ReportingStore() });
+interface State { world: World; version: number; store: ReportingStore; storeError?: string; keys: IdempotencyKeys }
+const started = (): State => ({ world: buildWorld(), version: 1, store: new ReportingStore(), keys: new IdempotencyKeys() });
 let state: State = started();
 
 /**
@@ -60,7 +62,23 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.map': 'application/json',
 };
 
+/**
+ * The key a mutating call arrived under, for the length of that call. Every route answers through
+ * `json()`, which is the one place an answer is final — so recording it there means a retry gets back
+ * exactly what the first call was given, status and body, without any route having to know about keys.
+ */
+const idempotency = new AsyncLocalStorage<{ key: string; request: string }>();
+
 function json(res: ServerResponse, status: number, body: unknown): void {
+  const context = idempotency.getStore();
+  if (context) {
+    try {
+      state.keys.complete(context.key, context.request, status, body, new Date().toISOString());
+    } catch {
+      // an answer that could not be recorded — the key had already been completed or released — is
+      // still an answer: the caller gets it, and the next retry simply runs the request again
+    }
+  }
   const text = JSON.stringify(body, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
   res.writeHead(status, { 'content-type': MIME['.json']!, 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
   res.end(text);
@@ -94,6 +112,55 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
   const body = req.method === 'POST' ? await readBody(req).catch(() => '') : '';
   const payload = body ? (JSON.parse(body) as Record<string, unknown>) : {};
 
+  // A mutating call may be a retry. When the caller sends an Idempotency-Key, the answer it already
+  // got is handed back and the operation is not applied twice; a key reused for a different request
+  // or one still in flight is refused rather than guessed at. Calls without a key behave exactly as
+  // before — idempotency is asked for, never assumed.
+  const keyHeader = req.headers['idempotency-key'];
+  const key = Array.isArray(keyHeader) ? keyHeader[0] : keyHeader;
+  const mutating = req.method !== 'GET' && req.method !== 'OPTIONS';
+  if (mutating && key) {
+    const request = IdempotencyKeys.requestOf(req.method ?? 'POST', path, payload);
+    let answer;
+    try {
+      answer = state.keys.begin(key, request, new Date().toISOString());
+    } catch (error) {
+      json(res, 400, { error: error instanceof IdempotencyError ? error.message : String(error) });
+      return true;
+    }
+    if (answer.state === 'replay') {
+      // the same request, answered before: the recorded answer goes back and nothing is applied again
+      res.setHeader('idempotent-replay', 'true');
+      json(res, answer.status, answer.body);
+      return true;
+    }
+    if (answer.state === 'refused') {
+      json(res, 409, { error: answer.detail, reason: answer.reason });
+      return true;
+    }
+    try {
+      return await idempotency.run({ key, request }, async () => {
+        const handled = await handleApiKeyed(req, res, url, path, payload);
+        if (!handled) {
+          state.keys.abort(key);
+          json(res, 404, { error: 'no such endpoint', path: `/api${path}` });
+        }
+        return true;
+      });
+    } catch (error) {
+      // the request failed: release the key so an honest retry can run, and record nothing
+      state.keys.abort(key);
+      throw error;
+    }
+  }
+
+  return handleApiKeyed(req, res, url, path, payload);
+}
+
+async function handleApiKeyed(
+  req: IncomingMessage, res: ServerResponse, url: URL,
+  path: string, payload: Record<string, unknown>,
+): Promise<boolean> {
   switch (`${req.method} ${path}`) {
     case 'GET /health':
       json(res, 200, { ok: true, version: state.version, asOf: state.world.asOf });
@@ -278,6 +345,15 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
         bytes: sealed.text.length,
         outbox: { entries: sealed.outbox.length, intact: chain.intact, detail: chain.detail },
         limitation: REGISTER_STORE_LIMITATION,
+      });
+      return true;
+    }
+
+    case 'GET /idempotency': {
+      // The keys the server is holding: what each one answered, and how many retries it absorbed.
+      json(res, 200, {
+        ...state.keys.summary(),
+        limitation: 'a key lives with the process and is there to absorb a retry, not to be a record of the day: the registers and their log are that record',
       });
       return true;
     }
@@ -974,7 +1050,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     }
 
     case 'POST /reset':
-      state = { world: buildWorld(), version: state.version + 1, store: new ReportingStore() };
+      state = { world: buildWorld(), version: state.version + 1, store: new ReportingStore(), keys: new IdempotencyKeys() };
       json(res, 200, { ok: true, version: state.version });
       return true;
 
