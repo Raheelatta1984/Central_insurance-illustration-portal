@@ -199,3 +199,41 @@ ID document  →  (1) chip read (NFC, ICAO 9303) → (2) government data source 
 - **Testing**: contract tests at every module boundary, property-based tests for money/units, golden-file tests for regulatory forms, and a **policy simulation harness** that replays a book of business to prove no regression.
 
 *Rationale: TypeScript + Postgres + events is the stack where a large agent fleet produces the smallest number of integration surprises. Actuarial Python and SQL warehouse tooling stay in their lanes.*
+
+## 15. The guided customer lifecycle (journey)
+
+**One sequence of gated sections, computed in the core, rendered by the console.** The sale is not a set of
+tabs; it is an order, and the order is enforced where it cannot be argued with.
+
+```
+ identity → profile → needs → recommendation → coverage → loadings → riders → medical
+        → funds → beneficiaries → uw-review → quotation → finalisation → payment
+        → routing → conversion → allocation → investment → servicing
+```
+
+Each section declares its mandatory fields (including the ones that are only mandatory in some
+circumstances), its domain gates, who owns it and what it produces. `journeyProgress()` returns one
+`autoOpen` section — the first that is neither complete nor locked — and the console opens that one and
+closes the rest. Everything behind an incomplete section reports 0% and refuses to open as a form; clicking
+it names the section holding it.
+
+Three separations make this work:
+
+- **`journey.ts` is pure.** No engine, no I/O, no money movement: the catalogue, the gates, the progress and
+  the case record. It can be tested on its own, and the API and the console read the same answer.
+- **`journeydesk.ts` holds the side effects.** Submitting a section runs real engine code: the party
+  registry, the underwriting engine (including `amendProfile`, which records a questionnaire change from →
+  to and sets the old decision aside), the quotation book, the payment book, the underwriting desk and the
+  ERP's conversion path.
+- **The domain pieces are their own modules** (`needs`, `loadings`, `allocation`, `quotation`, `pdf`,
+  `payments`, `uwroute`) so each can be reasoned about and tested without the journey around it.
+
+Money rules are unchanged and are what make the gates bite: weights are basis points and must total exactly
+10,000 (never re-scaled), the contribution is split by largest remainder so nothing is lost, a loading
+breakdown that disagrees with the underwriting engine's basis points refuses the quotation, and a policy is
+not issued on money that has not cleared.
+
+`src/ui/sections.tsx` is the same rail for the rest of the console: claims (register → reserve → decide →
+settle → recover), policy administration (premium → financial alterations → non-financial alterations),
+quotations and conversions, funds, reinsurance and master settings all describe their sections as gates.
+See [`09-CUSTOMER-JOURNEY.md`](09-CUSTOMER-JOURNEY.md).

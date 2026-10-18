@@ -231,3 +231,69 @@ describe('the book', () => {
     expect(CONDITION_RULES.find((c) => c.code === 'cardiac-history')?.referToHuman).toBe(true);
   });
 });
+
+describe('reviewing and updating the risk questionnaire', () => {
+  it('records every change from → to, with the person and the reason, and re-assesses', () => {
+    // The medical questionnaire is updated in service all the time; what must never happen is an
+    // update that leaves no trace, because the decision was taken on the answers as they stood.
+    const app = engine.register({ partyId: 'PTY-0001', productId: LIFE.productId, sumAssured: money(250_000_00n, 'AED'), at: '2026-10-01', profile: profile() });
+    const before = engine.assess(app.id);
+    expect(before.extraMortalityBps).toBe(0);
+
+    const amended = engine.amendProfile(app.id, {
+      at: '2026-10-02T09:00:00+04:00', by: 'underwriter-1',
+      reason: 'Customer disclosed offshore rig duties at the medical interview; occupation reclassified.',
+      patch: { occupationClass: 4, smoker: true, conditions: ['hypertension-controlled'] },
+    });
+
+    expect(amended.amendments.map((a) => a.field)).toEqual(['occupationClass', 'smoker', 'conditions']);
+    expect(amended.amendments[0]).toMatchObject({ from: '2', to: '4', by: 'underwriter-1' });
+    expect(amended.amendments[1]).toMatchObject({ from: 'no', to: 'yes' });
+    expect(amended.amendments[2]).toMatchObject({ from: 'none', to: 'hypertension-controlled' });
+    expect(amended.amendments.every((a) => a.reason.length >= 24)).toBe(true);
+    // Class 4 is outside this product's standard range (150 bps), plus smoker 100 bps and 25 bps.
+    expect(amended.reassessment.extraMortalityBps).toBe(150 + 100 + 25);
+    expect(engine.amendmentsFor(app.id)).toHaveLength(3);
+    expect(engine.application(app.id).profile.occupationClass).toBe(4);
+  });
+
+  it('sets aside a decision taken on the old answers, and says which one it was', () => {
+    const app = engine.register({ partyId: 'PTY-0001', productId: LIFE.productId, sumAssured: money(250_000_00n, 'AED'), at: '2026-10-01', profile: profile() });
+    engine.decide(app.id, { at: '2026-10-01', by: 'senior-underwriter' });
+    expect(engine.application(app.id).decision?.outcome).toBe('standard');
+
+    const amended = engine.amendProfile(app.id, {
+      at: '2026-10-03T09:00:00+04:00', by: 'underwriter-1',
+      reason: 'New diagnosis disclosed by the customer after the decision was taken on the file.',
+      patch: { conditions: ['cardiac-history'] },
+    });
+    expect(amended.decisionSetAside).toBe('standard');
+    expect(engine.application(app.id).decision).toBeUndefined();
+    expect(amended.reassessment.outcome).toBe('referred');
+    const trail = engine.amendmentsFor(app.id);
+    expect(trail.at(-1)).toMatchObject({ field: 'decision', to: 'set aside — the case must be decided again on the updated answers' });
+    expect(trail.at(-1)!.from).toMatch(/standard decided by senior-underwriter/);
+  });
+
+  it('records nothing when the answers did not actually change', () => {
+    const app = engine.register({ partyId: 'PTY-0001', productId: LIFE.productId, sumAssured: money(250_000_00n, 'AED'), at: '2026-10-01', profile: profile() });
+    const amended = engine.amendProfile(app.id, {
+      at: '2026-10-02', by: 'underwriter-1',
+      reason: 'Questionnaire reviewed with the customer; every answer confirmed as it stood.',
+      patch: { occupationClass: 2, smoker: false, conditions: [] },
+    });
+    expect(amended.amendments).toEqual([]);
+    expect(amended.decisionSetAside).toBeNull();
+    expect(engine.amendmentsFor(app.id)).toEqual([]);
+  });
+
+  it('insists on a name and a reason long enough to be a reason', () => {
+    const app = engine.register({ partyId: 'PTY-0001', productId: LIFE.productId, sumAssured: money(250_000_00n, 'AED'), at: '2026-10-01', profile: profile() });
+    expect(() => engine.amendProfile(app.id, { at: '2026-10-02', by: 'underwriter-1', reason: 'updated', patch: { smoker: true } }))
+      .toThrow(/at least 24 characters/);
+    expect(() => engine.amendProfile(app.id, { at: '2026-10-02', by: '   ', reason: 'Customer disclosed offshore rig duties at the interview.', patch: { smoker: true } }))
+      .toThrow(/needs the name of the person/);
+    expect(() => engine.amendProfile('UW-999999', { at: '2026-10-02', by: 'underwriter-1', reason: 'Customer disclosed offshore rig duties at the interview.', patch: {} }))
+      .toThrow(UnderwritingError);
+  });
+});

@@ -32,6 +32,8 @@ import { IdType, IdentityDocument } from './party.js';
 import { FinancialAlterationKind, NonFinancialAlterationKind, PaymentFrequency, PolicyCategory, PolicyStatus } from './erp.js';
 import { Locale } from './labels.js';
 import { RiskClass } from './ai.js';
+import { serialiseJourneyProgress } from './journeydesk.js';
+import { JourneyStageId } from './journey.js';
 
 export interface RuntimeState {
   world: World;
@@ -474,6 +476,51 @@ export async function dispatchApiRoute(
         ...(payload['at'] ? { at: String(payload['at']) } : {}),
       });
       return ok(created);
+    }
+
+    case 'POST /underwriting/amend': {
+      // The medical questionnaire is reviewed and updated in service: every change is recorded
+      // from -> to with the person and the reason, and a decision taken on the old answers is set
+      // aside so the case has to be decided again.
+      const num = (key: string): number | undefined => (payload[key] === undefined || payload[key] === '' ? undefined : Number(payload[key]));
+      const list = (key: string): string[] | undefined => (payload[key] === undefined
+        ? undefined
+        : Array.isArray(payload[key])
+          ? (payload[key] as unknown[]).map(String).map((v) => v.trim()).filter(Boolean)
+          : String(payload[key]).split(',').map((v) => v.trim()).filter(Boolean));
+      const amended = state.world.underwriting.amendProfile(String(payload['applicationId'] ?? ''), {
+        at: String(payload['at'] ?? `${state.world.asOf}T10:00:00+04:00`),
+        by: String(payload['by'] ?? 'underwriter'),
+        reason: String(payload['reason'] ?? ''),
+        patch: {
+          ...(num('age') !== undefined ? { age: num('age')! } : {}),
+          ...(payload['sex'] ? { sex: String(payload['sex']) === 'female' ? 'female' as const : 'male' as const } : {}),
+          ...(payload['smoker'] !== undefined ? { smoker: Boolean(payload['smoker']) } : {}),
+          ...(num('heightCm') !== undefined ? { heightCm: num('heightCm')! } : {}),
+          ...(num('weightKg') !== undefined ? { weightKg: num('weightKg')! } : {}),
+          ...(num('occupationClass') !== undefined ? { occupationClass: num('occupationClass')! as OccupationClass } : {}),
+          ...(list('conditions') !== undefined ? { conditions: list('conditions')! } : {}),
+          ...(list('pursuits') !== undefined ? { pursuits: list('pursuits')! } : {}),
+          ...(list('familyHistory') !== undefined ? { familyHistory: list('familyHistory')! } : {}),
+          ...(payload['residenceCountry'] ? { residenceCountry: String(payload['residenceCountry']).toUpperCase() } : {}),
+        },
+      });
+      return ok({
+        applicationId: amended.application.id,
+        amendments: amended.amendments.map((m) => ({ at: m.at, by: m.by, field: m.field, from: m.from, to: m.to, reason: m.reason })),
+        trail: state.world.underwriting.amendmentsFor(amended.application.id).map((m) => ({ at: m.at, by: m.by, field: m.field, from: m.from, to: m.to, reason: m.reason })),
+        decisionSetAside: amended.decisionSetAside,
+        reassessment: {
+          outcome: amended.reassessment.outcome,
+          extraMortalityBps: amended.reassessment.extraMortalityBps,
+          standardPremium: formatAmount(amended.reassessment.standardPremium),
+          loadedPremium: formatAmount(amended.reassessment.loadedPremium),
+          exclusions: amended.reassessment.exclusions,
+          evidence: amended.reassessment.evidence,
+          referrals: amended.reassessment.referrals,
+          reasons: amended.reassessment.reasons.map((r) => ({ code: r.code, detail: r.detail, source: r.source, referral: r.referral === true })),
+        },
+      });
     }
 
     case 'POST /underwriting/decide': {
@@ -1705,6 +1752,141 @@ export async function dispatchApiRoute(
     case 'POST /extracts/verify': {
       const id = String(payload['extractId'] ?? extractSnapshot(state.world).conventional.id);
       return ok(state.world.extracts.verify(id));
+    }
+
+    /* ------------------------------------------- the guided customer lifecycle journey
+     * One sequence of gated sections, from onboarding to investment progress. Every section is
+     * closed until the one before it is 100% complete, and the answer to "what next" is computed by
+     * the same gate the console renders — so the screen and the API cannot disagree.
+     */
+    case 'GET /journey':
+      return ok(state.world.journey.snapshot(state.world));
+
+    case 'POST /journey/open': {
+      const opened = state.world.journey.open(state.world, {
+        ...(payload['customerName'] ? { customerName: String(payload['customerName']) } : {}),
+        ...(payload['country'] ? { country: String(payload['country']) } : {}),
+        ...(payload['currency'] ? { currency: String(payload['currency']) } : {}),
+        ...(payload['by'] ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+      });
+      return ok({
+        caseId: opened.caseId,
+        progress: serialiseJourneyProgress(state.world.journey.progress(state.world, opened.caseId)),
+      });
+    }
+
+    case 'POST /journey/save': {
+      const progress = state.world.journey.save(state.world, {
+        caseId: String(payload['caseId'] ?? ''),
+        stageId: String(payload['stageId'] ?? 'identity') as JourneyStageId,
+        answers: (payload['answers'] ?? {}) as Record<string, unknown>,
+        ...(payload['by'] ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ saved: true, progress: serialiseJourneyProgress(progress) });
+    }
+
+    case 'POST /journey/submit': {
+      const result = state.world.journey.submit(state.world, {
+        caseId: String(payload['caseId'] ?? ''),
+        stageId: String(payload['stageId'] ?? 'identity') as JourneyStageId,
+        ...(payload['answers'] ? { answers: payload['answers'] as Record<string, unknown> } : {}),
+        ...(payload['by'] ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+      });
+      return ok({
+        caseId: result.caseId,
+        stageId: result.stageId,
+        accepted: result.accepted,
+        reason: result.reason,
+        artefacts: { ...result.artefacts },
+        detail: result.detail,
+        progress: serialiseJourneyProgress(result.progress),
+      });
+    }
+
+    case 'POST /journey/abandon': {
+      const abandoned = state.world.journey.abandon(state.world, {
+        caseId: String(payload['caseId'] ?? ''),
+        by: String(payload['by'] ?? 'operator'),
+        reason: String(payload['reason'] ?? ''),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+      });
+      return ok({
+        caseId: abandoned.caseId,
+        status: abandoned.status,
+        progress: serialiseJourneyProgress(state.world.journey.progress(state.world, abandoned.caseId)),
+      });
+    }
+
+    case 'POST /journey/quotation/pdf': {
+      const quotationId = String(payload['quotationId'] ?? '');
+      const record = state.world.journey.quotations.get(quotationId);
+      if (record.pdf.base64 === '') return fail(409, { error: `quotation ${quotationId} has no document — it was refused: ${record.blockers.join(' · ')}` });
+      return ok({
+        quotationId: record.quotationId,
+        version: record.version,
+        fileName: record.pdf.fileName,
+        base64: record.pdf.base64,
+        bytes: record.pdf.bytes,
+        pages: record.pdf.pages,
+        fingerprint: record.pdf.fingerprint,
+        opens: record.pdf.opens,
+        text: record.pdf.text,
+      });
+    }
+
+    case 'POST /journey/payment/settle': {
+      const settled = state.world.journey.payments.settle({
+        paymentId: String(payload['paymentId'] ?? ''),
+        at: String(payload['at'] ?? `${state.world.asOf}T13:00:00+04:00`),
+        by: String(payload['by'] ?? 'cashier-desk'),
+        ...(payload['proof'] ? { proof: String(payload['proof']) } : {}),
+      });
+      return ok({
+        paymentId: settled.id, status: settled.status, settledAt: settled.settledAt,
+        amount: settled.amountLabel, proof: settled.proof, note: settled.note,
+      });
+    }
+
+    case 'POST /journey/payment/fail': {
+      const failed = state.world.journey.payments.fail({
+        paymentId: String(payload['paymentId'] ?? ''),
+        at: String(payload['at'] ?? `${state.world.asOf}T13:00:00+04:00`),
+        by: String(payload['by'] ?? 'cashier-desk'),
+        reason: String(payload['reason'] ?? ''),
+      });
+      return ok({ paymentId: failed.id, status: failed.status, note: failed.note, proof: failed.proof });
+    }
+
+    case 'POST /journey/freelance/report': {
+      const reported = state.world.journey.underwritingDesk.freelanceReport({
+        engagementId: String(payload['engagementId'] ?? ''),
+        at: String(payload['at'] ?? `${state.world.asOf}T15:00:00+04:00`),
+        recommendation: String(payload['recommendation'] ?? 'rated') as DecisionOutcome,
+        notes: String(payload['notes'] ?? ''),
+        ...(payload['by'] ? { by: String(payload['by']) } : {}),
+      });
+      return ok({
+        engagementId: reported.engagementId, status: reported.status,
+        underwriter: reported.name, recommendation: reported.report?.recommendation ?? null,
+        notes: reported.report?.notes ?? null, cost: reported.costLabel,
+      });
+    }
+
+    case 'POST /journey/reinsurance/answer': {
+      const answered = state.world.journey.underwritingDesk.answerReinsuranceAssist({
+        requestId: String(payload['requestId'] ?? ''),
+        at: String(payload['at'] ?? `${state.world.asOf}T15:00:00+04:00`),
+        byReinsurer: String(payload['byReinsurer'] ?? 'reinsurance-underwriter'),
+        decision: String(payload['decision'] ?? 'accept') as 'accept' | 'accept-with-conditions' | 'decline',
+        ...(Array.isArray(payload['conditions']) ? { conditions: payload['conditions'] as string[] } : {}),
+      });
+      return ok({
+        requestId: answered.requestId, status: answered.status,
+        decision: answered.answer?.decision ?? null, conditions: answered.answer?.conditions ?? [],
+      });
     }
 
     case 'GET /state': {

@@ -10,6 +10,7 @@ import type { WorldSnapshot } from '../core/demo';
 
 import { CONSOLE_TABS, ConsoleTab, TOUR, TourStep, tourMinutes } from '../core/tour';
 import { api } from './api';
+import { CustomerJourneyPanel } from './journey';
 import {
   ClaimsManagementPanel,
   CustomerManagementPanel,
@@ -66,6 +67,7 @@ function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab
         </div>
         {onNavigate && (
           <div className="row" style={{ marginTop: 8 }}>
+            <button onClick={() => onNavigate('journey')}>➤ Start a customer journey</button>
             <button onClick={() => onNavigate('parties')}>+ Create Customer</button>
             <button onClick={() => onNavigate('underwriting')}>+ Create Proposal &amp; Quote</button>
             <button onClick={() => onNavigate('policyholder')}>+ Convert Policy / Receive Premium / Alter</button>
@@ -869,6 +871,7 @@ function App() {
     switch (tab) {
       case 'tour': return <Tour />;
       case 'overview': return <Overview data={data} onNavigate={setTab} />;
+      case 'journey': return <CustomerJourneyPanel data={data} onReload={load} onNavigate={setTab} />;
       case 'master': return <MasterSettingsErp data={data} onReload={load} onNavigate={setTab} />;
       case 'policyholder': return <Policyholder data={data} onReload={load} />;
       case 'decisions': return <Decisions data={data} />;
@@ -1114,11 +1117,32 @@ function Underwriting({
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The medical questionnaire review: what the underwriter is about to change, and why.
+  const [review, setReview] = useState({
+    smoker: 'no', heightCm: '178', weightKg: '78', occupationClass: '1',
+    conditions: '', pursuits: '', familyHistory: '', reason: '', by: 'underwriter-1',
+  });
 
   useEffect(() => {
     setView(data.underwriting);
     setSelected((cur) => cur || (data.underwriting.applications[0]?.id ?? ''));
   }, [data]);
+
+  const selectedApplication = view.applications.find((a) => a.id === selected) ?? view.applications[0];
+  useEffect(() => {
+    if (!selectedApplication) return;
+    setReview({
+      smoker: selectedApplication.smoker ? 'yes' : 'no',
+      heightCm: String(selectedApplication.heightCm ?? 178),
+      weightKg: String(selectedApplication.weightKg ?? 78),
+      occupationClass: String(selectedApplication.occupationClass ?? 1),
+      conditions: selectedApplication.conditions.join(', '),
+      pursuits: selectedApplication.pursuits.join(', '),
+      familyHistory: selectedApplication.familyHistory.join(', '),
+      reason: '',
+      by: 'underwriter-1',
+    });
+  }, [selectedApplication?.id]);
 
   const reload = async () => {
     setView(await api<UwView>('/underwriting'));
@@ -1130,6 +1154,24 @@ function Underwriting({
     try {
       const result = await api<Record<string, unknown>>('/underwriting/decide', 'POST', body);
       setNote(`${label}: ${JSON.stringify(result)}`);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      await reload().catch(() => undefined);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const amend = async (body: Record<string, unknown>) => {
+    setBusy('questionnaire amended'); setError(null); setNote(null);
+    try {
+      const result = await api<Record<string, unknown>>('/underwriting/amend', 'POST', body);
+      const changes = (result['amendments'] as Array<{ field: string; from: string; to: string }>) ?? [];
+      const setAside = result['decisionSetAside'] as string | null;
+      setNote(changes.length === 0
+        ? 'Questionnaire reviewed: nothing on the file changed, so nothing was recorded.'
+        : `Questionnaire amended (${changes.map((c) => `${c.field}: ${c.from} → ${c.to}`).join('; ')})${setAside ? ` — the previous decision "${setAside}" was set aside and the case must be decided again` : ''}. Re-assessed as "${(result['reassessment'] as { outcome: string })?.outcome}".`);
       await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -1256,6 +1298,84 @@ function Underwriting({
           </div>
           {app.evidence.length > 0 && <p className="small">Evidence the file must carry: {app.evidence.join(' · ')}</p>}
           {app.exclusions.length > 0 && <p className="small warnText">Exclusions on the issued terms: {app.exclusions.join(' · ')}</p>}
+        </Card>
+      )}
+
+      {app && (
+        <Card
+          title={`Medical questionnaire review & update — ${app.id}`}
+          subtitle="Amend the answers on the file: every change is recorded from → to with the person and the reason, and a decision taken on the old answers is set aside so the case is decided again"
+          wide
+        >
+          <div className="row">
+            <label>
+              Smoker
+              <select value={review.smoker} onChange={(e) => setReview({ ...review, smoker: e.target.value })}>
+                <option value="yes">yes</option>
+                <option value="no">no</option>
+              </select>
+            </label>
+            <label>
+              Height (cm)
+              <input value={review.heightCm} onChange={(e) => setReview({ ...review, heightCm: e.target.value })} style={{ width: 90 }} />
+            </label>
+            <label>
+              Weight (kg)
+              <input value={review.weightKg} onChange={(e) => setReview({ ...review, weightKg: e.target.value })} style={{ width: 90 }} />
+            </label>
+            <label>
+              Occupation class
+              <select value={review.occupationClass} onChange={(e) => setReview({ ...review, occupationClass: e.target.value })}>
+                {[1, 2, 3, 4, 5].map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label>
+              Conditions (manual codes)
+              <input value={review.conditions} placeholder="diabetes-type-2, asthma-mild" onChange={(e) => setReview({ ...review, conditions: e.target.value })} />
+            </label>
+            <label>
+              Pursuits
+              <input value={review.pursuits} placeholder="scuba-diving, motor-racing" onChange={(e) => setReview({ ...review, pursuits: e.target.value })} />
+            </label>
+            <label>
+              Family history
+              <input value={review.familyHistory} placeholder="early-cardiac-death" onChange={(e) => setReview({ ...review, familyHistory: e.target.value })} />
+            </label>
+            <label>
+              Reviewed by
+              <input value={review.by} onChange={(e) => setReview({ ...review, by: e.target.value })} style={{ width: 160 }} />
+            </label>
+          </div>
+          <label>
+            Why the answers changed (at least 24 characters — it goes on the file)
+            <textarea rows={2} value={review.reason} onChange={(e) => setReview({ ...review, reason: e.target.value })} />
+          </label>
+          {review.reason.trim().length > 0 && review.reason.trim().length < 24 && (
+            <div className="warnBox small">An amendment needs a reason of at least 24 characters; “{review.reason.trim()}” is not one.</div>
+          )}
+          <div className="row">
+            <button
+              disabled={busy !== null || review.reason.trim().length < 24}
+              onClick={() => amend({
+                applicationId: app.id, by: review.by, reason: review.reason,
+                smoker: review.smoker === 'yes', heightCm: Number(review.heightCm), weightKg: Number(review.weightKg),
+                occupationClass: Number(review.occupationClass), conditions: review.conditions, pursuits: review.pursuits,
+                familyHistory: review.familyHistory,
+              })}
+            >
+              {busy === 'questionnaire amended' ? 'Recording…' : 'Record the amendment & re-assess'}
+            </button>
+            <span className="muted small">The re-assessment is returned with the call; the decision, if one was taken, is set aside.</span>
+          </div>
+          {app.amendments.length > 0 && (
+            <>
+              <h4 className="small">Amendment trail on this file ({app.amendments.length})</h4>
+              <Table
+                head={['When', 'By', 'Field', 'From', 'To', 'Reason']}
+                rows={app.amendments.map((m) => [m.at, m.by, m.field, m.from, m.to, <span key={m.at + m.field} className="small">{m.reason}</span>])}
+              />
+            </>
+          )}
         </Card>
       )}
 
@@ -2209,6 +2329,68 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .loading { color:var(--muted); padding:40px; }
 .errorBox, .warnBox { border:1px solid #6b2020; background:#331414; color:#ffc9c9; padding:10px 12px; border-radius:10px; margin:10px 0; }
 .warnBox { border-color:#6b5312; background:#332709; color:#ffe4a3; }
+.okBox { border:1px solid #1f5f3f; background:#12301f; color:#b8f5d0; padding:10px 12px; border-radius:10px; margin:10px 0; }
+.okText { color:#7ee2a8; }
+
+/* ---- the guided journey: closed sections, one open, the next one opening itself ---- */
+.sections { padding:0; overflow:hidden; }
+.sections > header.sectionsHead { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; padding:14px 16px 10px; border-bottom:1px solid var(--line); }
+.sectionsRail { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+.railPercent { display:flex; gap:8px; align-items:center; min-width:150px; }
+.railPercent b { font-size:15px; }
+.journeyHead { padding:10px 16px 0; }
+.sectionList { display:flex; flex-direction:column; }
+.section { border-bottom:1px solid var(--line); background:var(--panel); }
+.section:last-child { border-bottom:0; }
+.section.recommended { background:linear-gradient(90deg, rgba(62,166,255,.07), transparent 40%); box-shadow: inset 3px 0 0 var(--accent); }
+.section.complete .sectionTitle b { color:#b8f5d0; }
+.section.locked { opacity:.62; }
+.section.blocked { box-shadow: inset 3px 0 0 var(--bad); }
+.sectionHead { display:flex; gap:12px; align-items:center; width:100%; background:transparent; color:var(--text); border:0; border-radius:0; padding:11px 16px; cursor:pointer; font-weight:400; text-align:left; }
+.sectionHead:hover { background:var(--panel2); filter:none; }
+.sectionNo { width:26px; height:26px; flex:0 0 26px; display:grid; place-items:center; border-radius:8px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); font-size:12px; }
+.section.complete .sectionNo { background:#12301f; border-color:#1f5f3f; color:#b8f5d0; }
+.section.recommended .sectionNo { background:#11212f; border-color:#1f4a6b; color:#cfe6ff; }
+.sectionTitle { display:flex; flex-direction:column; gap:2px; flex:1 1 auto; min-width:0; }
+.sectionTitle b { font-size:13.5px; font-weight:600; }
+.sectionTitle small { color:var(--muted); font-size:11.5px; }
+.sectionState { display:flex; gap:9px; align-items:center; flex:0 0 auto; }
+.sectionPct { color:var(--muted); font-size:11.5px; min-width:34px; text-align:right; }
+.chev { width:16px; text-align:center; color:var(--muted); }
+.bar { display:block; width:88px; height:6px; border-radius:999px; background:#0d151d; border:1px solid var(--line); overflow:hidden; }
+.bar i { display:block; height:100%; background:linear-gradient(90deg,#3ea6ff,#2fbf71); }
+.bar.done i { background:#2fbf71; }
+.sectionBody { padding:4px 16px 16px 54px; border-top:1px dashed var(--line); }
+.sectionMeta { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+.sectionFooter { margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.purpose { margin:8px 0 4px; }
+.ruleNote { margin:0 0 10px; color:var(--muted); }
+.gateNotes { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+.checklist { border:1px solid #6b5312; background:#332709; color:#ffe4a3; border-radius:10px; padding:8px 12px; }
+.checklist ul { margin:6px 0 0 18px; padding:0; }
+.checklist li { margin:2px 0; }
+.fieldGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; margin:10px 0; }
+.field { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
+.field.wide { grid-column:1 / -1; }
+.field span { display:flex; gap:6px; align-items:baseline; flex-wrap:wrap; }
+.req { color:var(--warn); font-style:normal; }
+.attestation { color:var(--text); font-size:12px; background:#0d151d; border:1px solid var(--line); border-radius:8px; padding:7px 9px; }
+.chipset { display:flex; gap:8px; flex-wrap:wrap; }
+.chip { display:flex; gap:6px; align-items:center; border:1px solid var(--line); background:#0d151d; border-radius:999px; padding:5px 11px; font-size:12px; color:var(--text); cursor:pointer; }
+.chip.on { border-color:#1f5f3f; background:#12301f; }
+.chip input { width:auto; }
+.chip.grow { flex:1 1 320px; border-radius:10px; align-items:flex-start; }
+.weights, .beneficiaries, .requirements, .riders { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+.weightRow { display:flex; gap:6px; align-items:center; }
+.weightRow input { width:110px; }
+.requirement { border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#0d151d; }
+.rider { border:1px solid var(--line); border-radius:10px; padding:7px 10px; background:#0d151d; }
+.rider.on { border-color:#1f5f3f; background:#12301f; }
+.methods { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:8px; }
+.method { flex-direction:column; align-items:flex-start; gap:3px; border-radius:10px; }
+.extra { margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); }
+.summaryRows { margin:6px 0; }
+.grow { flex:1 1 auto; }
 `;
 document.head.appendChild(style);
 

@@ -78,3 +78,14 @@ on a normal machine `npx playwright install --with-deps chromium` is enough.
   sentence either way, so a demo never dies silently.
 - If you are handed a link that will not open (a tunnel that needs a token, a host behind a
   firewall), give the customer `index.html` or `offline.html` instead — a file always opens.
+
+## The guided customer journey in the replay
+
+`demo/offline-responses.json` was refreshed with the lifecycle journey (`node tools/offline-record-journey.mjs`
+against a running server) and `demo/offline.html` rebuilt from it, so the offline console carries the
+Customer journey tab, its nineteen gated sections and the answers a full walk produced — a quotation PDF
+with its fingerprint, a masked email dispatch, a captured card payment, a policy issued with the signed
+allocation, and the investment progress measured against it.
+
+`demo/index.html` (the screenshot gallery) still predates the journey tab. Refreshing it needs a browser:
+`npm start`, then `npm run demo:pack && npm run demo:gallery && npm run demo:site`.

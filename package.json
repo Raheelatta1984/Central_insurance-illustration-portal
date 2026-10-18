@@ -20,6 +20,7 @@
     "demo:gallery": "node tools/demo-gallery.mjs",
     "demo:offline": "node tools/offline-build.mjs",
     "demo:record": "node tools/offline-record.mjs",
+    "demo:record:journey": "node tools/offline-record-journey.mjs",
     "demo:site": "node tools/demo-site.mjs"
   },
   "dependencies": {
