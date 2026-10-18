@@ -319,3 +319,23 @@ describe('POST /underwriting/amend', () => {
     expect(body.decisionSetAside).toBeNull();
   });
 });
+
+describe('master journey field settings', () => {
+  it('updates required and editable controls, exposes them in the journey, and enforces locked fields at the API', async () => {
+    const state = createRuntimeState(1);
+    const saved = await call(state, 'POST', '/journey/field-settings', {
+      fieldSettings: { identity: { phone: { mandatory: false, editable: false } } },
+    });
+    expect(saved.status).toBe(200);
+    const snapshot = await call(state, 'GET', '/journey');
+    expect(snapshot.body.fieldSettings.identity.phone).toEqual({ mandatory: false, editable: false });
+    const opened = await call(state, 'POST', '/journey/open', {});
+    const identity = opened.body.progress.stages.find((stage: { id: string }) => stage.id === 'identity');
+    expect(identity.fields.find((field: { id: string }) => field.id === 'phone')).toMatchObject({ mandatory: false, editable: false });
+
+    const message = await refusal(state, '/journey/save', {
+      caseId: opened.body.caseId, stageId: 'identity', answers: { phone: '+971501234567' },
+    });
+    expect(message).toContain('Phone is locked by master settings');
+  });
+});

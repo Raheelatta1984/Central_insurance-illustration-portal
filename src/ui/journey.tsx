@@ -16,7 +16,7 @@ import { MissingList, SectionModel, SectionStack, SummaryRows } from './sections
 
 /* ------------------------------------------------------------------ the shape the API returns */
 
-interface FieldView { id: string; label: string; kind: string; mandatory: boolean; options?: string[]; hint?: string; group?: string }
+interface FieldView { id: string; label: string; kind: string; mandatory: boolean; editable: boolean; options?: string[]; hint?: string; group?: string }
 interface StageView {
   id: JourneyStageId; order: number; title: string; shortTitle: string; purpose: string; regulatoryBasis: string;
   owner: string; detailTab: string; status: SectionModel['status']; percent: number; complete: boolean;
@@ -409,27 +409,27 @@ function buildSection(args: BuildArgs): SectionModel {
     const value = draft[field.id];
     const special = specialEditor(field.id, args);
     if (special) {
-      return <div className="field wide" key={field.id}><span>{field.label}{field.mandatory && <i className="req">*</i>}{field.hint && <small className="muted"> {field.hint}</small>}</span>{special}</div>;
+      return <div className="field wide" key={field.id}><span>{field.label}{field.mandatory && <i className="req">*</i>}{!field.editable && <small className="muted"> · locked by master settings</small>}{field.hint && <small className="muted"> {field.hint}</small>}</span><fieldset disabled={!field.editable} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>{special}</fieldset></div>;
     }
     return (
       <label className="field" key={field.id}>
-        <span>{field.label}{field.mandatory && <i className="req">*</i>}</span>
-        {field.kind === 'boolean' && <YesNo value={value} onChange={(v) => set({ [field.id]: v })} />}
+        <span>{field.label}{field.mandatory && <i className="req">*</i>}{!field.editable && <small className="muted"> · locked by master settings</small>}</span>
+        {field.kind === 'boolean' && <YesNo value={value} disabled={!field.editable} onChange={(v) => set({ [field.id]: v })} />}
         {field.kind === 'select' && (
-          <select value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })}>
+          <select disabled={!field.editable} value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })}>
             <option value="">— choose —</option>
             {(field.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         )}
-        {field.kind === 'date' && <input type="date" value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })} />}
+        {field.kind === 'date' && <input disabled={!field.editable} type="date" value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })} />}
         {(field.kind === 'number' || field.kind === 'amount' || field.kind === 'percent') && (
-          <input type="number" inputMode="decimal" value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })} />
+          <input disabled={!field.editable} type="number" inputMode="decimal" value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })} />
         )}
         {(field.kind === 'text' || field.kind === 'signature' || field.kind === 'readonly') && (
-          <input value={String(value ?? '')} readOnly={field.kind === 'readonly'} onChange={(e) => set({ [field.id]: e.target.value })} />
+          <input disabled={!field.editable} value={String(value ?? '')} readOnly={field.kind === 'readonly'} onChange={(e) => set({ [field.id]: e.target.value })} />
         )}
         {field.kind === 'list' && (
-          <input value={Array.isArray(value) ? (value as unknown[]).join(', ') : String(value ?? '')} placeholder="comma separated"
+          <input disabled={!field.editable} value={Array.isArray(value) ? (value as unknown[]).join(', ') : String(value ?? '')} placeholder="comma separated"
             onChange={(e) => set({ [field.id]: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
         )}
         {field.hint && <small className="muted">{field.hint}</small>}

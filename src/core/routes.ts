@@ -1762,6 +1762,9 @@ export async function dispatchApiRoute(
     case 'GET /journey':
       return ok(state.world.journey.snapshot(state.world));
 
+    case 'POST /journey/field-settings':
+      return ok({ fieldSettings: state.world.journey.updateFieldSettings(payload['fieldSettings']) });
+
     case 'POST /journey/open': {
       const opened = state.world.journey.open(state.world, {
         ...(payload['customerName'] ? { customerName: String(payload['customerName']) } : {}),
