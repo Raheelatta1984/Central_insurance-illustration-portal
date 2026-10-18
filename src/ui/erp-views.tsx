@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { WorldSnapshot } from '../core/demo';
 import type { ConsoleTab } from '../core/tour';
 import { api } from './api';
+import { SectionGroup, fields } from './sections';
 
 export const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({
   title,
@@ -115,12 +116,35 @@ export function CustomerManagementPanel({
   };
 
   return (
-    <>
-      <Card
-        title="Create Centralized Customer (Golden Record)"
-        subtitle="Register a person or corporate entity into the single Customer 360 registry with verified identity documents and partner consent"
-        wide
-      >
+    <SectionGroup
+      title="Customer 360 — onboarding, profile and consent"
+      gates={[
+        {
+          id: 'create',
+          title: 'Create centralized customer (golden record)',
+          subtitle: 'Register a person or corporate entity with a verified identity document and their consent',
+          fields: fields(
+            ['English name', nameEn],
+            ['Arabic name', nameAr],
+            ['Date of birth / incorporation', dob],
+            ['ID number', idValue],
+            ['Phone', phone],
+            ['Email', email],
+            ['Address line', addressLine],
+            ['City', city],
+            ['Country', country],
+            ['Initial partner consent', grantTo],
+          ),
+          blockers: country.trim().toUpperCase() === 'AE' && !nameAr.trim()
+            ? ['A UAE golden record needs the customer’s name in Arabic as well as English']
+            : [],
+          warnings: idSource === 'manual'
+            ? ['Manually keyed identity: the record is only as trustworthy as the person who typed it — say why in the notice box']
+            : idSource === 'ocr'
+              ? ['OCR fields below the consensus threshold land in the review queue before the record is accepted']
+              : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Kind
@@ -222,9 +246,21 @@ export function CustomerManagementPanel({
         </div>
         {notice && <div className="code small">{notice}</div>}
         {error && <div className="errorBox">{error}</div>}
-      </Card>
-
-      <Card title="Update Customer Profile & Contact" subtitle="Modify contact details, address or identifiers on an existing golden record">
+            </>
+          ),
+        },
+        {
+          id: 'update',
+          title: 'Update customer profile & contact',
+          subtitle: 'Change contact details, address or identifiers on an existing golden record',
+          fields: fields(
+            ['Customer', editPartyId],
+            ['New phone', editPhone],
+            ['New email', editEmail],
+            ['City', editCity],
+          ),
+          children: (
+            <>
         <div className="row">
           <label>
             Customer
@@ -264,9 +300,25 @@ export function CustomerManagementPanel({
             Save Customer Update
           </button>
         </div>
-      </Card>
-
-      <Card title="Consent Governance & Golden-Record Merge" subtitle="Grant/revoke partner consent scopes or deduplicate two customer records">
+            </>
+          ),
+        },
+        {
+          id: 'consent',
+          title: 'Consent governance & golden-record merge',
+          subtitle: 'Grant or revoke partner consent scopes, and deduplicate two records of one human being',
+          fields: fields(
+            ['Customer', consentPartyId],
+            ['Partner ID', consentPartner],
+            ['Purpose', consentPurpose],
+            ['Surviving record (winner)', winnerId],
+            ['Duplicate record (merged into winner)', loserId],
+          ),
+          blockers: winnerId === loserId
+            ? ['The surviving record and the duplicate cannot be the same customer — pick two different records to merge']
+            : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Customer
@@ -332,8 +384,11 @@ export function CustomerManagementPanel({
             Merge Duplicate into Golden Record
           </button>
         </div>
-      </Card>
-    </>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -393,13 +448,51 @@ export function ProposalManagementPanel({
     }
   };
 
+  const chosenProduct = data.erp.master.products.find((p) => p.productId === productId);
+  const numeric = (value: string) => Number(String(value).replace(/[^0-9.]/g, '')) || 0;
+  const proposalBlockers: string[] = [];
+  if (chosenProduct && (age < chosenProduct.minAge || age > chosenProduct.maxAge)) {
+    proposalBlockers.push(`Entry age ${age} is outside ${chosenProduct.name}'s range of ${chosenProduct.minAge}–${chosenProduct.maxAge}`);
+  }
+  if (chosenProduct && numeric(sumAssured) > numeric(annualIncome) * chosenProduct.incomeMultiple) {
+    proposalBlockers.push(`Sum assured ${sumAssured} is above the ${chosenProduct.incomeMultiple}× income cap of ${(numeric(annualIncome) * chosenProduct.incomeMultiple).toLocaleString()} — financial underwriting will not pass it`);
+  }
+  const bmi = heightCm > 0 ? Math.round((weightKg / ((heightCm / 100) ** 2)) * 10) / 10 : 0;
+  const proposalWarnings: string[] = [];
+  if (chosenProduct && bmi > chosenProduct.maxBmi) {
+    proposalWarnings.push(`BMI ${bmi} is above the manual maximum of ${chosenProduct.maxBmi}: the case will be loaded and referred to a senior underwriter`);
+  }
+  if (occupationClass >= 4) proposalWarnings.push(`Occupation class ${occupationClass} is outside the standard range: an occupational debit applies and a senior underwriter must sign`);
+  if (smoker) proposalWarnings.push('Smoker: 100 basis points of extra mortality apply before any medical loading');
+  if (conditions.trim()) proposalWarnings.push(`Declared conditions (${conditions.trim()}) will be loaded from the medical manual and may require evidence`);
+  const selectedProposal = data.erp.proposals.find((p) => p.applicationId === convertAppId);
+
   return (
-    <>
-      <Card
-        title="Create Customer Proposal / Underwriting Quotation"
-        subtitle="Submit a new insurance proposal for any customer; the engine immediately runs BMI, occupation, pursuit, medical, financial and treaty capacity rules"
-        wide
-      >
+    <SectionGroup
+      title="Quotation, underwriting decision & policy conversion"
+      gates={[
+        {
+          id: 'proposal',
+          title: 'Create customer proposal & underwriting quotation',
+          subtitle: 'The engine runs BMI, occupation, pursuit, medical, financial and treaty-capacity rules the moment this is submitted',
+          fields: fields(
+            ['Customer', partyId],
+            ['Product', productId],
+            ['Sum assured', sumAssured],
+            ['Term (years)', termYears],
+            ['Payment frequency', paymentFrequency],
+            ['Beneficiary', beneficiaryName],
+            ['Beneficiary relationship', beneficiaryRelationship],
+            ['Entry age', age],
+            ['Height (cm)', heightCm],
+            ['Weight (kg)', weightKg],
+            ['Occupation class', occupationClass],
+            ['Gross annual income', annualIncome],
+          ),
+          blockers: proposalBlockers,
+          warnings: proposalWarnings,
+          children: (
+            <>
         <div className="row">
           <label>
             Customer (Party)
@@ -536,13 +629,26 @@ export function ProposalManagementPanel({
         </div>
         {notice && <div className="code small">{notice}</div>}
         {error && <div className="errorBox">{error}</div>}
-      </Card>
-
-      <Card
-        title="Proposals Register & One-Click Policy Conversion"
-        subtitle="Manage customer proposals, take underwriting decisions, and convert accepted proposals into active policies with initial premium receipt"
-        wide
-      >
+            </>
+          ),
+        },
+        {
+          id: 'decision-conversion',
+          title: 'Proposals register, underwriting decision & policy conversion',
+          subtitle: 'Decide the case under the right authority, then convert an accepted proposal into a policy with its first premium',
+          fields: fields(
+            ['Proposal to convert', convertAppId],
+            ['Initial premium', initialPremium],
+            ['First fund', initialFundId],
+          ),
+          blockers: convertibleProposals.length === 0
+            ? ['No proposal is waiting to be converted — create one above and take the underwriting decision first']
+            : [],
+          warnings: selectedProposal
+            ? [`Selected proposal ${selectedProposal.applicationId}: outcome “${selectedProposal.outcome}”${selectedProposal.decided ? `, decided by ${selectedProposal.decidedBy ?? '—'}` : ', not decided yet'}${selectedProposal.canConvert ? ' — clear to convert' : ' — cannot be converted until a decision accepts it'}`]
+            : ['No proposal selected'],
+          children: (
+            <>
         <Table
           head={[
             'Proposal ID',
@@ -666,8 +772,11 @@ export function ProposalManagementPanel({
             </button>
           )}
         </div>
-      </Card>
-    </>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -738,12 +847,16 @@ export function PolicyAdministrationPanel({
   const activePolicy = policies.find((p) => p.policyId === selectedPolicyId) ?? policies[0];
 
   return (
-    <>
-      <Card
-        title="Central Policy Register (All Books)"
-        subtitle="Active and historical policies across Unit-Linked, Takaful, Motor Micro-Duration, and Conventional Life/Medical books"
-        wide
-      >
+    <SectionGroup
+      title="Policy administration — premium, alterations and the audit trail"
+      sequential={false}
+      gates={[
+        {
+          id: 'register',
+          title: 'Central policy register (all books)',
+          informational: true,
+          children: (
+            <>
         <Table
           head={[
             'Policy ID',
@@ -795,12 +908,27 @@ export function PolicyAdministrationPanel({
         />
         {notice && <div className="code small">{notice}</div>}
         {error && <div className="errorBox">{error}</div>}
-      </Card>
-
-      <Card
-        title={`Receive Policy Premium / Contribution — ${activePolicy?.policyId ?? selectedPolicyId}`}
-        subtitle="Collect premium, post double-entry ledger receipt, and automatically allocate units (Unit-Linked), split Wakalah/Tabarru (Takaful), or top up wallet (Motor PAYG)"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'premium',
+          title: 'Receive premium / contribution',
+          subtitle: 'Post the receipt, allocate units or split wakalah and tabarru, and top up a wallet',
+          fields: fields(
+            ['Policy', selectedPolicyId],
+            ['Amount', premAmount],
+            ['Fund', premFundId],
+            ['Allocation charge (bps)', premChargeBps],
+            ['Payment method', premMethod],
+          ),
+          warnings: premMethod === 'bank-transfer' || premMethod === 'cheque'
+            ? ['A transfer or cheque is received on instruction; the money is the insurer’s only when the bank confirms it']
+            : premMethod === 'bnpl'
+              ? ['BNPL: the provider pays the insurer in full and collects instalments from the customer; the provider fee is a cost of sale']
+              : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Policy
@@ -866,12 +994,30 @@ export function PolicyAdministrationPanel({
             Receive &amp; Post Premium
           </button>
         </div>
-      </Card>
-
-      <Card
-        title={`Financial Policy Alterations — ${activePolicy?.policyId ?? selectedPolicyId}`}
-        subtitle="Execute sum assured changes, fund switches, partial withdrawals, full surrenders, monthly COI/admin charges or portfolio rebalances"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'financial',
+          title: 'Financial alterations & endorsements',
+          subtitle: 'Sum assured changes, fund switches, partial withdrawals, surrenders, charges and portfolio rebalances',
+          fields: fields(
+            ['Policy', selectedPolicyId],
+            ['Alteration kind', finKind],
+            ['Amount', finAmount],
+            ['New sum assured', finNewSa],
+            ['From fund', finFromFund],
+            ['To fund', finToFund],
+            ['Reason', finReason, 24],
+          ),
+          blockers: finReason.trim().length < 24
+            ? ['A financial alteration moves money: it needs a reason of at least 24 characters on the audit log']
+            : [],
+          warnings: finKind === 'fund-switch' && finFromFund === finToFund
+            ? ['A switch from a fund to itself does nothing — choose two different funds']
+            : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Policy
@@ -980,13 +1126,29 @@ export function PolicyAdministrationPanel({
             Execute Financial Alteration
           </button>
         </div>
-      </Card>
-
-      <Card
-        title={`Non-Financial Policy Alterations (Endorsements) — ${activePolicy?.policyId ?? selectedPolicyId}`}
-        subtitle="Update beneficiary nomination, policyholder contact/address, name spelling, billing frequency, auto-rebalance rule or policy status"
-        wide
-      >
+            </>
+          ),
+        },
+        {
+          id: 'non-financial',
+          title: 'Non-financial alterations',
+          subtitle: 'Beneficiary nomination, contact and address, name spelling, billing frequency, auto-rebalance and status',
+          fields: fields(
+            ['Policy', selectedPolicyId],
+            ['Alteration kind', nonFinKind],
+            ['Beneficiary name', nfBenName],
+            ['Beneficiary relationship', nfBenRel],
+            ['Beneficiary share %', nfBenPct],
+            ['Reason', nfReason, 24],
+          ),
+          blockers: nfReason.trim().length < 24
+            ? ['Every endorsement needs a reason of at least 24 characters; the audit log is what a complaint reads']
+            : [],
+          warnings: nonFinKind === 'beneficiary-change' && nfBenPct !== 100
+            ? [`A single beneficiary nomination of ${nfBenPct}% leaves ${100 - nfBenPct}% undesignated — the balance falls to the estate`]
+            : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Policy
@@ -1136,12 +1298,15 @@ export function PolicyAdministrationPanel({
             Apply Non-Financial Endorsement
           </button>
         </div>
-      </Card>
-
-      <Card
-        title="Premium Receipts Register"
-        subtitle="Every policy premium, Takaful contribution and wallet top-up with double-entry journal proof"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'receipts',
+          title: 'Premium receipts register',
+          informational: true,
+          children: (
+            <>
         <Table
           head={['Receipt', 'Policy', 'Customer', 'Amount', 'Fee', 'Fund / Units', 'Method', 'Journals']}
           rows={data.erp.receipts.map((r) => [
@@ -1157,12 +1322,15 @@ export function PolicyAdministrationPanel({
             </span>,
           ])}
         />
-      </Card>
-
-      <Card
-        title="Policy Alterations & Endorsements Audit Log"
-        subtitle="Complete history of financial and non-financial modifications with before/after snapshots"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'alteration-log',
+          title: 'Policy alterations & endorsements audit log',
+          informational: true,
+          children: (
+            <>
         <Table
           head={['Alt ID', 'Policy', 'Type', 'Kind', 'Summary', 'Amount / Fee', 'Journals']}
           rows={data.erp.alterations.map((a) => [
@@ -1182,8 +1350,11 @@ export function PolicyAdministrationPanel({
           ])}
           empty="No policy alterations recorded yet — use the Financial or Non-Financial Alteration forms above."
         />
-      </Card>
-    </>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -1243,12 +1414,29 @@ export function FundNavManagementPanel({
   };
 
   return (
-    <>
-      <Card
-        title="NAV Injection & Valuation Publishing"
-        subtitle="Publish a new daily Net Asset Value for any fund; floor-rounded unit prices and unexpressed residuals are calculated and reconciled automatically"
-        wide
-      >
+    <SectionGroup
+      title="Funds, NAV and market instruments"
+      sequential={false}
+      gates={[
+        {
+          id: 'nav',
+          title: 'Publish a NAV / valuation',
+          subtitle: 'Floor-rounded unit prices, with the residual that could not be expressed kept explicitly',
+          fields: fields(
+            ['Fund', navFundId],
+            ['Valuation date', navDate],
+            ['Gross assets', grossAssets],
+            ['Liabilities', liabilities],
+            ['Units in issue', unitsInIssue],
+            ['Source', navSource],
+          ),
+          warnings: !unitsInIssue.trim()
+            ? ['Units in issue left blank: the fund keeps the units it already has in issue']
+            : navSource === 'manual-override'
+              ? ['A manual override is published as-is — the custodian file is the evidence a valuation is normally taken from']
+              : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Fund
@@ -1310,12 +1498,30 @@ export function FundNavManagementPanel({
         </div>
         {notice && <div className="code small">{notice}</div>}
         {error && <div className="errorBox">{error}</div>}
-      </Card>
-
-      <Card
-        title="Create New Investment Fund"
-        subtitle="Define a new unit-linked fund with dealing cut-off, annual FMC, Shariah screening, segregated ledger accounts and opening valuation"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'new-fund',
+          title: 'Create a new investment fund',
+          subtitle: 'Dealing cut-off, annual FMC, Shariah screening, segregated ledger accounts and an opening valuation',
+          fields: fields(
+            ['Fund id', newFundId],
+            ['Fund name', newFundName],
+            ['Dealing cut-off', newFundCutoff],
+            ['Annual FMC (bps)', newFundFmc],
+            ['Benchmark', newFundBenchmark],
+            ['Opening assets', newFundAssets],
+            ['Opening units', newFundUnits],
+          ),
+          blockers: data.funds.some((f) => f.id === newFundId.trim())
+            ? [`Fund ${newFundId} already exists — a fund id is never reused, because valuations are history`]
+            : [],
+          warnings: newFundShariah
+            ? ['A Shariah-screened fund may only hold screened instruments; the composition warnings will say so if one is added']
+            : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Fund Code
@@ -1379,12 +1585,22 @@ export function FundNavManagementPanel({
             + Create Fund
           </button>
         </div>
-      </Card>
-
-      <Card
-        title="Register Market Instrument & Price"
-        subtitle="Add underlying securities for look-through penetration or update market prices"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'instrument',
+          title: 'Register market instrument & price',
+          subtitle: 'Underlying securities for look-through penetration, and the market prices that value them',
+          fields: fields(
+            ['Instrument id', instId],
+            ['Instrument name', instName],
+            ['Asset class', instClass],
+            ['ISIN', instIsin],
+            ['Market price', instPrice],
+          ),
+          children: (
+            <>
         <div className="row">
           <label>
             Ticker / ID
@@ -1442,8 +1658,11 @@ export function FundNavManagementPanel({
             + Save Instrument &amp; Price
           </button>
         </div>
-      </Card>
-    </>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -1503,11 +1722,38 @@ export function ClaimsManagementPanel({
   };
 
   return (
-    <Card
-      title="Claims Lifecycle Workbench — Create Request → Triage Decision → Reserve → Approve / Decline → Settle → Recover"
-      subtitle="Manage claim requests end-to-end across both the Conventional Carrier and the Takaful Window"
-      wide
-    >
+    <SectionGroup
+      title="Claims lifecycle — register, reserve, decide, settle, recover"
+      headline={`${claimsList.length} claim(s) on the ${book} book. Each section opens only when the one before it is complete: a claim cannot be settled before it is decided, or decided before it is reserved.`}
+      aside={(
+        <>
+      {notice && <div className="code small">{notice}</div>}
+      {error && <div className="errorBox">{error}</div>}
+        </>
+      )}
+      gates={[
+        {
+          id: 'register',
+          title: 'Register a claim request & triage it',
+          subtitle: 'Cover in force, notification lateness, fraud signals and exclusions decide where the claim goes',
+          fields: fields(
+            ['Book', book],
+            ['Policy', policyId],
+            ['Cause', cause],
+            ['Loss date', lossDate],
+            ['Reported at', reportedAt],
+            ['Description', description, 12],
+            ['Days reported late', daysLate],
+            ['Fraud signals', fraudSignals],
+          ),
+          warnings: [
+            ...(daysLate > 0 ? [`Notified ${daysLate} day(s) after the loss: triage records the lateness and the reason for it`] : []),
+            ...(fraudSignals > 0 ? [`${fraudSignals} fraud signal(s): triage refers the claim to a human before any money moves`] : []),
+            ...(exclusionsApplied.trim() ? [`Exclusions declared (${exclusionsApplied.trim()}) are applied at triage and shown on the decision`] : []),
+            ...(!coverInForce ? ['Cover is not in force: triage will refuse the claim rather than reserve it'] : []),
+          ],
+          children: (
+            <>
       <div className="row">
         <label>
           Book
@@ -1616,9 +1862,23 @@ export function ClaimsManagementPanel({
           1. Create Claim Request &amp; Triage
         </button>
       </div>
-
-      <hr style={{ borderColor: '#22303f', margin: '12px 0' }} />
-
+            </>
+          ),
+        },
+        {
+          id: 'reserve',
+          title: 'Set the case reserve',
+          subtitle: 'The liability the balance sheet carries until the claim is settled',
+          fields: fields(
+            ['Claim', targetClaimId],
+            ['Reserve amount', reserveAmount],
+            ['Reserve rationale', reserveRationale, 24],
+          ),
+          blockers: reserveRationale.trim().length < 24
+            ? ['A reserve needs a rationale of at least 24 characters: it is the number the balance sheet carries and the reason it moved']
+            : [],
+          children: (
+            <>
       <div className="row">
         <label>
           Select Claim to Manage ({book})
@@ -1654,7 +1914,25 @@ export function ClaimsManagementPanel({
           2. Set Case Reserve
         </button>
       </div>
-
+            </>
+          ),
+        },
+        {
+          id: 'decide',
+          title: 'Approve or decline under authority',
+          subtitle: 'The decision is taken inside a monetary authority; an AI may approve within its limit and may never decline',
+          fields: fields(
+            ['Claim', targetClaimId],
+            ['Approval amount', approveAmount],
+            ['Approving role', approveRole],
+            ['Approver', approveBy],
+          ),
+          warnings: [
+            ...(approveIsAi ? ['An AI approval only stands inside the straight-through limit for the role; above it the engine refers the claim to a named human'] : []),
+            ...(declineReason.trim().length < 24 ? ['A decline needs a reason of at least 24 characters — the customer receives it and a complaint reads it'] : []),
+          ],
+          children: (
+            <>
       <div className="row">
         <label>
           Approval Amount (AED)
@@ -1719,7 +1997,20 @@ export function ClaimsManagementPanel({
           3b. Decline Claim
         </button>
       </div>
-
+            </>
+          ),
+        },
+        {
+          id: 'settle',
+          title: 'Settle, pay and recover',
+          subtitle: 'Pay the claimant, then book salvage, subrogation, reinsurance or third-party recoveries against it',
+          fields: fields(
+            ['Claim', targetClaimId],
+            ['Recovery type', recoveryType],
+            ['Recovery amount', recoveryAmount],
+          ),
+          children: (
+            <>
       <div className="row">
         <button
           disabled={busy}
@@ -1770,10 +2061,11 @@ export function ClaimsManagementPanel({
           5. Book Claim Recovery
         </button>
       </div>
-
-      {notice && <div className="code small">{notice}</div>}
-      {error && <div className="errorBox">{error}</div>}
-    </Card>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -1833,12 +2125,41 @@ export function ReinsuranceManagementPanel({
     }
   };
 
+  const numericAmount = (value: string) => Number(String(value).replace(/[^0-9.]/g, '')) || 0;
+
   return (
-    <Card
-      title="Create Reinsurer / Register Treaty & Place Custom Cession"
-      subtitle="Register new proportional, non-proportional or facultative treaties on the Conventional or Retakaful book and cede policies live"
-      wide
-    >
+    <SectionGroup
+      title="Reinsurance — treaties, cessions and security"
+      sequential={false}
+      gates={[
+        {
+          id: 'treaty',
+          title: 'Register reinsurer / treaty and place a cession',
+          subtitle: 'Proportional, non-proportional or facultative cover on the conventional or retakaful book, with the cession posted live',
+          fields: fields(
+            ['Treaty id', treatyId],
+            ['Treaty name', name],
+            ['Counterparty', counterparty],
+            ['Treaty kind', kind],
+            ['Book', basis],
+            ['Line of business', lob],
+            ['Cession (bps)', cessionBps],
+            ['Retention', retention],
+            ['Commission (bps)', commissionBps],
+            ['Policy to cede', cedePolicyId],
+            ['Sum insured', cedeSumInsured],
+            ['Premium ceded', cedePremium],
+          ),
+          blockers: cessionBps <= 0 || cessionBps > 10000
+            ? [`A cession of ${cessionBps} bps is not a share of anything — it must be between 1 and 10,000 bps`]
+            : [],
+          warnings: kind === 'excess-of-loss' && numericAmount(attachment) <= 0
+            ? ['An excess-of-loss treaty without an attachment point cannot be priced']
+            : securityRequiredBps > 0
+              ? [`Collateral of ${securityRequiredBps} bps is required from the reinsurer; the security position is tracked on the reinsurance tab`]
+              : [],
+          children: (
+            <>
       <div className="row">
         <label>
           Treaty ID
@@ -2034,7 +2355,11 @@ export function ReinsuranceManagementPanel({
       </div>
       {notice && <div className="code small">{notice}</div>}
       {error && <div className="errorBox">{error}</div>}
-    </Card>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -2114,13 +2439,19 @@ export function MasterSettingsErp({
     }
   };
 
+  const numericAmount = (value: string) => Number(String(value).replace(/[^0-9.]/g, '')) || 0;
+
   return (
-    <div className="grid">
-      <Card
-        title="ERP Operations & Master Settings Command Center"
-        subtitle="Centralized configuration of products, underwriting rules, fee schedules, Takaful parameters, claims authorities, FX rates and regulated vocabulary"
-        wide
-      >
+    <SectionGroup
+      title="Master settings — products, charges, takaful, authority, FX and vocabulary"
+      sequential={false}
+      gates={[
+        {
+          id: 'command',
+          title: 'ERP operations & master settings command centre',
+          informational: true,
+          children: (
+            <>
         <div className="pills">
           <Pill tone="ok">Customers: {data.parties.list.length}</Pill>
           <Pill tone="info">Proposals: {data.erp.proposals.length}</Pill>
@@ -2145,13 +2476,37 @@ export function MasterSettingsErp({
         </div>
         {notice && <div className="code small">{notice}</div>}
         {error && <div className="errorBox">{error}</div>}
-      </Card>
-
-      <Card
-        title="1. Product Factory & Underwriting Manuals"
-        subtitle="Define new insurance products or update underwriting limits, base tariffs and reinsurance thresholds"
-        wide
-      >
+            </>
+          ),
+        },
+        {
+          id: 'products',
+          title: 'Product factory & underwriting manuals',
+          subtitle: 'Define a product or update its limits, base tariff and reinsurance thresholds',
+          fields: fields(
+            ['Product id', prodId],
+            ['Product name', prodName],
+            ['Category', prodCat],
+            ['Line', prodLine],
+            ['Minimum entry age', minAge],
+            ['Maximum entry age', maxAge],
+            ['Maximum BMI', maxBmi],
+            ['Base rate per 1,000', baseRate],
+            ['Income multiple', incomeMultiple],
+            ['Automatic binding limit', autoLimit],
+            ['Facultative threshold', facThreshold],
+            ['AI straight-through limit', aiLimit],
+          ),
+          blockers: minAge >= maxAge
+            ? [`An entry range of ${minAge}–${maxAge} admits nobody`]
+            : numericAmount(facThreshold) < numericAmount(autoLimit)
+              ? ['The facultative threshold must be at or above the automatic binding limit, or every case goes to the reinsurer']
+              : [],
+          warnings: numericAmount(aiLimit) > numericAmount(autoLimit)
+            ? ['An AI straight-through limit above the automatic binding limit would let an agent bind what the treaty requires the reinsurer to see']
+            : [],
+          children: (
+            <>
         <Table
           head={[
             'Product ID',
@@ -2280,12 +2635,23 @@ export function MasterSettingsErp({
             + Save Product &amp; UW Manual
           </button>
         </div>
-      </Card>
-
-      <Card
-        title="2. Unit-Linked Fee & Charge Schedule"
-        subtitle="Master tariff for premium allocation charges, switching fees, withdrawal fees, COI and monthly admin deductions"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'charges',
+          title: 'Unit-linked fee & charge schedule',
+          subtitle: 'Allocation and top-up charges, switching and withdrawal fees, cost of insurance and the monthly admin deduction',
+          fields: fields(
+            ['Allocation charge (bps)', allocBps],
+            ['Top-up charge (bps)', topupBps],
+            ['Switching fee (bps)', switchBps],
+            ['Partial withdrawal fee (bps)', withdrawBps],
+            ['Cost of insurance (per mille, monthly)', coiPerMille],
+            ['Monthly admin fee (minor units)', adminMinor],
+          ),
+          children: (
+            <>
         <div className="row">
           <label>
             Allocation Charge (bps)
@@ -2362,12 +2728,25 @@ export function MasterSettingsErp({
             Update Fee Schedule
           </button>
         </div>
-      </Card>
-
-      <Card
-        title="3. Takaful Window Master Configuration"
-        subtitle="Configure Wakalah fee, Tabarru risk-pool share, and participant surplus split"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'takaful',
+          title: 'Takaful window master configuration',
+          subtitle: 'Wakalah fee, tabarru risk-pool share and the participant share of surplus',
+          fields: fields(
+            ['Wakalah fee (bps)', wakalahBps],
+            ['Tabarru share (bps)', tabarruBps],
+            ['Participant surplus share (bps)', surplusPartBps],
+          ),
+          blockers: surplusPartBps < 0 || surplusPartBps > 10000
+            ? [`A participant surplus share of ${surplusPartBps} bps is not a share of anything`]
+            : surplusSavers && !data.erp.master.takafulConfig.allowsSurplusToSavers
+              ? ['The UAE pack does not allow surplus to be distributed to savers on this window']
+              : [],
+          children: (
+            <>
         <div className="row">
           <label>
             Wakalah Fee (bps)
@@ -2422,12 +2801,22 @@ export function MasterSettingsErp({
             Save Takaful Master
           </button>
         </div>
-      </Card>
-
-      <Card
-        title="4. Claims Authority Matrix"
-        subtitle="Define or update role-based monetary approval limits for human adjusters and AI straight-through processing"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'authority',
+          title: 'Claims authority matrix',
+          subtitle: 'Role-based monetary limits for human adjusters and for AI straight-through processing',
+          fields: fields(
+            ['Role', authRole],
+            ['Limit', authLimit],
+          ),
+          warnings: authIsAi
+            ? ['An AI role may accept inside its limit but may never decline: the engine refers a decline to the named human role instead']
+            : [],
+          children: (
+            <>
         <Table
           head={['Role', 'Monetary Limit', 'Actor Kind']}
           rows={data.erp.master.claimsAuthority.map((a) => [
@@ -2468,12 +2857,27 @@ export function MasterSettingsErp({
             + Upsert Authority Limit
           </button>
         </div>
-      </Card>
-
-      <Card
-        title="5. Multi-Currency FX Rate Table & Regulated Vocabulary"
-        subtitle="Register dated foreign exchange rates for ledger & group consolidation, or rename regulated terms per entity scope"
-      >
+            </>
+          ),
+        },
+        {
+          id: 'fx-vocabulary',
+          title: 'FX rate table & regulated vocabulary',
+          subtitle: 'Dated exchange rates for the ledger and group consolidation, and renamed terms per entity scope',
+          fields: fields(
+            ['From currency', fxFrom],
+            ['To currency', fxTo],
+            ['Rate', fxRate],
+            ['Rate date', fxDate],
+            ['Vocabulary scope', lblScope],
+            ['Label key', lblKey],
+            ['New text', lblText],
+          ),
+          blockers: fxFrom.trim().toUpperCase() === fxTo.trim().toUpperCase()
+            ? ['A rate from a currency to itself is not a rate']
+            : [],
+          children: (
+            <>
         <div className="row">
           <label>
             From Currency
@@ -2554,7 +2958,10 @@ export function MasterSettingsErp({
             Rename Label
           </button>
         </div>
-      </Card>
-    </div>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }

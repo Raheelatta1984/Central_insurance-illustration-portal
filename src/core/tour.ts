@@ -20,6 +20,7 @@ export interface TourStep {
 export const CONSOLE_TABS = [
   { id: 'tour', label: 'Tour', icon: '◷' },
   { id: 'overview', label: 'Overview', icon: '◈' },
+  { id: 'journey', label: 'Customer journey', icon: '➤' },
   { id: 'master', label: 'Master settings & ERP', icon: '⚙' },
   { id: 'policyholder', label: 'Policyholder', icon: '◉' },
   { id: 'decisions', label: 'Decision theatre', icon: '⇄' },
@@ -58,7 +59,23 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world'],
   },
   {
-    at: '00:04', minutes: 6, tab: 'policyholder', title: 'Look through a unit-linked policy into real instruments',
+    at: '00:04', minutes: 5, tab: 'journey', title: 'Walk a sale through nineteen closed sections',
+    why: 'This is the front door of the whole ERP: onboarding, needs analysis, recommendation, cover, loadings, riders, medical evidence, funds, beneficiaries, the underwriting decision, a quotation PDF emailed to the customer, six ways to pay, the binding route, conversion — and then allocation and investment progress. Every section starts closed, and the next one opens itself only when the one before it is 100% complete on its mandatory fields.',
+    doThis: [
+      'Read the rail: four sections ticked, section 5 (coverage & premium) open, everything behind it locked.',
+      'Fill the coverage section and submit it — watch it close and the loadings section open itself.',
+      'Reopen a completed section, clear a mandatory field and submit: the refusal names the field.',
+      'Run the sequence to the quotation and fetch the PDF; then pay by card and convert the policy.',
+    ],
+    expect: [
+      'A locked section explains which section holds it, instead of opening a form that cannot be submitted.',
+      'The quotation section produces a real PDF with a fingerprint, and an email record with a masked address.',
+      'A policy is issued only on money that has cleared, with the allocation and beneficiaries the customer signed.',
+    ],
+    api: ['GET /api/journey', 'POST /api/journey/save', 'POST /api/journey/submit', 'POST /api/journey/quotation/pdf'],
+  },
+  {
+    at: '00:09', minutes: 5, tab: 'policyholder', title: 'Look through a unit-linked policy into real instruments',
     why: 'This is the claim that beats ILAS: not just fund accounting, but genuine look-through into the instruments the fund actually holds, with a price date on every exposure.',
     doThis: [
       'Read the fund value and the units held per fund.',
@@ -72,7 +89,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world', 'GET /api/units'],
   },
   {
-    at: '00:10', minutes: 6, tab: 'decisions', title: 'Price a switch and a withdrawal before anything moves',
+    at: '00:14', minutes: 5, tab: 'decisions', title: 'Price a switch and a withdrawal before anything moves',
     why: 'A real decision theatre: units, price, valuation date, dealing rule, fees and lock-in blockers — all shown before the customer commits, with the illustration clearly labelled as an illustration.',
     doThis: [
       'Set a switch amount, pick the funds, and read the preview: units out, units in, fee, net invested.',
@@ -87,7 +104,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/preview/switch', 'POST /api/preview/withdrawal'],
   },
   {
-    at: '00:16', minutes: 5, tab: 'cover', title: 'Pay for cover only while cover is on',
+    at: '00:19', minutes: 5, tab: 'cover', title: 'Pay for cover only while cover is on',
     why: 'Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restarts by itself, and a day is either paid or cover suspends — there is no halfway charge.',
     doThis: [
       'Look at the segments: start, stop, daily rate, what has been charged.',
@@ -102,7 +119,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/cover/start', 'POST /api/cover/stop', 'POST /api/cover/tick'],
   },
   {
-    at: '00:21', minutes: 5, tab: 'funds', title: 'Run the NAV engine and see the rules behind a price',
+    at: '00:24', minutes: 5, tab: 'funds', title: 'Run the NAV engine and see the rules behind a price',
     why: 'Fund managers and auditors argue about valuation points. Here the cut-off, the business-day calendar, the floor price and its named residual are all visible, and reconciliation is an assertion, not a promise.',
     doThis: [
       'Read the valuation history per fund, including today.',
@@ -117,7 +134,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world'],
   },
   {
-    at: '00:26', minutes: 6, tab: 'takaful', title: 'Run a takaful window that is structural, not cosmetic',
+    at: '00:29', minutes: 5, tab: 'takaful', title: 'Run a takaful window that is structural, not cosmetic',
     why: 'Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the pool is short, and a surplus that cannot be distributed until the actuary, the Shariah Committee and the board have all signed — with the UAE rule that participants never receive surplus applied on top.',
     doThis: [
       'Read the three pool balances and the operator fund.',
@@ -132,7 +149,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/takaful/approve'],
   },
   {
-    at: '00:32', minutes: 6, tab: 'group', title: 'Consolidate three entities, two currencies, one set of books',
+    at: '00:34', minutes: 5, tab: 'group', title: 'Consolidate three entities, two currencies, one set of books',
     why: 'The part most ERP demos fake: assets and liabilities at the closing rate, income and expenses at the average rate, equity at the rate on the day it moved, the gap shown as a translation reserve, intercompany eliminated, and a minority interest stated rather than absorbed.',
     doThis: [
       'Read the three entities: functional currency, ownership, net assets, result, translation reserve.',
@@ -147,7 +164,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/group', 'POST /api/group/consolidate'],
   },
   {
-    at: '00:38', minutes: 5, tab: 'underwriting', title: 'Underwrite against a manual held as data',
+    at: '00:39', minutes: 5, tab: 'underwriting', title: 'Underwrite against a manual held as data',
     why: 'Loadings are shown line by line with the reason and the evidence each one demands, referrals go to a named human, and anything above the automatic binding limit is flagged for the reinsurer before the policy is issued. An AI agent may accept or rate inside its own limit and may never decline.',
     doThis: [
       'Read the accepted book: standard premium against loaded premium.',
@@ -162,7 +179,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/underwriting', 'POST /api/underwriting/decide'],
   },
   {
-    at: '00:43', minutes: 5, tab: 'claims', title: 'Pay a claim through authority, not through a spreadsheet',
+    at: '00:44', minutes: 5, tab: 'claims', title: 'Pay a claim through authority, not through a spreadsheet',
     why: 'Triage decides straight-through, referral or decline; a reserve is a booked liability rather than a note; approval is checked against a real authority table; settlement releases the reserve and recoveries are posted as their own income. In the takaful window the same workflow draws on the participants risk fund.',
     doThis: [
       'Read the position: reserved, expense incurred, cash paid, recoveries, net cost.',
@@ -177,7 +194,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/claims', 'POST /api/claims/register', 'POST /api/claims/approve', 'POST /api/claims/settle'],
   },
   {
-    at: '00:48', minutes: 6, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
+    at: '00:49', minutes: 5, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
     why: 'An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty\'s promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary\'s exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.',
     doThis: [
       'Read the two statements: the conventional book and the takaful window, each with its own treaties.',

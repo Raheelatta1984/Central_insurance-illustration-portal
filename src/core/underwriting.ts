@@ -123,14 +123,32 @@ export interface UnderwritingDecision {
   readonly decidedByAi: boolean;
 }
 
+/**
+ * One change to the risk questionnaire, with the old value, the new value, who made it and why.
+ * The medical questionnaire is reviewed and updated in service all the time; what must never happen
+ * is an update that leaves no trace, because the decision was taken on the answers as they stood.
+ */
+export interface ProfileAmendment {
+  readonly at: string;
+  readonly by: string;
+  readonly field: string;
+  readonly from: string;
+  readonly to: string;
+  readonly reason: string;
+}
+
+export const AMENDMENT_REASON_MINIMUM = 24;
+
 export interface Application {
   readonly id: string;
   readonly partyId: string;
   readonly productId: string;
   readonly sumAssured: Money;
   readonly at: string;
-  readonly profile: RiskProfile;
+  /** Mutable on purpose: the questionnaire is reviewed and updated after registration. */
+  profile: RiskProfile;
   decision?: UnderwritingDecision;
+  readonly amendments: ProfileAmendment[];
 }
 
 export interface AggregateExposure {
@@ -143,6 +161,14 @@ export interface AggregateExposure {
 }
 
 export class UnderwritingError extends Error {}
+
+function describeValue(value: unknown): string {
+  if (value === undefined || value === null) return '—';
+  if (typeof value === 'boolean') return value ? 'yes' : 'no';
+  if (Array.isArray(value)) return value.length === 0 ? 'none' : value.map((v) => describeValue(v)).join(', ');
+  if (typeof value === 'object' && 'minor' in (value as Record<string, unknown>)) return formatAmount(value as Money);
+  return String(value);
+}
 
 export class UnderwritingEngine {
   private readonly applications = new Map<string, Application>();
@@ -171,7 +197,7 @@ export class UnderwritingEngine {
   }
 
   register(input: { partyId: string; productId: string; sumAssured: Money; at: string; profile: RiskProfile }): Application {
-    const application: Application = { id: `UW-${String(++this.seq).padStart(6, '0')}`, ...input };
+    const application: Application = { id: `UW-${String(++this.seq).padStart(6, '0')}`, ...input, amendments: [] };
     this.applications.set(application.id, application);
     return application;
   }
@@ -183,6 +209,60 @@ export class UnderwritingEngine {
   }
 
   list(): Application[] { return [...this.applications.values()]; }
+
+  amendmentsFor(applicationId: string): readonly ProfileAmendment[] {
+    return [...this.application(applicationId).amendments];
+  }
+
+  /**
+   * Review and update the questionnaire on an open case. Every changed field is recorded from → to
+   * with the person and the reason, and a decision already taken on the old answers is set aside:
+   * the case is re-assessed and has to be decided again, because the risk it described has changed.
+   */
+  amendProfile(applicationId: string, input: {
+    at: string;
+    by: string;
+    reason: string;
+    patch: Partial<Omit<RiskProfile, 'partyId'>>;
+  }): { application: Application; amendments: readonly ProfileAmendment[]; reassessment: UnderwritingDecision; decisionSetAside: DecisionOutcome | null } {
+    const app = this.application(applicationId);
+    const reason = input.reason.trim();
+    if (reason.length < AMENDMENT_REASON_MINIMUM) {
+      throw new UnderwritingError(`amending a risk questionnaire needs a reason of at least ${AMENDMENT_REASON_MINIMUM} characters — "${reason}" is not one`);
+    }
+    if (!input.by.trim()) throw new UnderwritingError('an amendment needs the name of the person who made it');
+
+    const added: ProfileAmendment[] = [];
+    const next: RiskProfile = { ...app.profile };
+    const target = next as unknown as Record<string, unknown>;
+    const source = app.profile as unknown as Record<string, unknown>;
+    for (const [field, value] of Object.entries(input.patch)) {
+      if (value === undefined) continue;
+      const before = describeValue(source[field]);
+      const after = describeValue(value);
+      if (before === after) continue;
+      target[field] = value;
+      added.push({ at: input.at, by: input.by.trim(), field, from: before, to: after, reason });
+    }
+
+    if (added.length === 0) {
+      return { application: app, amendments: [], reassessment: this.assess(app.id), decisionSetAside: null };
+    }
+
+    const setAside = app.decision?.outcome ?? null;
+    app.profile = next;
+    app.amendments.push(...added);
+    if (app.decision) {
+      app.amendments.push({
+        at: input.at, by: input.by.trim(), field: 'decision',
+        from: `${app.decision.outcome} decided by ${app.decision.decidedBy}`,
+        to: 'set aside — the case must be decided again on the updated answers',
+        reason,
+      });
+      delete app.decision;
+    }
+    return { application: app, amendments: added, reassessment: this.assess(app.id), decisionSetAside: setAside };
+  }
 
   bmi(profile: RiskProfile): number {
     const metres = profile.heightCm / 100;

@@ -1706,6 +1706,18 @@ export class ErpManager {
     return this.takafulConfig;
   }
 
+  /**
+   * The product master as the ERP holds it, rules included. Anything that has to price, gate or
+   * route a product reads it here rather than re-deriving rates from formatted snapshot strings.
+   */
+  listProductMasters(): ProductMaster[] { return [...this.products.values()]; }
+
+  productMaster(productId: string): ProductMaster {
+    const product = this.products.get(productId);
+    if (!product) throw new ErpError(`unknown product ${productId} — define it in Master Settings first`);
+    return product;
+  }
+
   getTakafulConfig(): TakafulProductConfig {
     return this.takafulConfig;
   }

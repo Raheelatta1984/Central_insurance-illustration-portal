@@ -1,6 +1,6 @@
 # 07 — The sixty-minute tour
 
-*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 12 steps, 60 minutes.*
+*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 13 steps, 60 minutes.*
 
 > **Live app:** run `npm install && npm run build && npm start`, then open the console and start on the **Tour** tab. Every number you see is computed by an engine in `src/core`; nothing on the screen is seeded display text.
 
@@ -9,17 +9,18 @@
 | # | Time | Tab | What you are doing |
 | --- | --- | --- | --- |
 | 1 | 00:00 | Overview | Land on the whole book in one screen |
-| 2 | 00:04 | Policyholder | Look through a unit-linked policy into real instruments |
-| 3 | 00:10 | Decision theatre | Price a switch and a withdrawal before anything moves |
-| 4 | 00:16 | Cover control | Pay for cover only while cover is on |
-| 5 | 00:21 | Funds & NAV | Run the NAV engine and see the rules behind a price |
-| 6 | 00:26 | Takaful | Run a takaful window that is structural, not cosmetic |
-| 7 | 00:32 | Group finance | Consolidate three entities, two currencies, one set of books |
-| 8 | 00:38 | Underwriting | Underwrite against a manual held as data |
-| 9 | 00:43 | Claims | Pay a claim through authority, not through a spreadsheet |
-| 10 | 00:48 | Reinsurance | Hand part of the risk to someone else, on the record |
-| 11 | 00:54 | Durability | Prove the books, and the reporting registers, can be restored |
-| 12 | 00:57 | Overview | The remainder of the hour: the fabric around the money |
+| 2 | 00:04 | Customer journey | Walk a sale through nineteen closed sections |
+| 3 | 00:09 | Policyholder | Look through a unit-linked policy into real instruments |
+| 4 | 00:14 | Decision theatre | Price a switch and a withdrawal before anything moves |
+| 5 | 00:19 | Cover control | Pay for cover only while cover is on |
+| 6 | 00:24 | Funds & NAV | Run the NAV engine and see the rules behind a price |
+| 7 | 00:29 | Takaful | Run a takaful window that is structural, not cosmetic |
+| 8 | 00:34 | Group finance | Consolidate three entities, two currencies, one set of books |
+| 9 | 00:39 | Underwriting | Underwrite against a manual held as data |
+| 10 | 00:44 | Claims | Pay a claim through authority, not through a spreadsheet |
+| 11 | 00:49 | Reinsurance | Hand part of the risk to someone else, on the record |
+| 12 | 00:54 | Durability | Prove the books, and the reporting registers, can be restored |
+| 13 | 00:57 | Overview | The remainder of the hour: the fabric around the money |
 
 ## 1. 00:00 — Land on the whole book in one screen
 
@@ -40,9 +41,30 @@ Before touching anything: this is one tenant, two legal entities and a Malaysian
 
 *Endpoints: GET /api/world*
 
-## 2. 00:04 — Look through a unit-linked policy into real instruments
+## 2. 00:04 — Walk a sale through nineteen closed sections
 
-**Tab:** Policyholder · **6 minutes**
+**Tab:** Customer journey · **5 minutes**
+
+This is the front door of the whole ERP: onboarding, needs analysis, recommendation, cover, loadings, riders, medical evidence, funds, beneficiaries, the underwriting decision, a quotation PDF emailed to the customer, six ways to pay, the binding route, conversion — and then allocation and investment progress. Every section starts closed, and the next one opens itself only when the one before it is 100% complete on its mandatory fields.
+
+**Do this**
+
+- Read the rail: four sections ticked, section 5 (coverage & premium) open, everything behind it locked.
+- Fill the coverage section and submit it — watch it close and the loadings section open itself.
+- Reopen a completed section, clear a mandatory field and submit: the refusal names the field.
+- Run the sequence to the quotation and fetch the PDF; then pay by card and convert the policy.
+
+**You should see**
+
+- A locked section explains which section holds it, instead of opening a form that cannot be submitted.
+- The quotation section produces a real PDF with a fingerprint, and an email record with a masked address.
+- A policy is issued only on money that has cleared, with the allocation and beneficiaries the customer signed.
+
+*Endpoints: GET /api/journey · POST /api/journey/save · POST /api/journey/submit · POST /api/journey/quotation/pdf*
+
+## 3. 00:09 — Look through a unit-linked policy into real instruments
+
+**Tab:** Policyholder · **5 minutes**
 
 This is the claim that beats ILAS: not just fund accounting, but genuine look-through into the instruments the fund actually holds, with a price date on every exposure.
 
@@ -59,9 +81,9 @@ This is the claim that beats ILAS: not just fund accounting, but genuine look-th
 
 *Endpoints: GET /api/world · GET /api/units*
 
-## 3. 00:10 — Price a switch and a withdrawal before anything moves
+## 4. 00:14 — Price a switch and a withdrawal before anything moves
 
-**Tab:** Decision theatre · **6 minutes**
+**Tab:** Decision theatre · **5 minutes**
 
 A real decision theatre: units, price, valuation date, dealing rule, fees and lock-in blockers — all shown before the customer commits, with the illustration clearly labelled as an illustration.
 
@@ -79,7 +101,7 @@ A real decision theatre: units, price, valuation date, dealing rule, fees and lo
 
 *Endpoints: POST /api/preview/switch · POST /api/preview/withdrawal*
 
-## 4. 00:16 — Pay for cover only while cover is on
+## 5. 00:19 — Pay for cover only while cover is on
 
 **Tab:** Cover control · **5 minutes**
 
@@ -99,7 +121,7 @@ Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restar
 
 *Endpoints: POST /api/cover/start · POST /api/cover/stop · POST /api/cover/tick*
 
-## 5. 00:21 — Run the NAV engine and see the rules behind a price
+## 6. 00:24 — Run the NAV engine and see the rules behind a price
 
 **Tab:** Funds & NAV · **5 minutes**
 
@@ -119,9 +141,9 @@ Fund managers and auditors argue about valuation points. Here the cut-off, the b
 
 *Endpoints: GET /api/world*
 
-## 6. 00:26 — Run a takaful window that is structural, not cosmetic
+## 7. 00:29 — Run a takaful window that is structural, not cosmetic
 
-**Tab:** Takaful · **6 minutes**
+**Tab:** Takaful · **5 minutes**
 
 Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the pool is short, and a surplus that cannot be distributed until the actuary, the Shariah Committee and the board have all signed — with the UAE rule that participants never receive surplus applied on top.
 
@@ -139,9 +161,9 @@ Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the
 
 *Endpoints: POST /api/takaful/approve*
 
-## 7. 00:32 — Consolidate three entities, two currencies, one set of books
+## 8. 00:34 — Consolidate three entities, two currencies, one set of books
 
-**Tab:** Group finance · **6 minutes**
+**Tab:** Group finance · **5 minutes**
 
 The part most ERP demos fake: assets and liabilities at the closing rate, income and expenses at the average rate, equity at the rate on the day it moved, the gap shown as a translation reserve, intercompany eliminated, and a minority interest stated rather than absorbed.
 
@@ -159,7 +181,7 @@ The part most ERP demos fake: assets and liabilities at the closing rate, income
 
 *Endpoints: GET /api/group · POST /api/group/consolidate*
 
-## 8. 00:38 — Underwrite against a manual held as data
+## 9. 00:39 — Underwrite against a manual held as data
 
 **Tab:** Underwriting · **5 minutes**
 
@@ -179,7 +201,7 @@ Loadings are shown line by line with the reason and the evidence each one demand
 
 *Endpoints: GET /api/underwriting · POST /api/underwriting/decide*
 
-## 9. 00:43 — Pay a claim through authority, not through a spreadsheet
+## 10. 00:44 — Pay a claim through authority, not through a spreadsheet
 
 **Tab:** Claims · **5 minutes**
 
@@ -199,9 +221,9 @@ Triage decides straight-through, referral or decline; a reserve is a booked liab
 
 *Endpoints: GET /api/claims · POST /api/claims/register · POST /api/claims/approve · POST /api/claims/settle*
 
-## 10. 00:48 — Hand part of the risk to someone else, on the record
+## 11. 00:49 — Hand part of the risk to someone else, on the record
 
-**Tab:** Reinsurance · **6 minutes**
+**Tab:** Reinsurance · **5 minutes**
 
 An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty's promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary's exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.
 
@@ -235,7 +257,7 @@ An insurer that keeps every risk whole is one bad quarter from ruin. This is the
 
 *Endpoints: GET /api/reinsurance · GET /api/reinsurance/security · GET /api/extracts · POST /api/extracts/issue · POST /api/extracts/verify · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover · POST /api/reinsurance/event · POST /api/reinsurance/reinstate · POST /api/reinsurance/deposit · POST /api/reinsurance/deposit/settle · POST /api/reinsurance/settle · POST /api/reinsurance/security/hold · POST /api/reinsurance/security/call · POST /api/reinsurance/security/call/settle · POST /api/reinsurance/security/release · POST /api/reinsurance/security/interest*
 
-## 11. 00:54 — Prove the books, and the reporting registers, can be restored
+## 12. 00:54 — Prove the books, and the reporting registers, can be restored
 
 **Tab:** Durability · **3 minutes**
 
@@ -258,7 +280,7 @@ A demo that cannot survive a restart is not an ERP. This seals the books into a 
 
 *Endpoints: GET /api/state · POST /api/state/drill · GET /api/state/registers · POST /api/state/registers/drill*
 
-## 12. 00:57 — The remainder of the hour: the fabric around the money
+## 13. 00:57 — The remainder of the hour: the fabric around the money
 
 **Tab:** Overview · **3 minutes**
 
@@ -297,39 +319,6 @@ That is the product working, not a bug. The refusals worth trying on purpose:
 
 This is an honest inventory, mirrored in `docs/06-QA-REPORT.md`: policy administration, the data warehouse and the customer-service modules are designed and backlogged, not yet built. `ledger/runs.jsonl` records every backlog chunk the fleet has claimed with its evidence; `node tools/fleet.mjs` prints how many are still open.
 
-## Step 13 — the reporting log, and what it is for (5 min)
-
-Open **Durability** and look above the two drill buttons. Under *"The log, as the store holds it"* the
-console reports the version a reader would open, how many entries it holds, the head hash that proves
-them and how many were written by the last catch-up. The line beneath is the one worth reading aloud:
-the tail is verified **from the last checkpoint**, so a reader proves what has happened since without
-walking the whole chain — and the checkpoint's own hash still stands behind it, which is why a rewrite
-below the checkpoint fails loudly.
-
-Then press the readers. *Read the log from the beginning* shows the first five entries with the book
-they were reported in, the register, the record id and the time; *Read the last five* opens the end of
-the log and says whether the reader is current. Ask the room to find the two filings: the conventional
-and the takaful return **both number from SUB-000001**, and the log holds both because a record's
-identity is the book, the register and the id — the defect this chunk found, visible as two rows.
-
-Finally *Rebuild every register from the snapshot*: the drill's result now carries the log it sealed
-and says whether the snapshot and the store agree on the same records.
-
-## Step 14 — three copies of one log (4 min)
-
-Press *Rebuild every register from the snapshot* and read the drill's numbers above the result. Two
-rows matter here: **the snapshot's log against the rebuilt registers** and **the running store against
-the rebuilt registers**. They are the same log three times over — the copy the snapshot carried, the
-copy the rebuilt registers produce from the records they now hold, and the copy the running store has
-been keeping all session — compared **entry for entry, hash for hash**. A reader who wants the whole
-story of what that check has already caught can read it in the ledger: a restore that folded two
-identical decisions into one, and a log whose entry 7 was a decision where the records said extract.
-
-Under it, the rule decisions now read *"5 matched · 7 the same"*: decisions the rebuilt register already
-held under the same id were compared rather than taken again, and the rest were replayed in the order
-they were taken. Then press *Read the log from the beginning* again — the entries are in the records'
-own order, which is the order a fresh walk produces, not the order they happened to be written in.
-
 ## Where the numbers live
 
 | Surface | Where it is computed |
@@ -343,4 +332,3 @@ own order, which is the order a fresh walk produces, not the order they happened
 | Group consolidation | `src/core/groupfinance.ts` |
 | Micro-duration cover | `src/core/billing.ts` |
 | Snapshot and restore | `src/core/persistence.ts` |
-| The reporting log: versions, streaming, checkpoints | `src/core/reportingstore.ts`, `src/core/registerstore.ts` |

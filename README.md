@@ -2,11 +2,11 @@
 
 **An AI-native Insurance ERP** — life, medical, general, group, travel, unit-linked and **takaful** — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance), the API server and the operator console are implemented, typechecked, tested (315 cases) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), the API server and the operator console are implemented, typechecked, tested (467 cases) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + 315 tests + build
+npm run verify     # typecheck + 467 tests + build
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data
@@ -21,6 +21,27 @@ The 2026 market shipped agentic AI bolted onto twenty-year-old cores (Guidewire 
 
 This platform is built the other way round: **takaful-native, group-finance-native, unit-linked-deep, priced by the day, and agent-first from the first commit.**
 
+## The guided customer lifecycle
+
+The console's second tab, **Customer journey**, is the sale end to end in nineteen sections that are all
+closed when you arrive. Onboarding → customer profile and consent → needs-analysis questionnaire →
+product recommendation → coverage and premium → occupational and medical loadings → riders → medical
+requirements → fund allocation → beneficiaries → underwriting and questionnaire review → quotation as a
+PDF emailed to the customer → cooling-off and sign-off → payment (cash, credit or debit card, bank
+transfer, BNPL, branch deposit) → the binding route (auto, manual, senior, a freelance underwriter hired
+to meet the promise, the reinsurer asked before issue) → policy conversion → allocation management →
+investment progress → servicing.
+
+One section is open at a time, and it is open because the core says it is next: a section unlocks only when
+every section before it is 100% complete on its mandatory fields *and* its domain gates — weights that
+total exactly 100%, beneficiaries that total exactly 100%, a loading breakdown that reconciles with the
+underwriting file, medical evidence received and reviewed, money actually cleared. The same gate runs in
+`POST /api/journey/submit`, so a script or an agent cannot walk past the sequence either. Claims, policy
+administration, quotations, funds, reinsurance and master settings use the same rail.
+
+See [`docs/09-CUSTOMER-JOURNEY.md`](docs/09-CUSTOMER-JOURNEY.md) for the sequence, the gate contract, the
+alternatives considered and what is verified.
+
 ## Documents
 
 | Document | What it covers |
@@ -33,6 +54,7 @@ This platform is built the other way round: **takaful-native, group-finance-nati
 | [`AGENTS.md`](AGENTS.md) | The worker contract every agent follows: claiming, ownership, evidence, risk gates, ledger row |
 | [`docs/05-DECISIONS.md`](docs/05-DECISIONS.md) | The decisions I took on your behalf, each with its rationale and how to reverse it |
 | [`docs/07-TOUR.md`](docs/07-TOUR.md) | The sixty-minute guided tour of the live app, generated from `src/core/tour.ts` (the same data the console's Tour tab runs) |
+| [`docs/09-CUSTOMER-JOURNEY.md`](docs/09-CUSTOMER-JOURNEY.md) | The guided customer lifecycle: the nineteen gated sections, what "complete" means, why the gate lives in the core, the API, and what was verified |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
@@ -59,11 +81,11 @@ One click and nothing else: no environment variables, no secrets, no database, n
 | File | Size | What it is |
 | --- | --- | --- |
 | `index.html` | 6 KB | the landing page |
-| `console.html` | 629 KB | **the real application**, running against the engine's recorded answers |
-| `gallery.html` | 1.7 MB | the module gallery |
-| `tour.md` | 22 KB | the written sixty-minute tour |
+| `console.html` | 1.6 MB | **the real application**, running the engine in the browser |
+| `gallery.html` | 1.7 MB | the module gallery (screenshots recorded before the journey tab; refresh with `npm run demo:pack`) |
+| `tour.md` | 21 KB | the written sixty-minute tour |
 
-2.4 MB total. The console is not a video or a mock-up — it carries the engine's actual recorded responses, so it answers live in the browser with no backend behind it.
+3.3 MB total. The console is not a video or a mock-up — it carries the engine itself, so it answers live in the browser with no backend behind it.
 
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes the identical assembly to GitHub Pages, so the two hosts cannot disagree about what is online. Locally: `npm run demo:site`, then serve `site/`.
 

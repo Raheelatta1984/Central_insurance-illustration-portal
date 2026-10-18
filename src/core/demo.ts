@@ -33,6 +33,11 @@ import { AgentRuntime } from './ai.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
 import { DecisionTheatre } from './decisioning.js';
 import { ErpManager } from './erp.js';
+import { JourneyDesk, IN_HOUSE_QUEUE } from './journeydesk.js';
+import { QuotationBook } from './quotation.js';
+import { PaymentBook } from './payments.js';
+import { DEFAULT_ROUTING_LIMITS, UnderwritingDesk } from './uwroute.js';
+import { JourneyCase } from './journey.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -76,6 +81,8 @@ export interface World {
   readonly onboarding: { readonly chip: ExtractionResult; readonly ocr: ExtractionResult };
   readonly quotes: QuoteOffer[];
   readonly erp: ErpManager;
+  /** The guided lifecycle: gated sections from onboarding to investment progress, with their books. */
+  readonly journey: JourneyDesk;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -717,7 +724,81 @@ export function buildWorld(): World {
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
   } as unknown as World;
   const erp = new ErpManager(baseWorld);
-  return { ...baseWorld, erp };
+  const withErp: World = { ...baseWorld, erp } as World;
+
+  // The lifecycle desk: quotations, payments and the underwriting route are its own books, so a
+  // journey that reaches them produces documents, receipts and routing decisions that outlive it.
+  const lifeRules = withErp.underwriting.rulesFor('PROD-LIFE-TERM');
+  const journey = new JourneyDesk(
+    new QuotationBook(tenant.name, () => `${withErp.asOf}T12:00:00+04:00`),
+    new PaymentBook(),
+    new UnderwritingDesk({
+      currency,
+      aiStraightThroughMinor: lifeRules.aiStraightThroughMinor,
+      automaticBindingLimitMinor: lifeRules.automaticBindingLimitMinor,
+      facultativeThresholdMinor: lifeRules.facultativeThresholdMinor,
+      ...DEFAULT_ROUTING_LIMITS,
+    }),
+  );
+  seedJourney(withErp, journey);
+  return { ...withErp, journey };
+}
+
+/**
+ * One journey in flight, seeded the way the console should first meet it: identity, customer profile,
+ * needs analysis and recommendation complete, so sections 1–4 render closed and ticked and section 5
+ * (coverage & premium) is the one that opens itself. Nothing here registers an underwriting
+ * application or creates a party, so the rest of the demo world is untouched.
+ */
+function seedJourney(w: World, journey: JourneyDesk): JourneyCase {
+  const caze = journey.open(w, {
+    customerName: 'Ahmed Al Mansoori', country: 'AE', currency: 'AED',
+    by: 'customer-onboarding-desk', at: '2026-10-05T09:00:00+04:00',
+  });
+  caze.customerName = 'Ahmed Al Mansoori';
+  caze.status = 'in-progress';
+  caze.submitted = ['identity', 'profile', 'needs', 'recommendation'];
+  caze.artefacts = { partyId: 'PTY-0001', consentId: w.consentId, needId: `NA-${caze.caseId}` };
+
+  caze.answers.identity = {
+    kind: 'person', nameEn: 'Ahmed Al Mansoori', nameAr: 'أحمد المنصوري', dateOfBirth: '1985-04-12',
+    idType: 'emirates-id', idNumber: '784-1985-1234567-1', idSource: 'chip',
+    phone: '+971 50 123 4567', email: 'ahmed.mansoori@example.ae',
+    addressLine: 'Villa 12, Al Barsha 2', city: 'Dubai', country: 'AE', consentTo: 'DXB-BROKER-01',
+  };
+  caze.answers.profile = {
+    contactConfirmed: true, duplicateChecked: true, __duplicateMatches: 0,
+    consentScopes: ['customer.exists', 'customer.name', 'customer.contact', 'customer.holdings'],
+    dataResidency: 'in-country', taxResidence: 'AE', taxId: 'AE-TIN-4471209', preferedChannel: 'portal',
+  };
+  caze.answers.needs = {
+    country: 'AE',
+    attestationAgreed: true,
+    answers: [
+      { questionId: 'residence-country', value: 'AE' },
+      { questionId: 'dependants', value: 2 },
+      { questionId: 'annual-income', value: 480000 },
+      { questionId: 'existing-cover', value: 3900000 },
+      { questionId: 'outstanding-debt', value: 600000 },
+      { questionId: 'premium-budget', value: 60000 },
+      { questionId: 'objective', value: 'family-protection' },
+      { questionId: 'risk-appetite', value: 'growth' },
+      { questionId: 'shariah-preferred', value: false },
+      { questionId: 'age', value: 41 },
+      { questionId: 'smoker', value: false },
+      { questionId: 'medical-conditions', value: false },
+      { questionId: 'occupation-class', value: '2' },
+    ],
+  };
+  caze.answers.recommendation = {
+    productId: 'PROD-UL-GLOBAL', alternativesPresented: true, customerAccepted: true,
+    recommendationNote: 'Growth appetite with nine years of income to replace and a mortgage to cover: an investment-linked plan answers both, and the indicative premium sits inside the stated budget.',
+  };
+  caze.log.push({
+    at: '2026-10-05T09:40:00+04:00', by: 'customer-onboarding-desk', stageId: 'recommendation',
+    action: 'submitted', detail: 'Recommendation complete — next: Coverage & premium calculation', completeAfter: true,
+  });
+  return caze;
 }
 
 /* ------------------------------------------------------------ projections */
@@ -750,6 +831,9 @@ export function underwritingSnapshot(engine: UnderwritingEngine, asOf: string) {
         id: a.id, partyId: a.partyId, productId: a.productId, at: a.at,
         age: a.profile.age, smoker: a.profile.smoker, bmi: engine.bmi(a.profile),
         occupationClass: a.profile.occupationClass, conditions: [...a.profile.conditions], pursuits: [...a.profile.pursuits],
+        heightCm: a.profile.heightCm, weightKg: a.profile.weightKg, familyHistory: [...a.profile.familyHistory],
+        sex: a.profile.sex, residenceCountry: a.profile.residenceCountry,
+        amendments: engine.amendmentsFor(a.id).map((m) => ({ at: m.at, by: m.by, field: m.field, from: m.from, to: m.to, reason: m.reason })),
         sumAssured: formatAmount(a.sumAssured),
         outcome: assessment.outcome,
         decidedBy: assessment.decidedBy || null,
@@ -1353,6 +1437,7 @@ export function worldSnapshot(w: World) {
     },
     motorPolicy: { policyId: 'MTR-0441', holder: 'Ahmed Al Mansoori' },
     erp: w.erp.snapshot(w),
+    journey: w.journey.snapshot(w),
     days: DAYS,
     generatedAt: new Date().toISOString(),
   };
