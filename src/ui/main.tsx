@@ -10,6 +10,7 @@ import type { WorldSnapshot } from '../core/demo';
 
 import { CONSOLE_TABS, ConsoleTab, TOUR, TourStep, tourMinutes } from '../core/tour';
 import { api } from './api';
+import { GuideNote, GuideProvider, GuideTopBanner } from './guide';
 import { CustomerJourneyPanel } from './journey';
 import {
   ClaimsManagementPanel,
@@ -28,6 +29,7 @@ const TABS = CONSOLE_TABS;
 const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({ title, subtitle, children, wide }) => (
   <section className="card" style={wide ? { gridColumn: '1 / -1' } : undefined}>
     <header><h3>{title}</h3>{subtitle && <p>{subtitle}</p>}</header>
+    <GuideNote title={title} subtitle={subtitle} />
     {children}
   </section>
 );
@@ -861,11 +863,17 @@ function Labels({ data }: { data: WorldSnapshot }) {
 function App() {
   const [data, setData] = useState<WorldSnapshot | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
+  const [guideEnabled, setGuideEnabled] = useState(() => {
+    try { return window.localStorage.getItem('central-insurance-ai-guide') === 'enabled'; } catch { return false; }
+  });
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     try { setData(await api<WorldSnapshot>('/world')); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    try { window.localStorage.setItem('central-insurance-ai-guide', guideEnabled ? 'enabled' : 'disabled'); } catch { /* storage can be unavailable in private or embedded contexts */ }
+  }, [guideEnabled]);
   const body = useMemo(() => {
     if (!data) return null;
     switch (tab) {
@@ -910,18 +918,32 @@ function App() {
         </footer>
       </aside>
       <main>
-        <header className="top">
-          <div>
-            <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
-            <p className="muted small">Unit-linked · takaful · group finance · micro-duration cover — all from one core, all auditable.</p>
-          </div>
-          <div className="pills">
-            <Pill tone="ok">books balanced</Pill>
-            <Pill tone="info">as of {data?.asOf ?? '—'}</Pill>
-          </div>
-        </header>
-        {error && <div className="errorBox">{error}</div>}
-        {body ?? <div className="loading">Loading the world…</div>}
+        <GuideProvider enabled={guideEnabled} tab={tab}>
+          <header className="top">
+            <div>
+              <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
+              <p className="muted small">Unit-linked · takaful · group finance · micro-duration cover — all from one core, all auditable.</p>
+            </div>
+            <div className="topControls">
+              <button
+                type="button"
+                className={`aiGuideToggle${guideEnabled ? ' enabled' : ''}`}
+                aria-pressed={guideEnabled}
+                onClick={() => setGuideEnabled((enabled) => !enabled)}
+                title={guideEnabled ? 'Turn off contextual AI guidance' : 'Turn on contextual AI guidance'}
+              >
+                <span aria-hidden="true">✦</span> AI guide <b>{guideEnabled ? 'On' : 'Off'}</b>
+              </button>
+              <div className="pills">
+                <Pill tone="ok">books balanced</Pill>
+                <Pill tone="info">as of {data?.asOf ?? '—'}</Pill>
+              </div>
+            </div>
+          </header>
+          <GuideTopBanner />
+          {error && <div className="errorBox">{error}</div>}
+          {body ?? <div className="loading">Loading the world…</div>}
+        </GuideProvider>
       </main>
     </div>
   );
@@ -2295,6 +2317,20 @@ nav .icon { width:16px; text-align:center; color:var(--accent); }
 aside footer { margin-top:auto; display:flex; flex-direction:column; gap:8px; }
 main { padding:22px 26px 60px; }
 .top { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:16px; }
+.topControls { display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
+.aiGuideToggle { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; background:#11212f; border:1px solid #1f4a6b; color:#cfe6ff; }
+.aiGuideToggle b { font-size:11px; padding:2px 7px; border-radius:999px; background:#182230; }
+.aiGuideToggle.enabled { background:#332709; border-color:#6b5312; color:#ffe4a3; }
+.aiGuideToggle.enabled b { background:#6b5312; color:#fff0c4; }
+.aiGuideBanner { position:sticky; top:8px; z-index:20; margin:0 0 14px; padding:12px 16px; border:1px solid #6b5312; border-left:4px solid #f0b429; border-radius:12px; background:linear-gradient(110deg,#332709,#211e13 70%,#131a22); color:#fff0c4; box-shadow:0 8px 24px rgba(0,0,0,.26); }
+.aiGuideBannerTitle, .aiGuideNoteTitle { display:flex; gap:7px; align-items:center; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.045em; color:#ffe4a3; }
+.aiGuideDivider { opacity:.55; }
+.aiGuideBanner p { margin:4px 0 3px; font-size:13px; }
+.aiGuideBanner small, .aiGuideNote small { color:#d2c28e; font-size:10.5px; }
+.aiGuideNote { position:sticky; top:102px; z-index:5; margin:8px 0 12px; padding:10px 12px; border:1px solid #6b5312; border-left:3px solid #f0b429; border-radius:10px; background:#332709; color:#fff0c4; box-shadow:0 5px 16px rgba(0,0,0,.18); }
+.aiGuideNote.compact { margin:8px 0 10px; padding:8px 11px; }
+.aiGuideNote p { margin:4px 0; font-size:12px; }
+.aiGuideNext { margin:4px 0; font-size:11.5px; color:#ffe4a3; }
 h1 { font-size:20px; margin:0; }
 h3 { margin:0 0 2px; font-size:14px; }
 .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap:14px; }

@@ -19,6 +19,7 @@
  * same rail drives the customer journey, a quotation, a policy conversion, an alteration or a claim.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GuideNote } from './guide';
 
 export type SectionStatus = 'complete' | 'in-progress' | 'ready' | 'blocked' | 'locked';
 
@@ -215,6 +216,7 @@ export const SectionStack: React.FC<SectionStackProps> = ({
 
               {locked && open && (
                 <div className="sectionBody" id={`section-body-${section.id}`}>
+                  <GuideNote title={section.title} subtitle={section.subtitle} status={section.status} missing={section.missing} blockers={section.blockers} warnings={section.warnings} compact />
                   <div className="warnBox small">
                     This section is closed until <b>{section.lockedByTitle ?? 'the section before it'}</b> is 100% complete.
                     The sequence is enforced by the same gate the API uses, so nothing here can be submitted early.
@@ -225,6 +227,7 @@ export const SectionStack: React.FC<SectionStackProps> = ({
 
               {!locked && open && (
                 <div className="sectionBody" id={`section-body-${section.id}`}>
+                  <GuideNote title={section.title} subtitle={section.subtitle} status={section.status} missing={section.missing} blockers={section.blockers} warnings={section.warnings} compact />
                   {section.meta && <div className="sectionMeta">{section.meta}</div>}
                   <MissingList missing={section.missing} blockers={section.blockers} warnings={section.warnings} />
                   {section.children}

@@ -10,6 +10,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { buildWorld, worldSnapshot } from '../core/demo.js';
 import { CustomerJourneyPanel } from './journey.js';
+import { GuideProvider, GuideTopBanner } from './guide.js';
 import {
   ClaimsManagementPanel, CustomerManagementPanel, FundNavManagementPanel, MasterSettingsErp,
   PolicyAdministrationPanel, ProposalManagementPanel, ReinsuranceManagementPanel,
@@ -30,6 +31,26 @@ describe('the console renders', () => {
     expect(html.split('aria-expanded="false"').length - 1).toBe(18);
     expect(html).toContain('Coverage &amp; premium calculation');
     expect(html).toContain('closed — waiting on');
+    expect(html).not.toContain('AI guide');
+  });
+
+  it('shows the tab guide and per-section notes only when guidance is enabled', () => {
+    const claimsPanel = h(ClaimsManagementPanel, { data, onReload: noop });
+    const guided = renderToString(h(
+      GuideProvider,
+      { enabled: true, tab: 'claims' },
+      h(React.Fragment, null, h(GuideTopBanner), claimsPanel),
+    ));
+    expect(guided).toContain('AI guide for Claims');
+    expect(guided).toContain('AI guide for 1. Register a claim request');
+    expect(guided).toContain('Local contextual guidance only');
+
+    const quiet = renderToString(h(
+      GuideProvider,
+      { enabled: false, tab: 'claims' },
+      h(React.Fragment, null, h(GuideTopBanner), claimsPanel),
+    ));
+    expect(quiet).not.toContain('AI guide');
   });
 
   it('renders every retrofitted panel without throwing, each with one section open', () => {
