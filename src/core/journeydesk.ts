@@ -28,7 +28,7 @@ import {
 } from './uwroute.js';
 import {
   Answers, JOURNEY_STAGES, JourneyArtefacts, JourneyCase, JourneyContext, JourneyProgress,
-  JourneyStageId, JourneyStatus, emptyAnswers, journeyProgress, stageSpec,
+  JourneyStageId, JourneyStatus, JourneyFieldSettings, emptyAnswers, journeyProgress, stageSpec,
 } from './journey.js';
 
 export class JourneyDeskError extends Error {}
@@ -140,6 +140,9 @@ export function fundOptions(w: World): FundOption[] {
 export class JourneyDesk {
   private readonly cases = new Map<string, JourneyCase>();
   private seq = 0;
+  private readonly fieldSettings: Record<string, Record<string, { mandatory: boolean; editable: boolean }>> = Object.fromEntries(
+    JOURNEY_STAGES.map((stage) => [stage.id, Object.fromEntries(stage.fields.map((field) => [field.id, { mandatory: field.mandatory, editable: field.editable }]))]),
+  );
 
   constructor(
     readonly quotations: QuotationBook,
@@ -150,6 +153,38 @@ export class JourneyDesk {
   /* ------------------------------------------------------------------ case handling */
 
   list(): JourneyCase[] { return [...this.cases.values()]; }
+
+  getFieldSettings(): JourneyFieldSettings {
+    return Object.fromEntries(Object.entries(this.fieldSettings).map(([stage, fields]) => [stage, Object.fromEntries(Object.entries(fields).map(([id, value]) => [id, { ...value }]))]));
+  }
+
+  updateFieldSettings(input: unknown): JourneyFieldSettings {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new JourneyDeskError('field settings must be a stage-to-field object');
+    const next = input as Record<string, unknown>;
+    for (const [stageId, rawFields] of Object.entries(next)) {
+      const stage = JOURNEY_STAGES.find((candidate) => candidate.id === stageId);
+      if (!stage || !rawFields || typeof rawFields !== 'object' || Array.isArray(rawFields)) throw new JourneyDeskError(`unknown journey stage settings: ${stageId}`);
+      for (const [fieldId, raw] of Object.entries(rawFields as Record<string, unknown>)) {
+        const field = stage.fields.find((candidate) => candidate.id === fieldId);
+        if (!field || !raw || typeof raw !== 'object' || Array.isArray(raw)) throw new JourneyDeskError(`unknown field setting: ${stageId}.${fieldId}`);
+        const setting = raw as Record<string, unknown>;
+        if (typeof setting['mandatory'] !== 'boolean' || typeof setting['editable'] !== 'boolean') throw new JourneyDeskError(`mandatory and editable must be boolean for ${stageId}.${fieldId}`);
+        if (field.kind === 'readonly' && setting['editable']) throw new JourneyDeskError(`${stageId}.${fieldId} is a calculated read-only field`);
+        this.fieldSettings[stageId]![fieldId] = { mandatory: setting['mandatory'], editable: setting['editable'] };
+      }
+    }
+    return this.getFieldSettings();
+  }
+
+  private assertEditable(stageId: JourneyStageId, incoming: Record<string, unknown>, existing: Record<string, unknown>): void {
+    const stage = stageSpec(stageId);
+    for (const field of stage.fields) {
+      const setting = this.fieldSettings[stageId]?.[field.id];
+      if (setting?.editable === false && Object.prototype.hasOwnProperty.call(incoming, field.id) && JSON.stringify(incoming[field.id]) !== JSON.stringify(existing[field.id])) {
+        throw new JourneyDeskError(`${field.label} is locked by master settings`);
+      }
+    }
+  }
 
   get(caseId: string): JourneyCase {
     const c = this.cases.get(caseId);
@@ -257,6 +292,7 @@ export class JourneyDesk {
       : null;
 
     return {
+      fieldSettings: this.getFieldSettings(),
       asOf: w.asOf,
       currency: caze.currency,
       tenantName: w.tenant.name,
@@ -317,6 +353,7 @@ export class JourneyDesk {
   save(w: World, input: { caseId: string; stageId: JourneyStageId; answers: Answers; by?: string; at?: string }): JourneyProgress {
     const caze = this.get(input.caseId);
     const at = input.at ?? `${w.asOf}T10:00:00+04:00`;
+    this.assertEditable(input.stageId, input.answers, caze.answers[input.stageId]);
     caze.answers[input.stageId] = { ...caze.answers[input.stageId], ...input.answers };
     if (input.stageId === 'identity' && String(input.answers['nameEn'] ?? '').trim()) {
       caze.customerName = String(input.answers['nameEn']).trim();
@@ -333,7 +370,10 @@ export class JourneyDesk {
     const stageId = input.stageId;
     const at = input.at ?? `${w.asOf}T11:00:00+04:00`;
     const by = input.by?.trim() || 'operator';
-    if (input.answers) caze.answers[stageId] = { ...caze.answers[stageId], ...input.answers };
+    if (input.answers) {
+      this.assertEditable(stageId, input.answers, caze.answers[stageId]);
+      caze.answers[stageId] = { ...caze.answers[stageId], ...input.answers };
+    }
 
     // A full pass first: every gate is evaluated in order, so the values later sections read (the
     // loading breakdown, the allocation plan, the beneficiary set) exist before anything is written.
@@ -1008,11 +1048,12 @@ export class JourneyDesk {
       coolingOffDays: pack.illustration.coolingOffDays,
       illustrationWording: pack.illustration.wording,
       quotationValidityDays: DEFAULT_VALIDITY_DAYS,
+      fieldSettings: this.getFieldSettings(),
       stages: JOURNEY_STAGES.map((s) => ({
         id: s.id, order: s.order, title: s.title, shortTitle: s.shortTitle, purpose: s.purpose,
         regulatoryBasis: s.regulatoryBasis, owner: s.owner, detailTab: s.detailTab,
         produces: [...s.produces],
-        fields: s.fields.map((fd) => ({ id: fd.id, label: fd.label, kind: fd.kind, mandatory: fd.mandatory, options: fd.options ? [...fd.options] : undefined, hint: fd.hint, group: fd.group })),
+        fields: s.fields.map((fd) => ({ id: fd.id, label: fd.label, kind: fd.kind, mandatory: this.fieldSettings[s.id]?.[fd.id]?.mandatory ?? fd.mandatory, editable: this.fieldSettings[s.id]?.[fd.id]?.editable ?? fd.editable, options: fd.options ? [...fd.options] : undefined, hint: fd.hint, group: fd.group })),
       })),
       products: products.map((p) => ({
         productId: p.productId, name: p.name, category: p.category, entityId: p.entityId, currency: p.currency,
@@ -1102,6 +1143,7 @@ export interface JourneySnapshot {
   illustrationWording: string;
   quotationValidityDays: number;
   stages: Array<Record<string, unknown>>;
+  fieldSettings: JourneyFieldSettings;
   products: Array<Record<string, unknown>>;
   funds: FundOption[];
   riders: Array<Record<string, unknown>>;
@@ -1198,7 +1240,7 @@ export function serialiseJourneyProgress(progress: JourneyProgress): Record<stri
       submitted: s.submitted, lockedBy: s.lockedBy, lockedByTitle: s.lockedByTitle,
       missing: [...s.missing], blockers: [...s.blockers], warnings: [...s.warnings],
       summary: s.summary.map((r) => ({ ...r })), artefacts: [...s.artefacts], produces: [...s.produces],
-      fields: s.fields.map((fd) => ({ id: fd.id, label: fd.label, kind: fd.kind, mandatory: fd.mandatory, options: fd.options ? [...fd.options] : undefined, hint: fd.hint, group: fd.group })),
+      fields: s.fields.map((fd) => ({ id: fd.id, label: fd.label, kind: fd.kind, mandatory: fd.mandatory, editable: fd.editable, options: fd.options ? [...fd.options] : undefined, hint: fd.hint, group: fd.group })),
       answers: plainAnswers(s.answers),
     })),
   };

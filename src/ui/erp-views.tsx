@@ -2363,6 +2363,48 @@ export function ReinsuranceManagementPanel({
   );
 }
 
+type JourneyFieldConfig = { mandatory: boolean; editable: boolean };
+type JourneyConfigMap = Record<string, Record<string, JourneyFieldConfig>>;
+type JourneyStageConfig = { id: string; title: string; fields: Array<{ id: string; label: string; kind: string; mandatory: boolean; editable: boolean; hint?: string }> };
+
+function JourneyFieldSettingsPanel({ journey, busy, onSave }: {
+  journey: WorldSnapshot['journey']; busy: boolean;
+  onSave: (settings: JourneyConfigMap) => Promise<unknown>;
+}) {
+  const stages = journey.stages as unknown as JourneyStageConfig[];
+  const [settings, setSettings] = useState<JourneyConfigMap>(journey.fieldSettings as JourneyConfigMap);
+  const update = (stageId: string, fieldId: string, key: keyof JourneyFieldConfig, value: boolean) => {
+    setSettings((current) => {
+      const prior = current[stageId]?.[fieldId] ?? stages.find((s) => s.id === stageId)?.fields.find((f) => f.id === fieldId);
+      if (!prior) return current;
+      return { ...current, [stageId]: { ...current[stageId], [fieldId]: { ...prior, [key]: value } } };
+    });
+  };
+  return <>
+    <div className="row" style={{ marginBottom: 12 }}>
+      <button disabled={busy} onClick={() => onSave(settings)}>Save journey field rules</button>
+    </div>
+    {stages.map((stage) => (
+      <details key={stage.id} className="card" style={{ margin: '8px 0', padding: 12 }}>
+        <summary><b>{stage.title}</b><span className="muted small"> · {stage.fields.length} fields</span></summary>
+        <div style={{ overflowX: 'auto', marginTop: 10 }}>
+          <table className="dataTable">
+            <thead><tr><th>Field</th><th>Required</th><th>Editable</th></tr></thead>
+            <tbody>{stage.fields.map((field) => {
+              const config = settings[stage.id]?.[field.id] ?? { mandatory: field.mandatory, editable: field.editable };
+              return <tr key={field.id}>
+                <td><b>{field.label}</b><div className="muted small">{field.hint ?? field.id}</div></td>
+                <td><label className="chip"><input type="checkbox" checked={config.mandatory} onChange={(e) => update(stage.id, field.id, 'mandatory', e.target.checked)} /> Required</label></td>
+                <td><label className="chip"><input type="checkbox" checked={config.editable} disabled={field.kind === 'readonly'} onChange={(e) => update(stage.id, field.id, 'editable', e.target.checked)} /> Editable</label>{field.kind === 'readonly' && <div className="muted small">Calculated field</div>}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </details>
+    ))}
+  </>;
+}
+
 /* ============================================================================
  * 7. MASTER SETTINGS & ERP COMMAND CENTER TAB (`master`)
  * ========================================================================== */
@@ -2446,6 +2488,24 @@ export function MasterSettingsErp({
       title="Master settings — products, charges, takaful, authority, FX and vocabulary"
       sequential={false}
       gates={[
+        {
+          id: 'journey-fields',
+          title: 'Quote-to-policy journey field rules',
+          subtitle: 'Configure required and editable fields by section. Conditional, product and regulatory gates remain enforced by the journey engine.',
+          informational: true,
+          children: (
+            <>
+              <p className="small muted">Make routine capture lighter without weakening hard eligibility, payment, identity or compliance checks. Conditional rules remain hard gates. A field marked optional here may still be required by an independent product, suitability or regulatory check.</p>
+              <JourneyFieldSettingsPanel
+                journey={data.journey}
+                busy={busy}
+                onSave={(fieldSettings) => runAction('Journey field rules saved', () => api('/journey/field-settings', 'POST', { fieldSettings }))}
+              />
+              {notice && <div className="code small">{notice}</div>}
+              {error && <div className="errorBox">{error}</div>}
+            </>
+          )
+        },
         {
           id: 'command',
           title: 'ERP operations & master settings command centre',

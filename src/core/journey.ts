@@ -60,6 +60,7 @@ export interface StageFieldSpec {
   readonly label: string;
   readonly kind: FieldKind;
   readonly mandatory: boolean;
+  readonly editable: boolean;
   readonly options?: readonly string[];
   readonly hint?: string;
   readonly group?: string;
@@ -81,7 +82,7 @@ export interface StageSpec {
 }
 
 const f = (id: string, label: string, kind: FieldKind, mandatory = true, extra: Partial<StageFieldSpec> = {}): StageFieldSpec =>
-  ({ id, label, kind, mandatory, ...extra });
+  ({ id, label, kind, mandatory, editable: kind !== 'readonly', ...extra });
 
 /* ------------------------------------------------------------------ the catalogue */
 
@@ -435,7 +436,10 @@ export interface JourneyCase {
   computed: JourneyComputed;
 }
 
+export type JourneyFieldSettings = Readonly<Record<string, Readonly<Record<string, { mandatory: boolean; editable: boolean }>>>>;
+
 export interface JourneyContext {
+  readonly fieldSettings?: JourneyFieldSettings;
   readonly asOf: string;
   readonly currency: string;
   readonly tenantName: string;
@@ -488,12 +492,14 @@ function filled(value: unknown, kind: FieldKind): boolean {
   }
 }
 
-export function fieldGaps(stage: StageSpec, answers: Answers): { missing: string[]; answered: number; total: number } {
+export function fieldGaps(stage: StageSpec, answers: Answers, settings?: JourneyFieldSettings): { missing: string[]; answered: number; total: number } {
   const missing: string[] = [];
   let answered = 0;
   let total = 0;
   for (const field of stage.fields) {
-    const required = field.mandatory || (field.mandatoryWhen ? field.mandatoryWhen(answers) : false);
+    const override = settings?.[stage.id]?.[field.id];
+    // Conditional/legal requirements remain hard gates; master settings can relax only the ordinary required flag.
+    const required = Boolean(field.mandatoryWhen?.(answers)) || (override?.mandatory ?? field.mandatory);
     if (!required) continue;
     total += 1;
     if (filled(answers[field.id], field.kind)) answered += 1;
@@ -564,9 +570,9 @@ export interface JourneyProgress {
 }
 
 const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) => StageReview> = {
-  identity: (c) => {
+  identity: (c, ctx) => {
     const a = c.answers['identity'];
-    const gaps = fieldGaps(stageSpec('identity'), a);
+    const gaps = fieldGaps(stageSpec('identity'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const country = String(a['country'] ?? c.country ?? 'AE').toUpperCase();
     if (country === 'AE' && !String(a['nameAr'] ?? '').trim()) {
@@ -590,7 +596,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   profile: (c, ctx) => {
     const a = c.answers['profile'];
-    const gaps = fieldGaps(stageSpec('profile'), { ...a, __duplicateMatches: c.answers['profile']?.['__duplicateMatches'] ?? 0 });
+    const gaps = fieldGaps(stageSpec('profile'), { ...a, __duplicateMatches: c.answers['profile']?.['__duplicateMatches'] ?? 0 }, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     if (!c.artefacts.partyId) blockers.push('The golden record has not been created yet — submit the onboarding section first');
@@ -629,7 +635,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
       attestationAgreed: a['attestationAgreed'] === true,
     });
     c.computed['__needsEvaluation'] = evaluation;
-    const gaps = fieldGaps(stageSpec('needs'), a);
+    const gaps = fieldGaps(stageSpec('needs'), a, ctx.fieldSettings);
     const missing = [...new Set([...gaps.missing, ...evaluation.missing])];
     const total = gaps.total + Math.max(0, evaluation.missing.length);
     const answered = Math.max(0, total - missing.length);
@@ -653,7 +659,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   recommendation: (c, ctx) => {
     const a = c.answers['recommendation'];
-    const gaps = fieldGaps(stageSpec('recommendation'), a);
+    const gaps = fieldGaps(stageSpec('recommendation'), a, ctx.fieldSettings);
     const evaluation = c.computed.__needsEvaluation ?? null;
     const blockers: string[] = [];
     const warnings: string[] = [];
@@ -684,7 +690,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   coverage: (c, ctx) => {
     const a = c.answers['coverage'];
-    const gaps = fieldGaps(stageSpec('coverage'), a);
+    const gaps = fieldGaps(stageSpec('coverage'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     const productId = String(c.answers['recommendation']?.['productId'] ?? '');
@@ -733,7 +739,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
   loadings: (c, ctx) => {
     const a = c.answers['loadings'];
     const cov = c.answers['coverage'];
-    const gaps = fieldGaps(stageSpec('loadings'), a);
+    const gaps = fieldGaps(stageSpec('loadings'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const productId = String(c.answers['recommendation']?.['productId'] ?? '');
     const product = ctx.products.find((p) => p.productId === productId);
@@ -754,7 +760,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   riders: (c, ctx) => {
     const a = c.answers['riders'];
-    const gaps = fieldGaps(stageSpec('riders'), a);
+    const gaps = fieldGaps(stageSpec('riders'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     const breakdown = c.computed.__loadingBreakdown;
@@ -832,7 +838,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
     });
     c.computed['__medicalRequirements'] = set;
     c.computed['__requirementsIssued'] = set.requirements.length > 0;
-    const gaps = fieldGaps(stageSpec('medical'), { ...a, __requirementsIssued: set.requirements.length > 0 });
+    const gaps = fieldGaps(stageSpec('medical'), { ...a, __requirementsIssued: set.requirements.length > 0 }, ctx.fieldSettings);
     const blockers = [...set.blockers];
     if (set.requirements.some((r) => r.status === 'waived') && !String(a['reviewedBy'] ?? '').trim()) {
       blockers.push('A waived medical requirement needs the name of the person who waived it');
@@ -857,7 +863,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   funds: (c, ctx) => {
     const a = c.answers['funds'];
-    const gaps = fieldGaps(stageSpec('funds'), a);
+    const gaps = fieldGaps(stageSpec('funds'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const evaluation = c.computed.__needsEvaluation;
     const product = ctx.products.find((p) => p.productId === String(c.answers['recommendation']?.['productId'] ?? ''));
@@ -900,7 +906,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   beneficiaries: (c, ctx) => {
     const a = c.answers['beneficiaries'];
-    const gaps = fieldGaps(stageSpec('beneficiaries'), a);
+    const gaps = fieldGaps(stageSpec('beneficiaries'), a, ctx.fieldSettings);
     const raw = (Array.isArray(a['beneficiaries']) ? a['beneficiaries'] : []) as Array<Record<string, unknown>>;
     const list: BeneficiaryInput[] = raw.map((b) => ({
       name: String(b['name'] ?? ''),
@@ -928,7 +934,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   'uw-review': (c, ctx) => {
     const a = c.answers['uw-review'];
-    const gaps = fieldGaps(stageSpec('uw-review'), a);
+    const gaps = fieldGaps(stageSpec('uw-review'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     if (!c.artefacts.applicationId) blockers.push('No underwriting application exists yet — submit the coverage section first');
@@ -956,7 +962,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   quotation: (c, ctx) => {
     const a = c.answers['quotation'];
-    const gaps = fieldGaps(stageSpec('quotation'), a);
+    const gaps = fieldGaps(stageSpec('quotation'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     const q = ctx.quotation;
@@ -1000,7 +1006,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   finalisation: (c, ctx) => {
     const a = c.answers['finalisation'];
-    const gaps = fieldGaps(stageSpec('finalisation'), a);
+    const gaps = fieldGaps(stageSpec('finalisation'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const q = ctx.quotation;
     if (!q || q.status === 'refused') blockers.push('There is no issued quotation for the customer to accept');
@@ -1018,7 +1024,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   payment: (c, ctx) => {
     const a = c.answers['payment'];
-    const gaps = fieldGaps(stageSpec('payment'), a);
+    const gaps = fieldGaps(stageSpec('payment'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     const recon = ctx.payment;
@@ -1064,7 +1070,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
       __needsSenior: routing ? routing.route === 'senior-review' || routing.route === 'senior-referral' || routing.route === 'reinsurance-assist' || routing.route === 'freelance-assist' : false,
     };
     c.computed['__routingFlags'] = computed;
-    const gaps = fieldGaps(stageSpec('routing'), computed);
+    const gaps = fieldGaps(stageSpec('routing'), computed, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     if (!routing) blockers.push('The route has not been decided yet — submit this section to route the case');
@@ -1086,7 +1092,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   conversion: (c, ctx) => {
     const a = c.answers['conversion'];
-    const gaps = fieldGaps(stageSpec('conversion'), a);
+    const gaps = fieldGaps(stageSpec('conversion'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     if (c.artefacts.policyId) {
       return { percent: 100, complete: true, missing: [], blockers: [], warnings: [], summary: [
@@ -1119,7 +1125,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   allocation: (c, ctx) => {
     const a = c.answers['allocation'];
-    const gaps = fieldGaps(stageSpec('allocation'), a);
+    const gaps = fieldGaps(stageSpec('allocation'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     if (!c.artefacts.policyId) blockers.push('There is no policy in force yet');
@@ -1169,7 +1175,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   investment: (c, ctx) => {
     const a = c.answers['investment'];
-    const gaps = fieldGaps(stageSpec('investment'), a);
+    const gaps = fieldGaps(stageSpec('investment'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
     if (!ctx.policy) blockers.push('There is no policy in force to report on');
@@ -1188,7 +1194,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
 
   servicing: (c, ctx) => {
     const a = c.answers['servicing'];
-    const gaps = fieldGaps(stageSpec('servicing'), a);
+    const gaps = fieldGaps(stageSpec('servicing'), a, ctx.fieldSettings);
     const blockers: string[] = [];
     if (!c.artefacts.policyId) blockers.push('Servicing begins when the policy is issued');
     const s = ctx.servicing;
@@ -1279,7 +1285,7 @@ export function reviewStage(caze: JourneyCase, stageId: JourneyStageId, ctx: Jou
     return reviewers[stageId](caze, ctx);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const gaps = fieldGaps(stage, caze.answers[stageId]);
+    const gaps = fieldGaps(stage, caze.answers[stageId], ctx.fieldSettings);
     return {
       percent: Math.min(99, gaps.total === 0 ? 0 : Math.round((gaps.answered / gaps.total) * 100)),
       complete: false,
@@ -1331,7 +1337,7 @@ export function journeyProgress(caze: JourneyCase, ctx: JourneyContext, options:
     states.push({
       id: stage.id, order: stage.order, title: stage.title, shortTitle: stage.shortTitle,
       purpose: stage.purpose, regulatoryBasis: stage.regulatoryBasis, owner: stage.owner,
-      detailTab: stage.detailTab, fields: stage.fields, produces: stage.produces,
+      detailTab: stage.detailTab, fields: stage.fields.map((fd) => ({ ...fd, mandatory: ctx.fieldSettings?.[stage.id]?.[fd.id]?.mandatory ?? fd.mandatory, editable: ctx.fieldSettings?.[stage.id]?.[fd.id]?.editable ?? fd.editable })), produces: stage.produces,
       ...review, complete, percent: complete ? 100 : locked ? 0 : review.percent, status, submitted,
       lockedBy: blockedBy,
       lockedByTitle: blockedBy ? stageSpec(blockedBy).title : null,
