@@ -297,6 +297,13 @@ export class ClaimsEngine implements ReplayableRegister {
     return this.authority.map((a) => ({ role: a.role, limit: money(a.limitMinor, this.currency), isAi: a.isAi }));
   }
 
+  upsertAuthority(entry: Authority): Array<{ role: string; limit: Money; isAi: boolean }> {
+    const idx = this.authority.findIndex((a) => a.role === entry.role);
+    if (idx >= 0) this.authority[idx] = entry;
+    else this.authority.push(entry);
+    return this.authorityTable();
+  }
+
   /** Approval is a permission check, not a payment: the money moves at settlement. */
   approve(claimId: string, input: { amount: Money; at: string; by: string; role: string; isAi?: boolean }): Claim {
     const approved = this.approveInner(claimId, input);

@@ -32,6 +32,7 @@ import { IngestionFabric } from './ingest.js';
 import { AgentRuntime } from './ai.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
 import { DecisionTheatre } from './decisioning.js';
+import { ErpManager } from './erp.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -74,6 +75,7 @@ export interface World {
   readonly consentId: string;
   readonly onboarding: { readonly chip: ExtractionResult; readonly ocr: ExtractionResult };
   readonly quotes: QuoteOffer[];
+  readonly erp: ErpManager;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -701,11 +703,11 @@ export function buildWorld(): World {
 
   const registers: ReadonlyArray<ReplayableRegister> = [reinsurance, retakaful, claims, takafulClaims];
 
-  return {
+  const baseWorld = {
     registers,
     tenant, entities: [
-      { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional', currency, regulator: 'CBUAE' },
-      { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful', currency, regulator: 'CBUAE / Shariah Committee' },
+      { id: conventionalEntity, name: 'Al Khaleej Insurance (conventional)', type: 'conventional' as const, currency, regulator: 'CBUAE' },
+      { id: takafulEntity, name: 'Al Khaleej Takaful Window', type: 'takaful' as const, currency, regulator: 'CBUAE / Shariah Committee' },
     ],
     ledger, nav, unitLinked, billing, takaful, claims, takafulClaims, underwriting, reinsurance, retakaful,
     extracts, takafulExtracts, rules, wording, submissions, takafulSubmissions,
@@ -713,7 +715,9 @@ export function buildWorld(): World {
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
-  };
+  } as unknown as World;
+  const erp = new ErpManager(baseWorld);
+  return { ...baseWorld, erp };
 }
 
 /* ------------------------------------------------------------ projections */
@@ -731,7 +735,7 @@ export function underwritingSnapshot(engine: UnderwritingEngine, asOf: string) {
     queue: engine.queue().map((q) => ({ ...q })),
     cession: engine.cessionSchedule().map((c) => ({ ...c, totalSumAssuredLabel: formatAmount(c.totalSumAssured) })),
     share: engine.reinsuranceShare(2_500).map((s) => ({ ...s, cededLabel: formatAmount(s.ceded), retainedLabel: formatAmount(s.retained) })),
-    exposure: ['PTY-0001', 'PTY-0002', 'PTY-0003', 'PTY-0004'].map((partyId) => {
+    exposure: [...new Set(['PTY-0001', 'PTY-0002', 'PTY-0003', 'PTY-0004', ...engine.list().map((a) => a.partyId)])].map((partyId) => {
       const exposure = engine.aggregateExposure(partyId);
       return {
         partyId, policies: exposure.policies,
@@ -1193,7 +1197,10 @@ export function submissionSnapshot(w: World, at: string = w.asOf) {
 }
 
 export function worldSnapshot(w: World) {
-  const latest = DAYS[DAYS.length - 1]!;
+  const latest = w.nav.listFunds().reduce((max, f) => {
+    const d = w.nav.latestValuation(f.id)?.valuationDate ?? DAYS[DAYS.length - 1]!;
+    return d > max ? d : max;
+  }, DAYS[DAYS.length - 1]!);
   const asOf = w.asOf;
   const value = w.unitLinked.valueOf('UL-000123', latest);
   const penetration = w.decider.penetration('UL-000123', latest);
@@ -1231,7 +1238,7 @@ export function worldSnapshot(w: World) {
       holder: 'PTY-0001',
       holderName: w.parties.get('PTY-0001')!.names.en,
       currency: 'AED',
-      sumAssured: formatAmount(money(250000_00, 'AED')),
+      sumAssured: formatAmount(w.unitLinked.policy('UL-000123').sumAssured),
       value: {
         total: formatAmount(value.total),
         byFund: value.byFund.map((f) => ({ ...f, valueLabel: formatAmount(f.value) })),
@@ -1345,6 +1352,7 @@ export function worldSnapshot(w: World) {
       journals: w.ledger.entriesFor(w.conventionalEntity).slice(-8).map((e) => ({ id: e.id, at: e.at, description: e.description, source: e.source, fundId: e.fundId ?? '—' })),
     },
     motorPolicy: { policyId: 'MTR-0441', holder: 'Ahmed Al Mansoori' },
+    erp: w.erp.snapshot(w),
     days: DAYS,
     generatedAt: new Date().toISOString(),
   };

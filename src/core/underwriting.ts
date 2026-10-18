@@ -161,6 +161,15 @@ export class UnderwritingEngine {
     return r;
   }
 
+  defineProduct(rules: ProductRules): ProductRules {
+    this.rules.set(rules.productId, rules);
+    return rules;
+  }
+
+  listProducts(): ProductRules[] {
+    return [...this.rules.values()];
+  }
+
   register(input: { partyId: string; productId: string; sumAssured: Money; at: string; profile: RiskProfile }): Application {
     const application: Application = { id: `UW-${String(++this.seq).padStart(6, '0')}`, ...input };
     this.applications.set(application.id, application);

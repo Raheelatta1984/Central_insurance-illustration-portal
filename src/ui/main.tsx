@@ -9,31 +9,20 @@ import { createRoot } from 'react-dom/client';
 import type { WorldSnapshot } from '../core/demo';
 
 import { CONSOLE_TABS, ConsoleTab, TOUR, TourStep, tourMinutes } from '../core/tour';
+import { api } from './api';
+import {
+  ClaimsManagementPanel,
+  CustomerManagementPanel,
+  FundNavManagementPanel,
+  MasterSettingsErp,
+  PolicyAdministrationPanel,
+  ProposalManagementPanel,
+  ReinsuranceManagementPanel,
+} from './erp-views';
 
 type Tab = ConsoleTab;
 
 const TABS = CONSOLE_TABS;
-
-async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    method,
-    ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
-  });
-  if (!res.ok) {
-    // The engines refuse with a sentence a human can act on ("an AI agent may authorise at most
-    // 1,000.00 AED straight through..."). Show that sentence, not just the status code.
-    let detail = '';
-    try {
-      const body = (await res.json()) as { error?: string; message?: string };
-      const sentence = body?.error ?? body?.message;
-      if (sentence) detail = ` — ${sentence}`;
-    } catch { /* not JSON: the status alone will have to do */ }
-    // A 4xx is the engine answering; a 5xx is us being broken. Never blur the two.
-    const what = res.status < 500 ? `${path} refused (${res.status})` : `${path} failed: ${res.status}`;
-    throw new Error(`${what}${detail}`);
-  }
-  return (await res.json()) as T;
-}
 
 const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({ title, subtitle, children, wide }) => (
   <section className="card" style={wide ? { gridColumn: '1 / -1' } : undefined}>
@@ -60,16 +49,32 @@ const Table: React.FC<{ head: string[]; rows: React.ReactNode[][]; empty?: strin
 
 const money0 = (label: string) => label.replace(/\s+AED$/, '');
 
-function Overview({ data }: { data: WorldSnapshot }) {
+function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab: Tab) => void }) {
   const ul = data.policy.value;
   return (
     <div className="grid">
-      <Card title="Tenant" subtitle={data.tenant.name} wide>
+      <Card title="Tenant & End-to-End ERP Workflow" subtitle={data.tenant.name} wide>
         <div className="pills">
           {data.entities.map((e) => (
             <Pill key={e.id} tone={e.type === 'takaful' ? 'ok' : 'info'}>{e.name} · {e.regulator} · {e.currency}</Pill>
           ))}
+          <Pill tone="ok">Customers: {data.parties.list.length}</Pill>
+          <Pill tone="info">Proposals: {data.erp.proposals.length}</Pill>
+          <Pill tone="ok">Active Policies: {data.erp.policies.length}</Pill>
+          <Pill tone="info">Premium Receipts: {data.erp.receipts.length}</Pill>
+          <Pill tone="warn">Alterations: {data.erp.alterations.length}</Pill>
         </div>
+        {onNavigate && (
+          <div className="row" style={{ marginTop: 8 }}>
+            <button onClick={() => onNavigate('parties')}>+ Create Customer</button>
+            <button onClick={() => onNavigate('underwriting')}>+ Create Proposal &amp; Quote</button>
+            <button onClick={() => onNavigate('policyholder')}>+ Convert Policy / Receive Premium / Alter</button>
+            <button onClick={() => onNavigate('claims')}>+ Register &amp; Decide Claim</button>
+            <button onClick={() => onNavigate('funds')}>+ Inject NAV / Create Fund</button>
+            <button onClick={() => onNavigate('reinsurance')}>+ Register Reinsurer / Treaty</button>
+            <button className="ghost" onClick={() => onNavigate('master')}>⚙ Master Settings</button>
+          </div>
+        )}
       </Card>
       <Card title="Unit-linked book" subtitle="Live engine state, priced from published valuations">
         <div className="stat"><span>Policy</span><b>{data.policy.id}</b></div>
@@ -104,15 +109,21 @@ function Overview({ data }: { data: WorldSnapshot }) {
   );
 }
 
-function Policyholder({ data }: { data: WorldSnapshot }) {
+function Policyholder({ data, onReload }: { data: WorldSnapshot; onReload: () => Promise<void> }) {
   const [locale, setLocale] = useState<'en' | 'ar'>('en');
   const t = (k: string) => (locale === 'ar' ? data.labels.ar[k] ?? k : data.labels.en[k] ?? k);
   return (
     <div className="grid">
+      <PolicyAdministrationPanel data={data} onReload={onReload} />
       <Card title={t('fund.value')} subtitle={`${data.policy.id} · ${t('policy.holder')}: ${data.policy.holderName} · valuation ${data.days[data.days.length - 1]}`} wide>
-        <div className="pills">
-          <Pill tone="ok">{data.policy.value.total}</Pill>
-          <Pill tone="info">{t('fund.nav')}: {data.policy.value.byFund.map((f) => `${f.fundId} ${f.price}`).join(' · ')}</Pill>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <div className="pills">
+            <Pill tone="ok">{data.policy.value.total}</Pill>
+            <Pill tone="info">{t('fund.nav')}: {data.policy.value.byFund.map((f) => `${f.fundId} ${f.price}`).join(' · ')}</Pill>
+          </div>
+          <button className="ghost" onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}>
+            {locale === 'en' ? 'العربية (Arabic)' : 'English'}
+          </button>
         </div>
       </Card>
       {data.policy.penetration.map((p) => (
@@ -185,11 +196,24 @@ function Decisions({ data }: { data: WorldSnapshot }) {
   );
 }
 
-function Cover({ data }: { data: WorldSnapshot }) {
+function Cover({ data, onReload }: { data: WorldSnapshot; onReload: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [snap, setSnap] = useState(data.cover);
-  const refresh = useCallback(async () => { const w = await api<WorldSnapshot>('/world'); setSnap(w.cover); }, []);
+  const [kmUnits, setKmUnits] = useState(45);
+  const [topupAmount, setTopupAmount] = useState('200.00');
+  const [segMode, setSegMode] = useState<'start-stop' | 'daily' | 'payg' | 'monthly'>('payg');
+  const [segDailyRate, setSegDailyRate] = useState('12.50');
+  const [segUsageRate, setSegUsageRate] = useState('0.25');
+
+  useEffect(() => { setSnap(data.cover); }, [data]);
+
+  const refresh = useCallback(async () => {
+    const w = await api<WorldSnapshot>('/world');
+    setSnap(w.cover);
+    await onReload();
+  }, [onReload]);
+
   const act = async (path: string, body: Record<string, unknown>, message: string) => {
     setBusy(true); setNote(null);
     try { await api(path, 'POST', body); await refresh(); setNote(message); }
@@ -198,7 +222,7 @@ function Cover({ data }: { data: WorldSnapshot }) {
   };
   return (
     <div className="grid">
-      <Card title="Segments" subtitle="Cover and charge exist only between an explicit start and stop">
+      <Card title="Segments & Micro-Duration Cover Control" subtitle="Cover and charge exist only between an explicit start and stop" wide>
         <Table
           head={['Segment', 'Mode', 'Status', 'Daily rate', 'Usage rate', 'Auto-start', 'Window']}
           rows={snap.segments.map((s) => [
@@ -211,6 +235,42 @@ function Cover({ data }: { data: WorldSnapshot }) {
           <button disabled={busy} onClick={() => act('/cover/start', { at: '2026-10-04T08:00:00+04:00' }, 'Cover started explicitly.')}>Start cover now</button>
           <button disabled={busy} onClick={() => act('/cover/stop', { at: '2026-10-04T09:00:00+04:00' }, 'Cover stopped. It will not restart by itself.')}>Stop cover</button>
           <button disabled={busy} onClick={() => act('/cover/tick', { at: '2026-10-05T10:00:00+04:00' }, 'Clock advanced: only days inside an active window were charged.')}>Advance the clock one day</button>
+          <label>
+            Record Trip Distance (km)
+            <input type="number" value={kmUnits} onChange={(e) => setKmUnits(Number(e.target.value))} style={{ width: 90 }} />
+          </label>
+          <button className="ghost" disabled={busy} onClick={() => act('/cover/usage', { units: kmUnits, note: `${kmUnits} km logged from telematics` }, `Logged ${kmUnits} km usage charge.`)}>
+            Record PAYG Usage
+          </button>
+          <label>
+            Top-Up Wallet (AED)
+            <input value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} style={{ width: 110 }} />
+          </label>
+          <button className="ghost" disabled={busy} onClick={() => act('/cover/wallet/topup', { amount: topupAmount }, `Topped up wallet by ${topupAmount} AED.`)}>
+            + Top Up Wallet
+          </button>
+        </div>
+        <div className="row">
+          <label>
+            New Segment Mode
+            <select value={segMode} onChange={(e) => setSegMode(e.target.value as 'start-stop' | 'daily' | 'payg' | 'monthly')}>
+              <option value="start-stop">Start-Stop</option>
+              <option value="daily">Daily Renewal</option>
+              <option value="payg">Pay-As-You-Go (Per km)</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          <label>
+            Daily Rate (AED)
+            <input value={segDailyRate} onChange={(e) => setSegDailyRate(e.target.value)} style={{ width: 90 }} />
+          </label>
+          <label>
+            Per-km Rate (AED)
+            <input value={segUsageRate} onChange={(e) => setSegUsageRate(e.target.value)} style={{ width: 90 }} />
+          </label>
+          <button className="ghost" disabled={busy} onClick={() => act('/cover/segment', { mode: segMode, dailyRate: segDailyRate, usageRate: segUsageRate }, 'Created new cover segment.')}>
+            + Create Cover Segment
+          </button>
         </div>
         {note && <p className="small muted">{note}</p>}
         <p className="muted small">{data.labels.en['cover.noAutoStartNotice']}</p>
@@ -223,9 +283,10 @@ function Cover({ data }: { data: WorldSnapshot }) {
   );
 }
 
-function Funds({ data }: { data: WorldSnapshot }) {
+function Funds({ data, onReload }: { data: WorldSnapshot; onReload: () => Promise<void> }) {
   return (
     <div className="grid">
+      <FundNavManagementPanel data={data} onReload={onReload} />
       {data.funds.map((f) => (
         <Card key={f.id} title={f.name} subtitle={`${f.id} · ${f.currency} · cut-off ${f.dealing} · FMC ${f.fmcBps} bps`}>
           <div className="stat"><span>NAV per unit</span><b>{f.nav} ({f.navDate}) {f.dayChangePct >= 0 ? <Pill tone="ok">+{f.dayChangePct}%</Pill> : <Pill tone="bad">{f.dayChangePct}%</Pill>}</b></div>
@@ -249,19 +310,63 @@ function Funds({ data }: { data: WorldSnapshot }) {
   );
 }
 
-function Takaful({ data }: { data: WorldSnapshot }) {
+function Takaful({ data, onReload }: { data: WorldSnapshot; onReload: () => Promise<void> }) {
   const [note, setNote] = useState<string | null>(null);
+  const [contribAmount, setContribAmount] = useState('2,500.00');
+  const [qardRepayAmount, setQardRepayAmount] = useState('300.00');
+  const [busy, setBusy] = useState(false);
+
   const approve = async (role: string) => {
-    const r = await api<{ approvals: Record<string, boolean>; blockers: string[]; ready: boolean }>('/takaful/approve', 'POST', { role, by: `raheel@${role}` });
-    setNote(`Approvals: ${Object.entries(r.approvals).map(([k, v]) => `${k}=${v ? 'yes' : 'no'}`).join(', ')}. ${r.ready ? 'Surplus is ready to distribute.' : 'Still blocked: ' + r.blockers.join('; ')}`);
+    setBusy(true);
+    try {
+      const r = await api<{ approvals: Record<string, boolean>; blockers: string[]; ready: boolean }>('/takaful/approve', 'POST', { role, by: `raheel@${role}` });
+      await onReload();
+      setNote(`Approvals: ${Object.entries(r.approvals).map(([k, v]) => `${k}=${v ? 'yes' : 'no'}`).join(', ')}. ${r.ready ? 'Surplus is ready to distribute.' : 'Still blocked: ' + r.blockers.join('; ')}`);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const runTakaful = async (label: string, path: string, body: Record<string, unknown>) => {
+    setBusy(true);
+    try {
+      const r = await api(path, 'POST', body);
+      await onReload();
+      setNote(`${label}: ${JSON.stringify(r)}`);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="grid">
       <Card title="Participant pools" subtitle="Separate ledgers per pool — segregation is enforced, not conventional">
         {data.takaful.pools.map((p) => <div className="stat" key={p.fund}><span>{p.label} ({p.fund})</span><b>{p.balance}</b></div>)}
+        <div className="row" style={{ marginTop: 10 }}>
+          <label>
+            Contribution (AED)
+            <input value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} style={{ width: 120 }} />
+          </label>
+          <button disabled={busy} onClick={() => runTakaful('Takaful contribution received', '/takaful/contribute', { policyId: 'TK-9001', amount: contribAmount })}>
+            + Receive Contribution
+          </button>
+        </div>
       </Card>
       <Card title="Qard hasan" subtitle="Interest-free loan from the operator to cover a risk-fund deficit">
         <Table head={['Qard', 'Amount', 'Repaid', 'Outstanding', 'Status', 'Reason']} rows={data.takaful.qards.map((q) => [q.id, q.amount, q.repaid, q.outstanding, <Pill key={q.id} tone={q.status === 'outstanding' ? 'warn' : 'ok'}>{q.status}</Pill>, <span key={q.id + 'r'} className="small">{q.reason}</span>])} empty="No qard outstanding." />
+        <div className="row" style={{ marginTop: 10 }}>
+          <label>
+            Repay Qard Amount (AED)
+            <input value={qardRepayAmount} onChange={(e) => setQardRepayAmount(e.target.value)} style={{ width: 120 }} />
+          </label>
+          <button disabled={busy} onClick={() => runTakaful('Qard Hasan repaid', '/takaful/qard/repay', { amount: qardRepayAmount })}>
+            Repay Qard Hasan from PRF
+          </button>
+        </div>
       </Card>
       <Card title="Surplus run" subtitle="Three signatures before a single dirham moves" wide>
         <div className="pills">
@@ -278,9 +383,12 @@ function Takaful({ data }: { data: WorldSnapshot }) {
         )}
         {data.takaful.proposal.notes.map((n) => <p className="muted small" key={n}>{n}</p>)}
         <div className="row">
-          <button onClick={() => approve('actuary')}>Actuary recommends</button>
-          <button onClick={() => approve('shariah')}>Shariah Committee approves</button>
-          <button onClick={() => approve('board')}>Board endorses</button>
+          <button disabled={busy} onClick={() => approve('actuary')}>Actuary recommends</button>
+          <button disabled={busy} onClick={() => approve('shariah')}>Shariah Committee approves</button>
+          <button disabled={busy} onClick={() => approve('board')}>Board endorses</button>
+          <button className="ghost" disabled={busy} onClick={() => runTakaful('Surplus distributed', '/takaful/distribute', {})}>
+            Distribute Surplus
+          </button>
         </div>
         {note && <p className="small">{note}</p>}
       </Card>
@@ -347,11 +455,12 @@ function Ingest({ data }: { data: WorldSnapshot }) {
   );
 }
 
-function Parties({ data }: { data: WorldSnapshot }) {
+function Parties({ data, onReload }: { data: WorldSnapshot; onReload: () => Promise<void> }) {
   const [lookup, setLookup] = useState<{ outcome: string; reason: string; disclosed: Record<string, unknown>; match?: { score: number; reasons: string[] } }>({ outcome: data.parties.partnerLookup.outcome, reason: data.parties.partnerLookup.reason, disclosed: data.parties.partnerLookup.disclosed, ...(data.parties.partnerLookup.match ? { match: data.parties.partnerLookup.match } : {}) });
   const [busy, setBusy] = useState(false);
   return (
     <div className="grid">
+      <CustomerManagementPanel data={data} onReload={onReload} />
       <Card title="Customers" subtitle="One golden record, many holdings, many intermediaries" wide>
         <Table
           head={['Party', 'Arabic name', 'Identifiers', 'Contact', 'Roles', 'Holdings']}
@@ -759,19 +868,20 @@ function App() {
     if (!data) return null;
     switch (tab) {
       case 'tour': return <Tour />;
-      case 'overview': return <Overview data={data} />;
-      case 'policyholder': return <Policyholder data={data} />;
+      case 'overview': return <Overview data={data} onNavigate={setTab} />;
+      case 'master': return <MasterSettingsErp data={data} onReload={load} onNavigate={setTab} />;
+      case 'policyholder': return <Policyholder data={data} onReload={load} />;
       case 'decisions': return <Decisions data={data} />;
-      case 'cover': return <Cover data={data} />;
-      case 'funds': return <Funds data={data} />;
-      case 'takaful': return <Takaful data={data} />;
+      case 'cover': return <Cover data={data} onReload={load} />;
+      case 'funds': return <Funds data={data} onReload={load} />;
+      case 'takaful': return <Takaful data={data} onReload={load} />;
       case 'group': return <GroupFinance data={data} />;
-      case 'underwriting': return <Underwriting data={data} />;
-      case 'claims': return <Claims data={data} />;
-      case 'reinsurance': return <Reinsurance data={data} />;
+      case 'underwriting': return <Underwriting data={data} onReload={load} onNavigate={setTab} />;
+      case 'claims': return <Claims data={data} onReload={load} />;
+      case 'reinsurance': return <Reinsurance data={data} onReload={load} />;
       case 'onboarding': return <Onboarding data={data} />;
       case 'ingest': return <Ingest data={data} />;
-      case 'parties': return <Parties data={data} />;
+      case 'parties': return <Parties data={data} onReload={load} />;
       case 'regulatory': return <Regulatory data={data} />;
       case 'ai': return <AiLedger data={data} />;
       case 'ledger': return <Books data={data} />;
@@ -779,7 +889,7 @@ function App() {
       case 'durability': return <Durability />;
       default: return null;
     }
-  }, [data, tab]);
+  }, [data, tab, load]);
   return (
     <div className="app">
       <aside>
@@ -990,7 +1100,15 @@ const outcomeTone = (outcome: string): 'ok' | 'warn' | 'bad' | 'info' =>
   outcome === 'standard' ? 'ok' : outcome === 'declined' ? 'bad' : outcome === 'referred' ? 'warn' : 'info';
 
 /** Underwriting: the manual, the queue, the reinsurance position — and the authority limits. */
-function Underwriting({ data }: { data: WorldSnapshot }) {
+function Underwriting({
+  data,
+  onReload,
+  onNavigate,
+}: {
+  data: WorldSnapshot;
+  onReload: () => Promise<void>;
+  onNavigate?: (tab: Tab) => void;
+}) {
   const [view, setView] = useState<UwView>(data.underwriting);
   const [selected, setSelected] = useState<string>(data.underwriting.applications[0]?.id ?? '');
   const [busy, setBusy] = useState<string | null>(null);
@@ -999,10 +1117,13 @@ function Underwriting({ data }: { data: WorldSnapshot }) {
 
   useEffect(() => {
     setView(data.underwriting);
-    setSelected(data.underwriting.applications[0]?.id ?? '');
+    setSelected((cur) => cur || (data.underwriting.applications[0]?.id ?? ''));
   }, [data]);
 
-  const reload = async () => { setView(await api<UwView>('/underwriting')); };
+  const reload = async () => {
+    setView(await api<UwView>('/underwriting'));
+    await onReload();
+  };
 
   const decide = async (label: string, body: Record<string, unknown>) => {
     setBusy(label); setError(null); setNote(null);
@@ -1023,6 +1144,7 @@ function Underwriting({ data }: { data: WorldSnapshot }) {
 
   return (
     <div className="grid">
+      <ProposalManagementPanel data={data} onReload={reload} onNavigate={onNavigate} />
       <Card title="Accepted book" subtitle="Standard against loaded premium, from the underwriting decisions only">
         <div className="stat"><span>Policies</span><b>{view.book.policies}</b></div>
         <div className="stat"><span>Standard premium</span><b>{view.book.standard}</b></div>
@@ -1346,7 +1468,7 @@ const TreatyTable: React.FC<{ book: ReinsuranceBook; title: string; subtitle: st
   </Card>
 );
 
-function Reinsurance({ data }: { data: WorldSnapshot }) {
+function Reinsurance({ data, onReload }: { data: WorldSnapshot; onReload: () => Promise<void> }) {
   const [view, setView] = useState<ReinsuranceView>(data.reinsurance);
   const [extracts, setExtracts] = useState<ExtractView>(data.extracts);
   const [busy, setBusy] = useState<string | null>(null);
@@ -1355,24 +1477,29 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
 
   useEffect(() => { setView(data.reinsurance); }, [data]);
 
+  const reloadAll = async () => {
+    setView(await api<ReinsuranceView>('/reinsurance'));
+    setExtracts(await api<ExtractView>('/extracts'));
+    await onReload();
+  };
+
   const call = async (label: string, path: string, body?: unknown) => {
     setBusy(label); setError(null); setNote(null);
     try {
       const result = await api<Record<string, unknown>>(path, 'POST', body);
       setNote(`${label}: ${JSON.stringify(result)}`);
-      setView(await api<ReinsuranceView>('/reinsurance'));
-      setExtracts(await api<ExtractView>('/extracts'));
+      await reloadAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       try {
-        setView(await api<ReinsuranceView>('/reinsurance'));
-        setExtracts(await api<ExtractView>('/extracts'));
+        await reloadAll();
       } catch { /* the error says it all */ }
     } finally { setBusy(null); }
   };
 
   return (
     <div className="grid">
+      <ReinsuranceManagementPanel data={data} onReload={reloadAll} />
       <Card title="Reinsurance and retakaful" subtitle="Something else carries part of the risk — and the books say exactly how much" wide>
         <p className="small muted">
           A cession is authorised by the treaty, never by hope: a quota share takes its percentage, a surplus treaty
@@ -1591,7 +1718,7 @@ function Reinsurance({ data }: { data: WorldSnapshot }) {
   );
 }
 
-function Claims({ data }: { data: WorldSnapshot }) {
+function Claims({ data, onReload }: { data: WorldSnapshot; onReload: () => Promise<void> }) {
   const [view, setView] = useState<ClaimView>(data.claims);
   const [takaful, setTakaful] = useState<ClaimView>(data.takafulClaims);
   /** Open on the claim worth looking at: one approved and waiting to be paid, else the newest. */
@@ -1608,6 +1735,14 @@ function Claims({ data }: { data: WorldSnapshot }) {
     setOpen((current) => current ?? interesting(data.claims.list));
   }, [data]);
 
+  const reloadClaims = async () => {
+    const refreshed = await api<{ conventional: ClaimView; takaful: ClaimView }>('/claims');
+    setView(refreshed.conventional);
+    setTakaful(refreshed.takaful);
+    await onReload();
+    return refreshed;
+  };
+
   const call = async (label: string, path: string, body?: unknown) => {
     setBusy(label);
     setError(null);
@@ -1615,9 +1750,7 @@ function Claims({ data }: { data: WorldSnapshot }) {
     try {
       const result = await api<Record<string, unknown>>(path, 'POST', body);
       setNote(`${label}: ${JSON.stringify(result)}`);
-      const refreshed = await api<{ conventional: ClaimView; takaful: ClaimView }>('/claims');
-      setView(refreshed.conventional);
-      setTakaful(refreshed.takaful);
+      const refreshed = await reloadClaims();
       setOpen((current) => (typeof result['id'] === 'string' ? String(result['id'])
         : refreshed.conventional.list.some((c) => c.id === current) ? current : interesting(refreshed.conventional.list)));
     } catch (e) {
@@ -1625,9 +1758,7 @@ function Claims({ data }: { data: WorldSnapshot }) {
       // The engine refuses illegal moves with a sentence a human can read; reload so the
       // console still shows the truth of the book.
       try {
-        const refreshed = await api<{ conventional: ClaimView; takaful: ClaimView }>('/claims');
-        setView(refreshed.conventional);
-        setTakaful(refreshed.takaful);
+        await reloadClaims();
       } catch { /* the error already explains the situation */ }
     } finally {
       setBusy(null);
@@ -1639,6 +1770,7 @@ function Claims({ data }: { data: WorldSnapshot }) {
 
   return (
     <div className="grid">
+      <ClaimsManagementPanel data={data} onReload={ async () => { await reloadClaims(); } } />
       <Card title="Claims position" subtitle="Balances read from the ledger, not from the claim objects">
         <div className="stat"><span>Reserved (open cases)</span><b>{view.position.reserved}</b></div>
         <div className="stat"><span>Expense incurred</span><b>{view.position.expenseIncurred}</b></div>
