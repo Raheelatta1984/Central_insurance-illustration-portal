@@ -2,11 +2,11 @@
 
 **An AI-native Insurance ERP** — life, medical, general, group, travel, unit-linked and **takaful** — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance), the API server and the operator console are implemented, typechecked, tested (145 cases) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
+> **Status: the money spine runs.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance), the API server and the operator console are implemented, typechecked, tested (315 cases) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + 73 tests + build
+npm run verify     # typecheck + 315 tests + build
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data
@@ -33,10 +33,53 @@ This platform is built the other way round: **takaful-native, group-finance-nati
 | [`AGENTS.md`](AGENTS.md) | The worker contract every agent follows: claiming, ownership, evidence, risk gates, ledger row |
 | [`docs/05-DECISIONS.md`](docs/05-DECISIONS.md) | The decisions I took on your behalf, each with its rationale and how to reverse it |
 | [`docs/07-TOUR.md`](docs/07-TOUR.md) | The sixty-minute guided tour of the live app, generated from `src/core/tour.ts` (the same data the console's Tour tab runs) |
-| Deployment | **One click on Vercel:** [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Raheelatta1984/Central_insurance-illustration-portal). The demo is static and self-contained — the console is the real application with the engine's recorded answers — so the build needs no dependencies, no database and no secrets. `vercel.json` runs `node tools/demo-site.mjs`, which assembles `site/` from files already in the repository. The same assembly is what the Pages workflow publishes, so the two hosts can never disagree. Locally: `npm run demo:site` then serve `site/` |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
+
+## Deployment
+
+The repository ships **two independent deployable artifacts** with different hosting requirements. Putting the second one on the wrong host fails *silently*, so the choice is written down here rather than left to whoever deploys next.
+
+### A — the static demo → Vercel (recommended)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Raheelatta1984/Central_insurance-illustration-portal)
+
+One click and nothing else: no environment variables, no secrets, no database, no provisioning. [`vercel.json`](vercel.json) is already committed and does the whole job.
+
+| Setting | Value |
+| --- | --- |
+| Framework | `null` — deliberate, so Vercel does not guess |
+| Install command | a no-op `echo`: the build needs **zero dependencies** |
+| Build command | `node tools/demo-site.mjs` |
+| Output directory | `site/` |
+
+`tools/demo-site.mjs` assembles `site/` from four files that are already committed, so a host that only runs a build step produces the site without installing a single package:
+
+| File | Size | What it is |
+| --- | --- | --- |
+| `index.html` | 6 KB | the landing page |
+| `console.html` | 629 KB | **the real application**, running against the engine's recorded answers |
+| `gallery.html` | 1.7 MB | the module gallery |
+| `tour.md` | 22 KB | the written sixty-minute tour |
+
+2.4 MB total. The console is not a video or a mock-up — it carries the engine's actual recorded responses, so it answers live in the browser with no backend behind it.
+
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes the identical assembly to GitHub Pages, so the two hosts cannot disagree about what is online. Locally: `npm run demo:site`, then serve `site/`.
+
+### B — the live API server → Render (not Vercel)
+
+`npm run build && npm start` runs one Node process serving both the SPA and the JSON API on a single port. It reads `PORT`, binds `0.0.0.0` and needs no secrets, so it is Render-ready as-is.
+
+**Do not put this artifact on Vercel.** The server holds mutable state in a module-level `let state` — including the idempotency-key table and the append-only reporting store. Vercel's serverless model runs many short-lived instances, so a journey like `POST /claims/register` → `/claims/approve` → `/claims/settle` can land on three instances that never saw each other's writes, and settle returns `409` for an approval that does exist elsewhere. Reads still look perfect, because the demo world is deterministic — which is exactly what makes the failure quiet.
+
+Render (or Railway, or Fly) gives the process the persistence its design assumes. The free tier spins down when idle, which is harmless here: the world rebuilds deterministically in about 36 ms.
+
+### No database — Neon is not required
+
+There is no SQL, no ORM, no driver and no `DATABASE_URL` anywhere in the codebase. The only environment variables read are `PORT` and `HOST`, and nothing under `src/` writes to disk. The demo world is built in memory by `buildWorld()` and reproduced byte-identically on every boot — verified by the durability drill (`POST /api/state/drill`), which reseals the books, restores them into a fresh ledger and confirms `fingerprintStable: true` with every entity balanced.
+
+[`src/core/persistence.ts`](src/core/persistence.ts) is the seam where a database would go later, and it is deliberately not one yet: a canonical snapshot codec (bigint/Date/Map/Set-safe, FNV-1a fingerprinted, schema-versioned, with a migration planner) written so any future store — file, Postgres `jsonb`, an outbox — shares it. Add Neon when state must survive restarts or scale past one process, not before.
 
 ## The build system in one paragraph
 
