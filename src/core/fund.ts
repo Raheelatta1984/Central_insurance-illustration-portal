@@ -134,9 +134,17 @@ export class NavEngine {
     return f;
   }
 
+  updateFund(f: FundDef): FundDef {
+    this.funds.set(f.id, f);
+    if (!this.valuations.has(f.id)) this.valuations.set(f.id, []);
+    return f;
+  }
+
   defineInstrument(i: Instrument): Instrument { this.instruments.set(i.id, i); return i; }
   instrument(id: string): Instrument { const i = this.instruments.get(id); if (!i) throw new FundError(`unknown instrument ${id}`); return i; }
+  listInstruments(): Instrument[] { return [...this.instruments.values()]; }
   recordMarketPrice(p: MarketPrice): void { this.marketPrices.push(p); }
+  marketPricesList(): readonly MarketPrice[] { return this.marketPrices; }
   priceOf(instrumentId: string, asOf: string): MarketPrice {
     const found = [...this.marketPrices].filter((p) => p.instrumentId === instrumentId && p.asOf <= asOf).pop();
     if (!found) throw new FundError(`no market price for ${instrumentId} as of ${asOf}`);

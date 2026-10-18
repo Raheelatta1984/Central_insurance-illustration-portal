@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-05T07:08:43.381Z",
+  "capturedAt": "2026-10-18T13:06:45.971Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server.",
   "responses": {
@@ -11372,6 +11372,580 @@
           "policyId": "MTR-0441",
           "holder": "Ahmed Al Mansoori"
         },
+        "erp": {
+          "summary": {
+            "customers": 2,
+            "proposals": 4,
+            "policies": 3,
+            "receipts": 3,
+            "alterations": 2,
+            "funds": 3,
+            "instruments": 5,
+            "products": 5,
+            "treaties": 6,
+            "claimsOpen": 1
+          },
+          "policies": [
+            {
+              "policyId": "UL-000123",
+              "partyId": "PTY-0001",
+              "holderName": "Ahmed Al Mansoori",
+              "holderNameAr": "أحمد المنصوري",
+              "productId": "PROD-UL-GLOBAL",
+              "productName": "Global Unit-Linked Plan",
+              "category": "unit-linked",
+              "entityId": "ALK-CONV",
+              "currency": "AED",
+              "sumAssured": "250,000.00 AED",
+              "annualPremium": "24,000.00 AED",
+              "totalPremiumPaid": "24,000.00 AED",
+              "paymentFrequency": "monthly",
+              "commencement": "2026-09-29",
+              "status": "in force",
+              "beneficiary": {
+                "name": "Mariam Al Mansoori",
+                "relationship": "spouse",
+                "sharePct": 100
+              },
+              "beneficiaryName": "Mariam Al Mansoori",
+              "beneficiaryRelationship": "spouse",
+              "beneficiarySharePct": 100,
+              "alterationCount": 2,
+              "applicationId": "UW-000001",
+              "targetWeights": [
+                {
+                  "fundId": "FGLOBAL",
+                  "weightBps": 7000
+                },
+                {
+                  "fundId": "FBAL",
+                  "weightBps": 3000
+                }
+              ],
+              "autoRebalanceMonths": 6,
+              "fundValue": "21,715.30 AED",
+              "fundHoldings": [
+                {
+                  "fundId": "FGLOBAL",
+                  "fundName": "Global Growth Fund",
+                  "units": "64452.918572",
+                  "price": "10.627173",
+                  "value": "6,849.52 AED",
+                  "priceAsOf": "2026-10-05"
+                },
+                {
+                  "fundId": "FBAL",
+                  "fundName": "Balanced Income Fund",
+                  "units": "141437.514387",
+                  "price": "10.510493",
+                  "value": "14,865.78 AED",
+                  "priceAsOf": "2026-10-05"
+                }
+              ],
+              "walletBalance": null
+            },
+            {
+              "policyId": "MTR-0441",
+              "partyId": "PTY-0001",
+              "holderName": "Ahmed Al Mansoori",
+              "holderNameAr": "أحمد المنصوري",
+              "productId": "PROD-MOTOR-PAYG",
+              "productName": "Pay-as-you-drive Motor Cover",
+              "category": "motor-payg",
+              "entityId": "ALK-CONV",
+              "currency": "AED",
+              "sumAssured": "250,000.00 AED",
+              "annualPremium": "4,562.50 AED",
+              "totalPremiumPaid": "500.00 AED",
+              "paymentFrequency": "payg",
+              "commencement": "2026-10-01",
+              "status": "active cover",
+              "beneficiary": {
+                "name": "Ahmed Al Mansoori",
+                "relationship": "self",
+                "sharePct": 100
+              },
+              "beneficiaryName": "Ahmed Al Mansoori",
+              "beneficiaryRelationship": "self",
+              "beneficiarySharePct": 100,
+              "alterationCount": 0,
+              "applicationId": null,
+              "targetWeights": [],
+              "autoRebalanceMonths": null,
+              "fundValue": null,
+              "fundHoldings": [],
+              "walletBalance": "433.00 AED"
+            },
+            {
+              "policyId": "TK-9001",
+              "partyId": "PTY-0002",
+              "holderName": "Sara Khalifa",
+              "holderNameAr": "سارة خليفة",
+              "productId": "PROD-TKF-FAMILY",
+              "productName": "Family Takaful Protection & Savings Plan",
+              "category": "takaful",
+              "entityId": "ALK-TKF",
+              "currency": "AED",
+              "sumAssured": "500,000.00 AED",
+              "annualPremium": "6,000.00 AED",
+              "totalPremiumPaid": "6,000.00 AED",
+              "paymentFrequency": "monthly",
+              "commencement": "2026-09-25",
+              "status": "in force",
+              "beneficiary": {
+                "name": "Yousef Khalifa",
+                "relationship": "child",
+                "sharePct": 100
+              },
+              "beneficiaryName": "Yousef Khalifa",
+              "beneficiaryRelationship": "child",
+              "beneficiarySharePct": 100,
+              "alterationCount": 0,
+              "applicationId": null,
+              "targetWeights": [],
+              "autoRebalanceMonths": null,
+              "fundValue": null,
+              "fundHoldings": [],
+              "walletBalance": null
+            }
+          ],
+          "proposals": [
+            {
+              "applicationId": "UW-000001",
+              "partyId": "PTY-0001",
+              "customerName": "Ahmed Al Mansoori",
+              "productId": "PROD-LIFE-TERM",
+              "productName": "Level Term Life Protection",
+              "category": "conventional",
+              "paymentFrequency": "annual",
+              "termYears": 20,
+              "beneficiary": {
+                "name": "Legal Heirs / Estate",
+                "relationship": "family",
+                "sharePct": 100
+              },
+              "sumAssured": "250,000.00 AED",
+              "standardPremium": "7,500.00 AED",
+              "loadedPremium": "7,500.00 AED",
+              "extraMortalityBps": 0,
+              "outcome": "standard",
+              "decided": true,
+              "decidedBy": "senior-underwriter",
+              "decidedByAi": false,
+              "convertedPolicyId": "UL-000123",
+              "convertedAt": "2026-09-29",
+              "canConvert": false
+            },
+            {
+              "applicationId": "UW-000002",
+              "partyId": "PTY-0002",
+              "customerName": "Sara Khalifa",
+              "productId": "PROD-LIFE-TERM",
+              "productName": "Level Term Life Protection",
+              "category": "conventional",
+              "paymentFrequency": "annual",
+              "termYears": 20,
+              "beneficiary": {
+                "name": "Legal Heirs / Estate",
+                "relationship": "family",
+                "sharePct": 100
+              },
+              "sumAssured": "300,000.00 AED",
+              "standardPremium": "9,000.00 AED",
+              "loadedPremium": "9,211.50 AED",
+              "extraMortalityBps": 235,
+              "outcome": "rated",
+              "decided": true,
+              "decidedBy": "senior-underwriter",
+              "decidedByAi": false,
+              "convertedPolicyId": null,
+              "convertedAt": null,
+              "canConvert": true
+            },
+            {
+              "applicationId": "UW-000003",
+              "partyId": "PTY-0003",
+              "customerName": "PTY-0003",
+              "productId": "PROD-LIFE-TERM",
+              "productName": "Level Term Life Protection",
+              "category": "conventional",
+              "paymentFrequency": "annual",
+              "termYears": 20,
+              "beneficiary": {
+                "name": "Legal Heirs / Estate",
+                "relationship": "family",
+                "sharePct": 100
+              },
+              "sumAssured": "2,500,000.00 AED",
+              "standardPremium": "75,000.00 AED",
+              "loadedPremium": "76,950.00 AED",
+              "extraMortalityBps": 260,
+              "outcome": "referred",
+              "decided": false,
+              "decidedBy": null,
+              "decidedByAi": false,
+              "convertedPolicyId": null,
+              "convertedAt": null,
+              "canConvert": false
+            },
+            {
+              "applicationId": "UW-000004",
+              "partyId": "PTY-0004",
+              "customerName": "PTY-0004",
+              "productId": "PROD-LIFE-TERM",
+              "productName": "Level Term Life Protection",
+              "category": "conventional",
+              "paymentFrequency": "annual",
+              "termYears": 20,
+              "beneficiary": {
+                "name": "Legal Heirs / Estate",
+                "relationship": "family",
+                "sharePct": 100
+              },
+              "sumAssured": "120,000.00 AED",
+              "standardPremium": "3,600.00 AED",
+              "loadedPremium": "3,600.00 AED",
+              "extraMortalityBps": 0,
+              "outcome": "standard",
+              "decided": true,
+              "decidedBy": "agent/quote-bot",
+              "decidedByAi": true,
+              "convertedPolicyId": null,
+              "convertedAt": null,
+              "canConvert": true
+            }
+          ],
+          "receipts": [
+            {
+              "id": "RCP-000003",
+              "policyId": "TK-9001",
+              "partyId": "PTY-0002",
+              "customerName": "Sara Khalifa",
+              "category": "takaful",
+              "amount": "6,000.00 AED",
+              "fundId": "PRF / PIF",
+              "unitsAllocated": "—",
+              "pricePerUnit": "—",
+              "feeDeducted": "1,200.00 AED",
+              "at": "2026-10-01T09:00:00+04:00",
+              "by": "takaful-cashier",
+              "paymentMethod": "direct-debit",
+              "journalIds": [
+                "TKF-J-000001",
+                "TKF-J-000002",
+                "TKF-J-000003",
+                "TKF-J-000004"
+              ],
+              "note": "Takaful contribution split: 20% Wakalah fee (OPF), 30% of net Tabarru (PRF), 70% Investment (PIF)"
+            },
+            {
+              "id": "RCP-000002",
+              "policyId": "UL-000123",
+              "partyId": "PTY-0001",
+              "customerName": "Ahmed Al Mansoori",
+              "category": "unit-linked",
+              "amount": "12,000.00 AED",
+              "fundId": "FBAL",
+              "unitsAllocated": "1084.565301",
+              "pricePerUnit": "10.511123",
+              "feeDeducted": "600.00 AED",
+              "at": "2026-09-30T11:05:00+04:00",
+              "by": "cashier-desk",
+              "paymentMethod": "bank-transfer",
+              "journalIds": [
+                "UL-J-000005",
+                "UL-J-000006",
+                "UL-J-000007",
+                "UL-J-000008"
+              ],
+              "note": "Second instalment allocated to FBAL (500 bps allocation charge)"
+            },
+            {
+              "id": "RCP-000001",
+              "policyId": "UL-000123",
+              "partyId": "PTY-0001",
+              "customerName": "Ahmed Al Mansoori",
+              "category": "unit-linked",
+              "amount": "12,000.00 AED",
+              "fundId": "FGLOBAL",
+              "unitsAllocated": "1086.090624",
+              "pricePerUnit": "10.496361",
+              "feeDeducted": "600.00 AED",
+              "at": "2026-09-29T09:40:00+04:00",
+              "by": "cashier-desk",
+              "paymentMethod": "bank-transfer",
+              "journalIds": [
+                "UL-J-000001",
+                "UL-J-000002",
+                "UL-J-000003",
+                "UL-J-000004"
+              ],
+              "note": "Initial premium allocated to FGLOBAL (500 bps allocation charge)"
+            }
+          ],
+          "alterations": [
+            {
+              "id": "ALT-000002",
+              "policyId": "UL-000123",
+              "partyId": "PTY-0001",
+              "category": "financial",
+              "type": "financial",
+              "kind": "partial-withdrawal",
+              "before": "FBAL holding prior to partial withdrawal",
+              "after": "Withdrew 1,000.00 AED cash from FBAL (250 bps withdrawal fee)",
+              "summary": "Withdrew 1,000.00 AED cash from FBAL (250 bps withdrawal fee)",
+              "amount": "1,000.00 AED",
+              "fee": "25.00 AED",
+              "journalIds": [
+                "UL-J-000025",
+                "UL-J-000026",
+                "UL-J-000027",
+                "UL-J-000028"
+              ],
+              "at": "2026-10-01T10:15:00+04:00",
+              "by": "policy-servicing",
+              "reason": "Customer partial encashment request"
+            },
+            {
+              "id": "ALT-000001",
+              "policyId": "UL-000123",
+              "partyId": "PTY-0001",
+              "category": "financial",
+              "type": "financial",
+              "kind": "fund-switch",
+              "before": "FGLOBAL holding prior to switch",
+              "after": "Switched 3,000.00 AED from FGLOBAL into FBAL (100 bps fee)",
+              "summary": "Switched 3,000.00 AED from FGLOBAL into FBAL (100 bps fee)",
+              "amount": "3,000.00 AED",
+              "fee": "30.00 AED",
+              "journalIds": [
+                "UL-J-000015",
+                "UL-J-000016",
+                "UL-J-000017",
+                "UL-J-000018",
+                "UL-J-000019"
+              ],
+              "at": "2026-09-30T15:30:00+04:00",
+              "by": "policy-servicing",
+              "reason": "Policyholder portfolio rebalancing instruction"
+            }
+          ],
+          "master": {
+            "products": [
+              {
+                "productId": "PROD-UL-GLOBAL",
+                "name": "Global Unit-Linked Plan",
+                "category": "unit-linked",
+                "line": "life",
+                "entityId": "ALK-CONV",
+                "currency": "AED",
+                "defaultFunds": [
+                  "FGLOBAL",
+                  "FBAL"
+                ],
+                "minAge": 18,
+                "maxAge": 65,
+                "maxBmi": 32,
+                "incomeMultiple": 25,
+                "baseRatePerThousand": "48.00 AED",
+                "automaticBindingLimit": "1,000,000.00 AED",
+                "facultativeThreshold": "2,000,000.00 AED",
+                "aiStraightThroughLimit": "500,000.00 AED"
+              },
+              {
+                "productId": "PROD-LIFE-TERM",
+                "name": "Level Term Life Protection",
+                "category": "conventional",
+                "line": "life",
+                "entityId": "ALK-CONV",
+                "currency": "AED",
+                "defaultFunds": [],
+                "minAge": 18,
+                "maxAge": 65,
+                "maxBmi": 32,
+                "incomeMultiple": 20,
+                "baseRatePerThousand": "30.00 AED",
+                "automaticBindingLimit": "1,000,000.00 AED",
+                "facultativeThreshold": "2,000,000.00 AED",
+                "aiStraightThroughLimit": "500,000.00 AED"
+              },
+              {
+                "productId": "PROD-MEDICAL-GRP",
+                "name": "Comprehensive Medical Cover",
+                "category": "conventional",
+                "line": "medical",
+                "entityId": "ALK-CONV",
+                "currency": "AED",
+                "defaultFunds": [],
+                "minAge": 18,
+                "maxAge": 65,
+                "maxBmi": 32,
+                "incomeMultiple": 10,
+                "baseRatePerThousand": "30.00 AED",
+                "automaticBindingLimit": "1,000,000.00 AED",
+                "facultativeThreshold": "2,000,000.00 AED",
+                "aiStraightThroughLimit": "500,000.00 AED"
+              },
+              {
+                "productId": "PROD-TKF-FAMILY",
+                "name": "Family Takaful Protection & Savings Plan",
+                "category": "takaful",
+                "line": "life",
+                "entityId": "ALK-TKF",
+                "currency": "AED",
+                "defaultFunds": [
+                  "TKF-EQ"
+                ],
+                "minAge": 18,
+                "maxAge": 65,
+                "maxBmi": 32,
+                "incomeMultiple": 20,
+                "baseRatePerThousand": "36.00 AED",
+                "automaticBindingLimit": "1,000,000.00 AED",
+                "facultativeThreshold": "2,000,000.00 AED",
+                "aiStraightThroughLimit": "500,000.00 AED"
+              },
+              {
+                "productId": "PROD-MOTOR-PAYG",
+                "name": "Pay-as-you-drive Motor Cover",
+                "category": "motor-payg",
+                "line": "motor",
+                "entityId": "ALK-CONV",
+                "currency": "AED",
+                "defaultFunds": [],
+                "minAge": 18,
+                "maxAge": 75,
+                "maxBmi": 32,
+                "incomeMultiple": 15,
+                "baseRatePerThousand": "20.00 AED",
+                "automaticBindingLimit": "1,000,000.00 AED",
+                "facultativeThreshold": "2,000,000.00 AED",
+                "aiStraightThroughLimit": "500,000.00 AED"
+              }
+            ],
+            "charges": {
+              "allocationChargeBps": 500,
+              "topupChargeBps": 200,
+              "switchingFeeBps": 100,
+              "partialWithdrawalFeeBps": 250,
+              "coiPerMilleMonthly": 0.9,
+              "adminFeeMonthly": "25.00 AED",
+              "adminFeeMonthlyMinor": 2500
+            },
+            "unitLinkedCharges": {
+              "allocationChargeBps": 500,
+              "topupChargeBps": 200,
+              "switchingFeeBps": 100,
+              "partialWithdrawalFeeBps": 250,
+              "coiPerMilleMonthly": 0.9,
+              "adminFeeMonthly": "25.00 AED",
+              "adminFeeMonthlyMinor": 2500
+            },
+            "claimsAuthority": [
+              {
+                "role": "claims-officer",
+                "limit": "5,000.00 AED",
+                "isAi": false
+              },
+              {
+                "role": "claims-manager",
+                "limit": "50,000.00 AED",
+                "isAi": false
+              },
+              {
+                "role": "head-of-claims",
+                "limit": "250,000.00 AED",
+                "isAi": false
+              },
+              {
+                "role": "chief-claims-officer",
+                "limit": "5,000,000.00 AED",
+                "isAi": false
+              },
+              {
+                "role": "ai-straight-through",
+                "limit": "1,000.00 AED",
+                "isAi": true
+              }
+            ],
+            "takafulConfig": {
+              "productId": "PROD-TKF-FAMILY",
+              "model": "wakalah",
+              "wakalahFeeBps": 2000,
+              "mudarabahProfitShareBps": 0,
+              "tabarruBps": 3000,
+              "surplusParticipantShareBps": 7000,
+              "allowsSurplusToSavers": false,
+              "jurisdiction": "AE"
+            },
+            "instruments": [
+              {
+                "id": "EMAAR",
+                "name": "Emaar Properties",
+                "assetClass": "equity",
+                "isin": "AEE000301011",
+                "shariahScreened": true,
+                "latestPrice": 8.61,
+                "latestAsOf": "2026-10-05",
+                "currency": "AED"
+              },
+              {
+                "id": "FAB",
+                "name": "First Abu Dhabi Bank",
+                "assetClass": "equity",
+                "isin": "AEE000801020",
+                "shariahScreened": false,
+                "latestPrice": 13.44,
+                "latestAsOf": "2026-10-05",
+                "currency": "AED"
+              },
+              {
+                "id": "SUKUK-AE",
+                "name": "UAE Federal Sukuk 2030",
+                "assetClass": "sukuk",
+                "isin": "—",
+                "shariahScreened": true,
+                "latestPrice": 103.43,
+                "latestAsOf": "2026-10-05",
+                "currency": "AED"
+              },
+              {
+                "id": "GLD-ETF",
+                "name": "Gold ETF (physical)",
+                "assetClass": "commodity",
+                "isin": "—",
+                "shariahScreened": true,
+                "latestPrice": 94.43,
+                "latestAsOf": "2026-10-05",
+                "currency": "AED"
+              },
+              {
+                "id": "US-EQ",
+                "name": "Global Equity Index Fund",
+                "assetClass": "equity",
+                "isin": "IE00B4L5Y983",
+                "shariahScreened": false,
+                "latestPrice": 80.64,
+                "latestAsOf": "2026-10-05",
+                "currency": "AED"
+              }
+            ],
+            "fxRates": [
+              {
+                "from": "USD",
+                "to": "AED",
+                "rate": "3.6700",
+                "asOf": "2026-09-01"
+              },
+              {
+                "from": "MYR",
+                "to": "AED",
+                "rate": "0.8200",
+                "asOf": "2026-09-30"
+              }
+            ]
+          }
+        },
         "days": [
           "2026-09-29",
           "2026-09-30",
@@ -11379,7 +11953,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-05T07:06:36.617Z"
+        "generatedAt": "2026-10-18T13:06:45.953Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {

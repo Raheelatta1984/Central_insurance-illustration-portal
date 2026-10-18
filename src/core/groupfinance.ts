@@ -39,6 +39,11 @@ export class RateTable {
     this.rates = [...rates].sort((a, b) => (a.asOf < b.asOf ? -1 : a.asOf > b.asOf ? 1 : 0));
   }
 
+  register(fx: DatedFx): void {
+    this.rates.push({ ...fx });
+    this.rates.sort((a, b) => (a.asOf < b.asOf ? -1 : a.asOf > b.asOf ? 1 : 0));
+  }
+
   /** The rate in force on a date: the latest one at or before it. */
   rateAt(from: Currency, to: Currency, asOf: string): DatedFx {
     if (from === to) return { from, to, numerator: 1n, denominator: 1n, asOf };

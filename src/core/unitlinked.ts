@@ -79,11 +79,18 @@ export class UnitLinkedEngine {
     private readonly nav: NavEngine,
     private readonly ledger: Ledger,
     private readonly chart: Chart,
-    private readonly charges: ChargeSchedule = DEFAULT_CHARGES,
+    private charges: ChargeSchedule = DEFAULT_CHARGES,
   ) {}
 
   /** Ids are prefixed with the module so two engines can share one ledger without collision. */
   private nextId(prefix: string): string { return `UL-${prefix}-${String(++this.seq).padStart(6, '0')}`; }
+
+  chargeSchedule(): ChargeSchedule { return { ...this.charges, surrenderChargeBpsByYear: [...this.charges.surrenderChargeBpsByYear] }; }
+
+  updateCharges(patch: Partial<ChargeSchedule>): ChargeSchedule {
+    this.charges = { ...this.charges, ...patch };
+    return this.chargeSchedule();
+  }
 
   openPolicy(meta: PolicyMeta, holdings: Array<{ fundId: string; units?: bigint; lockInUntil?: string }>): void {
     if (this.meta.has(meta.policyId)) throw new UnitLinkedError(`policy ${meta.policyId} already open`);
@@ -91,6 +98,30 @@ export class UnitLinkedEngine {
     const map = new Map<string, FundHolding>();
     for (const h of holdings) map.set(h.fundId, { units: h.units ?? 0n, ...(h.lockInUntil ? { lockInUntil: h.lockInUntil } : {}) });
     this.holdings.set(meta.policyId, map);
+  }
+
+  hasPolicy(policyId: string): boolean {
+    return this.meta.has(policyId);
+  }
+
+  listPolicies(): PolicyMeta[] {
+    return [...this.meta.values()];
+  }
+
+  updatePolicyMeta(policyId: string, patch: Partial<Omit<PolicyMeta, 'policyId'>>): PolicyMeta {
+    const current = this.policy(policyId);
+    const updated: PolicyMeta = { ...current, ...patch, policyId: current.policyId };
+    this.meta.set(policyId, updated);
+    if (patch.targetWeights) {
+      for (const tw of patch.targetWeights) this.ensureFundHolding(policyId, tw.fundId);
+    }
+    return updated;
+  }
+
+  ensureFundHolding(policyId: string, fundId: string): void {
+    const map = this.holdings.get(policyId);
+    if (!map) throw new UnitLinkedError(`unknown policy ${policyId}`);
+    if (!map.has(fundId)) map.set(fundId, { units: 0n });
   }
 
   policy(policyId: string): PolicyMeta {

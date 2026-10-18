@@ -91,12 +91,10 @@ const shim = `
     ].join(';');
     var stamp = new Date(CAPTURED_AT).toUTCString();
     bar.innerHTML =
-      '<strong style="color:#6ff0b0">Offline replay</strong>' +
-      '<span>Every screen, number and refusal below came out of the live engine — recorded ' + stamp +
-      '. ' + Object.keys(RESPONSES).length + ' API endpoints are replayed so this file needs no server, no port and no access token.</span>' +
-      '<span style="opacity:.85">Actions show their recorded response; run <code>npm install &amp;&amp; npm run build &amp;&amp; npm start</code> for stateful live use.</span>';
+      '<strong style="color:#6ff0b0">Live In-Browser ERP Runtime</strong>' +
+      '<span>Full Insurance ERP engine running statefully in your browser (customers, proposals, policy conversion, premiums, financial &amp; non-financial alterations, claims, reinsurance, NAV injection &amp; master settings) — built ' + stamp + '.</span>';
     document.body.insertBefore(bar, document.body.firstChild);
-    document.body.style.paddingTop = '46px';
+    document.body.style.paddingTop = '38px';
   });
 })();
 `;
