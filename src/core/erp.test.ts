@@ -483,4 +483,36 @@ describe('End-to-End Insurance ERP Management Solution', () => {
     expect(ledgerDrill.status).toBe(200);
     expect(ledgerDrill.body.ok).toBe(true);
   });
+
+  it('stores regional master defaults, exposes unpriced product templates, and allows field labels to be renamed', async () => {
+    const state = createRuntimeState();
+    const initial = await call<WorldSnapshot>(state, 'GET', '/world');
+    expect(initial.body.erp.master.tenantSettings).toMatchObject({
+      country: 'AE', region: 'Dubai', businessDate: '2026-10-05', timeZone: 'Asia/Dubai', localCurrency: 'AED', foreignCurrency: 'USD',
+    });
+    expect(initial.body.erp.master.productCatalogue.length).toBeGreaterThanOrEqual(25);
+    expect(initial.body.erp.master.productCatalogue.some((item) => item.family === 'Critical illness')).toBe(true);
+    expect(initial.body.erp.master.productCatalogue.some((item) => item.name.includes('Marine hull'))).toBe(true);
+
+    const saved = await call<{ country: string; region: string; businessDate: string; timeZone: string; localCurrency: string; foreignCurrency: string }>(
+      state,
+      'POST',
+      '/master/tenant-settings',
+      { country: 'au', region: 'New South Wales', businessDate: '2026-10-18', timeZone: 'Australia/Sydney', localCurrency: 'aud', foreignCurrency: 'usd' },
+    );
+    expect(saved.body).toEqual({ country: 'AU', region: 'New South Wales', businessDate: '2026-10-18', timeZone: 'Australia/Sydney', localCurrency: 'AUD', foreignCurrency: 'USD' });
+
+    const renamed = await call<{ key: string; text: string }>(state, 'POST', '/master/label', {
+      scope: 'alkhaleej', key: 'master.product.name', locale: 'en', text: 'Offering name',
+    });
+    expect(renamed.body.text).toBe('Offering name');
+
+    const current = await call<WorldSnapshot>(state, 'GET', '/world');
+    expect(current.body.erp.master.tenantSettings.localCurrency).toBe('AUD');
+    expect(current.body.entities[0]?.currency).toBe('AED');
+    expect(current.body.labels.en['master.product.name']).toBe('Offering name');
+
+    await expect(call(state, 'POST', '/master/tenant-settings', { timeZone: 'Not/A-Time-Zone' })).rejects.toThrow(/unknown IANA time zone/);
+    await expect(call(state, 'POST', '/master/tenant-settings', { businessDate: '2026-02-30' })).rejects.toThrow(/valid calendar date/);
+  });
 });

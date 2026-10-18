@@ -14,7 +14,7 @@
  */
 import { Money, add, applyBps, compare, formatAmount, money, scaleOf, sub, zero } from './money.js';
 
-export type ProductLine = 'life' | 'medical' | 'critical-illness' | 'motor' | 'travel' | 'group';
+export type ProductLine = 'life' | 'medical' | 'critical-illness' | 'motor' | 'travel' | 'group' | 'personal-accident';
 export type DecisionOutcome = 'standard' | 'rated' | 'excluded' | 'postponed' | 'declined' | 'referred';
 export type OccupationClass = 1 | 2 | 3 | 4 | 5;
 

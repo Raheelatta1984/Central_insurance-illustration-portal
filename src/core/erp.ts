@@ -25,6 +25,7 @@ import { Basis, Treaty, TreatyKind } from './reinsurance.js';
 import { IdType, IdentityDocument, Party, matchParties } from './party.js';
 import { posting } from './ledger.js';
 import { Locale } from './labels.js';
+import { INSURANCE_PRODUCT_CATALOGUE } from './product-catalogue.js';
 
 export class ErpError extends Error {}
 
@@ -42,6 +43,16 @@ export interface ProductMaster {
   readonly defaultFunds: readonly string[];
   readonly rules: ProductRules;
   readonly takafulConfig?: TakafulProductConfig;
+}
+
+/** Tenant display and capture defaults; historical books and entity functional currencies are untouched. */
+export interface TenantMasterSettings {
+  readonly country: string;
+  readonly region: string;
+  readonly businessDate: string;
+  readonly timeZone: string;
+  readonly localCurrency: string;
+  readonly foreignCurrency: string;
 }
 
 export interface ErpProposalMeta {
@@ -139,6 +150,7 @@ export class ErpManager {
   private readonly policies = new Map<string, ErpPolicy>();
   private readonly receipts: PremiumReceipt[] = [];
   private readonly alterations: PolicyAlteration[] = [];
+  private tenantSettings: TenantMasterSettings;
   private takafulConfig: TakafulProductConfig;
   private fxList: Array<{ from: string; to: string; numerator: bigint; denominator: bigint; asOf: string }> = [
     { from: 'USD', to: 'AED', numerator: 367n, denominator: 100n, asOf: '2026-09-01' },
@@ -150,6 +162,14 @@ export class ErpManager {
   private journalSeq = 0;
 
   constructor(w: World) {
+    this.tenantSettings = {
+      country: 'AE',
+      region: 'Dubai',
+      businessDate: w.asOf,
+      timeZone: 'Asia/Dubai',
+      localCurrency: w.entities[0]?.currency ?? 'AED',
+      foreignCurrency: 'USD',
+    };
     this.takafulConfig = {
       productId: 'PROD-TKF-FAMILY',
       model: 'wakalah',
@@ -1722,6 +1742,35 @@ export class ErpManager {
     return this.takafulConfig;
   }
 
+  /** Save tenant capture/display defaults without restating entity books or historical transactions. */
+  updateTenantSettings(input: Partial<TenantMasterSettings>): TenantMasterSettings {
+    const next: TenantMasterSettings = {
+      country: input.country === undefined ? this.tenantSettings.country : input.country.trim().toUpperCase(),
+      region: input.region === undefined ? this.tenantSettings.region : input.region.trim(),
+      businessDate: input.businessDate === undefined ? this.tenantSettings.businessDate : input.businessDate.trim(),
+      timeZone: input.timeZone === undefined ? this.tenantSettings.timeZone : input.timeZone.trim(),
+      localCurrency: input.localCurrency === undefined ? this.tenantSettings.localCurrency : input.localCurrency.trim().toUpperCase(),
+      foreignCurrency: input.foreignCurrency === undefined ? this.tenantSettings.foreignCurrency : input.foreignCurrency.trim().toUpperCase(),
+    };
+
+    if (!/^[A-Z]{2}$/.test(next.country)) throw new ErpError('country must be an ISO 3166-1 alpha-2 code, such as AE or AU');
+    if (!next.region) throw new ErpError('region is required');
+    const parsedDate = new Date(`${next.businessDate}T00:00:00.000Z`);
+    if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(next.businessDate) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== next.businessDate) {
+      throw new ErpError('business date must be a valid calendar date in YYYY-MM-DD format');
+    }
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: next.timeZone }).format(new Date(`${next.businessDate}T00:00:00.000Z`));
+    } catch {
+      throw new ErpError(`unknown IANA time zone ${next.timeZone}`);
+    }
+    if (!/^[A-Z]{3}$/.test(next.localCurrency)) throw new ErpError('local currency must be a three-letter ISO 4217 code');
+    if (!/^[A-Z]{3}$/.test(next.foreignCurrency)) throw new ErpError('foreign currency must be a three-letter ISO 4217 code');
+
+    this.tenantSettings = next;
+    return { ...next };
+  }
+
   updateClaimsAuthorityMaster(w: World, input: { role: string; limit: string | number; isAi?: boolean; book?: 'conventional' | 'takaful' | 'both' }) {
     const role = input.role.trim();
     if (!role) throw new ErpError('authority role is required');
@@ -1941,6 +1990,8 @@ export class ErpManager {
       alterations,
       master: {
         products,
+        productCatalogue: INSURANCE_PRODUCT_CATALOGUE.map((template) => ({ ...template })),
+        tenantSettings: { ...this.tenantSettings },
         charges: {
           allocationChargeBps: charges.allocationChargeBps,
           topupChargeBps: charges.topupChargeBps,

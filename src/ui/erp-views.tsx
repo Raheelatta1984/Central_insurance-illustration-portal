@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { WorldSnapshot } from '../core/demo';
+import type { ProductLine } from '../core/underwriting';
 import type { ConsoleTab } from '../core/tour';
 import { api } from './api';
+import { GuideNote } from './guide';
 import { SectionGroup, fields } from './sections';
 
 export const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({
@@ -15,6 +17,7 @@ export const Card: React.FC<{ title: string; subtitle?: string; children: React.
       <h3>{title}</h3>
       {subtitle && <p>{subtitle}</p>}
     </header>
+    <GuideNote title={title} subtitle={subtitle} />
     {children}
   </section>
 );
@@ -2421,7 +2424,7 @@ export function MasterSettingsErp({
   const [prodId, setProdId] = useState('PROD-UL-WEALTH');
   const [prodName, setProdName] = useState('Executive Wealth Accumulator (Unit-Linked)');
   const [prodCat, setProdCat] = useState<'unit-linked' | 'takaful' | 'conventional' | 'motor-payg'>('unit-linked');
-  const [prodLine, setProdLine] = useState<'life' | 'medical' | 'motor' | 'personal-accident'>('life');
+  const [prodLine, setProdLine] = useState<ProductLine>('life');
   const [minAge, setMinAge] = useState(18);
   const [maxAge, setMaxAge] = useState(65);
   const [maxBmi, setMaxBmi] = useState(32);
@@ -2462,6 +2465,24 @@ export function MasterSettingsErp({
   const [lblLocale, setLblLocale] = useState<'en' | 'ar'>('en');
   const [lblText, setLblText] = useState('Instalment Contribution');
 
+  // Tenant regional defaults
+  const tenantSettings = data.erp.master.tenantSettings;
+  const [tenantCountry, setTenantCountry] = useState(tenantSettings.country);
+  const [tenantRegion, setTenantRegion] = useState(tenantSettings.region);
+  const [tenantBusinessDate, setTenantBusinessDate] = useState(tenantSettings.businessDate);
+  const [tenantTimeZone, setTenantTimeZone] = useState(tenantSettings.timeZone);
+  const [tenantLocalCurrency, setTenantLocalCurrency] = useState(tenantSettings.localCurrency);
+  const [tenantForeignCurrency, setTenantForeignCurrency] = useState(tenantSettings.foreignCurrency);
+
+  useEffect(() => {
+    setTenantCountry(tenantSettings.country);
+    setTenantRegion(tenantSettings.region);
+    setTenantBusinessDate(tenantSettings.businessDate);
+    setTenantTimeZone(tenantSettings.timeZone);
+    setTenantLocalCurrency(tenantSettings.localCurrency);
+    setTenantForeignCurrency(tenantSettings.foreignCurrency);
+  }, [tenantSettings.country, tenantSettings.region, tenantSettings.businessDate, tenantSettings.timeZone, tenantSettings.localCurrency, tenantSettings.foreignCurrency]);
+
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -2482,6 +2503,19 @@ export function MasterSettingsErp({
   };
 
   const numericAmount = (value: string) => Number(String(value).replace(/[^0-9.]/g, '')) || 0;
+
+  const masterLabel = (key: string, fallback: string) => data.labels.en[key] ?? fallback;
+  const isValidTimeZone = (value: string) => {
+    try { new Intl.DateTimeFormat('en', { timeZone: value }); return true; } catch { return false; }
+  };
+  const regionalBlockers = [
+    !/^[A-Za-z]{2}$/.test(tenantCountry.trim()) ? 'Country must be a two-letter ISO code, such as AE or AU.' : '',
+    !tenantRegion.trim() ? 'Region or state is required.' : '',
+    !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(tenantBusinessDate) ? 'Business date must use YYYY-MM-DD.' : '',
+    !isValidTimeZone(tenantTimeZone) ? 'Choose a valid IANA time zone, such as Asia/Dubai or Australia/Sydney.' : '',
+    !/^[A-Za-z]{3}$/.test(tenantLocalCurrency.trim()) ? 'Local currency must be a three-letter ISO code.' : '',
+    !/^[A-Za-z]{3}$/.test(tenantForeignCurrency.trim()) ? 'Foreign currency must be a three-letter ISO code.' : '',
+  ].filter(Boolean);
 
   return (
     <SectionGroup
@@ -2540,22 +2574,107 @@ export function MasterSettingsErp({
           ),
         },
         {
+          id: 'tenant-settings',
+          title: 'Country, date, time zone & currency defaults',
+          subtitle: 'Tenant-level defaults for capture and display; entity functional currencies and historical books stay unchanged.',
+          fields: fields(
+            [masterLabel('master.regional.country', 'Country (ISO code)'), tenantCountry],
+            [masterLabel('master.regional.region', 'Region or state'), tenantRegion],
+            [masterLabel('master.regional.businessDate', 'Business date'), tenantBusinessDate],
+            [masterLabel('master.regional.timeZone', 'Time zone'), tenantTimeZone],
+            [masterLabel('master.regional.localCurrency', 'Local currency'), tenantLocalCurrency],
+            [masterLabel('master.regional.foreignCurrency', 'Foreign currency'), tenantForeignCurrency],
+          ),
+          blockers: regionalBlockers,
+          children: (
+            <>
+              <p className="small muted">These values provide tenant defaults only. They do not convert, reprice or restate an existing entity ledger or historical transaction.</p>
+              <div className="row">
+                <label>
+                  {masterLabel('master.regional.country', 'Country (ISO code)')}
+                  <input aria-label={masterLabel('master.regional.country', 'Country (ISO code)')} value={tenantCountry} maxLength={2} placeholder="AE" onChange={(e) => setTenantCountry(e.target.value.toUpperCase())} style={{ width: 110 }} />
+                </label>
+                <label>
+                  {masterLabel('master.regional.region', 'Region or state')}
+                  <input aria-label={masterLabel('master.regional.region', 'Region or state')} value={tenantRegion} onChange={(e) => setTenantRegion(e.target.value)} placeholder="Dubai" />
+                </label>
+                <label>
+                  {masterLabel('master.regional.businessDate', 'Business date')}
+                  <input aria-label={masterLabel('master.regional.businessDate', 'Business date')} type="date" value={tenantBusinessDate} onChange={(e) => setTenantBusinessDate(e.target.value)} />
+                </label>
+                <label>
+                  {masterLabel('master.regional.timeZone', 'Time zone')}
+                  <input aria-label={masterLabel('master.regional.timeZone', 'Time zone')} list="tenant-time-zones" value={tenantTimeZone} onChange={(e) => setTenantTimeZone(e.target.value)} placeholder="Asia/Dubai" />
+                  <datalist id="tenant-time-zones">
+                    {['Asia/Dubai', 'Australia/Sydney', 'Australia/Melbourne', 'Asia/Kuala_Lumpur', 'Asia/Riyadh', 'Asia/Singapore', 'Europe/London', 'Europe/Paris', 'America/New_York', 'UTC'].map((zone) => <option key={zone} value={zone} />)}
+                  </datalist>
+                </label>
+                <label>
+                  {masterLabel('master.regional.localCurrency', 'Local currency')}
+                  <input aria-label={masterLabel('master.regional.localCurrency', 'Local currency')} value={tenantLocalCurrency} maxLength={3} onChange={(e) => setTenantLocalCurrency(e.target.value.toUpperCase())} placeholder="AED" style={{ width: 100 }} />
+                </label>
+                <label>
+                  {masterLabel('master.regional.foreignCurrency', 'Foreign currency')}
+                  <input aria-label={masterLabel('master.regional.foreignCurrency', 'Foreign currency')} value={tenantForeignCurrency} maxLength={3} onChange={(e) => setTenantForeignCurrency(e.target.value.toUpperCase())} placeholder="USD" style={{ width: 100 }} />
+                </label>
+                <button
+                  disabled={busy}
+                  onClick={() => runAction('Tenant regional defaults saved', () => api('/master/tenant-settings', 'POST', {
+                    country: tenantCountry,
+                    region: tenantRegion,
+                    businessDate: tenantBusinessDate,
+                    timeZone: tenantTimeZone,
+                    localCurrency: tenantLocalCurrency,
+                    foreignCurrency: tenantForeignCurrency,
+                  }))}
+                >
+                  Save Regional Defaults
+                </button>
+              </div>
+              {notice && <div className="code small">{notice}</div>}
+              {error && <div className="errorBox">{error}</div>}
+            </>
+          ),
+        },
+        {
+          id: 'catalogue',
+          title: 'Insurance product catalogue — configurable templates',
+          subtitle: 'Life term, endowment, lifestyle, critical illness, medical, general, marine, home, travel and mortgage varieties.',
+          informational: true,
+          children: (
+            <>
+              <p className="small muted">Catalogue entries are non-priced templates, not active products. Configure local eligibility, actuarial pricing, exclusions, policy wording and regulatory approvals in a product-specific master before quoting or binding.</p>
+              <div className="pills"><Pill tone="info">{data.erp.master.productCatalogue.length} templates</Pill><Pill tone="warn">No tariff or cover terms assumed</Pill></div>
+              <Table
+                head={['Family', 'Product template', 'Variant', 'Line of business', 'Availability']}
+                rows={data.erp.master.productCatalogue.map((template) => [
+                  <b key={`${template.templateId}-family`}>{template.family}</b>,
+                  <span key={`${template.templateId}-name`}>{template.name}<br /><span className="muted small">{template.templateId}</span></span>,
+                  template.variant,
+                  template.lineOfBusiness,
+                  <Pill key={`${template.templateId}-status`} tone="warn">template only</Pill>,
+                ])}
+              />
+            </>
+          ),
+        },
+        {
           id: 'products',
           title: 'Product factory & underwriting manuals',
           subtitle: 'Define a product or update its limits, base tariff and reinsurance thresholds',
           fields: fields(
-            ['Product id', prodId],
-            ['Product name', prodName],
-            ['Category', prodCat],
-            ['Line', prodLine],
-            ['Minimum entry age', minAge],
-            ['Maximum entry age', maxAge],
-            ['Maximum BMI', maxBmi],
-            ['Base rate per 1,000', baseRate],
-            ['Income multiple', incomeMultiple],
-            ['Automatic binding limit', autoLimit],
-            ['Facultative threshold', facThreshold],
-            ['AI straight-through limit', aiLimit],
+            [masterLabel('master.product.id', 'Product ID'), prodId],
+            [masterLabel('master.product.name', 'Product name'), prodName],
+            [masterLabel('master.product.category', 'Category'), prodCat],
+            [masterLabel('master.product.line', 'Line of business'), prodLine],
+            [masterLabel('master.product.minAge', 'Minimum entry age'), minAge],
+            [masterLabel('master.product.maxAge', 'Maximum entry age'), maxAge],
+            [masterLabel('master.product.maxBmi', 'Maximum BMI'), maxBmi],
+            [masterLabel('master.product.baseRate', 'Base rate per 1,000'), baseRate],
+            [masterLabel('master.product.incomeMultiple', 'Income multiple'), incomeMultiple],
+            [masterLabel('master.product.autoLimit', 'Automatic binding limit'), autoLimit],
+            [masterLabel('master.product.facultativeThreshold', 'Facultative threshold'), facThreshold],
+            [masterLabel('master.product.aiLimit', 'AI straight-through limit'), aiLimit],
           ),
           blockers: minAge >= maxAge
             ? [`An entry range of ${minAge}–${maxAge} admits nobody`]
@@ -2569,17 +2688,17 @@ export function MasterSettingsErp({
             <>
         <Table
           head={[
-            'Product ID',
-            'Name',
-            'Category',
-            'Line',
+            masterLabel('master.product.id', 'Product ID'),
+            masterLabel('master.product.name', 'Product name'),
+            masterLabel('master.product.category', 'Category'),
+            masterLabel('master.product.line', 'Line of business'),
             'Entry Age',
-            'Max BMI',
-            'Base Rate / 1k',
-            'Income Multiple',
-            'Auto Binding Limit',
-            'Facultative Threshold',
-            'AI Straight-Through',
+            masterLabel('master.product.maxBmi', 'Maximum BMI'),
+            masterLabel('master.product.baseRate', 'Base rate / 1k'),
+            masterLabel('master.product.incomeMultiple', 'Income multiple'),
+            masterLabel('master.product.autoLimit', 'Automatic binding limit'),
+            masterLabel('master.product.facultativeThreshold', 'Facultative threshold'),
+            masterLabel('master.product.aiLimit', 'AI straight-through limit'),
           ]}
           rows={data.erp.master.products.map((p) => [
             <b>{p.productId}</b>,
@@ -2599,15 +2718,15 @@ export function MasterSettingsErp({
         />
         <div className="row" style={{ marginTop: 10 }}>
           <label>
-            Product ID
-            <input value={prodId} onChange={(e) => setProdId(e.target.value)} style={{ width: 150 }} />
+            {masterLabel('master.product.id', 'Product ID')}
+            <input aria-label={masterLabel('master.product.id', 'Product ID')} value={prodId} onChange={(e) => setProdId(e.target.value)} style={{ width: 150 }} />
           </label>
           <label>
-            Product Name
-            <input value={prodName} onChange={(e) => setProdName(e.target.value)} style={{ width: 250 }} />
+            {masterLabel('master.product.name', 'Product name')}
+            <input aria-label={masterLabel('master.product.name', 'Product name')} value={prodName} onChange={(e) => setProdName(e.target.value)} style={{ width: 250 }} />
           </label>
           <label>
-            Category
+            {masterLabel('master.product.category', 'Category')}
             <select
               value={prodCat}
               onChange={(e) =>
@@ -2621,37 +2740,40 @@ export function MasterSettingsErp({
             </select>
           </label>
           <label>
-            Line of Business
+            {masterLabel('master.product.line', 'Line of business')}
             <select
               value={prodLine}
-              onChange={(e) => setProdLine(e.target.value as 'life' | 'medical' | 'motor' | 'personal-accident')}
+              onChange={(e) => setProdLine(e.target.value as ProductLine)}
             >
               <option value="life">Life</option>
               <option value="medical">Medical</option>
+              <option value="critical-illness">Critical illness</option>
               <option value="motor">Motor</option>
-              <option value="personal-accident">Personal Accident</option>
+              <option value="travel">Travel</option>
+              <option value="group">Group</option>
+              <option value="personal-accident">Personal accident</option>
             </select>
           </label>
           <label>
-            Min Age
-            <input type="number" value={minAge} onChange={(e) => setMinAge(Number(e.target.value))} style={{ width: 70 }} />
+            {masterLabel('master.product.minAge', 'Minimum entry age')}
+            <input type="number" aria-label={masterLabel('master.product.minAge', 'Minimum entry age')} value={minAge} onChange={(e) => setMinAge(Number(e.target.value))} style={{ width: 70 }} />
           </label>
           <label>
-            Max Age
-            <input type="number" value={maxAge} onChange={(e) => setMaxAge(Number(e.target.value))} style={{ width: 70 }} />
+            {masterLabel('master.product.maxAge', 'Maximum entry age')}
+            <input type="number" aria-label={masterLabel('master.product.maxAge', 'Maximum entry age')} value={maxAge} onChange={(e) => setMaxAge(Number(e.target.value))} style={{ width: 70 }} />
           </label>
           <label>
-            Max BMI
-            <input type="number" value={maxBmi} onChange={(e) => setMaxBmi(Number(e.target.value))} style={{ width: 75 }} />
+            {masterLabel('master.product.maxBmi', 'Maximum BMI')}
+            <input type="number" aria-label={masterLabel('master.product.maxBmi', 'Maximum BMI')} value={maxBmi} onChange={(e) => setMaxBmi(Number(e.target.value))} style={{ width: 75 }} />
           </label>
         </div>
         <div className="row">
           <label>
-            Base Rate / 1,000 (AED)
+            {masterLabel('master.product.baseRate', 'Base rate per 1,000')} (AED)
             <input value={baseRate} onChange={(e) => setBaseRate(e.target.value)} style={{ width: 110 }} />
           </label>
           <label>
-            Income Multiple
+            {masterLabel('master.product.incomeMultiple', 'Income multiple')}
             <input
               type="number"
               value={incomeMultiple}
@@ -2660,15 +2782,15 @@ export function MasterSettingsErp({
             />
           </label>
           <label>
-            Auto Binding Limit (AED)
+            {masterLabel('master.product.autoLimit', 'Automatic binding limit')} (AED)
             <input value={autoLimit} onChange={(e) => setAutoLimit(e.target.value)} style={{ width: 135 }} />
           </label>
           <label>
-            Facultative Threshold (AED)
+            {masterLabel('master.product.facultativeThreshold', 'Facultative threshold')} (AED)
             <input value={facThreshold} onChange={(e) => setFacThreshold(e.target.value)} style={{ width: 135 }} />
           </label>
           <label>
-            AI Straight-Through Limit (AED)
+            {masterLabel('master.product.aiLimit', 'AI straight-through limit')} (AED)
             <input value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ width: 135 }} />
           </label>
           <button
@@ -2973,6 +3095,7 @@ export function MasterSettingsErp({
           </button>
         </div>
         <hr style={{ borderColor: '#22303f', margin: '12px 0' }} />
+        <p className="small muted">Rename product and regional setting field labels from the <code>master.product.*</code> and <code>master.regional.*</code> vocabulary keys below. Changes are scoped and audited.</p>
         <div className="row">
           <label>
             Scope
@@ -2986,7 +3109,7 @@ export function MasterSettingsErp({
             <select value={lblKey} onChange={(e) => setLblKey(e.target.value)}>
               {Object.keys(data.labels.en).map((k) => (
                 <option key={k} value={k}>
-                  {k}
+                  {k} — {data.labels.en[k] ?? k}
                 </option>
               ))}
             </select>

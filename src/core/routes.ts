@@ -1299,6 +1299,17 @@ export async function dispatchApiRoute(
     }
 
     /* ------------------------------------------- master settings */
+    case 'POST /master/tenant-settings': {
+      const patch: { country?: string; region?: string; businessDate?: string; timeZone?: string; localCurrency?: string; foreignCurrency?: string } = {};
+      if (payload['country'] !== undefined) patch.country = String(payload['country']);
+      if (payload['region'] !== undefined) patch.region = String(payload['region']);
+      if (payload['businessDate'] !== undefined) patch.businessDate = String(payload['businessDate']);
+      if (payload['timeZone'] !== undefined) patch.timeZone = String(payload['timeZone']);
+      if (payload['localCurrency'] !== undefined) patch.localCurrency = String(payload['localCurrency']);
+      if (payload['foreignCurrency'] !== undefined) patch.foreignCurrency = String(payload['foreignCurrency']);
+      return ok(state.world.erp.updateTenantSettings(patch));
+    }
+
     case 'POST /master/product': {
       const master = state.world.erp.defineProductMaster(state.world, {
         productId: String(payload['productId'] ?? ''),
