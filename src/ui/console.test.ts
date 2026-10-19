@@ -10,7 +10,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { buildWorld, worldSnapshot } from '../core/demo.js';
 import { CustomerJourneyPanel } from './journey.js';
-import { GuideProvider, GuideTopBanner } from './guide.js';
+import { GuideProvider, ScreenGuide } from './guide.js';
 import {
   ClaimsManagementPanel, CustomerManagementPanel, FundNavManagementPanel, MasterSettingsErp,
   PolicyAdministrationPanel, ProposalManagementPanel, ReinsuranceManagementPanel,
@@ -38,21 +38,21 @@ describe('the console renders', () => {
     const claimsPanel = h(ClaimsManagementPanel, { data, onReload: noop });
     const guided = renderToString(h(
       GuideProvider,
-      { enabled: true, tab: 'claims' },
-      h(React.Fragment, null, h(GuideTopBanner), claimsPanel),
+      { data, enabled: true, tab: 'claims' },
+      h(React.Fragment, null, h(ScreenGuide), claimsPanel),
     ));
     expect(guided).toContain('AI guide for Claims');
-    expect(guided).toContain('Local contextual guidance only');
-    // The per-section note is the engine's curated note (src/core/guide.ts), keyed to the section and
-    // carried by the one section the rail has open. Asserted by that key rather than by a sentence, so
-    // the rule "every open section carries a guide, and no closed one does" is what fails if it breaks.
+    // The screen overview and each gate's own heading show the relevant guide, even when closed.
+    expect(guided).toContain('data-guide="screen:claims"');
     expect(guided).toContain('data-guide="claims:register"');
-    expect(guided.split('data-guide="').length - 1).toBe(1);
+    expect(guided).toContain('data-guide="claims:reserve"');
+    expect(guided).toContain('data-guide="claims:settle"');
+    expect(guided.split('data-guide="').length - 1).toBe(5);
 
     const quiet = renderToString(h(
       GuideProvider,
-      { enabled: false, tab: 'claims' },
-      h(React.Fragment, null, h(GuideTopBanner), claimsPanel),
+      { data, enabled: false, tab: 'claims' },
+      h(React.Fragment, null, h(ScreenGuide), claimsPanel),
     ));
     expect(quiet).not.toContain('AI guide');
     expect(quiet).not.toContain('data-guide');

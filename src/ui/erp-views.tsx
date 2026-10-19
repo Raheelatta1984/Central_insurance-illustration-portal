@@ -3,7 +3,7 @@ import type { WorldSnapshot } from '../core/demo';
 import type { ProductLine } from '../core/underwriting';
 import type { ConsoleTab } from '../core/tour';
 import { api } from './api';
-import { GuideNote } from './guide';
+import { GuideBanner, GuideHeading } from './guide';
 import { SectionGroup, fields } from './sections';
 
 export const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({
@@ -14,10 +14,9 @@ export const Card: React.FC<{ title: string; subtitle?: string; children: React.
 }) => (
   <section className="card" style={wide ? { gridColumn: '1 / -1' } : undefined}>
     <header>
-      <h3>{title}</h3>
+      <div className="cardHeading"><h3>{title}</h3><GuideBanner compact title={title} /></div>
       {subtitle && <p>{subtitle}</p>}
     </header>
-    <GuideNote title={title} subtitle={subtitle} />
     {children}
   </section>
 );
@@ -2555,7 +2554,7 @@ function RegionalMasterPanel({ regional, busy, onSave, onQuote, onRemove }: {
         </p>
       )}
 
-      <h3 style={{ marginTop: 14 }}>Foreign currencies on the rate card</h3>
+      <GuideHeading title="Foreign currencies on the rate card" />
       <Table
         head={['Currency', 'Rate (local per unit)', 'Kind', 'Quoted as of', 'What it buys', '']}
         rows={regional.foreignCurrencies.map((f) => [
