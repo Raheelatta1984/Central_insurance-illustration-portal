@@ -25,10 +25,20 @@ import { Basis, Treaty, TreatyKind } from './reinsurance.js';
 import { IdType, IdentityDocument, Party, matchParties } from './party.js';
 import { posting } from './ledger.js';
 import { Locale } from './labels.js';
+import {
+  EVIDENCE_PROFILES, EvidenceBandSpec, PRODUCT_CATALOGUE,
+  ProductVariety, PolicyCategory, catalogueByLine, evidenceProfileFor, productVariety,
+} from './products.js';
+import { RegionalDesk, RegionalError, RegionalSnapshot, defaultRegional } from './regional.js';
 
 export class ErpError extends Error {}
 
-export type PolicyCategory = 'unit-linked' | 'takaful' | 'conventional' | 'motor-payg';
+/**
+ * The four books a policy can belong to. Held in `src/core/products.ts` with the catalogue, because a
+ * category is a property of a product variety and not of this manager; re-exported here so every
+ * caller that has always read it from the ERP keeps working.
+ */
+export type { PolicyCategory };
 export type PaymentFrequency = 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'single' | 'payg';
 export type PolicyStatus = 'in force' | 'active cover' | 'paid-up' | 'suspended' | 'surrendered' | 'cancelled';
 
@@ -37,6 +47,10 @@ export interface ProductMaster {
   readonly name: string;
   readonly category: PolicyCategory;
   readonly line: ProductLine;
+  /** The variety inside the line: 'Level term', 'Decreasing term', 'Open cover', 'Multi-pay'. */
+  readonly variety: string;
+  /** One sentence on what the cover does — what a suitability review reads. */
+  readonly blurb: string;
   readonly entityId: string;
   readonly currency: string;
   readonly defaultFunds: readonly string[];
@@ -135,6 +149,8 @@ export interface PolicyAlteration {
 
 export class ErpManager {
   private readonly products = new Map<string, ProductMaster>();
+  /** Country, region, calendar, time zone, local currency and the foreign rate card. */
+  private regional!: RegionalDesk;
   private readonly proposals = new Map<string, ErpProposalMeta>();
   private readonly policies = new Map<string, ErpPolicy>();
   private readonly receipts: PremiumReceipt[] = [];
@@ -150,6 +166,9 @@ export class ErpManager {
   private journalSeq = 0;
 
   constructor(w: World) {
+    // The regional master is read while the products are seeded (it holds the local currency), so it
+    // exists before `seedFromWorld` runs and is dated from the world, not from the wall clock.
+    this.regional = defaultRegional(w.asOf, 'group-finance');
     this.takafulConfig = {
       productId: 'PROD-TKF-FAMILY',
       model: 'wakalah',
@@ -163,92 +182,74 @@ export class ErpManager {
     this.seedFromWorld(w);
   }
 
+  /**
+   * Turn a catalogue variety into underwriting rules: the line's base manual supplies what the
+   * variety does not say, so a hull risk inherits the same occupation and country discipline as the
+   * rest of the book unless the catalogue says otherwise. Amounts are parsed in the local currency,
+   * which is why the regional master has to exist before any product does.
+   */
+  private rulesForVariety(variety: ProductVariety, currency: string, base: ProductRules): ProductRules {
+    const profile = variety.evidenceProfile ?? evidenceProfileFor(variety.line);
+    const specs: readonly EvidenceBandSpec[] | undefined = EVIDENCE_PROFILES[profile];
+    // An unknown profile falls back to the base manual's own bands rather than to no evidence at all:
+    // a product that silently stops asking for medicals is a product being mis-sold at scale.
+    const evidenceBands = specs
+      ? specs.map((b) => ({ fromAge: b.fromAge, fromSumAssuredMinor: parseAmount(b.fromSumAssured, currency).minor, requirements: [...b.requirements] }))
+      : base.evidenceBands.map((b) => ({ ...b, requirements: [...b.requirements] }));
+    return {
+      ...base,
+      productId: variety.productId,
+      line: variety.line,
+      minAge: variety.minAge,
+      maxAge: variety.maxAge,
+      referralMarginYears: variety.referralMarginYears ?? base.referralMarginYears,
+      maxBmi: variety.maxBmi ?? base.maxBmi,
+      // Territory: the variety's own list, or the manual it was derived from — and always the country
+      // the tenant is operating in, because a tenant that switches its local market to Malaysia must
+      // not find its own domestic book unable to write a Malaysian risk.
+      acceptedCountries: [...new Set([...(variety.acceptedCountries ?? base.acceptedCountries), this.regional.current.country])],
+      standardOccupations: [...base.standardOccupations],
+      baseRatePerThousandMinor: parseAmount(variety.baseRatePerThousand, currency).minor,
+      incomeMultiple: variety.incomeMultiple ?? base.incomeMultiple,
+      automaticBindingLimitMinor: parseAmount(variety.automaticBindingLimit ?? '1,000,000.00', currency).minor,
+      facultativeThresholdMinor: parseAmount(variety.facultativeThreshold ?? '2,000,000.00', currency).minor,
+      evidenceBands,
+      aiStraightThroughMinor: parseAmount(variety.aiStraightThroughLimit ?? '500,000.00', currency).minor,
+    };
+  }
+
   private seedFromWorld(w: World): void {
-    const currency = 'AED';
+    const currency = this.regional.current.localCurrency;
     const lifeRules = w.underwriting.rulesFor('PROD-LIFE-TERM');
     const medRules = w.underwriting.rulesFor('PROD-MEDICAL-GRP');
-    const ulRules: ProductRules = {
-      ...lifeRules,
-      productId: 'PROD-UL-GLOBAL',
-      line: 'life',
-      baseRatePerThousandMinor: 4_800n,
-      incomeMultiple: 25,
-    };
-    const tkfRules: ProductRules = {
-      ...lifeRules,
-      productId: 'PROD-TKF-FAMILY',
-      line: 'life',
-      baseRatePerThousandMinor: 3_600n,
-      incomeMultiple: 20,
-    };
-    const motorRules: ProductRules = {
-      ...lifeRules,
-      productId: 'PROD-MOTOR-PAYG',
-      line: 'motor',
-      minAge: 18,
-      maxAge: 75,
-      baseRatePerThousandMinor: 2_000n,
-      incomeMultiple: 15,
-    };
 
-    const seededProducts: ProductMaster[] = [
-      {
-        productId: 'PROD-UL-GLOBAL',
-        name: 'Global Unit-Linked Plan',
-        category: 'unit-linked',
-        line: 'life',
-        entityId: w.conventionalEntity,
+    /* Every variety in the catalogue becomes a product master, with its own rules registered in the
+       underwriting engine — so the journey can recommend a marine open cover, an underwriter can
+       assess a hull risk, and the console's product factory lists the same rows the engines read.
+       The five the demo world has always run come out with the numbers they have always had, because
+       the catalogue carries those numbers; nothing here is a second source of truth. */
+    const seededProducts: ProductMaster[] = PRODUCT_CATALOGUE.map((variety) => {
+      const rules = this.rulesForVariety(variety, currency, variety.line === 'medical' ? medRules : lifeRules);
+      w.underwriting.defineProduct(rules);
+      return {
+        productId: variety.productId,
+        name: variety.name,
+        category: variety.category,
+        line: variety.line,
+        variety: variety.variety,
+        blurb: variety.blurb,
+        entityId: variety.category === 'takaful' ? w.takafulEntity : w.conventionalEntity,
         currency,
-        defaultFunds: ['FGLOBAL', 'FBAL'],
-        rules: ulRules,
-      },
-      {
-        productId: 'PROD-LIFE-TERM',
-        name: 'Level Term Life Protection',
-        category: 'conventional',
-        line: 'life',
-        entityId: w.conventionalEntity,
-        currency,
-        defaultFunds: [],
-        rules: lifeRules,
-      },
-      {
-        productId: 'PROD-MEDICAL-GRP',
-        name: 'Comprehensive Medical Cover',
-        category: 'conventional',
-        line: 'medical',
-        entityId: w.conventionalEntity,
-        currency,
-        defaultFunds: [],
-        rules: medRules,
-      },
-      {
-        productId: 'PROD-TKF-FAMILY',
-        name: 'Family Takaful Protection & Savings Plan',
-        category: 'takaful',
-        line: 'life',
-        entityId: w.takafulEntity,
-        currency,
-        defaultFunds: ['TKF-EQ'],
-        rules: tkfRules,
-        takafulConfig: this.takafulConfig,
-      },
-      {
-        productId: 'PROD-MOTOR-PAYG',
-        name: 'Pay-as-you-drive Motor Cover',
-        category: 'motor-payg',
-        line: 'motor',
-        entityId: w.conventionalEntity,
-        currency,
-        defaultFunds: [],
-        rules: motorRules,
-      },
-    ];
+        defaultFunds: [...(variety.defaultFunds ?? [])],
+        rules,
+        ...(variety.category === 'takaful' ? { takafulConfig: this.takafulConfig } : {}),
+      };
+    });
     for (const p of seededProducts) this.products.set(p.productId, p);
 
     // Seed metadata for the 4 underwriting applications in buildWorld
     for (const app of w.underwriting.list()) {
-      const prod = this.products.get(app.productId) ?? seededProducts[1]!;
+      const prod = this.products.get(app.productId) ?? this.products.get('PROD-LIFE-TERM')!;
       this.proposals.set(app.id, {
         applicationId: app.id,
         partyId: app.partyId,
@@ -1639,11 +1640,23 @@ export class ErpManager {
 
   /* ============================================= 8. MASTER SETTINGS */
 
+  /**
+   * Define a product, or re-define one that is already on file.
+   *
+   * Naming a product id that is in the catalogue prefills every number the catalogue holds for it, so
+   * "seed the hull varieties into this tenant" is one call rather than eighty fields typed in. Anything
+   * passed explicitly wins, which is how a tenant files its own version of a catalogue product. The
+   * currency is the regional master's local currency unless the caller names another one: an amount
+   * without a currency is the one thing this codebase refuses to hold.
+   */
   defineProductMaster(w: World, input: {
     productId: string;
-    name: string;
-    category: PolicyCategory;
-    line: ProductLine;
+    name?: string;
+    category?: PolicyCategory;
+    line?: ProductLine;
+    variety?: string;
+    blurb?: string;
+    currency?: string;
     minAge?: number;
     maxAge?: number;
     referralMarginYears?: number;
@@ -1653,48 +1666,83 @@ export class ErpManager {
     automaticBindingLimit?: string | number;
     facultativeThreshold?: string | number;
     aiStraightThroughLimit?: string | number;
+    acceptedCountries?: string[];
+    evidenceProfile?: string;
     defaultFunds?: string[];
+    by?: string;
   }): ProductMaster {
     const productId = input.productId.trim().toUpperCase();
-    const name = input.name.trim();
-    if (!productId || !name) throw new ErpError('productId and name are required');
-    const currency = 'AED';
-    const rules: ProductRules = {
+    if (!productId) throw new ErpError('productId is required');
+    const onFile = productVariety(productId);
+    const name = (input.name ?? onFile?.name ?? '').trim();
+    if (!name) throw new ErpError('productId and name are required');
+    const currency = (input.currency?.trim().toUpperCase() || this.regional.current.localCurrency);
+    const category: PolicyCategory = input.category ?? onFile?.category ?? 'conventional';
+    const line: ProductLine = input.line ?? onFile?.line ?? 'life';
+    const varietyInput: ProductVariety = {
+      ...(onFile ?? {
+        productId, name, line, category,
+        variety: name, blurb: 'Defined through the master settings product factory.',
+        minAge: Number(input.minAge ?? 18), maxAge: Number(input.maxAge ?? 65),
+        baseRatePerThousand: String(input.baseRatePerThousand ?? '30.00'),
+      }),
       productId,
-      line: input.line,
-      minAge: Number(input.minAge ?? 18),
-      maxAge: Number(input.maxAge ?? 65),
-      referralMarginYears: Number(input.referralMarginYears ?? 5),
-      maxBmi: Number(input.maxBmi ?? 32),
-      acceptedCountries: ['AE', 'MY', 'GB', 'SA'],
-      standardOccupations: [1, 2],
-      baseRatePerThousandMinor: parseAmount(String(input.baseRatePerThousand ?? '30.00'), currency).minor,
-      incomeMultiple: Number(input.incomeMultiple ?? 20),
-      automaticBindingLimitMinor: parseAmount(String(input.automaticBindingLimit ?? '1,000,000.00'), currency).minor,
-      facultativeThresholdMinor: parseAmount(String(input.facultativeThreshold ?? '2,000,000.00'), currency).minor,
-      evidenceBands: [
-        { fromAge: 40, fromSumAssuredMinor: 500_000_00n, requirements: ['blood profile', 'urine analysis'] },
-        { fromAge: 55, fromSumAssuredMinor: 100_000_00n, requirements: ['ECG', 'treadmill test'] },
-      ],
-      aiStraightThroughMinor: parseAmount(String(input.aiStraightThroughLimit ?? '500,000.00'), currency).minor,
+      name,
+      line,
+      category,
+      variety: (input.variety ?? onFile?.variety ?? name).trim(),
+      blurb: (input.blurb ?? onFile?.blurb ?? '').trim() || 'No product wording filed against this variety yet.',
+      ...(input.minAge !== undefined ? { minAge: Number(input.minAge) } : {}),
+      ...(input.maxAge !== undefined ? { maxAge: Number(input.maxAge) } : {}),
+      ...(input.referralMarginYears !== undefined ? { referralMarginYears: Number(input.referralMarginYears) } : {}),
+      ...(input.maxBmi !== undefined ? { maxBmi: Number(input.maxBmi) } : {}),
+      ...(input.baseRatePerThousand !== undefined ? { baseRatePerThousand: String(input.baseRatePerThousand) } : {}),
+      ...(input.incomeMultiple !== undefined ? { incomeMultiple: Number(input.incomeMultiple) } : {}),
+      ...(input.automaticBindingLimit !== undefined ? { automaticBindingLimit: String(input.automaticBindingLimit) } : {}),
+      ...(input.facultativeThreshold !== undefined ? { facultativeThreshold: String(input.facultativeThreshold) } : {}),
+      ...(input.aiStraightThroughLimit !== undefined ? { aiStraightThroughLimit: String(input.aiStraightThroughLimit) } : {}),
+      ...(input.acceptedCountries && input.acceptedCountries.length > 0 ? { acceptedCountries: input.acceptedCountries.map((c) => c.trim().toUpperCase()) } : {}),
+      ...(input.evidenceProfile ? { evidenceProfile: input.evidenceProfile } : {}),
     };
+    if (varietyInput.minAge >= varietyInput.maxAge) {
+      throw new ErpError(`entry age ${varietyInput.minAge} cannot be at or above the maximum ${varietyInput.maxAge}`);
+    }
+    const base = line === 'medical'
+      ? (w.underwriting.listProducts().find((r) => r.productId === 'PROD-MEDICAL-GRP') ?? this.rulesFor(varietyInput.productId))
+      : this.rulesFor(varietyInput.productId);
+    const rules = this.rulesForVariety(varietyInput, currency, base);
 
     w.underwriting.defineProduct(rules);
     const master: ProductMaster = {
       productId,
       name,
-      category: input.category,
-      line: input.line,
-      entityId: input.category === 'takaful' ? w.takafulEntity : w.conventionalEntity,
+      category,
+      line,
+      variety: varietyInput.variety,
+      blurb: varietyInput.blurb,
+      entityId: category === 'takaful' ? w.takafulEntity : w.conventionalEntity,
       currency,
       defaultFunds: input.defaultFunds && input.defaultFunds.length > 0
         ? input.defaultFunds
-        : input.category === 'unit-linked' ? ['FGLOBAL', 'FBAL'] : input.category === 'takaful' ? ['TKF-EQ'] : [],
+        : varietyInput.defaultFunds && varietyInput.defaultFunds.length > 0
+          ? [...varietyInput.defaultFunds]
+          : category === 'unit-linked' ? ['FGLOBAL', 'FBAL'] : category === 'takaful' ? ['TKF-EQ'] : [],
       rules,
-      ...(input.category === 'takaful' ? { takafulConfig: this.takafulConfig } : {}),
+      ...(category === 'takaful' ? { takafulConfig: this.takafulConfig } : {}),
     };
     this.products.set(productId, master);
     return master;
+  }
+
+  /** Rules to derive a new product from: the product's own if it is on file, else the life manual. */
+  private rulesFor(productId: string): ProductRules {
+    try {
+      return this.productMaster(productId).rules;
+    } catch {
+      const life = this.products.get('PROD-LIFE-TERM')?.rules;
+      if (life) return life;
+      throw new ErpError(`no manual on file to derive ${productId} from — pass the rate and limits explicitly`);
+    }
   }
 
   updateChargesMaster(w: World, patch: Partial<ChargeSchedule>): ChargeSchedule {
@@ -1732,9 +1780,12 @@ export class ErpManager {
     return w.claims.authorityTable().map((a) => ({ role: a.role, limit: formatAmount(a.limit), isAi: a.isAi }));
   }
 
-  registerFxMaster(w: World, input: { from: string; to?: string; rate: number; asOf?: string }) {
+  registerFxMaster(w: World, input: { from: string; to?: string; rate: number; asOf?: string; by?: string }) {
     const from = input.from.trim().toUpperCase();
-    const to = (input.to?.trim() || 'AED').toUpperCase();
+    // The default target is whatever this tenant calls its local currency, not a hardcoded AED: a
+    // book run out of Kuala Lumpur quotes into ringgit, and a rate quoted into the wrong currency is
+    // worse than no rate at all.
+    const to = (input.to?.trim() || this.regional.current.localCurrency).toUpperCase();
     const rate = Number(input.rate);
     if (!from || !Number.isFinite(rate) || rate <= 0) throw new ErpError('valid currency code and positive rate required');
     const asOf = input.asOf?.trim() || w.asOf;
@@ -1743,7 +1794,63 @@ export class ErpManager {
     w.ledger.registerFx({ from, to, numerator, denominator, asOf });
     w.groupRates.register({ from, to, numerator, denominator, asOf });
     this.fxList.push({ from, to, numerator, denominator, asOf });
+    /* One rate card, not two: a quote through this door also updates the regional master, so the
+       conversion an operator sees on the settings screen is the rate the group consolidation used.
+       Either direction is accepted, and the reciprocal is mirrored exactly — a card that only mirrors
+       one way would show a rate the ledger has never heard of. */
+    const local = this.regional.current.localCurrency;
+    const by = input.by?.trim() || 'fx-master';
+    if (from !== to && (to === local || from === local)) {
+      const code = to === local ? from : to;
+      const quoted = to === local ? { numerator, denominator } : { numerator: denominator, denominator: numerator };
+      this.regional.setForeignCurrencyRational({ code, ...quoted, asOf, by });
+    }
     return { from, to, rate, asOf };
+  }
+
+  /* ------------------------------------------- regional master: country, calendar and currencies */
+
+  /** The regional master itself, for anything that has to read the tenant's calendar or currency. */
+  regionalSettings(): RegionalDesk { return this.regional; }
+
+  updateRegionalMaster(input: {
+    country?: string; region?: string; operatingRegion?: string; timezone?: string;
+    dateFormat?: string; timeFormat?: string; weekStart?: string; locale?: string; localCurrency?: string;
+    by?: string; at?: string;
+  }): RegionalSnapshot {
+    try {
+      this.regional.update(input);
+      return this.regionalSnapshot();
+    } catch (error) {
+      if (error instanceof RegionalError) throw new ErpError(error.message);
+      throw error;
+    }
+  }
+
+  setRegionalForeignCurrencyMaster(input: { code: string; rate: number | string; asOf?: string; kind?: 'pegged' | 'floating'; by?: string }): RegionalSnapshot {
+    try {
+      this.regional.setForeignCurrency(input);
+    } catch (error) {
+      if (error instanceof RegionalError) throw new ErpError(error.message);
+      throw error;
+    }
+    return this.regionalSnapshot();
+  }
+
+  removeRegionalForeignCurrencyMaster(input: { code: string; by?: string }): RegionalSnapshot {
+    try {
+      this.regional.removeForeignCurrency(input.code, { by: input.by });
+    } catch (error) {
+      if (error instanceof RegionalError) throw new ErpError(error.message);
+      throw error;
+    }
+    return this.regionalSnapshot();
+  }
+
+  /** The regional view with the product catalogue's line summary attached, as the console reads it. */
+  regionalSnapshot(): RegionalSnapshot {
+    const snapshot = this.regional.snapshot();
+    return { ...snapshot, lines: catalogueByLine().map((l) => ({ line: l.line, label: l.label, family: l.family, count: l.count })) };
   }
 
   renameLabelMaster(w: World, input: { scope?: string; key: string; locale?: Locale; text: string; by?: string }) {
@@ -1892,6 +1999,8 @@ export class ErpManager {
       name: p.name,
       category: p.category,
       line: p.line,
+      variety: p.variety,
+      blurb: p.blurb,
       entityId: p.entityId,
       currency: p.currency,
       defaultFunds: [...p.defaultFunds],
@@ -1941,6 +2050,9 @@ export class ErpManager {
       alterations,
       master: {
         products,
+        regional: this.regionalSnapshot(),
+        productLines: catalogueByLine().map((l) => ({ line: l.line, label: l.label, family: l.family, count: l.count, productIds: l.productIds })),
+        catalogueSize: PRODUCT_CATALOGUE.length,
         charges: {
           allocationChargeBps: charges.allocationChargeBps,
           topupChargeBps: charges.topupChargeBps,

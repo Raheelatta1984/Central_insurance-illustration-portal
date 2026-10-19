@@ -14,7 +14,17 @@
  */
 import { Money, add, applyBps, compare, formatAmount, money, scaleOf, sub, zero } from './money.js';
 
-export type ProductLine = 'life' | 'medical' | 'critical-illness' | 'motor' | 'travel' | 'group';
+/**
+ * The lines this tenant writes. Every one of them has at least two varieties in the product
+ * catalogue (`src/core/products.ts`), because a recommendation that can only offer one product per
+ * line cannot show the customer the alternative the pack insists was presented.
+ */
+export type ProductLine =
+  | 'life' | 'endowment' | 'critical-illness' | 'income-protection' | 'mortgage' | 'personal-accident'
+  | 'medical' | 'group'
+  | 'motor' | 'travel'
+  | 'home' | 'property' | 'liability' | 'engineering' | 'general'
+  | 'marine' | 'hull';
 export type DecisionOutcome = 'standard' | 'rated' | 'excluded' | 'postponed' | 'declined' | 'referred';
 export type OccupationClass = 1 | 2 | 3 | 4 | 5;
 

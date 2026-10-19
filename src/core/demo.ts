@@ -30,6 +30,7 @@ import { WordingBook, WordingDocument, WordingFacts } from './wording.js';
 import { AE_FILING_WINDOWS, Submission, SubmissionPack, SubmissionRegister } from './submission.js';
 import { IngestionFabric } from './ingest.js';
 import { AgentRuntime } from './ai.js';
+import { GuideDesk } from './guide.js';
 import { ExtractionResult, readChip, ocrDocument, onboard } from './onboarding.js';
 import { DecisionTheatre } from './decisioning.js';
 import { ErpManager } from './erp.js';
@@ -81,8 +82,10 @@ export interface World {
   readonly onboarding: { readonly chip: ExtractionResult; readonly ocr: ExtractionResult };
   readonly quotes: QuoteOffer[];
   readonly erp: ErpManager;
-  /** The guided lifecycle: gated sections from onboarding to investment progress, with their books. */
+  /** The guided lifecycle: gated sections from onboarding to investment progress, with its books. */
   readonly journey: JourneyDesk;
+  /** The AI guide: the sticky note on every section of every screen, and the switch that hides them. */
+  readonly guide: GuideDesk;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -741,7 +744,10 @@ export function buildWorld(): World {
     }),
   );
   seedJourney(withErp, journey);
-  return { ...withErp, journey };
+  // The guide is a desk, not a screen: it holds the switch and its audit trail, and reads the world
+  // when it composes notes, so the figures inside a note are the engine's and never a typed string.
+  const guide = new GuideDesk({ at: `${withErp.asOf}T12:00:00Z`, by: 'console-default' });
+  return { ...withErp, journey, guide };
 }
 
 /**
@@ -1438,6 +1444,7 @@ export function worldSnapshot(w: World) {
     motorPolicy: { policyId: 'MTR-0441', holder: 'Ahmed Al Mansoori' },
     erp: w.erp.snapshot(w),
     journey: w.journey.snapshot(w),
+    guide: w.guide.snapshot(w),
     days: DAYS,
     generatedAt: new Date().toISOString(),
   };

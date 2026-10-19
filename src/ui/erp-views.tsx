@@ -2127,6 +2127,7 @@ export function ReinsuranceManagementPanel({
 
   const numericAmount = (value: string) => Number(String(value).replace(/[^0-9.]/g, '')) || 0;
 
+
   return (
     <SectionGroup
       title="Reinsurance — treaties, cessions and security"
@@ -2363,37 +2364,61 @@ export function ReinsuranceManagementPanel({
   );
 }
 
-type JourneyFieldConfig = { mandatory: boolean; editable: boolean };
+type JourneyFieldConfig = { mandatory: boolean; editable: boolean; label?: string };
 type JourneyConfigMap = Record<string, Record<string, JourneyFieldConfig>>;
-type JourneyStageConfig = { id: string; title: string; fields: Array<{ id: string; label: string; kind: string; mandatory: boolean; editable: boolean; hint?: string }> };
+type JourneyStageConfig = {
+  id: string; title: string;
+  fields: Array<{ id: string; label: string; defaultLabel?: string; renamed?: boolean; kind: string; mandatory: boolean; editable: boolean; hint?: string }>;
+};
 
-function JourneyFieldSettingsPanel({ journey, busy, onSave }: {
+export function JourneyFieldSettingsPanel({ journey, busy, onSave }: {
   journey: WorldSnapshot['journey']; busy: boolean;
   onSave: (settings: JourneyConfigMap) => Promise<unknown>;
 }) {
   const stages = journey.stages as unknown as JourneyStageConfig[];
   const [settings, setSettings] = useState<JourneyConfigMap>(journey.fieldSettings as JourneyConfigMap);
-  const update = (stageId: string, fieldId: string, key: keyof JourneyFieldConfig, value: boolean) => {
+  const update = (stageId: string, fieldId: string, key: keyof JourneyFieldConfig, value: boolean | string) => {
     setSettings((current) => {
       const prior = current[stageId]?.[fieldId] ?? stages.find((s) => s.id === stageId)?.fields.find((f) => f.id === fieldId);
       if (!prior) return current;
       return { ...current, [stageId]: { ...current[stageId], [fieldId]: { ...prior, [key]: value } } };
     });
   };
+  const renames = (journey as unknown as { renamedFieldCount?: number }).renamedFieldCount ?? 0;
   return <>
     <div className="row" style={{ marginBottom: 12 }}>
       <button disabled={busy} onClick={() => onSave(settings)}>Save journey field rules</button>
+      <Pill tone={renames > 0 ? 'warn' : 'info'}>{renames} field{renames === 1 ? '' : 's'} renamed on file</Pill>
+      <span className="muted small">A rename is filed wording: it changes the form, the outstanding-field checklist and any refusal that names the field. Saving an empty name restores the default.</span>
     </div>
     {stages.map((stage) => (
       <details key={stage.id} className="card" style={{ margin: '8px 0', padding: 12 }}>
         <summary><b>{stage.title}</b><span className="muted small"> · {stage.fields.length} fields</span></summary>
         <div style={{ overflowX: 'auto', marginTop: 10 }}>
           <table className="dataTable">
-            <thead><tr><th>Field</th><th>Required</th><th>Editable</th></tr></thead>
+            <thead><tr><th>Field</th><th>Display name (rename)</th><th>Required</th><th>Editable</th></tr></thead>
             <tbody>{stage.fields.map((field) => {
               const config = settings[stage.id]?.[field.id] ?? { mandatory: field.mandatory, editable: field.editable };
+              const defaultLabel = field.defaultLabel ?? field.label;
+              const shown = config.label ?? field.label;
+              const renamed = Boolean(config.label) && config.label !== defaultLabel;
               return <tr key={field.id}>
                 <td><b>{field.label}</b><div className="muted small">{field.hint ?? field.id}</div></td>
+                <td>
+                  <input
+                    value={shown}
+                    maxLength={80}
+                    aria-label={`Display name for ${defaultLabel}`}
+                    onChange={(e) => update(stage.id, field.id, 'label', e.target.value)}
+                    style={{ width: 220 }}
+                  />
+                  {renamed && (
+                    <div className="muted small">
+                      renamed from “{defaultLabel}”{' '}
+                      <button className="ghost" style={{ padding: '1px 7px' }} disabled={busy} onClick={() => update(stage.id, field.id, 'label', '')}>restore</button>
+                    </div>
+                  )}
+                </td>
                 <td><label className="chip"><input type="checkbox" checked={config.mandatory} onChange={(e) => update(stage.id, field.id, 'mandatory', e.target.checked)} /> Required</label></td>
                 <td><label className="chip"><input type="checkbox" checked={config.editable} disabled={field.kind === 'readonly'} onChange={(e) => update(stage.id, field.id, 'editable', e.target.checked)} /> Editable</label>{field.kind === 'readonly' && <div className="muted small">Calculated field</div>}</td>
               </tr>;
@@ -2403,6 +2428,429 @@ function JourneyFieldSettingsPanel({ journey, busy, onSave }: {
       </details>
     ))}
   </>;
+}
+
+/* ------------------------------------------------------------------ the regional master
+ * Country, region, calendar, time zone and money. Everything else on this screen is filed in the
+ * tenant's terms: the product factory quotes rates in the local currency, the FX card is read in it,
+ * and the console header shows the tenant's own date and time. So this panel is the one place where a
+ * tenant says where it is, and the rest of the platform reads that answer.
+ */
+type RegionalView = WorldSnapshot['erp']['master']['regional'];
+type RegionalChoiceCountry = RegionalView['choices']['countries'][number];
+
+function RegionalMasterPanel({ regional, busy, onSave, onQuote, onRemove }: {
+  regional: RegionalView;
+  busy: boolean;
+  onSave: (patch: Record<string, string>) => Promise<unknown>;
+  onQuote: (input: { code: string; rate: string; asOf: string; kind: 'pegged' | 'floating' }) => Promise<unknown>;
+  onRemove: (code: string) => Promise<unknown>;
+}) {
+  const [country, setCountry] = useState(regional.country);
+  const [operatingRegion, setOperatingRegion] = useState(regional.operatingRegion);
+  const [timezone, setTimezone] = useState(regional.timezone);
+  const [localCurrency, setLocalCurrency] = useState(regional.localCurrency);
+  const [dateFormat, setDateFormat] = useState<string>(regional.dateFormat);
+  const [timeFormat, setTimeFormat] = useState<string>(regional.timeFormat);
+  const [weekStart, setWeekStart] = useState<string>(regional.weekStart);
+
+  const pack: RegionalChoiceCountry | undefined = regional.choices.countries.find((c) => c.code === country);
+
+  // Choosing a country proposes its pack: the time zone, the currency, the regulator's regions and the
+  // date order that country reads. The operator can still override any of them, but nobody should have
+  // to know that Kuala Lumpur is UTC+8.
+  const pickCountry = (code: string) => {
+    const next = regional.choices.countries.find((c) => c.code === code);
+    setCountry(code);
+    if (!next) return;
+    setTimezone(next.timezone);
+    setLocalCurrency(next.currency);
+    setOperatingRegion(next.regions.includes(operatingRegion) ? operatingRegion : (next.regions[0] ?? next.region));
+  };
+
+  const [fxCode, setFxCode] = useState(regional.choices.currencies.find((c) => c.code === 'SGD')?.code ?? 'SGD');
+  const [fxRate, setFxRate] = useState('2.7200');
+  const [fxAsOf, setFxAsOf] = useState(regional.updatedAt.slice(0, 10));
+  const [fxKind, setFxKind] = useState<'pegged' | 'floating'>('floating');
+
+  const changed = country !== regional.country
+    || operatingRegion !== regional.operatingRegion
+    || timezone !== regional.timezone
+    || localCurrency !== regional.localCurrency
+    || dateFormat !== regional.dateFormat
+    || timeFormat !== regional.timeFormat
+    || weekStart !== regional.weekStart;
+
+  return (
+    <>
+      <div className="pills">
+        <Pill tone="info">{regional.countryName} · {regional.region}</Pill>
+        <Pill tone="info">{regional.timezone} {regional.utcOffsetLabel}</Pill>
+        <Pill tone="ok">local money {regional.localCurrency} ({regional.localCurrencySymbol})</Pill>
+        <Pill tone="info">regulator {regional.regulator}</Pill>
+        <Pill tone="info">locale {regional.locale}</Pill>
+        <Pill tone={changed ? 'warn' : 'info'}>{changed ? 'unsaved changes' : `saved by ${regional.updatedBy} at ${regional.updatedAt}`}</Pill>
+      </div>
+
+      <div className="row" style={{ marginTop: 10 }}>
+        <label>
+          Country
+          <select value={country} onChange={(e) => pickCountry(e.target.value)} style={{ width: 230 }}>
+            {regional.choices.countries.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
+          </select>
+        </label>
+        <label>
+          Operating region / emirate / state
+          <select value={operatingRegion} onChange={(e) => setOperatingRegion(e.target.value)} style={{ width: 200 }}>
+            {(pack?.regions ?? regional.choices.regions).map((r) => <option key={r} value={r}>{r}</option>)}
+            {pack && !pack.regions.includes(operatingRegion) && <option value={operatingRegion}>{operatingRegion}</option>}
+          </select>
+        </label>
+        <label>
+          Time zone
+          <select value={timezone} onChange={(e) => setTimezone(e.target.value)} style={{ width: 250 }}>
+            {regional.choices.timezones.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+        </label>
+        <label>
+          Local currency
+          <select value={localCurrency} onChange={(e) => setLocalCurrency(e.target.value)} style={{ width: 210 }}>
+            {regional.choices.currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="row">
+        <label>
+          Date format
+          <select value={dateFormat} onChange={(e) => setDateFormat(e.target.value)}>
+            {regional.choices.dateFormats.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </label>
+        <label>
+          Time format
+          <select value={timeFormat} onChange={(e) => setTimeFormat(e.target.value)}>
+            {regional.choices.timeFormats.map((f) => <option key={f} value={f}>{f === '12h' ? '12-hour (3:05 pm)' : '24-hour (15:05)'}</option>)}
+          </select>
+        </label>
+        <label>
+          Week starts
+          <select value={weekStart} onChange={(e) => setWeekStart(e.target.value)}>
+            {regional.choices.weekStarts.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </label>
+        <button
+          disabled={busy || !changed}
+          onClick={() => onSave({ country, operatingRegion, timezone, localCurrency, dateFormat, timeFormat, weekStart, by: 'master-settings' })}
+        >
+          Save regional settings
+        </button>
+      </div>
+      {pack && (
+        <p className="small muted">
+          {pack.name} is filed with {pack.regulator} in {pack.region}; its pack proposes {pack.timezone}, {pack.currency} and the {pack.regions.length} operating regions listed above.
+          Changing the local currency rebases the foreign rate card onto the new currency rather than dropping it, and the ledger keeps its own base currency — every amount stays explicit about the money it is in.
+        </p>
+      )}
+
+      <h3 style={{ marginTop: 14 }}>Foreign currencies on the rate card</h3>
+      <Table
+        head={['Currency', 'Rate (local per unit)', 'Kind', 'Quoted as of', 'What it buys', '']}
+        rows={regional.foreignCurrencies.map((f) => [
+          <b key={`${f.code}-c`}>{f.code}</b>,
+          f.name,
+          <Pill key={`${f.code}-k`} tone={f.kind === 'pegged' ? 'ok' : 'info'}>{f.kind}</Pill>,
+          f.rate,
+          f.asOf,
+          <button key={`${f.code}-rm`} className="ghost" disabled={busy} onClick={() => onRemove(f.code)}>Remove</button>,
+        ])}
+        empty="No foreign currency quoted yet."
+      />
+      <div className="row" style={{ marginTop: 10 }}>
+        <label>
+          Currency
+          <select value={fxCode} onChange={(e) => setFxCode(e.target.value)} style={{ width: 200 }}>
+            {regional.choices.currencies.filter((c) => c.code !== regional.localCurrency).map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+          </select>
+        </label>
+        <label>
+          Rate in {regional.localCurrency}
+          <input value={fxRate} onChange={(e) => setFxRate(e.target.value)} style={{ width: 120 }} />
+        </label>
+        <label>
+          Quoted as of
+          <input type="date" value={fxAsOf} onChange={(e) => setFxAsOf(e.target.value)} />
+        </label>
+        <label>
+          Kind
+          <select value={fxKind} onChange={(e) => setFxKind(e.target.value as 'pegged' | 'floating')}>
+            <option value="floating">floating</option>
+            <option value="pegged">pegged</option>
+          </select>
+        </label>
+        <button disabled={busy} onClick={() => onQuote({ code: fxCode, rate: fxRate, asOf: fxAsOf, kind: fxKind })}>
+          Quote currency
+        </button>
+      </div>
+      {regional.examples.length > 0 && (
+        <ul className="list small muted">
+          {regional.examples.map((e) => <li key={`${e.from}-${e.to}`}>{e.label} (rate of {e.asOf})</li>)}
+        </ul>
+      )}
+
+      {regional.audit.length > 0 && (
+        <details className="card" style={{ marginTop: 12, padding: 12 }}>
+          <summary><b>Regional audit trail</b><span className="muted small"> · last {Math.min(8, regional.audit.length)} of {regional.audit.length} changes</span></summary>
+          <Table
+            head={['When', 'By', 'Setting', 'From', 'To']}
+            rows={regional.audit.slice(-8).reverse().map((a) => [a.at, a.by, a.field, a.from, a.to])}
+          />
+        </details>
+      )}
+
+      {regional.lines && regional.lines.length > 0 && (
+        <div className="pills" style={{ marginTop: 10 }}>
+          {regional.lines.map((l) => <Pill key={l.line} tone="info">{l.label}: {l.count}</Pill>)}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ the product factory
+ * Ninety-odd filed varieties across seventeen lines. The picker loads a variety's own manual into the
+ * form so an operator amends the numbers on file rather than retyping them, the shelf can be filtered
+ * by line, and the money labels read the local currency from the regional master.
+ */
+export type ProductForm = {
+  prodId: string;
+  prodName: string;
+  prodCat: 'unit-linked' | 'takaful' | 'conventional' | 'motor-payg';
+  prodLine: string;
+  minAge: number;
+  maxAge: number;
+  maxBmi: number;
+  baseRate: string;
+  incomeMultiple: number;
+  autoLimit: string;
+  facThreshold: string;
+  aiLimit: string;
+};
+
+export const DEFAULT_PRODUCT_FORM: ProductForm = {
+  prodId: 'PROD-UL-GLOBAL', prodName: 'Global Unit-Linked Plan', prodCat: 'unit-linked', prodLine: 'life',
+  minAge: 18, maxAge: 65, maxBmi: 32, baseRate: '48.00', incomeMultiple: 15,
+  autoLimit: '1,000,000.00', facThreshold: '1,500,000.00', aiLimit: '250,000.00',
+};
+
+export function ProductFactoryPanel({ data, busy, form, setForm, onSave }: {
+  data: WorldSnapshot;
+  busy: boolean;
+  form: ProductForm;
+  setForm: (patch: Partial<ProductForm>) => void;
+  onSave: (payload: Record<string, unknown>) => Promise<unknown> | unknown;
+}) {
+  const productLines = data.erp.master.productLines;
+  const productMasters = data.erp.master.products;
+  const localCurrency = data.erp.master.regional.localCurrency;
+  const [lineFilter, setLineFilter] = useState<string>('all');
+
+  const { prodId, prodName, prodCat, prodLine, minAge, maxAge, maxBmi, baseRate, incomeMultiple, autoLimit, facThreshold, aiLimit } = form;
+  const setProdId = (v: string) => setForm({ prodId: v });
+  const setProdName = (v: string) => setForm({ prodName: v });
+  const setProdCat = (v: ProductForm['prodCat']) => setForm({ prodCat: v });
+  const setProdLine = (v: string) => setForm({ prodLine: v });
+  const setMinAge = (v: number) => setForm({ minAge: v });
+  const setMaxAge = (v: number) => setForm({ maxAge: v });
+  const setMaxBmi = (v: number) => setForm({ maxBmi: v });
+  const setBaseRate = (v: string) => setForm({ baseRate: v });
+  const setIncomeMultiple = (v: number) => setForm({ incomeMultiple: v });
+  const setAutoLimit = (v: string) => setForm({ autoLimit: v });
+  const setFacThreshold = (v: string) => setForm({ facThreshold: v });
+  const setAiLimit = (v: string) => setForm({ aiLimit: v });
+
+  /** Pull a filed variety into the form: the numbers on file, not a guess at them. */
+  const loadVariety = (productId: string) => {
+    const chosen = productMasters.find((p) => p.productId === productId);
+    setProdId(productId);
+    if (!chosen) return;
+    const strip = (label: string) => label.replace(` ${chosen.currency}`, '').replace(/,/g, '');
+    setForm({
+      prodId: productId,
+      prodName: chosen.name,
+      prodCat: chosen.category,
+      prodLine: chosen.line,
+      minAge: chosen.minAge,
+      maxAge: chosen.maxAge,
+      maxBmi: chosen.maxBmi ?? 32,
+      baseRate: strip(chosen.baseRatePerThousand),
+      incomeMultiple: chosen.incomeMultiple ?? 10,
+      autoLimit: strip(chosen.automaticBindingLimit),
+      facThreshold: strip(chosen.facultativeThreshold),
+      aiLimit: strip(chosen.aiStraightThroughLimit),
+    });
+  };
+
+  const chosenVariety = productMasters.find((p) => p.productId === prodId);
+  const shelves = lineFilter === 'all' ? productMasters : productMasters.filter((p) => p.line === lineFilter);
+
+  return (
+    <>
+        <div className="pills">
+          <Pill tone="ok">{data.erp.master.catalogueSize} varieties on file</Pill>
+          <Pill tone="info">{productLines.length} lines in {new Set(productLines.map((l) => l.family)).size} families</Pill>
+          <Pill tone="info">quoted in {localCurrency}</Pill>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <label>
+            Show line
+            <select value={lineFilter} onChange={(e) => setLineFilter(e.target.value)} style={{ width: 260 }}>
+              <option value="all">All {productLines.length} lines ({productMasters.length} varieties)</option>
+              {productLines.map((l) => <option key={l.line} value={l.line}>{l.family} · {l.label} ({l.count})</option>)}
+            </select>
+          </label>
+          <span className="muted small">{shelves.length} row{shelves.length === 1 ? '' : 's'} shown</span>
+        </div>
+        <Table
+          head={[
+            'Product ID',
+            'Name',
+            'Variety',
+            'Category',
+            'Line',
+            'Entry Age',
+            'Max BMI',
+            'Base Rate / 1k',
+            'Income Multiple',
+            'Auto Binding Limit',
+            'Facultative Threshold',
+            'AI Straight-Through',
+          ]}
+          rows={shelves.map((p) => [
+            <b key={`${p.productId}-id`}>{p.productId}</b>,
+            <span key={`${p.productId}-n`} title={p.blurb}>{p.name}</span>,
+            p.variety,
+            <Pill key={`${p.productId}-c`} tone={p.category === 'takaful' ? 'ok' : 'info'}>
+              {p.category}
+            </Pill>,
+            p.line,
+            `${p.minAge}–${p.maxAge}`,
+            String(p.maxBmi ?? '—'),
+            p.baseRatePerThousand,
+            `${p.incomeMultiple ?? '—'}x`,
+            p.automaticBindingLimit,
+            p.facultativeThreshold,
+            p.aiStraightThroughLimit,
+          ])}
+        />
+        {chosenVariety && (
+          <p className="small muted" style={{ marginTop: 8 }}>
+            <b>{chosenVariety.variety}</b> — {chosenVariety.blurb} Filed for {chosenVariety.entityId} in {chosenVariety.currency}.
+          </p>
+        )}
+        <div className="row" style={{ marginTop: 10 }}>
+          <label>
+            Filed variety
+            <select value={productMasters.some((p) => p.productId === prodId) ? prodId : ''} onChange={(e) => loadVariety(e.target.value)} style={{ width: 330 }}>
+              <option value="">— pick a variety to load its manual —</option>
+              {productLines.map((line) => (
+                <optgroup key={line.line} label={`${line.family} · ${line.label}`}>
+                  {productMasters.filter((p) => p.line === line.line).map((p) => (
+                    <option key={p.productId} value={p.productId}>{p.variety} — {p.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <label>
+            Product ID
+            <input value={prodId} onChange={(e) => setProdId(e.target.value)} style={{ width: 170 }} />
+          </label>
+          <label>
+            Product Name
+            <input value={prodName} onChange={(e) => setProdName(e.target.value)} style={{ width: 250 }} />
+          </label>
+          <label>
+            Category
+            <select
+              value={prodCat}
+              onChange={(e) =>
+                setProdCat(e.target.value as 'unit-linked' | 'takaful' | 'conventional' | 'motor-payg')
+              }
+            >
+              <option value="unit-linked">Unit-Linked</option>
+              <option value="takaful">Takaful</option>
+              <option value="conventional">Conventional</option>
+              <option value="motor-payg">Motor PAYG</option>
+            </select>
+          </label>
+          <label>
+            Line of Business
+            <select value={prodLine} onChange={(e) => setProdLine(e.target.value)} style={{ width: 240 }}>
+              {productLines.map((l) => <option key={l.line} value={l.line}>{l.label}</option>)}
+              {!productLines.some((l) => l.line === prodLine) && <option value={prodLine}>{prodLine}</option>}
+            </select>
+          </label>
+          <label>
+            Min Age
+            <input type="number" value={minAge} onChange={(e) => setMinAge(Number(e.target.value))} style={{ width: 70 }} />
+          </label>
+          <label>
+            Max Age
+            <input type="number" value={maxAge} onChange={(e) => setMaxAge(Number(e.target.value))} style={{ width: 70 }} />
+          </label>
+          <label>
+            Max BMI
+            <input type="number" value={maxBmi} onChange={(e) => setMaxBmi(Number(e.target.value))} style={{ width: 75 }} />
+          </label>
+        </div>
+        <div className="row">
+          <label>
+            Base Rate / 1,000 ({localCurrency})
+            <input value={baseRate} onChange={(e) => setBaseRate(e.target.value)} style={{ width: 110 }} />
+          </label>
+          <label>
+            Income Multiple
+            <input
+              type="number"
+              value={incomeMultiple}
+              onChange={(e) => setIncomeMultiple(Number(e.target.value))}
+              style={{ width: 90 }}
+            />
+          </label>
+          <label>
+            Auto Binding Limit ({localCurrency})
+            <input value={autoLimit} onChange={(e) => setAutoLimit(e.target.value)} style={{ width: 135 }} />
+          </label>
+          <label>
+            Facultative Threshold ({localCurrency})
+            <input value={facThreshold} onChange={(e) => setFacThreshold(e.target.value)} style={{ width: 135 }} />
+          </label>
+          <label>
+            AI Straight-Through Limit ({localCurrency})
+            <input value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ width: 135 }} />
+          </label>
+          <button
+            disabled={busy}
+            onClick={() => onSave({
+              productId: prodId,
+              name: prodName,
+              category: prodCat,
+              line: prodLine,
+              minAge,
+              maxAge,
+              maxBmi,
+              baseRatePerThousand: baseRate,
+              incomeMultiple,
+              automaticBindingLimit: autoLimit,
+              facultativeThreshold: facThreshold,
+              aiStraightThroughLimit: aiLimit,
+            })}
+          >
+            + Save Product &amp; UW Manual
+          </button>
+        </div>
+    </>
+  );
 }
 
 /* ============================================================================
@@ -2417,19 +2865,12 @@ export function MasterSettingsErp({
   onReload: () => Promise<void>;
   onNavigate: (tab: ConsoleTab) => void;
 }) {
-  // Product Factory form
-  const [prodId, setProdId] = useState('PROD-UL-WEALTH');
-  const [prodName, setProdName] = useState('Executive Wealth Accumulator (Unit-Linked)');
-  const [prodCat, setProdCat] = useState<'unit-linked' | 'takaful' | 'conventional' | 'motor-payg'>('unit-linked');
-  const [prodLine, setProdLine] = useState<'life' | 'medical' | 'motor' | 'personal-accident'>('life');
-  const [minAge, setMinAge] = useState(18);
-  const [maxAge, setMaxAge] = useState(65);
-  const [maxBmi, setMaxBmi] = useState(32);
-  const [baseRate, setBaseRate] = useState('3.20');
-  const [incomeMultiple, setIncomeMultiple] = useState(15);
-  const [autoLimit, setAutoLimit] = useState('1,000,000.00');
-  const [facThreshold, setFacThreshold] = useState('1,500,000.00');
-  const [aiLimit, setAiLimit] = useState('250,000.00');
+  // The product factory's draft, held in the panel that renders it (see ProductFactoryPanel). What
+  // stays here is what the gate itself reports: the numbers as they would be filed, so the section can
+  // be blocked before anyone presses save.
+  const [form, setFormState] = useState<ProductForm>(DEFAULT_PRODUCT_FORM);
+  const setForm = (patch: Partial<ProductForm>) => setFormState((current) => ({ ...current, ...patch }));
+  const { prodId, prodName, prodCat, prodLine, minAge, maxAge, maxBmi, baseRate, incomeMultiple, autoLimit, facThreshold, aiLimit } = form;
 
   // Unit-Linked Charges form
   const [allocBps, setAllocBps] = useState(data.erp.master.unitLinkedCharges.allocationChargeBps);
@@ -2483,11 +2924,35 @@ export function MasterSettingsErp({
 
   const numericAmount = (value: string) => Number(String(value).replace(/[^0-9.]/g, '')) || 0;
 
+
   return (
     <SectionGroup
       title="Master settings — products, charges, takaful, authority, FX and vocabulary"
       sequential={false}
       gates={[
+        {
+          id: 'regional',
+          title: 'Country, region, calendar, time zone and currencies',
+          subtitle: 'Where this tenant operates: the country and region it files in, the time zone and date order it reads, and the local and foreign money it quotes.',
+          informational: true,
+          fields: fields(
+            ['Country', data.erp.master.regional.country],
+            ['Operating region', data.erp.master.regional.operatingRegion],
+            ['Time zone', data.erp.master.regional.timezone],
+            ['Date format', data.erp.master.regional.dateFormat],
+            ['Local currency', data.erp.master.regional.localCurrency],
+            ['Foreign currencies quoted', data.erp.master.regional.foreignCurrencies.length],
+          ),
+          children: (
+            <RegionalMasterPanel
+              regional={data.erp.master.regional}
+              busy={busy}
+              onSave={(patch) => runAction('Regional settings saved', () => api('/master/regional', 'POST', patch))}
+              onQuote={(input) => runAction(`${input.code} quoted`, () => api('/master/regional/currency', 'POST', { ...input, by: 'master-settings' }))}
+              onRemove={(code) => runAction(`${code} removed from the rate card`, () => api('/master/regional/currency/remove', 'POST', { code, by: 'master-settings' }))}
+            />
+          ),
+        },
         {
           id: 'journey-fields',
           title: 'Quote-to-policy journey field rules',
@@ -2499,7 +2964,7 @@ export function MasterSettingsErp({
               <JourneyFieldSettingsPanel
                 journey={data.journey}
                 busy={busy}
-                onSave={(fieldSettings) => runAction('Journey field rules saved', () => api('/journey/field-settings', 'POST', { fieldSettings }))}
+                onSave={(fieldSettings) => runAction('Journey field rules saved', () => api('/journey/field-settings', 'POST', { fieldSettings, by: 'master-settings' }))}
               />
               {notice && <div className="code small">{notice}</div>}
               {error && <div className="errorBox">{error}</div>}
@@ -2566,136 +3031,13 @@ export function MasterSettingsErp({
             ? ['An AI straight-through limit above the automatic binding limit would let an agent bind what the treaty requires the reinsurer to see']
             : [],
           children: (
-            <>
-        <Table
-          head={[
-            'Product ID',
-            'Name',
-            'Category',
-            'Line',
-            'Entry Age',
-            'Max BMI',
-            'Base Rate / 1k',
-            'Income Multiple',
-            'Auto Binding Limit',
-            'Facultative Threshold',
-            'AI Straight-Through',
-          ]}
-          rows={data.erp.master.products.map((p) => [
-            <b>{p.productId}</b>,
-            p.name,
-            <Pill key={`${p.productId}-c`} tone={p.category === 'takaful' ? 'ok' : 'info'}>
-              {p.category}
-            </Pill>,
-            p.line,
-            `${p.minAge}–${p.maxAge}`,
-            String(p.maxBmi),
-            p.baseRatePerThousand,
-            `${p.incomeMultiple}x`,
-            p.automaticBindingLimit,
-            p.facultativeThreshold,
-            p.aiStraightThroughLimit,
-          ])}
-        />
-        <div className="row" style={{ marginTop: 10 }}>
-          <label>
-            Product ID
-            <input value={prodId} onChange={(e) => setProdId(e.target.value)} style={{ width: 150 }} />
-          </label>
-          <label>
-            Product Name
-            <input value={prodName} onChange={(e) => setProdName(e.target.value)} style={{ width: 250 }} />
-          </label>
-          <label>
-            Category
-            <select
-              value={prodCat}
-              onChange={(e) =>
-                setProdCat(e.target.value as 'unit-linked' | 'takaful' | 'conventional' | 'motor-payg')
-              }
-            >
-              <option value="unit-linked">Unit-Linked</option>
-              <option value="takaful">Takaful</option>
-              <option value="conventional">Conventional</option>
-              <option value="motor-payg">Motor PAYG</option>
-            </select>
-          </label>
-          <label>
-            Line of Business
-            <select
-              value={prodLine}
-              onChange={(e) => setProdLine(e.target.value as 'life' | 'medical' | 'motor' | 'personal-accident')}
-            >
-              <option value="life">Life</option>
-              <option value="medical">Medical</option>
-              <option value="motor">Motor</option>
-              <option value="personal-accident">Personal Accident</option>
-            </select>
-          </label>
-          <label>
-            Min Age
-            <input type="number" value={minAge} onChange={(e) => setMinAge(Number(e.target.value))} style={{ width: 70 }} />
-          </label>
-          <label>
-            Max Age
-            <input type="number" value={maxAge} onChange={(e) => setMaxAge(Number(e.target.value))} style={{ width: 70 }} />
-          </label>
-          <label>
-            Max BMI
-            <input type="number" value={maxBmi} onChange={(e) => setMaxBmi(Number(e.target.value))} style={{ width: 75 }} />
-          </label>
-        </div>
-        <div className="row">
-          <label>
-            Base Rate / 1,000 (AED)
-            <input value={baseRate} onChange={(e) => setBaseRate(e.target.value)} style={{ width: 110 }} />
-          </label>
-          <label>
-            Income Multiple
-            <input
-              type="number"
-              value={incomeMultiple}
-              onChange={(e) => setIncomeMultiple(Number(e.target.value))}
-              style={{ width: 90 }}
+            <ProductFactoryPanel
+              data={data}
+              busy={busy}
+              form={form}
+              setForm={setForm}
+              onSave={(payload) => runAction('Product master saved', () => api('/master/product', 'POST', payload))}
             />
-          </label>
-          <label>
-            Auto Binding Limit (AED)
-            <input value={autoLimit} onChange={(e) => setAutoLimit(e.target.value)} style={{ width: 135 }} />
-          </label>
-          <label>
-            Facultative Threshold (AED)
-            <input value={facThreshold} onChange={(e) => setFacThreshold(e.target.value)} style={{ width: 135 }} />
-          </label>
-          <label>
-            AI Straight-Through Limit (AED)
-            <input value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ width: 135 }} />
-          </label>
-          <button
-            disabled={busy}
-            onClick={() =>
-              runAction('Product master saved', () =>
-                api('/master/product', 'POST', {
-                  productId: prodId,
-                  name: prodName,
-                  category: prodCat,
-                  line: prodLine,
-                  minAge,
-                  maxAge,
-                  maxBmi,
-                  baseRatePerThousand: baseRate,
-                  incomeMultiple,
-                  automaticBindingLimit: autoLimit,
-                  facultativeThreshold: facThreshold,
-                  aiStraightThroughLimit: aiLimit,
-                }),
-              )
-            }
-          >
-            + Save Product &amp; UW Manual
-          </button>
-        </div>
-            </>
           ),
         },
         {

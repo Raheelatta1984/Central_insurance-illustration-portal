@@ -49,12 +49,14 @@ export const TOUR: TourStep[] = [
     why: 'Before touching anything: this is one tenant, two legal entities and a Malaysian subsidiary, and every number here is computed live from the engine, not seeded display text.',
     doThis: [
       'Read the Tenant card: three entities, two currencies, two regulators.',
+      'Read the sticky note at the top of the screen, then the one inside a section: what it is for, what to do in it, and the live figures behind the sentence. The ✳ AI guide switch in the header hides every note in the console.',
       'Note the unit-linked fund value, the sum assured, and "reproduced from log".',
       'Look at the Books card: both entity books report balanced.',
     ],
     expect: [
       'Fund value for UL-000123 is a live valuation, and the units reproduce from the transaction log alone.',
       'Takaful pools and the conventional book are separate; the books card proves it.',
+      'The header carries the tenant\u2019s own calendar and money: country, time zone with its UTC offset, the date and time in the tenant\u2019s format, and the local currency.',
     ],
     api: ['GET /api/world'],
   },
@@ -75,7 +77,23 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/journey', 'POST /api/journey/save', 'POST /api/journey/submit', 'POST /api/journey/quotation/pdf'],
   },
   {
-    at: '00:09', minutes: 5, tab: 'policyholder', title: 'Look through a unit-linked policy into real instruments',
+    at: '00:09', minutes: 3, tab: 'master', title: 'Set the tenant: country, calendar, money, fields and products',
+    why: 'Everything the console shows is filed somewhere. This is the screen where a tenant says where it operates, what it calls a premium, which fields are mandatory and which products exist — and every other screen reads those answers instead of hardcoding them.',
+    doThis: [
+      'Open section 1 and read the regional card: country, operating region, IANA time zone, date and clock format, local currency, and the foreign rate card with the date each rate was quoted.',
+      'Pick Malaysia: the country pack proposes Asia/Kuala_Lumpur, the ringgit and its states, and the rate card is rebased onto the new local currency rather than dropped.',
+      'Open the journey field rules, rename “Sum assured” to “Amount of cover”, save, and then look at the customer journey: the new name is on the form and in the outstanding-field checklist.',
+      'Open the product factory, filter the shelf to Hull & aviation, and pull Marine Hull & Machinery into the form.',
+    ],
+    expect: [
+      'Ninety-odd filed varieties across seventeen lines, each with its own entry ages, tariff and reinsurance thresholds — including a hull risk the underwriting engine will price.',
+      'A rename is filed wording with a trail: who changed it, from what, to what and when; an empty name restores the default.',
+      'A rate quoted through the FX master lands on the same regional card, because there is one rate card and not two.',
+    ],
+    api: ['GET /api/master/regional', 'POST /api/master/regional', 'POST /api/master/regional/currency', 'POST /api/journey/field-settings', 'POST /api/master/product'],
+  },
+  {
+    at: '00:12', minutes: 5, tab: 'policyholder', title: 'Look through a unit-linked policy into real instruments',
     why: 'This is the claim that beats ILAS: not just fund accounting, but genuine look-through into the instruments the fund actually holds, with a price date on every exposure.',
     doThis: [
       'Read the fund value and the units held per fund.',
@@ -89,7 +107,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world', 'GET /api/units'],
   },
   {
-    at: '00:14', minutes: 5, tab: 'decisions', title: 'Price a switch and a withdrawal before anything moves',
+    at: '00:17', minutes: 5, tab: 'decisions', title: 'Price a switch and a withdrawal before anything moves',
     why: 'A real decision theatre: units, price, valuation date, dealing rule, fees and lock-in blockers — all shown before the customer commits, with the illustration clearly labelled as an illustration.',
     doThis: [
       'Set a switch amount, pick the funds, and read the preview: units out, units in, fee, net invested.',
@@ -104,7 +122,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/preview/switch', 'POST /api/preview/withdrawal'],
   },
   {
-    at: '00:19', minutes: 5, tab: 'cover', title: 'Pay for cover only while cover is on',
+    at: '00:22', minutes: 4, tab: 'cover', title: 'Pay for cover only while cover is on',
     why: 'Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restarts by itself, and a day is either paid or cover suspends — there is no halfway charge.',
     doThis: [
       'Look at the segments: start, stop, daily rate, what has been charged.',
@@ -119,7 +137,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/cover/start', 'POST /api/cover/stop', 'POST /api/cover/tick'],
   },
   {
-    at: '00:24', minutes: 5, tab: 'funds', title: 'Run the NAV engine and see the rules behind a price',
+    at: '00:26', minutes: 5, tab: 'funds', title: 'Run the NAV engine and see the rules behind a price',
     why: 'Fund managers and auditors argue about valuation points. Here the cut-off, the business-day calendar, the floor price and its named residual are all visible, and reconciliation is an assertion, not a promise.',
     doThis: [
       'Read the valuation history per fund, including today.',
@@ -134,7 +152,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world'],
   },
   {
-    at: '00:29', minutes: 5, tab: 'takaful', title: 'Run a takaful window that is structural, not cosmetic',
+    at: '00:31', minutes: 5, tab: 'takaful', title: 'Run a takaful window that is structural, not cosmetic',
     why: 'Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the pool is short, and a surplus that cannot be distributed until the actuary, the Shariah Committee and the board have all signed — with the UAE rule that participants never receive surplus applied on top.',
     doThis: [
       'Read the three pool balances and the operator fund.',
@@ -149,7 +167,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/takaful/approve'],
   },
   {
-    at: '00:34', minutes: 5, tab: 'group', title: 'Consolidate three entities, two currencies, one set of books',
+    at: '00:36', minutes: 4, tab: 'group', title: 'Consolidate three entities, two currencies, one set of books',
     why: 'The part most ERP demos fake: assets and liabilities at the closing rate, income and expenses at the average rate, equity at the rate on the day it moved, the gap shown as a translation reserve, intercompany eliminated, and a minority interest stated rather than absorbed.',
     doThis: [
       'Read the three entities: functional currency, ownership, net assets, result, translation reserve.',
@@ -164,7 +182,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/group', 'POST /api/group/consolidate'],
   },
   {
-    at: '00:39', minutes: 5, tab: 'underwriting', title: 'Underwrite against a manual held as data',
+    at: '00:40', minutes: 5, tab: 'underwriting', title: 'Underwrite against a manual held as data',
     why: 'Loadings are shown line by line with the reason and the evidence each one demands, referrals go to a named human, and anything above the automatic binding limit is flagged for the reinsurer before the policy is issued. An AI agent may accept or rate inside its own limit and may never decline.',
     doThis: [
       'Read the accepted book: standard premium against loaded premium.',
@@ -179,7 +197,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/underwriting', 'POST /api/underwriting/decide'],
   },
   {
-    at: '00:44', minutes: 5, tab: 'claims', title: 'Pay a claim through authority, not through a spreadsheet',
+    at: '00:45', minutes: 5, tab: 'claims', title: 'Pay a claim through authority, not through a spreadsheet',
     why: 'Triage decides straight-through, referral or decline; a reserve is a booked liability rather than a note; approval is checked against a real authority table; settlement releases the reserve and recoveries are posted as their own income. In the takaful window the same workflow draws on the participants risk fund.',
     doThis: [
       'Read the position: reserved, expense incurred, cash paid, recoveries, net cost.',
@@ -194,7 +212,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/claims', 'POST /api/claims/register', 'POST /api/claims/approve', 'POST /api/claims/settle'],
   },
   {
-    at: '00:49', minutes: 5, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
+    at: '00:50', minutes: 4, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
     why: 'An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty\'s promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary\'s exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.',
     doThis: [
       'Read the two statements: the conventional book and the takaful window, each with its own treaties.',

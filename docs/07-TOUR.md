@@ -1,6 +1,6 @@
 # 07 — The sixty-minute tour
 
-*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 13 steps, 60 minutes.*
+*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 14 steps, 60 minutes.*
 
 > **Live app:** run `npm install && npm run build && npm start`, then open the console and start on the **Tour** tab. Every number you see is computed by an engine in `src/core`; nothing on the screen is seeded display text.
 
@@ -10,17 +10,18 @@
 | --- | --- | --- | --- |
 | 1 | 00:00 | Overview | Land on the whole book in one screen |
 | 2 | 00:04 | Customer journey | Walk a sale through nineteen closed sections |
-| 3 | 00:09 | Policyholder | Look through a unit-linked policy into real instruments |
-| 4 | 00:14 | Decision theatre | Price a switch and a withdrawal before anything moves |
-| 5 | 00:19 | Cover control | Pay for cover only while cover is on |
-| 6 | 00:24 | Funds & NAV | Run the NAV engine and see the rules behind a price |
-| 7 | 00:29 | Takaful | Run a takaful window that is structural, not cosmetic |
-| 8 | 00:34 | Group finance | Consolidate three entities, two currencies, one set of books |
-| 9 | 00:39 | Underwriting | Underwrite against a manual held as data |
-| 10 | 00:44 | Claims | Pay a claim through authority, not through a spreadsheet |
-| 11 | 00:49 | Reinsurance | Hand part of the risk to someone else, on the record |
-| 12 | 00:54 | Durability | Prove the books, and the reporting registers, can be restored |
-| 13 | 00:57 | Overview | The remainder of the hour: the fabric around the money |
+| 3 | 00:09 | Master settings & ERP | Set the tenant: country, calendar, money, fields and products |
+| 4 | 00:12 | Policyholder | Look through a unit-linked policy into real instruments |
+| 5 | 00:17 | Decision theatre | Price a switch and a withdrawal before anything moves |
+| 6 | 00:22 | Cover control | Pay for cover only while cover is on |
+| 7 | 00:26 | Funds & NAV | Run the NAV engine and see the rules behind a price |
+| 8 | 00:31 | Takaful | Run a takaful window that is structural, not cosmetic |
+| 9 | 00:36 | Group finance | Consolidate three entities, two currencies, one set of books |
+| 10 | 00:40 | Underwriting | Underwrite against a manual held as data |
+| 11 | 00:45 | Claims | Pay a claim through authority, not through a spreadsheet |
+| 12 | 00:50 | Reinsurance | Hand part of the risk to someone else, on the record |
+| 13 | 00:54 | Durability | Prove the books, and the reporting registers, can be restored |
+| 14 | 00:57 | Overview | The remainder of the hour: the fabric around the money |
 
 ## 1. 00:00 — Land on the whole book in one screen
 
@@ -31,6 +32,7 @@ Before touching anything: this is one tenant, two legal entities and a Malaysian
 **Do this**
 
 - Read the Tenant card: three entities, two currencies, two regulators.
+- Read the sticky note at the top of the screen, then the one inside a section: what it is for, what to do in it, and the live figures behind the sentence. The ✳ AI guide switch in the header hides every note in the console.
 - Note the unit-linked fund value, the sum assured, and "reproduced from log".
 - Look at the Books card: both entity books report balanced.
 
@@ -38,6 +40,7 @@ Before touching anything: this is one tenant, two legal entities and a Malaysian
 
 - Fund value for UL-000123 is a live valuation, and the units reproduce from the transaction log alone.
 - Takaful pools and the conventional book are separate; the books card proves it.
+- The header carries the tenant’s own calendar and money: country, time zone with its UTC offset, the date and time in the tenant’s format, and the local currency.
 
 *Endpoints: GET /api/world*
 
@@ -62,7 +65,28 @@ This is the front door of the whole ERP: onboarding, needs analysis, recommendat
 
 *Endpoints: GET /api/journey · POST /api/journey/save · POST /api/journey/submit · POST /api/journey/quotation/pdf*
 
-## 3. 00:09 — Look through a unit-linked policy into real instruments
+## 3. 00:09 — Set the tenant: country, calendar, money, fields and products
+
+**Tab:** Master settings & ERP · **3 minutes**
+
+Everything the console shows is filed somewhere. This is the screen where a tenant says where it operates, what it calls a premium, which fields are mandatory and which products exist — and every other screen reads those answers instead of hardcoding them.
+
+**Do this**
+
+- Open section 1 and read the regional card: country, operating region, IANA time zone, date and clock format, local currency, and the foreign rate card with the date each rate was quoted.
+- Pick Malaysia: the country pack proposes Asia/Kuala_Lumpur, the ringgit and its states, and the rate card is rebased onto the new local currency rather than dropped.
+- Open the journey field rules, rename “Sum assured” to “Amount of cover”, save, and then look at the customer journey: the new name is on the form and in the outstanding-field checklist.
+- Open the product factory, filter the shelf to Hull & aviation, and pull Marine Hull & Machinery into the form.
+
+**You should see**
+
+- Ninety-odd filed varieties across seventeen lines, each with its own entry ages, tariff and reinsurance thresholds — including a hull risk the underwriting engine will price.
+- A rename is filed wording with a trail: who changed it, from what, to what and when; an empty name restores the default.
+- A rate quoted through the FX master lands on the same regional card, because there is one rate card and not two.
+
+*Endpoints: GET /api/master/regional · POST /api/master/regional · POST /api/master/regional/currency · POST /api/journey/field-settings · POST /api/master/product*
+
+## 4. 00:12 — Look through a unit-linked policy into real instruments
 
 **Tab:** Policyholder · **5 minutes**
 
@@ -81,7 +105,7 @@ This is the claim that beats ILAS: not just fund accounting, but genuine look-th
 
 *Endpoints: GET /api/world · GET /api/units*
 
-## 4. 00:14 — Price a switch and a withdrawal before anything moves
+## 5. 00:17 — Price a switch and a withdrawal before anything moves
 
 **Tab:** Decision theatre · **5 minutes**
 
@@ -101,9 +125,9 @@ A real decision theatre: units, price, valuation date, dealing rule, fees and lo
 
 *Endpoints: POST /api/preview/switch · POST /api/preview/withdrawal*
 
-## 5. 00:19 — Pay for cover only while cover is on
+## 6. 00:22 — Pay for cover only while cover is on
 
-**Tab:** Cover control · **5 minutes**
+**Tab:** Cover control · **4 minutes**
 
 Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restarts by itself, and a day is either paid or cover suspends — there is no halfway charge.
 
@@ -121,7 +145,7 @@ Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restar
 
 *Endpoints: POST /api/cover/start · POST /api/cover/stop · POST /api/cover/tick*
 
-## 6. 00:24 — Run the NAV engine and see the rules behind a price
+## 7. 00:26 — Run the NAV engine and see the rules behind a price
 
 **Tab:** Funds & NAV · **5 minutes**
 
@@ -141,7 +165,7 @@ Fund managers and auditors argue about valuation points. Here the cut-off, the b
 
 *Endpoints: GET /api/world*
 
-## 7. 00:29 — Run a takaful window that is structural, not cosmetic
+## 8. 00:31 — Run a takaful window that is structural, not cosmetic
 
 **Tab:** Takaful · **5 minutes**
 
@@ -161,9 +185,9 @@ Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the
 
 *Endpoints: POST /api/takaful/approve*
 
-## 8. 00:34 — Consolidate three entities, two currencies, one set of books
+## 9. 00:36 — Consolidate three entities, two currencies, one set of books
 
-**Tab:** Group finance · **5 minutes**
+**Tab:** Group finance · **4 minutes**
 
 The part most ERP demos fake: assets and liabilities at the closing rate, income and expenses at the average rate, equity at the rate on the day it moved, the gap shown as a translation reserve, intercompany eliminated, and a minority interest stated rather than absorbed.
 
@@ -181,7 +205,7 @@ The part most ERP demos fake: assets and liabilities at the closing rate, income
 
 *Endpoints: GET /api/group · POST /api/group/consolidate*
 
-## 9. 00:39 — Underwrite against a manual held as data
+## 10. 00:40 — Underwrite against a manual held as data
 
 **Tab:** Underwriting · **5 minutes**
 
@@ -201,7 +225,7 @@ Loadings are shown line by line with the reason and the evidence each one demand
 
 *Endpoints: GET /api/underwriting · POST /api/underwriting/decide*
 
-## 10. 00:44 — Pay a claim through authority, not through a spreadsheet
+## 11. 00:45 — Pay a claim through authority, not through a spreadsheet
 
 **Tab:** Claims · **5 minutes**
 
@@ -221,9 +245,9 @@ Triage decides straight-through, referral or decline; a reserve is a booked liab
 
 *Endpoints: GET /api/claims · POST /api/claims/register · POST /api/claims/approve · POST /api/claims/settle*
 
-## 11. 00:49 — Hand part of the risk to someone else, on the record
+## 12. 00:50 — Hand part of the risk to someone else, on the record
 
-**Tab:** Reinsurance · **5 minutes**
+**Tab:** Reinsurance · **4 minutes**
 
 An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty's promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary's exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.
 
@@ -257,7 +281,7 @@ An insurer that keeps every risk whole is one bad quarter from ruin. This is the
 
 *Endpoints: GET /api/reinsurance · GET /api/reinsurance/security · GET /api/extracts · POST /api/extracts/issue · POST /api/extracts/verify · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover · POST /api/reinsurance/event · POST /api/reinsurance/reinstate · POST /api/reinsurance/deposit · POST /api/reinsurance/deposit/settle · POST /api/reinsurance/settle · POST /api/reinsurance/security/hold · POST /api/reinsurance/security/call · POST /api/reinsurance/security/call/settle · POST /api/reinsurance/security/release · POST /api/reinsurance/security/interest*
 
-## 12. 00:54 — Prove the books, and the reporting registers, can be restored
+## 13. 00:54 — Prove the books, and the reporting registers, can be restored
 
 **Tab:** Durability · **3 minutes**
 
@@ -280,7 +304,7 @@ A demo that cannot survive a restart is not an ERP. This seals the books into a 
 
 *Endpoints: GET /api/state · POST /api/state/drill · GET /api/state/registers · POST /api/state/registers/drill*
 
-## 13. 00:57 — The remainder of the hour: the fabric around the money
+## 14. 00:57 — The remainder of the hour: the fabric around the money
 
 **Tab:** Overview · **3 minutes**
 

@@ -14,6 +14,7 @@
  */
 import { Money, add, applyBps, compare, formatAmount, money, multiply, sub, zero } from './money.js';
 import { PACKS, PreSaleResult, RegulatoryPack, comparisonMatrix, preSaleCheck } from './regulatory.js';
+import type { ProductLine } from './underwriting.js';
 
 export type QuestionKind = 'choice' | 'amount' | 'number' | 'boolean';
 
@@ -282,7 +283,7 @@ export function evaluateNeeds(input: {
 export interface ProductCandidate {
   readonly productId: string;
   readonly name: string;
-  readonly line: 'life' | 'medical' | 'motor' | 'travel' | 'group';
+  readonly line: ProductLine;
   readonly category: 'unit-linked' | 'takaful' | 'conventional' | 'motor-payg';
   readonly entityId: string;
   readonly currency: string;
