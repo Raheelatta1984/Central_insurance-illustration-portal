@@ -36,6 +36,10 @@ import { Locale } from './labels.js';
 import { RiskClass } from './ai.js';
 import { serialiseJourneyProgress } from './journeydesk.js';
 import { JourneyStageId } from './journey.js';
+import type { AccountingStandard, FundLifeCycleEvent } from './funds-accounting.js';
+import type { SuperFundId, SuperProductVariant } from './super-funds.js';
+import type { WarehouseDatasetId, WarehouseFormat } from './warehouse.js';
+import type { ThemeScope } from './theme.js';
 
 export interface RuntimeState {
   world: World;
@@ -1555,6 +1559,36 @@ export async function dispatchApiRoute(
     case 'GET /master/channels':
       return ok(state.world.erp.channels.snapshot());
 
+    case 'GET /master/subchannels':
+      return ok({ subChannels: state.world.erp.channels.listSubChannels(), stats: state.world.erp.channels.status() });
+
+    case 'POST /master/subchannels': {
+      const supports = (payload['supports'] ?? {}) as Record<string, unknown>;
+      const subChannel = state.world.erp.channels.upsertSubChannel({
+        code: String(payload['code'] ?? ''),
+        name: String(payload['name'] ?? ''),
+        parentChannelCode: String(payload['parentChannelCode'] ?? ''),
+        ...(payload['partnerId'] !== undefined ? { partnerId: payload['partnerId'] ? String(payload['partnerId']) : undefined } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['description'] !== undefined ? { description: String(payload['description']) } : {}),
+        ...(payload['channelType'] !== undefined ? { channelType: String(payload['channelType']) as never } : {}),
+        ...(payload['commissionOverrideBps'] !== undefined && payload['commissionOverrideBps'] !== null ? { commissionOverrideBps: Number(payload['commissionOverrideBps']) } : {}),
+        ...(Object.keys(supports).length > 0 ? { supports: {
+          quote: Boolean(supports['quote'] ?? true), bind: Boolean(supports['bind'] ?? false),
+          service: Boolean(supports['service'] ?? true), claim: Boolean(supports['claim'] ?? false),
+        } } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ subChannel, ...state.world.erp.channels.status() });
+    }
+
+    case 'POST /master/subchannels/remove': {
+      const code = String(payload['code'] ?? '');
+      state.world.erp.channels.removeSubChannel(code, payload['at'] === undefined ? '' : String(payload['at']), payload['by'] === undefined ? 'master-settings' : String(payload['by']));
+      return ok({ subChannels: state.world.erp.channels.listSubChannels(), ...state.world.erp.channels.status() });
+    }
+
     case 'POST /master/channels/bootstrap': {
       const result = state.world.erp.channels.bootstrap(
         payload['at'] === undefined ? '' : String(payload['at']),
@@ -2124,6 +2158,289 @@ export async function dispatchApiRoute(
         statement: state.world.rules.statement(),
         limitation: state.world.rules.limitation(),
       });
+    }
+
+    /* ------------------------------------------- country funds accounting & event vouchers */
+    case 'GET /funds-accounting':
+      return ok({ ...state.world.fundsAccounting.snapshot(), stats: state.world.fundsAccounting.stats() });
+
+    case 'GET /funds-accounting/vouchers': {
+      const eventType = searchParams.get('eventType') as FundLifeCycleEvent | null;
+      const vouchers = state.world.fundsAccounting.listVouchers({
+        ...(searchParams.get('policyId') ? { policyId: searchParams.get('policyId')! } : {}),
+        ...(searchParams.get('productId') ? { productId: searchParams.get('productId')! } : {}),
+        ...(searchParams.get('fundId') ? { fundId: searchParams.get('fundId')! } : {}),
+        ...(searchParams.get('partnerId') ? { partnerId: searchParams.get('partnerId')! } : {}),
+        ...(eventType ? { eventType } : {}),
+      });
+      return ok({ vouchers, count: vouchers.length });
+    }
+
+    case 'POST /funds-accounting/country': {
+      const config = state.world.fundsAccounting.upsertConfig({
+        country: String(payload['country'] ?? ''),
+        countryName: String(payload['countryName'] ?? payload['country'] ?? ''),
+        standard: String(payload['standard'] ?? 'IFRS17') as AccountingStandard,
+        currency: String(payload['currency'] ?? 'AED'),
+        fiscalYearEnd: String(payload['fiscalYearEnd'] ?? '12-31'),
+        ...(payload['description'] !== undefined ? { description: String(payload['description']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ config });
+    }
+
+    case 'POST /funds-accounting/country/remove': {
+      const country = String(payload['country'] ?? '');
+      state.world.fundsAccounting.removeConfig(country, String(payload['at'] ?? ''), String(payload['by'] ?? 'master-settings'));
+      return ok({ configs: state.world.fundsAccounting.listConfigs() });
+    }
+
+    case 'POST /funds-accounting/rule': {
+      const rule = state.world.fundsAccounting.upsertRule({
+        country: String(payload['country'] ?? ''),
+        fundId: String(payload['fundId'] ?? ''),
+        productLine: String(payload['productLine'] ?? 'GENERAL'),
+        ...(payload['subProduct'] !== undefined ? { subProduct: String(payload['subProduct']) } : {}),
+        ...(payload['fundName'] !== undefined ? { fundName: String(payload['fundName']) } : {}),
+        ...(payload['glPrefix'] !== undefined ? { glPrefix: String(payload['glPrefix']) } : {}),
+        ...(payload['valuationMethod'] !== undefined ? { valuationMethod: String(payload['valuationMethod']) as never } : {}),
+        ...(payload['revenueRecognition'] !== undefined ? { revenueRecognition: String(payload['revenueRecognition']) as never } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ rule });
+    }
+
+    case 'POST /funds-accounting/rule/remove': {
+      const id = String(payload['id'] ?? '');
+      state.world.fundsAccounting.removeRule(id, String(payload['at'] ?? ''), String(payload['by'] ?? 'master-settings'));
+      return ok({ rules: state.world.fundsAccounting.listRules() });
+    }
+
+    case 'POST /funds-accounting/mapping': {
+      const mapping = state.world.fundsAccounting.upsertMapping({
+        ...(payload['id'] ? { id: String(payload['id']) } : {}),
+        fundId: String(payload['fundId'] ?? ''),
+        ...(payload['fundName'] !== undefined ? { fundName: String(payload['fundName']) } : {}),
+        ...(payload['country'] !== undefined ? { country: payload['country'] ? String(payload['country']) : null } : {}),
+        ...(payload['eventType'] !== undefined ? { eventType: payload['eventType'] ? String(payload['eventType']) as FundLifeCycleEvent : null } : {}),
+        ...(payload['productId'] !== undefined ? { productId: payload['productId'] ? String(payload['productId']) : null } : {}),
+        ...(payload['subProduct'] !== undefined ? { subProduct: payload['subProduct'] ? String(payload['subProduct']) : null } : {}),
+        ...(payload['partnerId'] !== undefined ? { partnerId: payload['partnerId'] ? String(payload['partnerId']) : null } : {}),
+        ...(payload['omniChannel'] !== undefined ? { omniChannel: payload['omniChannel'] ? String(payload['omniChannel']) : null } : {}),
+        ...(payload['subChannel'] !== undefined ? { subChannel: payload['subChannel'] ? String(payload['subChannel']) : null } : {}),
+        ...(payload['policyId'] !== undefined ? { policyId: payload['policyId'] ? String(payload['policyId']) : null } : {}),
+        debitAccount: String(payload['debitAccount'] ?? ''),
+        creditAccount: String(payload['creditAccount'] ?? ''),
+        ...(payload['costCentre'] !== undefined ? { costCentre: String(payload['costCentre']) } : {}),
+        ...(payload['priority'] !== undefined ? { priority: Number(payload['priority']) } : {}),
+        ...(payload['descriptionTemplate'] !== undefined ? { descriptionTemplate: String(payload['descriptionTemplate']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ mapping });
+    }
+
+    case 'POST /funds-accounting/mapping/remove': {
+      const id = String(payload['id'] ?? '');
+      state.world.fundsAccounting.removeMapping(id, String(payload['at'] ?? ''), String(payload['by'] ?? 'master-settings'));
+      return ok({ mappings: state.world.fundsAccounting.snapshot().mappings });
+    }
+
+    case 'POST /funds-accounting/event': {
+      const eventType = String(payload['eventType'] ?? '') as FundLifeCycleEvent;
+      const voucher = state.world.fundsAccounting.postEvent({
+        policyId: String(payload['policyId'] ?? ''),
+        productId: String(payload['productId'] ?? ''),
+        ...(payload['subProduct'] ? { subProduct: String(payload['subProduct']) } : {}),
+        ...(payload['partnerId'] ? { partnerId: String(payload['partnerId']) } : {}),
+        ...(payload['omniChannel'] ? { omniChannel: String(payload['omniChannel']) } : {}),
+        ...(payload['subChannel'] ? { subChannel: String(payload['subChannel']) } : {}),
+        fundId: String(payload['fundId'] ?? ''), eventType,
+        amount: String(payload['amount'] ?? ''),
+        ...(payload['currency'] ? { currency: String(payload['currency']) } : {}),
+        ...(payload['country'] ? { country: String(payload['country']) } : {}),
+        ...(payload['period'] ? { period: String(payload['period']) } : {}),
+        ...(payload['descriptionOverride'] ? { descriptionOverride: String(payload['descriptionOverride']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ voucher, ledgerProof: voucher.ledgerJournalId && voucher.ledgerEntityId ? state.world.ledger.proof(voucher.ledgerEntityId) : null });
+    }
+
+    /* ------------------------------------------- super funds policies, monthly charges & income */
+    case 'GET /super-funds':
+      return ok(state.world.superFunds.snapshot());
+
+    case 'POST /super-funds/product': {
+      const fee = payload['monthlyAdminFeeMinor'] === undefined ? undefined : BigInt(Math.trunc(Number(payload['monthlyAdminFeeMinor'])));
+      const product = state.world.superFunds.upsertProduct({
+        productId: String(payload['productId'] ?? ''), name: String(payload['name'] ?? ''),
+        ...(payload['variant'] !== undefined ? { variant: String(payload['variant']) as SuperProductVariant } : {}),
+        ...(payload['currency'] !== undefined ? { currency: String(payload['currency']) } : {}),
+        ...(payload['minAge'] !== undefined ? { minAge: Number(payload['minAge']) } : {}),
+        ...(payload['maxAge'] !== undefined ? { maxAge: Number(payload['maxAge']) } : {}),
+        ...(Array.isArray(payload['defaultFunds']) ? { defaultFunds: payload['defaultFunds'].map(String) as SuperFundId[] } : {}),
+        ...(fee !== undefined ? { monthlyAdminFeeMinor: fee } : {}),
+        ...(payload['investmentFeeBpsAnnual'] !== undefined ? { investmentFeeBpsAnnual: Number(payload['investmentFeeBpsAnnual']) } : {}),
+        ...(payload['insurancePremiumPerMilleMonthly'] !== undefined ? { insurancePremiumPerMilleMonthly: Number(payload['insurancePremiumPerMilleMonthly']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ product });
+    }
+
+    case 'POST /super-funds/product/remove': {
+      const productId = String(payload['productId'] ?? '');
+      state.world.superFunds.removeProduct(productId, String(payload['at'] ?? ''), String(payload['by'] ?? 'master-settings'));
+      return ok({ products: state.world.superFunds.listProducts() });
+    }
+
+    case 'POST /super-funds/policy': {
+      const policy = state.world.superFunds.createMemberPolicy({
+        ...(payload['policyId'] ? { policyId: String(payload['policyId']) } : {}),
+        partyId: String(payload['partyId'] ?? ''), productId: String(payload['productId'] ?? ''),
+        ...(payload['memberName'] ? { memberName: String(payload['memberName']) } : {}),
+        ...(payload['fundId'] ? { fundId: String(payload['fundId']) as SuperFundId } : {}),
+        ...(payload['employerId'] ? { employerId: String(payload['employerId']) } : {}),
+        ...(payload['initialContribution'] !== undefined ? { initialContribution: String(payload['initialContribution']) } : {}),
+        ...(payload['currency'] ? { currency: String(payload['currency']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] ? { by: String(payload['by']) } : {}),
+      });
+      if (policy.totalContributionsMinor > 0n) {
+        state.world.fundsAccounting.postEvent({
+          policyId: policy.policyId, productId: policy.productId, subProduct: policy.productName,
+          fundId: policy.fundId, eventType: 'premium-received', amount: formatAmount(money(policy.totalContributionsMinor, policy.currency)),
+          currency: policy.currency, country: policy.currency === 'AUD' ? 'AU' : 'AE', at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`), by: String(payload['by'] ?? 'super-member-admin'),
+        });
+      }
+      return ok({ policy });
+    }
+
+    case 'POST /super-funds/contribute': {
+      const policyId = String(payload['policyId'] ?? '');
+      const before = state.world.superFunds.listPolicies().find(p => p.policyId === policyId.toUpperCase());
+      if (!before) return fail(404, { error: `no super member policy ${policyId}` });
+      const policy = state.world.superFunds.contribute(policyId, String(payload['amount'] ?? ''), String(payload['at'] ?? `${state.world.asOf}T10:00:00+04:00`), String(payload['by'] ?? 'member-admin'));
+      const amount = policy.totalContributionsMinor - before.totalContributionsMinor;
+      state.world.fundsAccounting.postEvent({
+        policyId: policy.policyId, productId: policy.productId, subProduct: policy.productName,
+        fundId: policy.fundId, eventType: 'premium-received', amount: formatAmount(money(amount, policy.currency)),
+        currency: policy.currency, country: policy.currency === 'AUD' ? 'AU' : 'AE', at: String(payload['at'] ?? `${state.world.asOf}T10:00:00+04:00`), by: String(payload['by'] ?? 'member-admin'),
+      });
+      return ok({ policy });
+    }
+
+    case 'POST /super-funds/charge': {
+      const runs = state.world.superFunds.runMonthlyCharges({
+        ...(Array.isArray(payload['policyIds']) ? { policyIds: payload['policyIds'].map(String) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}), ...(payload['by'] ? { by: String(payload['by']) } : {}),
+      });
+      const vouchers = [];
+      for (const run of runs) {
+        for (const line of run.policyCharges) {
+          if (line.totalMinor <= 0n) continue;
+          const policy = state.world.superFunds.listPolicies().find(p => p.policyId === line.policyId)!;
+          const voucher = state.world.fundsAccounting.postEvent({
+            policyId: line.policyId, productId: line.productId, subProduct: policy.productName,
+            fundId: line.fundId, eventType: 'processing-charge', amount: formatAmount(money(line.totalMinor, line.currency)),
+            currency: line.currency, country: line.currency === 'AUD' ? 'AU' : 'AE', at: run.at, by: run.by,
+          });
+          vouchers.push(voucher.id);
+        }
+      }
+      return ok({ runs, voucherIds: vouchers, superFunds: state.world.superFunds.stats() });
+    }
+
+    case 'POST /super-funds/allocate': {
+      const allocation = state.world.superFunds.allocateIncome({
+        fundId: String(payload['fundId'] ?? 'SUPER-BAL') as SuperFundId,
+        period: String(payload['period'] ?? ''), gainAmount: String(payload['gainAmount'] ?? ''),
+        ...(payload['currency'] ? { currency: String(payload['currency']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}), ...(payload['by'] ? { by: String(payload['by']) } : {}),
+      });
+      const vouchers = [];
+      for (const line of allocation.policyAllocations) {
+        if (line.amountMinor === 0n) continue;
+        const policy = state.world.superFunds.listPolicies().find(p => p.policyId === line.policyId)!;
+        const gain = line.amountMinor > 0n;
+        const voucher = state.world.fundsAccounting.postEvent({
+          policyId: line.policyId, productId: line.productId, subProduct: policy.productName,
+          fundId: allocation.fundId, eventType: gain ? 'investment-gain' : 'investment-loss',
+          amount: formatAmount(money(gain ? line.amountMinor : -line.amountMinor, allocation.currency)),
+          currency: allocation.currency, country: allocation.currency === 'AUD' ? 'AU' : 'AE', period: allocation.period,
+          at: allocation.at, by: allocation.by,
+        });
+        vouchers.push(voucher.id);
+      }
+      return ok({ allocation, voucherIds: vouchers });
+    }
+
+    /* ------------------------------------------- single read warehouse and complete CSV/JSON exports */
+    case 'GET /warehouse':
+      return ok(state.world.warehouse.snapshot(state.world));
+
+    case 'GET /warehouse/datasets': {
+      const snapshot = state.world.warehouse.snapshot(state.world);
+      return ok({ datasets: snapshot.datasets, samples: snapshot.samples, asOf: snapshot.asOf });
+    }
+
+    case 'POST /warehouse/export': {
+      const datasetId = String(payload['datasetId'] ?? '') as WarehouseDatasetId;
+      const format = String(payload['format'] ?? 'csv') as WarehouseFormat;
+      if (!['csv', 'json'].includes(format)) return fail(400, { error: 'this deployment supports CSV and JSON exports; Parquet requires the configured warehouse runtime' });
+      const exported = state.world.warehouse.requestExport(state.world, datasetId, format, String(payload['by'] ?? 'data-analyst'));
+      const content = state.world.warehouse.exportContent(state.world, datasetId, format).content;
+      return ok({ ...exported, filename: `${datasetId}-${state.world.asOf}.${format}`, content });
+    }
+
+    /* ------------------------------------------- entity, partner and omni-channel brand onboarding */
+    case 'GET /themes':
+      return ok(state.world.themes.snapshot());
+
+    case 'POST /themes/upload': {
+      const scope = String(payload['scope'] ?? '') as ThemeScope;
+      const palette = (payload['palette'] ?? {}) as Record<string, string>;
+      const images = (payload['images'] ?? {}) as Record<string, string>;
+      const layer = state.world.themes.upsert({
+        scope, ownerId: String(payload['ownerId'] ?? ''),
+        ...(payload['ownerName'] !== undefined ? { ownerName: String(payload['ownerName']) } : {}),
+        ...(payload['useAi'] !== undefined ? { useAi: Boolean(payload['useAi']) } : {}),
+        palette,
+        images,
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['notes'] !== undefined ? { notes: String(payload['notes']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ layer, effectiveCss: state.world.themes.effectiveCss({ scope, ownerId: layer.ownerId }) });
+    }
+
+    case 'POST /themes/preview': {
+      const scope = String(payload['scope'] ?? '') as ThemeScope;
+      const ownerId = String(payload['ownerId'] ?? '');
+      return ok({ effectiveCss: state.world.themes.effectiveCss({ scope, ownerId }), scope, ownerId });
+    }
+
+    case 'POST /themes/toggle': {
+      const scope = String(payload['scope'] ?? '') as ThemeScope;
+      const ownerId = String(payload['ownerId'] ?? '');
+      const layer = state.world.themes.setEnabled(scope, ownerId, Boolean(payload['enabled']), String(payload['by'] ?? 'brand-admin'));
+      return ok({ layer, snapshot: state.world.themes.snapshot() });
+    }
+
+    case 'POST /themes/remove': {
+      const scope = String(payload['scope'] ?? '') as ThemeScope;
+      const ownerId = String(payload['ownerId'] ?? '');
+      state.world.themes.remove(scope, ownerId, String(payload['at'] ?? ''), String(payload['by'] ?? 'brand-admin'));
+      return ok({ themes: state.world.themes.snapshot() });
     }
 
     /* ------------------------------------------- extracts & books */

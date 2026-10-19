@@ -4,7 +4,7 @@
  * It is deliberately a working console, not a mock-up: every number comes from the domain core
  * through /api/world, and every button calls an endpoint that runs real engine code.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { WorldSnapshot } from '../core/demo';
 
@@ -22,6 +22,9 @@ import {
   ProposalManagementPanel,
   ReinsuranceManagementPanel,
 } from './erp-views';
+import { FundsAccountingPanel } from './funds-accounting-views';
+import { SuperFundsPanel } from './super-funds-views';
+import { WarehousePanel } from './warehouse-views';
 
 type Tab = ConsoleTab;
 
@@ -932,6 +935,38 @@ function App() {
       setGuideBusy(false);
     }
   }, []);
+  const entityTheme = useMemo(() => data?.themes.layers.find(layer => layer.scope === 'entity' && layer.enabled), [data]);
+  const scopedThemeLayers = useMemo(() => {
+    if (!data || !['journey', 'underwriting'].includes(tab)) return [];
+    const journeyCase = (data as unknown as { journey?: { cases?: Array<{ answers?: Record<string, Record<string, unknown>> }> } }).journey?.cases?.[0];
+    const identity = journeyCase?.answers?.['identity'] ?? {};
+    const profile = journeyCase?.answers?.['profile'] ?? {};
+    const candidatePartner = String(identity['consentTo'] ?? '');
+    const partnerLayer = data.themes.partnerThemes.find(layer => layer.enabled && layer.ownerId === candidatePartner.toUpperCase())
+      ?? data.themes.partnerThemes.find(layer => layer.enabled);
+    const preferred = String(profile['preferedChannel'] ?? profile['preferredChannel'] ?? '');
+    const chosenChannel = data.erp.master.channels.channels.find(channel =>
+      channel.code === preferred.toUpperCase() || channel.kind === preferred.toLowerCase() || channel.integration === preferred.toLowerCase());
+    const channelLayer = data.themes.omniThemes.find(layer => layer.enabled && layer.ownerId === chosenChannel?.code)
+      ?? data.themes.omniThemes.find(layer => layer.enabled);
+    return [channelLayer, partnerLayer].filter((layer): layer is NonNullable<typeof layer> => Boolean(layer));
+  }, [data, tab]);
+  const scopedThemeCss = useMemo(() => Object.assign({}, ...scopedThemeLayers.map(layer => layer.cssVariables)), [scopedThemeLayers]);
+  const scopedHeaderImage = [...scopedThemeLayers].reverse().find(layer => layer.images.headerDataUrl)?.images.headerDataUrl;
+  const scopedFooterImage = [...scopedThemeLayers].reverse().find(layer => layer.images.footerDataUrl)?.images.footerDataUrl;
+  const globalThemeCss = data?.themes.globalCss ?? {};
+  const previousGlobalThemeKeys = useRef<string[]>([]);
+  useEffect(() => {
+    const root = document.documentElement;
+    for (const key of previousGlobalThemeKeys.current) root.style.removeProperty(key);
+    const entries = Object.entries(globalThemeCss);
+    for (const [key, value] of entries) root.style.setProperty(key, value);
+    previousGlobalThemeKeys.current = entries.map(([key]) => key);
+    return () => {
+      for (const key of previousGlobalThemeKeys.current) root.style.removeProperty(key);
+      previousGlobalThemeKeys.current = [];
+    };
+  }, [globalThemeCss]);
   const body = useMemo(() => {
     if (!data) return null;
     switch (tab) {
@@ -943,6 +978,9 @@ function App() {
       case 'decisions': return <Decisions data={data} />;
       case 'cover': return <Cover data={data} onReload={load} />;
       case 'funds': return <Funds data={data} onReload={load} />;
+      case 'funds-accounting': return <FundsAccountingPanel data={data} onReload={load} />;
+      case 'super-funds': return <SuperFundsPanel data={data} onReload={load} />;
+      case 'warehouse': return <WarehousePanel data={data} onReload={load} />;
       case 'takaful': return <Takaful data={data} onReload={load} />;
       case 'group': return <GroupFinance data={data} />;
       case 'underwriting': return <Underwriting data={data} onReload={load} onNavigate={setTab} />;
@@ -966,7 +1004,7 @@ function App() {
       <button type="button" className="navScrim" aria-label="Close the menu" tabIndex={navOpen ? 0 : -1} onClick={() => setNavOpen(false)} />
       <aside>
         <button type="button" className="navClose" aria-label="Close the menu" onClick={() => setNavOpen(false)}>×</button>
-        <div className="brand"><span className="logo">◈</span><div><b>Central Insurance ERP</b><small>{data?.tenant.name ?? 'connecting…'}</small></div></div>
+        <div className="brand"><span className="logo">{entityTheme?.images.logoDataUrl ? <img src={entityTheme.images.logoDataUrl} alt={`${entityTheme.ownerName} logo`} /> : '◈'}</span><div><b>Central Insurance ERP</b><small>{data?.tenant.name ?? 'connecting…'}</small></div></div>
         <nav>
           {TABS.map((t) => (
             <button key={t.id} className={t.id === tab ? 'active' : ''} onClick={() => { setTab(t.id); setNavOpen(false); }}>
@@ -975,12 +1013,13 @@ function App() {
           ))}
         </nav>
         <footer>
+          {entityTheme?.images.footerDataUrl && <img className="entityFooterImage" src={entityTheme.images.footerDataUrl} alt="Entity brand footer" />}
           <div className="small muted">Generated {data ? new Date(data.generatedAt).toUTCString().slice(0, 22) : '—'}</div>
           <button className="ghost" onClick={async () => { await api('/reset', 'POST', {}); await load(); }}>Reset demo data</button>
         </footer>
       </aside>
       <main>
-        <header className="top">
+        <header className="top" style={entityTheme?.images.headerDataUrl ? { backgroundImage: `linear-gradient(90deg, rgba(11,15,20,.78), rgba(11,15,20,.42)), url("${entityTheme.images.headerDataUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
           <div className="topHead">
             <button type="button" className="navToggle" aria-label="Open the menu" onClick={() => setNavOpen(true)}>☰</button>
             <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
@@ -998,8 +1037,12 @@ function App() {
         {error && <div className="errorBox">{error}</div>}
         {data ? (
           <GuideProvider data={data} tab={tab} enabled={guideOn}>
-            <ScreenGuide />
-            {body ?? <div className="loading">Loading the world…</div>}
+            <div className={`scopedBrandSurface${scopedThemeLayers.length ? ' hasScopedBrand' : ''}`} style={scopedThemeCss as React.CSSProperties}>
+              {scopedHeaderImage && <img className="scopedBrandHeader" src={scopedHeaderImage} alt="Partner or channel header" />}
+              <ScreenGuide />
+              {body ?? <div className="loading">Loading the world…</div>}
+              {scopedFooterImage && <img className="scopedBrandFooter" src={scopedFooterImage} alt="Partner or channel footer" />}
+            </div>
           </GuideProvider>
         ) : (
           <div className="loading">Loading the world…</div>
@@ -2380,8 +2423,15 @@ aside {
   position:sticky; top:0; height:100vh; height:100dvh; overscroll-behavior:contain;
 }
 .brand { display:flex; gap:10px; align-items:center; }
-.brand .logo { width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(140deg,#3ea6ff,#2fbf71);color:#04121f;font-weight:700; }
+.brand .logo { width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(140deg,#3ea6ff,#2fbf71);color:#04121f;font-weight:700; overflow:hidden; }
+.brand .logo img { width:100%; height:100%; object-fit:contain; background:#fff; border-radius:inherit; }
 .brand small { display:block; color:var(--muted); font-size:11px; }
+.entityFooterImage { display:block; width:100%; max-height:72px; object-fit:contain; border-radius:8px; margin:4px 0; }
+.top[style*="background-image"] { padding:16px; border:1px solid var(--line); border-radius:14px; background-repeat:no-repeat; }
+.scopedBrandSurface { min-width:0; }
+.scopedBrandSurface.hasScopedBrand { border-radius:14px; }
+.scopedBrandHeader, .scopedBrandFooter { display:block; width:100%; max-height:110px; object-fit:cover; border-radius:10px; margin:0 0 14px; }
+.scopedBrandFooter { margin:18px 0 0; max-height:80px; }
 nav { display:flex; flex-direction:column; gap:4px; overflow:auto; }
 nav button { display:flex; gap:10px; align-items:center; background:transparent; border:0; color:var(--muted); text-align:left; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px; }
 nav button:hover { background:var(--panel2); color:var(--text); }
@@ -2560,15 +2610,20 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .gframeScroll > table { margin:0; }
 .gcaption { margin:0; padding:7px 10px; border-bottom:1px solid var(--line); }
 .gscrollHint { display:none; }
-.gridTable { width:100%; min-width:max-content; font-size:12px; }
+.gridTable { width:100%; min-width:100%; table-layout:auto; font-size:12px; }
 .gridTable caption { caption-side:bottom; text-align:left; padding:7px 10px; color:var(--muted); font-size:11.5px; border-top:1px solid var(--line); background:var(--panel); }
-.gridTable th { position:sticky; top:0; z-index:2; background:var(--panel2); padding:7px 8px; font-size:11.5px; }
+.gridTable th { position:sticky; top:0; z-index:2; background:var(--panel2); padding:7px 8px; font-size:11.5px; white-space:normal; overflow-wrap:anywhere; }
 .gridTable th .req { color:var(--warn); font-style:normal; margin-left:2px; }
-.gridTable td { padding:3px 5px; border-bottom:1px solid #182430; vertical-align:middle; }
+.gridTable td { padding:3px 5px; border-bottom:1px solid #182430; vertical-align:middle; min-width:0; overflow-wrap:anywhere; }
 .gridTable tbody tr:hover td { background:#141d27; }
 .gridTable .colNum { width:38px; text-align:right; color:var(--muted); font-size:11px; white-space:nowrap; }
-.gridTable .colNote { min-width:150px; }
+.gridTable .colNote { min-width:0; }
 .gridTable .colActions { width:1%; white-space:nowrap; }
+.gridTable.autoFit { width:100%; min-width:100%; table-layout:auto; }
+.gridTable.autoFit th { max-width:220px; }
+.gridTable input.gcell, .gridTable select.gcell, .gridTable .gcell { width:100%; min-width:0; max-width:100%; }
+.gridTable .cellStatic { max-width:240px; white-space:normal; overflow-wrap:anywhere; }
+.gridTable .cellSelect { width:100%; max-width:100%; min-width:0; }
 .gridRow.is-dirty > td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
 .gridRow.is-new > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .gridRow.is-error > td { background:#231316; }
@@ -2608,6 +2663,21 @@ span.gcell em { color:var(--muted); font-style:normal; font-size:11px; white-spa
 .subGrid h4 { margin:0 0 2px; font-size:13px; }
 .manualCard { margin-top:14px; padding:11px 13px; border:1px solid var(--line); border-radius:10px; background:var(--panel2); }
 .manualCard p { margin:6px 0; }
+.themeAssets { align-items:flex-start; }
+.themeAssets label { min-width:min(220px,100%); }
+.themeAssets input[type="file"] { max-width:240px; }
+.themeLogoPreview { display:block; width:120px; height:64px; object-fit:contain; padding:6px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.themeAdvanced { align-items:flex-end; padding:8px 0; border-top:1px dashed var(--line); }
+.themeAdvanced input[type="color"] { width:48px; height:34px; padding:2px; }
+.colourDot { display:inline-block; width:15px; height:15px; vertical-align:middle; border:1px solid var(--line); border-radius:999px; }
+.themePreview { padding:18px; border:1px solid var(--preview-line); border-radius:14px; background:var(--preview-bg); color:var(--preview-text); }
+.themePreviewHeader { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.themePreviewMark { width:36px; height:36px; display:grid; place-items:center; border-radius:10px; color:#fff; font-weight:800; }
+.themePreviewHeader small { display:block; color:var(--preview-muted); font-size:11px; }
+.themePreviewBadge { margin-left:auto; padding:4px 9px; border:1px solid var(--preview-line); border-radius:999px; color:var(--preview-muted); font-size:11px; }
+.themePreviewCard { padding:14px; border:1px solid var(--preview-line); border-radius:10px; background:var(--preview-panel); }
+.themePreviewCard p { color:var(--preview-muted); font-size:12px; }
+.themePreviewFooter { margin-top:12px; color:var(--preview-muted); font-size:11px; }
 .miniTable { width:100%; font-size:12px; margin-top:8px; }
 .miniTable th { position:static; }
 .tariffHead { padding:0 0 4px; }

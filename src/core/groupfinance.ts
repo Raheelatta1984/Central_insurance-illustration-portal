@@ -168,6 +168,9 @@ export interface ConsolidateOptions {
 export class GroupConsolidator {
   private readonly mirrorOwners = new Map<string, string>();   // group account id -> source account id
   private readonly groupChart: Chart;
+  private previousFingerprint: string | null = null;
+  private previousJournalIds: string[] = [];
+  private consolidationVersion = 0;
 
   constructor(
     private readonly ledger: Ledger,
@@ -301,6 +304,19 @@ export class GroupConsolidator {
     const group = this.options.groupCurrency;
     const entities = this.translate(asOf, periodStart);
     const intercompany = this.intercompany(asOf, periodStart);
+    const fingerprint = JSON.stringify({ entities, intercompany }, (_key, value) => typeof value === 'bigint' ? value.toString() : value);
+    if (post) {
+      if (this.previousFingerprint !== null && this.previousFingerprint !== fingerprint) {
+        this.consolidationVersion += 1;
+        for (const journalId of this.previousJournalIds) {
+          this.ledger.reverse(journalId, `superseded by group consolidation v${this.consolidationVersion}`, `GROUP-REV-${this.consolidationVersion}-${journalId}`, asOf);
+        }
+        this.previousJournalIds = [];
+      } else if (this.consolidationVersion === 0) {
+        this.consolidationVersion = 1;
+      }
+    }
+    const versionSuffix = this.consolidationVersion > 1 ? ` v${this.consolidationVersion}` : '';
     const journals: string[] = [];
     const notes: string[] = [];
 
@@ -326,7 +342,7 @@ export class GroupConsolidator {
       }
       if (lines.length === 0) continue;
       notes.push(`${entity.entityId}: translated ${entity.lines.length} account balance(s), translation reserve ${formatAmount(entity.cta)}`);
-      if (post) journals.push(this.postGroup(`TRANSLATE ${entity.entityId} ${asOf}`, asOf, `Translation of ${entity.entityId} (${entity.functionalCurrency}) into ${group} — closing rate for assets and liabilities, average rate for income and expenses, historical rate for equity`, lines));
+      if (post) journals.push(this.postGroup(`TRANSLATE ${entity.entityId} ${asOf}${versionSuffix}`, asOf, `Translation of ${entity.entityId} (${entity.functionalCurrency}) into ${group} — closing rate for assets and liabilities, average rate for income and expenses, historical rate for equity`, lines));
     }
 
     /* 2. elimination of intercompany balances and intercompany trading */
@@ -341,7 +357,7 @@ export class GroupConsolidator {
         notes.push(`${pair.receivableEntity} ↔ ${pair.payableEntity}: eliminated ${formatAmount(pair.eliminated)} of intercompany balances`);
         if (post) {
           journals.push(this.postGroup(
-            `ELIMINATE-BALANCE ${pair.receivableEntity} ${pair.payableEntity} ${asOf}`, asOf,
+            `ELIMINATE-BALANCE ${pair.receivableEntity} ${pair.payableEntity} ${asOf}${versionSuffix}`, asOf,
             `Eliminate intercompany balance ${pair.receivableEntity} receivable from ${pair.payableEntity} against the payable`,
             [
               { accountId: payMirror, side: 'debit', amount: pair.eliminated, memo: 'eliminate intercompany payable' },
@@ -363,7 +379,7 @@ export class GroupConsolidator {
         notes.push(`${ie.earningEntity} → ${ie.chargedEntity}: eliminated ${formatAmount(ie.eliminated)} of intercompany income and expense`);
         if (post) {
           journals.push(this.postGroup(
-            `ELIMINATE-TRADING ${ie.earningEntity} ${ie.chargedEntity} ${asOf}`, asOf,
+            `ELIMINATE-TRADING ${ie.earningEntity} ${ie.chargedEntity} ${asOf}${versionSuffix}`, asOf,
             `Eliminate intercompany income charged by ${ie.earningEntity} to ${ie.chargedEntity}`,
             [
               { accountId: incomeMirror, side: 'debit', amount: ie.eliminated, memo: 'eliminate intercompany income' },
@@ -383,6 +399,11 @@ export class GroupConsolidator {
         minorityPct: 100 - e.ownershipPct,
         shareOfNetAssets: multiply(divide(e.netAssets, 100), 100 - e.ownershipPct),
       }));
+
+    if (post) {
+      this.previousFingerprint = fingerprint;
+      this.previousJournalIds = [...journals];
+    }
 
     /* 4. the consolidated trial balance, read back from the group ledger */
     const trialBalance = this.groupTrialBalance(asOf);

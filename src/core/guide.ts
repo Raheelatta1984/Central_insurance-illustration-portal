@@ -97,6 +97,24 @@ export const TAB_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze({
     doThis: ['Read the valuation history per fund, including today.', 'Read the look-through composition and any Shariah composition warning.', 'Find the reconciliation line and check the residual is named, not buried in rounding.'],
     watch: 'A non-screened instrument inside a Shariah fund raises a warning; it never passes silently.',
   },
+  'funds-accounting': {
+    headline: 'Make the accounting treatment explicit before money posts',
+    body: 'A separate configuration surface for country standards, fund valuation and revenue treatment, plus dynamically resolved debit/credit mappings. Each event creates a balanced voucher with its policy context and a real ledger journal link.',
+    doThis: ['Review country standard, functional currency and fiscal year end.', 'File a rule per country × line × fund and mappings by event, product, sub-product, partner, omni-channel, sub-channel and policy.', 'Post a premium, allocation, gain/loss or withdrawal event and inspect both the voucher and its journal.'],
+    watch: 'Accounting standards are configurable reference settings, not a substitute for local finance or regulatory approval. A voucher with no valid FX rate or account is refused rather than forced through.',
+  },
+  'super-funds': {
+    headline: 'Administer member investment policies and their monthly economics',
+    body: 'Super accumulation, pension and transition-to-retirement products carry member balances, contributions, monthly admin/investment charges and pro-rata income or loss allocation via premium post-adjustment.',
+    doThis: ['Review the super product currency, approved funds and monthly fee schedule.', 'Create a member policy or contribution, then run charges once for the month.', 'Allocate the period gain or loss and follow its funds-accounting voucher by member policy.'],
+    watch: 'Runs are separated by currency and cannot be repeated for a policy in the same month; a short balance is never charged below zero.',
+  },
+  warehouse: {
+    headline: 'One exportable read model for analysts, engineers and BI tools',
+    body: 'Materialised policy, premium, NAV, claims, treaty, commission-schedule, super, voucher-line and member-balance datasets show their grain, source, sample rows and lineage. CSV and JSON exports contain the full dataset.',
+    doThis: ['Pick a dataset and inspect the sample and source lineage.', 'Download a complete CSV or JSON export and record its row count and content fingerprint.', 'Review the connector recipes for Power BI, Tableau, Qlik, Databricks and Data Fabric.'],
+    watch: 'External connectors are recipes, not authenticated sessions in this demo; production requires deployment credentials, identity, network and residency configuration.',
+  },
   takaful: {
     headline: 'A takaful window that is structural, not cosmetic',
     body: 'Three funds, a real wakalah fee, tabarru\u2019 into the participant risk fund, qard hasan when the pool is short, and a surplus that cannot be distributed until the actuary, the Shariah Committee and the board have all signed — with the UAE rule that participants never receive surplus applied on top.',
@@ -369,6 +387,9 @@ export function worldFacts(w: World): Record<string, string[]> {
   const labelCoverage = w.labels.coverage('ar');
   const parties = w.parties.list().filter((p) => !p.mergedInto).length;
   const qards = w.takaful.listQards().filter((q) => q.status !== 'repaid').length;
+  const accountingStats = w.fundsAccounting.stats();
+  const superStats = w.superFunds.stats();
+  const warehouseSnapshot = w.warehouse.snapshot(w);
 
   // The local currency governs how the tenant quotes and files; the books keep the currency they were
   // written in. Saying "base currency MYR" over a ledger kept in dirhams would be a lie on every screen.
@@ -401,6 +422,9 @@ export function worldFacts(w: World): Record<string, string[]> {
     decisions: [...shared, 'Previews are priced by the same engine as live transactions: nothing on this screen has moved money.'],
     cover: [...shared, 'Micro-duration cover charges only between an explicit start and stop; auto-start is off unless it was elected.'],
     funds: [...shared, `${funds.length} funds published; ${funds.filter((f) => f.shariahScreened).length} of them Shariah-screened.`],
+    'funds-accounting': [...shared, `${accountingStats.configs} country standards, ${accountingStats.rules} fund rules, ${accountingStats.mappings} mappings and ${accountingStats.vouchers} event vouchers on file; ${accountingStats.balanced ? 'all vouchers balance' : 'an unbalanced voucher needs review'}.`],
+    'super-funds': [...shared, `${superStats.products} super products, ${superStats.active} active members, ${superStats.charges} monthly charge runs and ${superStats.allocations} income allocations.`],
+    warehouse: [...shared, `${warehouseSnapshot.datasets.length} materialised datasets, ${warehouseSnapshot.dashboards.length} dashboard definitions, ${w.warehouse.stats().exports} exports. CSV/JSON exports are available; BI connector cards require deployment credentials.`],
     takaful: [...shared, `${w.takaful.listQards().length} qard(s) on file, ${qards} still outstanding; surplus distribution needs the actuary, the Shariah Committee and the board.`],
     group: [...shared, `${w.entities.length + 1} entities consolidated (including ${w.malaysiaEntity}), with the minority interest stated and intercompany balances eliminated.`],
     underwriting: [...shared, `${products.length} products carry underwriting rules; ${w.underwriting.list().length} application(s) registered in the demo world.`],

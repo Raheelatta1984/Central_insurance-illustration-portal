@@ -222,6 +222,9 @@ export class ErpManager {
   private fxList: Array<{ from: string; to: string; numerator: bigint; denominator: bigint; asOf: string }> = [
     { from: 'USD', to: 'AED', numerator: 367n, denominator: 100n, asOf: '2026-09-01' },
     { from: 'MYR', to: 'AED', numerator: 82n, denominator: 100n, asOf: '2026-09-30' },
+    { from: 'AUD', to: 'AED', numerator: 245n, denominator: 100n, asOf: '2026-09-01' },
+    { from: 'SAR', to: 'AED', numerator: 98n, denominator: 100n, asOf: '2026-09-01' },
+    { from: 'GBP', to: 'AED', numerator: 470n, denominator: 100n, asOf: '2026-09-01' },
   ];
   private receiptSeq = 0;
   private alterationSeq = 0;

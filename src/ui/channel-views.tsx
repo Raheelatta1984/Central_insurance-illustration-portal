@@ -50,6 +50,85 @@ const parseSchedule = (text: string): number[] => String(text ?? '').split(/[,\s
 const csv = (values: readonly number[] | undefined): string => (values ?? []).join(', ');
 const on = (value: boolean): string => (value ? 'yes' : 'no');
 
+
+const SUBCHANNEL_TYPES = ['digital', 'branch', 'agency-post', 'bancassurance-counter', 'aggregator-feed', 'embedded-journey'] as const;
+
+/** First-class child routes below each omni-channel (e.g. Broker → DIFC branch / mobile app). */
+const SubChannelPanel: React.FC<{
+  data: WorldSnapshot;
+  busy: boolean;
+  onRun: (label: string, fn: () => Promise<unknown>) => Promise<unknown>;
+}> = ({ data, busy, onRun }) => {
+  const channelData = data.erp.master.channels;
+  const subChannels = channelData.subChannels;
+  const channels = channelData.channels;
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [parent, setParent] = useState(channels[0]?.code ?? '');
+  const [partner, setPartner] = useState('');
+  const [kind, setKind] = useState<(typeof SUBCHANNEL_TYPES)[number]>('digital');
+  const [description, setDescription] = useState('');
+  const [enabled, setEnabled] = useState(true);
+  const [quote, setQuote] = useState(true);
+  const [bind, setBind] = useState(false);
+  const [service, setService] = useState(true);
+  const [claim, setClaim] = useState(false);
+  const [commissionCap, setCommissionCap] = useState('');
+  const eligiblePartners = channelData.partners.filter(p => p.channelCode === parent);
+
+  const edit = (row: (typeof subChannels)[number]) => {
+    setCode(row.code); setName(row.name); setParent(row.parentChannelCode); setPartner(row.partnerId ?? '');
+    setKind(row.channelType); setDescription(row.description); setEnabled(row.enabled);
+    setQuote(row.supports.quote); setBind(row.supports.bind); setService(row.supports.service); setClaim(row.supports.claim);
+    setCommissionCap(row.commissionOverrideBps === undefined ? '' : String(row.commissionOverrideBps));
+  };
+  const save = () => void onRun('Sub-channel filed', () => api('/master/subchannels', 'POST', {
+    code: code.trim().toUpperCase(), name: name.trim(), parentChannelCode: parent,
+    partnerId: partner || null, channelType: kind, description, enabled,
+    supports: { quote, bind, service, claim },
+    commissionOverrideBps: commissionCap.trim() ? Number(commissionCap) : null,
+    by: 'omni-channel-grid',
+  }));
+  const remove = (row: (typeof subChannels)[number]) => void onRun(`${row.code} removed`, () => api('/master/subchannels/remove', 'POST', { code: row.code, by: 'omni-channel-grid' }));
+
+  return (
+    <section className="subGrid subChannelPanel">
+      <h4>Sub-channels — named routes inside an omni-channel</h4>
+      <p className="small muted">A parent channel can split into a mobile app, branch, agent desk, bancassurance counter or embedded journey. Each sub-channel has its own partner association, service capabilities and optional commission ceiling; accounting mappings and vouchers can key off this code.</p>
+      {channels.length === 0 ? <div className="warnBox small">File or bootstrap at least one parent omni-channel before adding sub-channels.</div> : (
+        <>
+          <div className="tableWrap"><table className="gridTable autoFit"><thead><tr><th>Sub-channel</th><th>Name</th><th>Parent channel</th><th>Partner</th><th>Route type</th><th>Enabled</th><th>Capabilities</th><th>Commission cap</th><th>Row</th></tr></thead><tbody>
+            {subChannels.map(row => <tr key={row.code}>
+              <td><b>{row.code}</b></td><td>{row.name}</td><td>{row.parentChannelCode}</td><td>{row.partnerId ?? '—'}</td><td>{row.channelType}</td><td>{row.enabled ? <Pill tone="ok">yes</Pill> : <Pill tone="warn">no</Pill>}</td>
+              <td className="small">{Object.entries(row.supports).filter(([, v]) => v).map(([k]) => k).join(' · ') || 'none'}</td><td>{row.commissionOverrideBps ?? 'parent cap'}</td>
+              <td><button className="ghost" disabled={busy} onClick={() => edit(row)}>Edit</button> <button className="ghost" disabled={busy} onClick={() => remove(row)}>Remove</button></td>
+            </tr>)}
+            {subChannels.length === 0 && <tr><td colSpan={9} className="muted">No sub-channels filed yet.</td></tr>}
+          </tbody></table></div>
+          <div className="row">
+            <label>Code<input value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="BROKER-DIFC" /></label>
+            <label>Name<input value={name} onChange={e => setName(e.target.value)} placeholder="DIFC branch desk" /></label>
+            <label>Parent channel<select value={parent} onChange={e => { setParent(e.target.value); setPartner(''); }}>{channels.map(c => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}</select></label>
+            <label>Partner (optional)<select value={partner} onChange={e => setPartner(e.target.value)}><option value="">— all partners on parent —</option>{eligiblePartners.map(p => <option key={p.partnerId} value={p.partnerId}>{p.partnerId} · {p.name}</option>)}</select></label>
+            <label>Route type<select value={kind} onChange={e => setKind(e.target.value as (typeof SUBCHANNEL_TYPES)[number])}>{SUBCHANNEL_TYPES.map(k => <option key={k} value={k}>{k}</option>)}</select></label>
+            <label>Commission override (bps)<input type="number" min={0} max={10000} value={commissionCap} onChange={e => setCommissionCap(e.target.value)} placeholder="inherit parent" /></label>
+          </div>
+          <div className="row">
+            <label>Description<input value={description} onChange={e => setDescription(e.target.value)} placeholder="Customer route, geography or device surface" /></label>
+            <label className="checkLabel"><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} /> Enabled</label>
+            <label className="checkLabel"><input type="checkbox" checked={quote} onChange={e => setQuote(e.target.checked)} /> Quote</label>
+            <label className="checkLabel"><input type="checkbox" checked={bind} onChange={e => setBind(e.target.checked)} /> Bind</label>
+            <label className="checkLabel"><input type="checkbox" checked={service} onChange={e => setService(e.target.checked)} /> Service</label>
+            <label className="checkLabel"><input type="checkbox" checked={claim} onChange={e => setClaim(e.target.checked)} /> Claim</label>
+            <button disabled={busy || !code.trim() || !name.trim()} onClick={save}>{subChannels.some(s => s.code === code.trim().toUpperCase()) ? 'Save sub-channel' : '+ Add sub-channel'}</button>
+            {code && subChannels.some(s => s.code === code.trim().toUpperCase()) && <button type="button" className="ghost" onClick={() => { setCode(''); setName(''); setPartner(''); setDescription(''); }}>Clear edit</button>}
+          </div>
+        </>
+      )}
+    </section>
+  );
+};
+
 export type OmniChannelData = WorldSnapshot['erp']['master']['channels'];
 
 export const OmniChannelPanel: React.FC<{
@@ -213,6 +292,7 @@ export const OmniChannelPanel: React.FC<{
     <>
       <StatPills items={[
         [`${channels.channelCount} channel(s)`, `${channels.enabledChannelCount} live`],
+        `${channels.subChannelCount} sub-channel(s) · ${channels.subChannelEnabled} live`,
         `${channels.partnerCount} partner(s) · ${channels.enabledPartnerCount} trading`,
         `${channels.offerCount} partner product term(s)`,
         `${channels.productsOnShelf} product(s) on a shelf`,
@@ -318,6 +398,8 @@ export const OmniChannelPanel: React.FC<{
         </button>
         {channelFilter !== 'all' && <button type="button" className="ghost" onClick={() => setChannelFilter('all')}>Show every partner</button>}
       </div>
+
+      <SubChannelPanel data={data} busy={busy} onRun={onRun} />
 
       <GridBar right={(
         <button type="button" disabled={busy || partnerGrid.dirtyCount === 0} onClick={() => void savePartners(partnerGrid.rows.filter((r) => r.dirty).map((r) => r.key))}>

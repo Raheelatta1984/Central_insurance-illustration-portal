@@ -100,6 +100,20 @@ export interface ChannelPartner {
   readonly updatedBy: string;
 }
 
+export interface SubChannel {
+  readonly code: string;
+  readonly name: string;
+  readonly parentChannelCode: string;
+  readonly partnerId?: string; // optional direct linkage to a partner subset
+  readonly enabled: boolean;
+  readonly description: string;
+  readonly channelType: 'digital' | 'branch' | 'agency-post' | 'bancassurance-counter' | 'aggregator-feed' | 'embedded-journey';
+  readonly supports: ChannelSupport;
+  readonly commissionOverrideBps?: number; // if set, overrides channel cap for this sub-channel
+  readonly updatedAt: string;
+  readonly updatedBy: string;
+}
+
 export interface PartnerProductOffer {
   readonly partnerId: string;
   readonly productId: string;
@@ -160,6 +174,7 @@ export interface ClawbackOutcome {
 export class OmniChannelRegistry {
   private readonly channels = new Map<string, OmniChannel>();
   private readonly partners = new Map<string, ChannelPartner>();
+  private readonly subChannels = new Map<string, SubChannel>();
   private readonly offers = new Map<string, PartnerProductOffer>();
   /** Product name aliases per channel: the secondary name a plan carries on that channel's shelf. */
   private readonly channelNames = new Map<string, string>();
@@ -181,6 +196,12 @@ export class OmniChannelRegistry {
   listOffers(partnerId?: string): PartnerProductOffer[] {
     return [...this.offers.values()].filter((o) => partnerId === undefined || o.partnerId === partnerId.toUpperCase());
   }
+  listSubChannels(parentChannelCode?: string): SubChannel[] {
+    return [...this.subChannels.values()]
+      .filter((s) => parentChannelCode === undefined || s.parentChannelCode === parentChannelCode.toUpperCase())
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }
+  subChannel(code: string): SubChannel | undefined { return this.subChannels.get(code.trim().toUpperCase()); }
   channel(code: string): OmniChannel | undefined { return this.channels.get(code.trim().toUpperCase()); }
   partner(id: string): ChannelPartner | undefined { return this.partners.get(id.trim().toUpperCase()); }
   offer(partnerId: string, productId: string): PartnerProductOffer | undefined {
@@ -205,6 +226,48 @@ export class OmniChannelRegistry {
   partnersForProduct(productId: string): ChannelPartner[] {
     const wanted = productId.trim().toUpperCase();
     return this.listPartners().filter((p) => p.productIds.includes(wanted));
+  }
+
+  upsertSubChannel(input: Partial<SubChannel> & { code: string; parentChannelCode: string; at?: string; by?: string }): SubChannel {
+    const code = input.code.trim().toUpperCase();
+    if (!code) throw new ChannelError('a sub-channel code is required');
+    const parent = this.channels.get(input.parentChannelCode.trim().toUpperCase());
+    if (!parent) throw new ChannelError(`${input.parentChannelCode} is not a configured parent channel`);
+    const current = this.subChannels.get(code);
+    const name = (input.name ?? current?.name ?? code).trim();
+    if (!name) throw new ChannelError(`${code} needs a sub-channel name`);
+    const kind = (input.channelType ?? current?.channelType ?? 'digital') as SubChannel['channelType'];
+    const types: SubChannel['channelType'][] = ['digital', 'branch', 'agency-post', 'bancassurance-counter', 'aggregator-feed', 'embedded-journey'];
+    if (!types.includes(kind)) throw new ChannelError(`sub-channel type ${kind} is not one of ${types.join(', ')}`);
+    const commissionOverrideBps = input.commissionOverrideBps ?? current?.commissionOverrideBps;
+    if (commissionOverrideBps !== undefined && (!Number.isInteger(commissionOverrideBps) || commissionOverrideBps < 0 || commissionOverrideBps > 10000)) throw new ChannelError('sub-channel commission override must be 0–10000 bps');
+    const sc: SubChannel = {
+      code,
+      name,
+      parentChannelCode: parent.code,
+      partnerId: input.partnerId !== undefined ? (input.partnerId ? input.partnerId.trim().toUpperCase() : undefined) : current?.partnerId,
+      enabled: input.enabled ?? current?.enabled ?? true,
+      description: (input.description ?? current?.description ?? '').trim(),
+      channelType: kind,
+      supports: input.supports ?? current?.supports ?? { quote: true, bind: false, service: true, claim: false },
+      commissionOverrideBps,
+      updatedAt: input.at ?? '', updatedBy: input.by ?? 'master-settings',
+    };
+    if (sc.partnerId) {
+      const partner = this.partners.get(sc.partnerId);
+      if (!partner) throw new ChannelError(`sub-channel partner ${sc.partnerId} is not a filed partner`);
+      if (partner.channelCode !== parent.code) throw new ChannelError(`${sc.partnerId} is filed on ${partner.channelCode}, not parent channel ${parent.code}`);
+    }
+    this.subChannels.set(code, sc);
+    this.record(current ? 'subchannel-updated' : 'subchannel-created', `${code} on ${parent.code} (${sc.channelType})`, sc.updatedAt, sc.updatedBy);
+    return sc;
+  }
+
+  removeSubChannel(code: string, at = '', by = 'master-settings'): void {
+    const key = code.trim().toUpperCase();
+    if (!this.subChannels.has(key)) throw new ChannelError(`no sub-channel ${key}`);
+    this.subChannels.delete(key);
+    this.record('subchannel-removed', key, at, by);
   }
 
   /**
@@ -297,6 +360,8 @@ export class OmniChannelRegistry {
     if (!channel) throw new ChannelError(`no channel ${key}`);
     const partners = this.listPartners(key);
     if (partners.length > 0) throw new ChannelError(`${key} still holds ${partners.length} partner(s) — remove them first`);
+    const subChannels = this.listSubChannels(key);
+    if (subChannels.length > 0) throw new ChannelError(`${key} still holds ${subChannels.length} sub-channel(s) — remove them first`);
     this.channels.delete(key);
     for (const mapKey of [...this.channelNames.keys()]) if (mapKey.startsWith(`${key}|`)) this.channelNames.delete(mapKey);
     this.record('channel-removed', key, at, by);
@@ -368,6 +433,8 @@ export class OmniChannelRegistry {
   removePartner(partnerId: string, at = '', by = 'master-settings'): void {
     const key = partnerId.trim().toUpperCase();
     if (!this.partners.has(key)) throw new ChannelError(`no partner ${key}`);
+    const subChannels = this.listSubChannels().filter(s => s.partnerId === key);
+    if (subChannels.length > 0) throw new ChannelError(`${key} still owns ${subChannels.length} sub-channel(s) — remove or reassign them first`);
     this.partners.delete(key);
     for (const offer of this.listOffers(key)) this.offers.delete(clampKey(key, offer.productId));
     this.record('partner-removed', key, at, by);
@@ -522,6 +589,7 @@ export class OmniChannelRegistry {
   status(): {
     configured: boolean; channelCount: number; enabledChannelCount: number; partnerCount: number;
     enabledPartnerCount: number; offerCount: number; productsOnShelf: number;
+    subChannelCount: number; subChannelEnabled: number;
     blockers: string[]; warnings: string[]; next: string[];
   } {
     const channels = this.listChannels();
@@ -553,6 +621,12 @@ export class OmniChannelRegistry {
     }
     if (offers.length > 0 && channels.length === 0) blockers.push('Partner product offers exist without a channel: file the channels first.');
 
+    const subChannels = this.listSubChannels();
+    for (const subChannel of subChannels) {
+      const parent = this.channels.get(subChannel.parentChannelCode);
+      if (!parent) blockers.push(`${subChannel.code} points at a missing parent channel ${subChannel.parentChannelCode}.`);
+      else if (subChannel.enabled && !parent.enabled) blockers.push(`${subChannel.code} is enabled under disabled channel ${parent.code}.`);
+    }
     const productsOnShelf = new Set(partners.flatMap((p) => p.productIds)).size;
     return {
       configured: channels.length > 0,
@@ -562,6 +636,8 @@ export class OmniChannelRegistry {
       enabledPartnerCount: partners.filter((p) => p.enabled).length,
       offerCount: offers.length,
       productsOnShelf,
+      subChannelCount: subChannels.length,
+      subChannelEnabled: subChannels.filter(s => s.enabled).length,
       blockers, warnings,
       next: next.slice(0, 4),
     };
@@ -569,8 +645,10 @@ export class OmniChannelRegistry {
 
   /** The snapshot the console reads: everything, already ordered, with the names resolved. */
   snapshot() {
+    const subChannels = this.listSubChannels();
     const channels = this.listChannels().map((c) => ({
       ...c,
+      subChannels: this.listSubChannels(c.code),
       partners: this.listPartners(c.code).map((p) => ({
         ...p,
         products: p.productIds.map((productId) => {
@@ -596,6 +674,7 @@ export class OmniChannelRegistry {
     const unfiled = this.listChannels().filter((c) => this.listPartners(c.code).length === 0).map((c) => c.code);
     return {
       channels,
+      subChannels,
       partners: this.listPartners(),
       offers: this.listOffers(),
       productNames: [...this.channelNames.entries()].map(([key, secondaryName]) => {
