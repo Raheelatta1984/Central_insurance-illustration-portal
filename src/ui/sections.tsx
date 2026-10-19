@@ -214,8 +214,12 @@ export const SectionStack: React.FC<SectionStackProps> = ({
                     <span className="chev" aria-hidden="true">{locked ? '🔒' : open ? '▾' : '▸'}</span>
                   </span>
                 </button>
-                <GuideBanner compact section={section.id} title={section.title} status={section.status}
-                  percent={section.percent} missing={section.missing} blockers={section.blockers} />
+              </div>
+              {/* The sticky note: stuck below the heading, arrow down at the form. The section the
+                  engine recommends gets the full paper; the ones behind it get the tighter one. */}
+              <div className="sectionGuideSlot">
+                <GuideBanner compact={!isRecommended} section={section.id} title={section.title} status={section.status}
+                  percent={section.percent} missing={section.missing} blockers={section.blockers} step={section.order ?? index + 1} />
               </div>
 
               {locked && open && (
