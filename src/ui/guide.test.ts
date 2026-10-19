@@ -13,7 +13,7 @@ import { renderToString } from 'react-dom/server';
 import { buildWorld, worldSnapshot } from '../core/demo.js';
 import { SECTION_GUIDES, TAB_GUIDES } from '../core/guide.js';
 import { CONSOLE_TABS } from '../core/tour.js';
-import { GuideBanner, GuideProvider, GuideToggle, ScreenGuide } from './guide.js';
+import { GuideBanner, GuideHeading, GuideProvider, GuideToggle, ScreenGuide } from './guide.js';
 import { SectionGroup, SectionStack, fields } from './sections.js';
 import { CustomerJourneyPanel } from './journey.js';
 import { DEFAULT_PRODUCT_FORM, JourneyFieldSettingsPanel, MasterSettingsErp, ProductFactoryPanel } from './erp-views.js';
@@ -34,7 +34,7 @@ const notes = (html: string) => html.split('data-guide="').length - 1;
 const openSections = (html: string) => html.split('aria-expanded="true"').length - 1;
 
 describe('the note rides with the section', () => {
-  it('puts exactly one note in the one section a rail opens, and none in the closed ones', () => {
+  it('puts a small guide in every section heading, including closed sections', () => {
     const html = withGuide(h(SectionGroup, {
       gates: [
         { id: 'register', title: 'Register a claim request', fields: fields(['Claim id', 'CLM-1'], ['Date of loss', '']) },
@@ -42,8 +42,11 @@ describe('the note rides with the section', () => {
         { id: 'settle', title: 'Settle, pay and recover', fields: fields(['Settlement', '']) },
       ],
     }), 'claims');
-    // One note, in the open section, keyed to the curated entry for it.
-    expect(notes(html)).toBe(1);
+    // Every rail heading has its own trigger; guides never open the underlying section.
+    expect(notes(html)).toBe(3);
+    expect(html).toContain('data-guide="claims:reserve"');
+    expect(html).toContain('data-guide="claims:settle"');
+    expect(html).toContain('aria-label="AI guide for Register a claim request"');
     expect(html).toContain('data-guide="claims:register"');
     expect(html).toContain('data-curated="yes"');
     expect(plain(html)).toContain(SECTION_GUIDES['claims:register']!.headline);
@@ -105,8 +108,7 @@ describe('the switch', () => {
       gates: [{ id: 'register', title: 'Register a claim request', fields: fields(['Claim id', 'CLM-1']) }],
     })), 'claims');
     expect(html).toContain('data-guide="screen:claims"');
-    expect(html).toContain('guideNote screen');
-    expect(plain(html)).toContain(`${Object.keys(SECTION_GUIDES).length} section notes on file`);
+    expect(html).toContain('guideNote info screen');
     expect(notes(html)).toBe(2);
   });
 });
@@ -120,13 +122,38 @@ describe('every screen of the console', () => {
     }
   });
 
-  it('renders the whole journey rail with a note in its open section and nothing else disturbed', () => {
+  it('renders the whole journey rail with notes in all nineteen headings and one open section', () => {
     const html = withGuide(h(CustomerJourneyPanel, { data, onReload: noop, onNavigate: nowhere }), 'journey');
     expect(html).toContain('data-guide="journey:coverage"');
     expect(html).toContain('Section 5 of 19');
     expect(openSections(html)).toBe(1);
     expect(html.split('aria-expanded="false"').length - 1).toBe(18);
-    expect(notes(html)).toBe(1);
+    expect(html).toContain('data-guide="journey:identity"');
+    expect(html).toContain('data-guide="journey:recommendation"');
+    expect(notes(html)).toBeGreaterThanOrEqual(19);
+  });
+
+  it('places a subsection guide next to its heading, using the same switch', () => {
+    const node = h(GuideHeading, { title: 'What the engine computed' });
+    const html = withGuide(node, 'journey');
+    expect(html).toContain('<h4 class="small">What the engine computed</h4>');
+    expect(html).toContain('data-guide="journey:what-the-engine-computed"');
+    expect(withGuide(node, 'journey', false)).not.toContain('data-guide');
+  });
+
+  it('connects personal details to suitability without recommending a product from identity alone', () => {
+    const html = withGuide(h(SectionStack, { sections: [
+      { id: 'identity', title: 'Personal information', status: 'complete', percent: 100 },
+      { id: 'profile', title: 'Customer profile', status: 'complete', percent: 100 },
+      { id: 'needs', title: 'Needs analysis', status: 'ready', percent: 0, autoOpen: true },
+      { id: 'recommendation', title: 'Product recommendation', status: 'locked', percent: 0 },
+    ] }), 'journey');
+    expect(html).toContain('data-guide="journey:identity"');
+    expect(html).toContain('not a product recommendation on their own');
+    expect(html).toContain('suitability is assessed against the stated needs');
+    expect(html).toContain('ranked against the evaluated need');
+    expect(html).toContain('data-guide="journey:recommendation"');
+    expect(openSections(html)).toBe(1);
   });
 
   it('opens master settings on the regional panel: country, region, time zone, date order and money', () => {

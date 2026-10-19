@@ -11,7 +11,7 @@ import type { WorldSnapshot } from '../core/demo';
 import { CONSOLE_TABS, ConsoleTab, TOUR, TourStep, tourMinutes } from '../core/tour';
 import { applyDateFormat, applyTimeFormat, zonedParts } from '../core/regional';
 import { api } from './api';
-import { GuideBanner, GuideProvider, GuideToggle, GuideTopBanner, ScreenGuide } from './guide';
+import { GuideBanner, GuideProvider, GuideToggle, GuideHeading, ScreenGuide } from './guide';
 import { CustomerJourneyPanel } from './journey';
 import {
   ClaimsManagementPanel,
@@ -29,10 +29,7 @@ const TABS = CONSOLE_TABS;
 
 const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean; guide?: boolean }> = ({ title, subtitle, children, wide, guide = true }) => (
   <section className="card" style={wide ? { gridColumn: '1 / -1' } : undefined}>
-    <header><h3>{title}</h3>{subtitle && <p>{subtitle}</p>}</header>
-    {/* Every card is a section of a screen, and every section carries its note. A card that is pure
-        chrome can opt out with `guide={false}`; nothing opts out by default. */}
-    {guide && <GuideBanner compact title={title} />}
+    <header><div className="cardHeading"><h3>{title}</h3>{guide && <GuideBanner compact title={title} />}</div>{subtitle && <p>{subtitle}</p>}</header>
     {children}
   </section>
 );
@@ -589,7 +586,7 @@ function RuleBook({ data }: { data: WorldSnapshot }) {
           <p className="muted small">{check.limitation}</p>
         </div>
       )}
-      <h4>Decisions on the desk's record</h4>
+      <GuideHeading title="Decisions on the desk's record" />
       <Table
         head={['Decision', 'Placement', 'Answer', 'Counterparty', 'Why', 'Taken by']}
         rows={decisions.map((d) => [
@@ -601,7 +598,7 @@ function RuleBook({ data }: { data: WorldSnapshot }) {
           <span key={`${d.id}-b`} className="small">{d.by}</span>,
         ])}
       />
-      <h4>The rules</h4>
+      <GuideHeading title="The rules" />
       <Table
         head={['Rule', 'What it requires', 'Instrument and clause', 'If breached', 'Evidence an examiner asks for', 'Raised']}
         rows={data.uaeRules.rules.map((r) => [
@@ -678,7 +675,7 @@ function Wording({ data }: { data: WorldSnapshot }) {
           <p className="muted small">{draft.limitation}</p>
         </div>
       )}
-      <h4>Letters on file</h4>
+      <GuideHeading title="Letters on file" />
       <Table
         head={['Letter', 'Template', 'Scope', 'Version', 'Mandated paragraphs', 'Pack', 'Reproduces']}
         rows={onFile.map((d) => {
@@ -694,7 +691,7 @@ function Wording({ data }: { data: WorldSnapshot }) {
           ];
         })}
       />
-      <h4>The mandated paragraphs</h4>
+      <GuideHeading title="The mandated paragraphs" />
       <Table
         head={['Paragraph', 'What it says', 'In Arabic', 'Instrument', 'On which documents']}
         rows={data.wording.disclaimers.map((d) => [
@@ -988,7 +985,6 @@ function App() {
         {data ? (
           <GuideProvider data={data} tab={tab} enabled={guideOn}>
             <ScreenGuide />
-            <GuideTopBanner />
             {body ?? <div className="loading">Loading the world…</div>}
           </GuideProvider>
         ) : (
@@ -1441,7 +1437,7 @@ function Underwriting({
           </div>
           {app.amendments.length > 0 && (
             <>
-              <h4 className="small">Amendment trail on this file ({app.amendments.length})</h4>
+              <div className="guideHeading"><h4 className="small">Amendment trail on this file ({app.amendments.length})</h4><GuideBanner compact title="Amendment trail on this file" /></div>
               <Table
                 head={['When', 'By', 'Field', 'From', 'To', 'Reason']}
                 rows={app.amendments.map((m) => [m.at, m.by, m.field, m.from, m.to, <span key={m.at + m.field} className="small">{m.reason}</span>])}
@@ -2195,7 +2191,7 @@ function RegisterStore() {
       <p className="muted small">{summary?.outbox.detail}</p>
       {store && (
         <>
-          <h4 className="small">The log, as the store holds it</h4>
+          <GuideHeading title="The log, as the store holds it" />
           <div className="stat"><span>Version a reader opens</span><b>v{store.version} · {store.entries} entr(ies)</b></div>
           <div className="stat"><span>Head hash</span><b>{store.headHash}</b></div>
           <div className="stat"><span>Written by the last catch-up</span><b>{store.written} record(s)</b></div>
@@ -2367,20 +2363,6 @@ nav .icon { width:16px; text-align:center; color:var(--accent); }
 aside footer { margin-top:auto; display:flex; flex-direction:column; gap:8px; }
 main { padding:22px 26px 60px; }
 .top { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:16px; }
-.topControls { display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
-.aiGuideToggle { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; background:#11212f; border:1px solid #1f4a6b; color:#cfe6ff; }
-.aiGuideToggle b { font-size:11px; padding:2px 7px; border-radius:999px; background:#182230; }
-.aiGuideToggle.enabled { background:#332709; border-color:#6b5312; color:#ffe4a3; }
-.aiGuideToggle.enabled b { background:#6b5312; color:#fff0c4; }
-.aiGuideBanner { position:sticky; top:8px; z-index:20; margin:0 0 14px; padding:12px 16px; border:1px solid #6b5312; border-left:4px solid #f0b429; border-radius:12px; background:linear-gradient(110deg,#332709,#211e13 70%,#131a22); color:#fff0c4; box-shadow:0 8px 24px rgba(0,0,0,.26); }
-.aiGuideBannerTitle, .aiGuideNoteTitle { display:flex; gap:7px; align-items:center; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.045em; color:#ffe4a3; }
-.aiGuideDivider { opacity:.55; }
-.aiGuideBanner p { margin:4px 0 3px; font-size:13px; }
-.aiGuideBanner small, .aiGuideNote small { color:#d2c28e; font-size:10.5px; }
-.aiGuideNote { position:sticky; top:102px; z-index:5; margin:8px 0 12px; padding:10px 12px; border:1px solid #6b5312; border-left:3px solid #f0b429; border-radius:10px; background:#332709; color:#fff0c4; box-shadow:0 5px 16px rgba(0,0,0,.18); }
-.aiGuideNote.compact { margin:8px 0 10px; padding:8px 11px; }
-.aiGuideNote p { margin:4px 0; font-size:12px; }
-.aiGuideNext { margin:4px 0; font-size:11.5px; color:#ffe4a3; }
 h1 { font-size:20px; margin:0; }
 h3 { margin:0 0 2px; font-size:14px; }
 .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap:14px; }
@@ -2419,9 +2401,7 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .okText { color:#7ee2a8; }
 
 /* ---- the guided journey: closed sections, one open, the next one opening itself ---- */
-/* overflow:clip keeps the rounded corners without making the rail a scroll container, which would
-   trap the sticky guide notes inside it: a sticky element only sticks against its nearest scrollport. */
-.sections { padding:0; overflow:visible; overflow:clip; }
+.sections { padding:0; overflow:visible; }
 .sections > header.sectionsHead { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; padding:14px 16px 10px; border-bottom:1px solid var(--line); }
 .sectionsRail { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
 .railPercent { display:flex; gap:8px; align-items:center; min-width:150px; }
@@ -2432,10 +2412,11 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .section:last-child { border-bottom:0; }
 .section.recommended { background:linear-gradient(90deg, rgba(62,166,255,.07), transparent 40%); box-shadow: inset 3px 0 0 var(--accent); }
 .section.complete .sectionTitle b { color:#b8f5d0; }
-.section.locked { opacity:.62; }
+.section.locked .sectionToggle { opacity:.62; }
 .section.blocked { box-shadow: inset 3px 0 0 var(--bad); }
-.sectionHead { display:flex; gap:12px; align-items:center; width:100%; background:transparent; color:var(--text); border:0; border-radius:0; padding:11px 16px; cursor:pointer; font-weight:400; text-align:left; }
-.sectionHead:hover { background:var(--panel2); filter:none; }
+.sectionHead { display:flex; gap:8px; align-items:center; padding:0 12px 0 0; }
+.sectionToggle { display:flex; gap:12px; align-items:center; flex:1 1 auto; min-width:0; background:transparent; color:var(--text); border:0; border-radius:0; padding:11px 16px; cursor:pointer; font-weight:400; text-align:left; }
+.sectionToggle:hover { background:var(--panel2); filter:none; }
 .sectionNo { width:26px; height:26px; flex:0 0 26px; display:grid; place-items:center; border-radius:8px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); font-size:12px; }
 .section.complete .sectionNo { background:#12301f; border-color:#1f5f3f; color:#b8f5d0; }
 .section.recommended .sectionNo { background:#11212f; border-color:#1f4a6b; color:#cfe6ff; }
@@ -2480,36 +2461,48 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .summaryRows { margin:6px 0; }
 .grow { flex:1 1 auto; }
 
-/* ---- the AI guide: a sticky note on every section, and one switch above every tab ---- */
+/* Small notes are anchored to headings, not stretched into empty full-width frames. */
 .topRight { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
 .guideToggle { display:inline-flex; gap:7px; align-items:center; white-space:nowrap; }
 .guideToggle.on { color:#cfe6ff; border-color:#1f4a6b; background:#11212f; }
-.guideNote { position:sticky; top:44px; z-index:12; margin:8px 0 10px; border:1px solid #1f4a6b; border-left:3px solid var(--accent); border-radius:10px; background:linear-gradient(180deg,#132231,#101a25); box-shadow:0 8px 20px rgba(0,0,0,.30); }
-.guideNote.ok { border-color:#1f5f3f; border-left-color:var(--ok); background:linear-gradient(180deg,#122519,#101a25); }
-.guideNote.warn { border-color:#6b5312; border-left-color:var(--warn); background:linear-gradient(180deg,#241f10,#101a25); }
-.guideNote.bad { border-color:#6b2020; border-left-color:var(--bad); background:linear-gradient(180deg,#261414,#101a25); }
-.guideNote > summary { display:flex; gap:10px; align-items:center; padding:8px 12px; cursor:pointer; list-style:none; }
+.cardHeading, .guideHeading { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+.cardHeading h3, .guideHeading h4 { margin:0; }
+.guideHeading { margin:12px 0 6px; }
+.screenGuide { display:flex; align-items:center; gap:9px; margin:0 0 14px; flex-wrap:wrap; }
+.screenGuide .guideBody { left:0; right:auto; }
+.guideNote { position:relative; display:inline-block; width:max-content; max-width:100%; flex:0 0 auto; vertical-align:middle; z-index:1; color:#ffe4a3; }
+.guideNote[open] { z-index:50; }
+.guideNote > summary { display:inline-flex; align-items:center; gap:6px; max-width:100%; padding:3px 9px; border:1px solid #816823; border-radius:7px; background:#332709; color:#ffe4a3; cursor:pointer; list-style:none; font-size:11px; font-weight:650; line-height:1.4; box-shadow:2px 2px 0 #1a170d; }
 .guideNote > summary::-webkit-details-marker { display:none; }
-.guideNote > summary:hover { background:rgba(255,255,255,.035); }
-.guideMark { color:var(--accent); font-size:13px; flex:0 0 auto; }
-.guideHead { display:flex; flex-direction:column; gap:1px; flex:1 1 auto; min-width:0; }
-.guideHead b { font-size:12.5px; font-weight:600; }
-.guideHead small { color:var(--muted); font-size:11px; }
-.guideCue { color:var(--muted); width:14px; text-align:center; flex:0 0 auto; }
+.guideNote > summary:hover, .guideNote[open] > summary { background:#4a3712; }
+.guideNote > summary:focus-visible { outline:2px solid #ffe4a3; outline-offset:3px; }
+.guideNote.ok > summary { border-color:#427b50; }
+.guideNote.bad > summary { border-color:#b45b50; }
+.guideNote.screen > summary { padding:6px 10px; font-size:12px; white-space:normal; text-align:left; }
+.guideMark { font-size:13px; flex:none; }
+.guideCue { font-size:10px; flex:none; }
 .guideNote[open] .guideCue { transform:rotate(180deg); }
-.guideBody { padding:2px 14px 12px 34px; border-top:1px dashed var(--line); }
-.guideBody p { margin:8px 0; font-size:12.5px; }
-.guideDo ol { margin:4px 0 0 18px; padding:0; font-size:12.5px; }
-.guideDo li { margin:3px 0; }
-.guideFacts { margin-top:8px; }
-.guideFacts ul { font-size:12px; color:var(--muted); }
-.guideLimit { margin-top:10px; font-style:italic; }
-.guideNote.compact > summary { padding:6px 10px; }
-.guideNote.compact .guideHead small { display:none; }
-.guideNote.compact .guideBody { padding:2px 12px 10px 32px; }
-/* The note for the screen itself sits above the notes for its sections. */
-.guideNote.screen { position:sticky; top:0; z-index:30; margin:0 0 14px; }
-@media print { .guideNote { position:static; box-shadow:none; } }
+.guideBody { position:absolute; top:calc(100% + 8px); right:0; width:340px; max-width:calc(100vw - 32px); max-height:min(420px, 65vh); overflow:auto; padding:12px 14px; border:1px solid #ad8531; border-radius:10px; background:#30260f; color:#fff1cd; box-shadow:5px 6px 0 #14181d, 0 10px 25px rgba(0,0,0,.4); font-size:12px; line-height:1.5; white-space:normal; font-weight:400; }
+.guideBody::before { content:'✳  AI guide'; display:block; color:#e5bc59; font-weight:700; font-size:10px; letter-spacing:.07em; text-transform:uppercase; margin-bottom:5px; }
+.guideBody strong { display:block; font-size:13px; line-height:1.35; }
+.guideBody p { margin:6px 0; }
+.guideDo { padding:6px 9px; border-left:2px solid #e4ae42; background:rgba(255,255,255,.05); }
+.guideDo p { margin:3px 0 0; }
+.guideWatch { color:#ffdc99; }
+.guideMore { margin:8px 0; color:#e9cd92; }
+.guideMore > summary { cursor:pointer; }
+.guideMore ul { margin:6px 0 0 15px; padding:0; }
+.guideMore li { margin:3px 0; }
+.guideLimit { display:block; color:#d4bc88; font-size:10px; margin-top:8px; }
+@media (max-width:700px) {
+  main { padding:16px 12px 40px; min-width:0; }
+  .grid { grid-template-columns:minmax(0, 1fr); }
+  .sectionHead { flex-wrap:wrap; }
+  .sectionToggle { min-width:0; }
+  .sectionState .bar { display:none; }
+  .screenGuide .guideBody, .cardHeading .guideBody, .guideHeading .guideBody { left:0; right:auto; }
+}
+@media print { .guideBody { position:static; box-shadow:none; } }
 `;
 document.head.appendChild(style);
 

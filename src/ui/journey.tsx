@@ -13,6 +13,7 @@ import type { ConsoleTab } from '../core/tour';
 import type { JourneyStageId } from '../core/journey';
 import { api } from './api';
 import { MissingList, SectionModel, SectionStack, SummaryRows } from './sections';
+import { GuideHeading } from './guide';
 
 /* ------------------------------------------------------------------ the shape the API returns */
 
@@ -449,7 +450,7 @@ function buildSection(args: BuildArgs): SectionModel {
       <div className="fieldGrid">{fieldEditors}</div>
       {stage.summary.length > 0 && (
         <>
-          <h4 className="small">What the engine computed</h4>
+          <GuideHeading title="What the engine computed" />
           <SummaryRows rows={stage.summary} />
         </>
       )}
@@ -636,7 +637,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
     const evaluation = draftOf(args)['evaluation'] as Record<string, unknown>;
     return (
       <div className="extra">
-        <h4 className="small">The need, and the assumptions behind it</h4>
+        <GuideHeading title="The need, and the assumptions behind it" />
         <SummaryRows rows={[
           { label: 'Income replacement', value: String(evaluation['incomeReplacement'] ?? '—') },
           { label: 'Debt cover', value: String(evaluation['debtCover'] ?? '—') },
@@ -652,7 +653,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
     const breakdown = draftOf(args)['breakdown'] as { standardPremium: string; loadedPremium: string; totalPayable: string; totalExtraBps: number; components: Array<{ label: string; bps: number; amount: string; reason: string; referToHuman: boolean }>; exclusions: string[]; evidenceRequired: string[]; reconciliation: { detail: string; agrees: boolean | null } };
     return (
       <div className="extra">
-        <h4 className="small">How the premium is built</h4>
+        <GuideHeading title="How the premium is built" />
         <div className="stat"><span>Standard premium</span><b>{breakdown.standardPremium}</b></div>
         {breakdown.components.map((c) => (
           <div className="stat" key={c.label}><span>{c.label} {c.referToHuman && <span className="pill warn">human review</span>}</span><b>{c.bps} bps = {c.amount}</b></div>
@@ -670,7 +671,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
     const pricing = draftOf(args)['pricing'] as { lines: Array<{ name: string; bps: number; amount: string; waived: boolean }>; total: string; waivedValue: string; evidenceRequired: string[] };
     return (
       <div className="extra">
-        <h4 className="small">Rider schedule</h4>
+        <GuideHeading title="Rider schedule" />
         {pricing.lines.map((l) => (
           <div className="stat" key={l.name}><span>{l.name}{l.waived && <span className="pill warn">without loading</span>}</span><b>{l.bps} bps = {l.amount}</b></div>
         ))}
@@ -685,7 +686,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
     const plan = draftOf(args)['plan'] as { investableLabel: string; lines: Array<{ name: string; fundId: string; weightPct: number; amountLabel: string; units: string; navPerUnit: string; navDate: string; riskGrade: string }>; weightedChargeBps: number; weightedRiskScore: number; appetite: string | null; appetiteAgrees: boolean | null; acknowledgementsRequired: string[] };
     return (
       <div className="extra">
-        <h4 className="small">What the first contribution buys, at the published valuation</h4>
+        <GuideHeading title="What the first contribution buys, at the published valuation" />
         <div className="stat"><span>Amount invested</span><b>{plan.investableLabel}</b></div>
         {plan.lines.map((l) => (
           <div className="stat" key={l.fundId}><span>{l.name} ({l.riskGrade})</span><b>{l.weightPct.toFixed(2)}% = {l.amountLabel} → {l.units} units at {l.navPerUnit} on {l.navDate}</b></div>
@@ -701,7 +702,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
     const set = draftOf(args)['set'] as { primaries: Array<{ name: string; relationship: string; sharePct: number; share: string | null }>; contingents: Array<{ name: string; sharePct: number }>; primaryTotalPct: number };
     return (
       <div className="extra">
-        <h4 className="small">Who receives the proceeds</h4>
+        <GuideHeading title="Who receives the proceeds" />
         {set.primaries.map((b) => <div className="stat" key={b.name}><span>Primary — {b.name} ({b.relationship})</span><b>{b.sharePct.toFixed(2)}%{b.share ? ` = ${b.share}` : ''}</b></div>)}
         {set.contingents.map((b) => <div className="stat" key={b.name}><span>Contingent — {b.name}</span><b>{b.sharePct.toFixed(2)}%</b></div>)}
         <div className="stat"><span>Primary total</span><b>{set.primaryTotalPct.toFixed(2)}%</b></div>
@@ -714,7 +715,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
     if (!quotation) return null;
     return (
       <div className="extra">
-        <h4 className="small">The document, and the compliance checks behind it</h4>
+        <GuideHeading title="The document, and the compliance checks behind it" />
         <div className="stat"><span>Quotation</span><b>{quotation.quotationId} v{quotation.version} · {quotation.status}</b></div>
         <div className="stat"><span>Total payable</span><b>{quotation.totalPayable}</b></div>
         <div className="stat"><span>Valid until</span><b>{quotation.expiresAt.slice(0, 10)} ({journey.quotationValidityDays} days)</b></div>
@@ -739,7 +740,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
     if (payments.length === 0) return null;
     return (
       <div className="extra">
-        <h4 className="small">Money taken</h4>
+        <GuideHeading title="Money taken" />
         {payments.map((p) => (
           <div key={p.id}>
             <div className="stat"><span>{p.id} · {p.method}</span><b>{p.amount} · {p.status} · settles {p.settlesOn}</b></div>
@@ -756,7 +757,7 @@ function stageExtras(args: BuildArgs): React.ReactNode {
   if (id === 'routing') {
     return (
       <div className="extra">
-        <h4 className="small">Capacity, and who the case goes to if this route fails</h4>
+        <GuideHeading title="Capacity, and who the case goes to if this route fails" />
         <SummaryRows rows={[
           { label: 'In-house queue', value: `${journey.queue.inHouseOpenCases} open case(s) at ${journey.queue.inHouseCapacityPerDay} a day, oldest waiting ${journey.queue.oldestCaseHours}h` },
           { label: 'Promised decision', value: `${journey.queue.promisedDecisionHours} working hour(s)` },

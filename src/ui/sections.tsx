@@ -193,39 +193,33 @@ export const SectionStack: React.FC<SectionStackProps> = ({
               className={`section ${section.status}${open ? ' open' : ''}${isRecommended ? ' recommended' : ''}`}
               ref={(node) => { if (node) refs.current.set(section.id, node); else refs.current.delete(section.id); }}
             >
-              <button
-                type="button"
-                className="sectionHead"
-                aria-expanded={open}
-                aria-controls={`section-body-${section.id}`}
-                onClick={() => toggle(section)}
-              >
-                <span className="sectionNo">{section.order ?? index + 1}</span>
-                <span className="sectionTitle">
-                  <b>{section.title}</b>
-                  {section.subtitle && <small>{section.subtitle}</small>}
-                </span>
-                <span className="sectionState">
-                  {section.badges}
-                  <Bar percent={section.percent} status={section.status} />
-                  <span className="sectionPct">{section.percent}%</span>
-                  <SectionPill status={section.status} />
-                  <span className="chev" aria-hidden="true">{locked ? '🔒' : open ? '▾' : '▸'}</span>
-                </span>
-              </button>
+              <div className="sectionHead">
+                <button
+                  type="button"
+                  className="sectionToggle"
+                  aria-expanded={open}
+                  aria-controls={`section-body-${section.id}`}
+                  onClick={() => toggle(section)}
+                >
+                  <span className="sectionNo">{section.order ?? index + 1}</span>
+                  <span className="sectionTitle">
+                    <b>{section.title}</b>
+                    {section.subtitle && <small>{section.subtitle}</small>}
+                  </span>
+                  <span className="sectionState">
+                    {section.badges}
+                    <Bar percent={section.percent} status={section.status} />
+                    <span className="sectionPct">{section.percent}%</span>
+                    <SectionPill status={section.status} />
+                    <span className="chev" aria-hidden="true">{locked ? '🔒' : open ? '▾' : '▸'}</span>
+                  </span>
+                </button>
+                <GuideBanner compact section={section.id} title={section.title} status={section.status}
+                  percent={section.percent} missing={section.missing} blockers={section.blockers} />
+              </div>
 
               {locked && open && (
                 <div className="sectionBody" id={`section-body-${section.id}`}>
-                  {/* The note for this section rides with the section: it is the first thing in the
-                      body and it stays put while the operator scrolls a long form. */}
-                  <GuideBanner
-                    section={section.id}
-                    title={section.title}
-                    status={section.status}
-                    percent={section.percent}
-                    missing={section.missing}
-                    blockers={section.blockers}
-                  />
                   <div className="warnBox small">
                     This section is closed until <b>{section.lockedByTitle ?? 'the section before it'}</b> is 100% complete.
                     The sequence is enforced by the same gate the API uses, so nothing here can be submitted early.
@@ -236,14 +230,6 @@ export const SectionStack: React.FC<SectionStackProps> = ({
 
               {!locked && open && (
                 <div className="sectionBody" id={`section-body-${section.id}`}>
-                  <GuideBanner
-                    section={section.id}
-                    title={section.title}
-                    status={section.status}
-                    percent={section.percent}
-                    missing={section.missing}
-                    blockers={section.blockers}
-                  />
                   {section.meta && <div className="sectionMeta">{section.meta}</div>}
                   <MissingList missing={section.missing} blockers={section.blockers} warnings={section.warnings} />
                   {section.children}
