@@ -95,3 +95,40 @@
 ## How the fleet proves its own claims
 
 `node tools/fleet.mjs` claims a backlog chunk only when (a) its module is implemented, (b) its capability text matches something actually built, and (c) the evidence files exist and the module's test file passes. Everything else stays open — currently **1211 chunks done, 659 still open** on the critical path alone (1870 chunks; the RI rows claimed by the fleet are each named against the file that proves them in `ledger/runs.jsonl`, and `RI-STORE-000892` was reopened because the extracts, the rule book, the wording book and the submission log all run in memory — a schema and migrations for them are not built), and two of the capability-10 rows for this module (`RI-DESIGN-000889` … `RI-DOCS-000896`) were marked claimed by an earlier fleet pass before their work existed; they are only counted as done here because the code, tests and documents for them are now in the repository — the lesson is recorded so the claim rule is judged on what exists, never on what a keyword matched. The ledger at `ledger/runs.jsonl` records every claimed chunk with its evidence and simulated cost, one row per chunk, and `backlog/status.jsonl` is the machine-readable state.
+
+---
+
+## 2026-10-19 — the product grid, the rating tables and the omni-channel
+
+`npx tsc --noEmit` clean; `npx vitest run` → **615 tests over 44 files**; `npm run build` clean.
+
+**Verified by test**
+
+| Area | Evidence |
+| --- | --- |
+| Rating engine | `src/core/rating.ts` + `src/core/rating.test.ts` (22): key-uniqueness, specificity ranking, exact money on the rationals, template round trip, append vs replace import, gaps and overlaps, audit trail |
+| Channels registry | `src/core/channels.ts` + `src/core/channels.test.ts` (26): bootstrap idempotence, commission-ceiling refusal, delete guards, secondary-name precedence, commission and clawback on decimal money, shelf/orphan warnings |
+| Product sheet | `src/core/product-config.ts` + the product-sheet group in `src/core/master.test.ts`: header read by id or label, ignored unknown columns, >500 rows refused, per-row shape refusals quoting the sheet's own column names |
+| Master API | `src/core/master.test.ts` (25): template → import round trip byte-identical against the export, bulk file with per-row refusals, copy with its tariff, tariff upsert/copy/delete/bulk/clear, price-a-life and the partner override that outranks it, policy cost of insurance read from the grid, channel/partner/offer/commission/name routes |
+| The three grids | `src/ui/master-grids.test.ts` (16) rendered server-side against the real snapshot: a page of 25 filed varieties, a copy and a save on every row, every master column present, money kept in the currency's notation, the not-set-up and set-up omni-channel states, and the rail still holding exactly one open section |
+| The old contract | `src/ui/guide.test.ts` and `src/ui/console.test.ts`: the product factory still answers to the section's `form`/`setForm`/`onSave`, still lists every line in the filter, and the new grids add no `aria-expanded` of their own |
+
+**Bugs found and fixed while building it**
+
+* `overlaps()` reported every pair of sum bands that merely *touch* (0–250,000.00 beside 250,000.00-and-above)
+  as two answers about one life. The bands are half-open, so the report now agrees with the matcher; caught
+  because the seeded grid came back with five phantom overlaps on every product.
+* The rate sample's header printed "Rate per 1,000" — a comma inside a CSV header, which re-imported as two
+  columns. The label is `Rate per 1000` and each column carries `aliases` (`rate`, `coi`, `charge`, …); the
+  lenient `|| want === 'rateper1000'` fallback that made *every* header match the first column is gone.
+* A sheet whose header nobody could read answered as a 500 stack trace. It is a 400 now, with the sentence
+  the uploader needs ("No column in the header was recognised…"), and `readProductSheet` names columns by
+  their header text rather than by the internal field name.
+* The tariff is **seeded, not invented** — `seedRatingGrid` derives each product's bands from the tariff it
+  already files, so no product's price changed; the mortality rows only exist for unit-linked and takaful
+  books and are derived from that book's own cost of insurance.
+
+**Deliberately additive (risk gate)** — pricing is a high-risk change under `AGENTS.md`. Nothing in this
+pass restates an existing book: `/quote` and `/premium/*` still answer exactly as they did, and the grid is
+reached by `POST /master/rates/price`, by a policy's monthly cost of insurance (which falls back to the
+filed schedule, labelled as such, when a band is missing) and by the policy-charge alteration.

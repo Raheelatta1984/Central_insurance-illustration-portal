@@ -103,7 +103,7 @@ const out = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Central Insurance ERP — offline replay</title>
     <script>${shim}</script>
     <script type="module">${bundleSafe}</script>

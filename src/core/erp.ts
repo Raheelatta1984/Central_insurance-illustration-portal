@@ -31,6 +31,9 @@ import {
   ProductVariety, PolicyCategory, catalogueByLine, evidenceProfileFor, productVariety,
 } from './products.js';
 import { RegionalDesk, RegionalError, RegionalSnapshot, defaultRegional } from './regional.js';
+import { RatePrice, RateRow, RateTables } from './rating.js';
+import { OmniChannelRegistry } from './channels.js';
+import { toDecimalString } from './money.js';
 
 export class ErpError extends Error {}
 
@@ -52,11 +55,50 @@ export interface ProductMaster {
   readonly variety: string;
   /** One sentence on what the cover does — what a suitability review reads. */
   readonly blurb: string;
+  /**
+   * The omni-channel display name: what the plan is called on a shelf, in a partner's portal or in an
+   * app store listing, as opposed to the registered name the filing carries. Empty means "no second
+   * name is filed", in which case screens fall back to `name`. A channel or partner alias filed in
+   * `channels.ts` wins over this one, because the partner contract is the nearer authority.
+   */
+  readonly secondaryName: string;
   readonly entityId: string;
   readonly currency: string;
   readonly defaultFunds: readonly string[];
   readonly rules: ProductRules;
   readonly takafulConfig?: TakafulProductConfig;
+}
+
+/**
+ * One row of the product configuration grid, in the notation the sheet and the screen use: ages and
+ * multiples as numbers, money as decimal strings. `defineProductMasters` validates and files them.
+ */
+export interface ProductRowInput {
+  productId?: string;
+  name?: string;
+  secondaryName?: string;
+  category?: string;
+  line?: string;
+  variety?: string;
+  blurb?: string;
+  currency?: string;
+  minAge?: string | number;
+  maxAge?: string | number;
+  maxBmi?: string | number;
+  baseRatePerThousand?: string | number;
+  incomeMultiple?: string | number;
+  automaticBindingLimit?: string | number;
+  facultativeThreshold?: string | number;
+  aiStraightThroughLimit?: string | number;
+  acceptedCountries?: string[];
+  defaultFunds?: string[];
+}
+
+/** A decimal amount written with separators, as a grid cell or a CSV column holds it. */
+function numericAmount(value: unknown): number | null {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  const n = Number(String(value).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Tenant display and capture defaults; historical books and entity functional currencies are untouched. */
@@ -160,6 +202,15 @@ export interface PolicyAlteration {
 
 export class ErpManager {
   private readonly products = new Map<string, ProductMaster>();
+  /**
+   * The rating grid (age band × gender × occupation × sum assured, premium and unit-linked mortality)
+   * and the omni-channel registry (channels, partners, per-partner products, rates, commission and
+   * clawback). Both are public because routes and the console read them directly — the rules they hold
+   * are not the ERP's business, only its books' — but they are constructed here, after the regional
+   * master, because a tariff row without a currency to be filed in is not a number.
+   */
+  readonly rating: RateTables;
+  readonly channels: OmniChannelRegistry;
   /** Country, region, calendar, time zone, local currency and the foreign rate card. */
   private regional!: RegionalDesk;
   private readonly proposals = new Map<string, ErpProposalMeta>();
@@ -199,6 +250,29 @@ export class ErpManager {
       allowsSurplusToSavers: false,
       jurisdiction: 'AE',
     };
+    this.rating = new RateTables(
+      (productId) => {
+        const product = this.products.get(productId);
+        if (!product) return undefined;
+        return {
+          productId: product.productId, name: product.name, currency: product.currency,
+          minAge: product.rules.minAge, maxAge: product.rules.maxAge, category: product.category,
+          standardOccupations: product.rules.standardOccupations,
+        };
+      },
+      () => this.regional.current.localCurrency,
+    );
+    this.channels = new OmniChannelRegistry(
+      (productId) => {
+        const product = this.products.get(productId);
+        if (!product) return undefined;
+        return {
+          productId: product.productId, name: product.name, category: product.category,
+          currency: product.currency, secondaryName: product.secondaryName,
+        };
+      },
+      () => this.regional.current.localCurrency,
+    );
     this.seedFromWorld(w);
   }
 
@@ -258,6 +332,9 @@ export class ErpManager {
         line: variety.line,
         variety: variety.variety,
         blurb: variety.blurb,
+        // A seeded variety has one name: the filed one. The secondary names are a distribution
+        // decision, and a world that invented its own marketing names would be inventing a filing.
+        secondaryName: '',
         entityId: variety.category === 'takaful' ? w.takafulEntity : w.conventionalEntity,
         currency,
         defaultFunds: [...(variety.defaultFunds ?? [])],
@@ -266,6 +343,7 @@ export class ErpManager {
       };
     });
     for (const p of seededProducts) this.products.set(p.productId, p);
+    this.seedRatingGrid(w);
 
     // Seed metadata for the 4 underwriting applications in buildWorld
     for (const app of w.underwriting.list()) {
@@ -1363,7 +1441,13 @@ export class ErpManager {
         }
         const fundId = input.fundId?.trim() || 'FGLOBAL';
         const code = input.chargeCode ?? 'admin';
-        const chgAmount = parseAmount(String(input.amount ?? '25.00'), policy.currency);
+        // A cost-of-insurance charge with no amount is priced from the rating grid — the insured's own
+        // age, sex and occupational rank against the product's mortality table — rather than defaulted to
+        // a flat figure, because a COI that ignores the risk is the wrong money on the wrong policy.
+        const priced = code === 'coi' && input.amount === undefined && this.rating.count() > 0
+          ? this.mortalityChargeForPolicy(w, policy.policyId)
+          : null;
+        const chgAmount = priced ? priced.amount : parseAmount(String(input.amount ?? '25.00'), policy.currency);
         const beforeUnits = unitsToDecimal(w.unitLinked.unitsOf(policy.policyId, fundId));
         before = `${fundId}: ${beforeUnits} units`;
         const txn = w.unitLinked.chargePolicy({
@@ -1372,10 +1456,10 @@ export class ErpManager {
           code,
           amount: chgAmount,
           instructionAt: at,
-          basis: reason,
+          basis: priced ? `${reason} — ${priced.basis}` : reason,
         });
         const afterUnits = unitsToDecimal(w.unitLinked.unitsOf(policy.policyId, fundId));
-        after = `${fundId}: ${afterUnits} units (${code} charge deducted)`;
+        after = `${fundId}: ${afterUnits} units (${code} charge deducted${priced ? ` · ${priced.basis}` : ''})`;
         amount = txn.value;
         fee = txn.value;
         journalIds = txn.journalIds;
@@ -1658,6 +1742,306 @@ export class ErpManager {
     return register.register(treaty);
   }
 
+  /* ------------------------------- the tariff grid a fresh world is priced from
+   *
+   * The grid is seeded, not invented: every band multiplies the product's own filed base rate per 1,000
+   * (or the unit-linked charge schedule's own monthly cost of insurance) by a shape factor in basis
+   * points. So `PROD-UL-GLOBAL` priced from its tariff before this grid existed is priced from the same
+   * tariff now — a 25-year-old standard life on the base band lands on the filed figure, and the ages,
+   * genders, ranks and sums around it are spread from it. A tenant overwrites any row it disagrees with,
+   * in the grid or by bulk upload.
+   */
+  private seedRatingGrid(w: World): void {
+    const currency = this.regional.current.localCurrency;
+    const AGE_FACTORS = [5500, 8000, 12500, 21000, 36000];
+    const SUM_FACTORS = [10000, 10500];
+    const GENDER_FACTORS: Record<string, number> = { male: 11000, female: 9200 };
+    const CLASS_FACTORS: Record<number, number> = { 1: 10000, 3: 11800, 5: 19000 };
+    const seeds = [
+      'PROD-UL-GLOBAL', 'PROD-UL-ENDOWMENT', 'PROD-UL-LIFESTYLE', 'PROD-LIFE-TERM',
+      'PROD-TKF-FAMILY', 'PROD-CI-COMPREHENSIVE', 'PROD-MEDICAL-GRP',
+    ];
+    // The monthly cost of insurance the unit-linked engine already charges, as a filed decimal per 1,000.
+    const coiLabel = (w.unitLinked.chargeSchedule().coiPerMilleMonthly / 100).toFixed(2);
+    for (const productId of seeds) {
+      const product = this.products.get(productId);
+      if (!product) continue;
+      const minAge = product.rules.minAge;
+      const maxAge = product.rules.maxAge;
+      const span = Math.max(1, maxAge - minAge);
+      for (let band = 0; band < AGE_FACTORS.length; band++) {
+        const from = minAge + Math.floor((span * band) / AGE_FACTORS.length);
+        const to = band === AGE_FACTORS.length - 1 ? maxAge : minAge + Math.floor((span * (band + 1)) / AGE_FACTORS.length) - 1;
+        for (let sums = 0; sums < SUM_FACTORS.length; sums++) {
+          const minor = applyBps(
+            applyBps(money(product.rules.baseRatePerThousandMinor, currency), AGE_FACTORS[band]!),
+            SUM_FACTORS[sums]!,
+          ).minor;
+          this.rating.upsert({
+            productId, kind: 'premium', gender: 'unisex', ageFrom: from, ageTo: to, occupationClass: 0,
+            sumFrom: sums === 0 ? '0.00' : '250,000.00',
+            sumTo: sums === 0 ? '250,000.00' : null,
+            ratePerThousand: toDecimalString(money(minor, currency)),
+            currency,
+            note: sums === 0 ? `Seeded band ${band + 1}: up to 250,000 of cover` : `Seeded band ${band + 1}: 250,000 and above, 5% loading on the tariff`,
+            by: 'tariff-seed',
+          });
+        }
+        if (product.category !== 'unit-linked' && product.category !== 'takaful') continue;
+        for (const gender of ['male', 'female'] as const) {
+          for (const occupationClass of [1, 3, 5]) {
+            const minor = applyBps(
+              applyBps(
+                applyBps(parseAmount(coiLabel, currency), AGE_FACTORS[band]!),
+                GENDER_FACTORS[gender]!,
+              ),
+              CLASS_FACTORS[occupationClass]!,
+            ).minor;
+            this.rating.upsert({
+              productId, kind: 'mortality', gender, ageFrom: from, ageTo: to, occupationClass,
+              sumFrom: '0.00', sumTo: null,
+              ratePerThousand: toDecimalString(money(minor, currency)),
+              currency,
+              note: `Cost of insurance per month, class ${occupationClass}, ${gender}, ages ${from}-${to}`,
+              by: 'tariff-seed',
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Save the product factory's grid in one call.
+   *
+   * A table of products is edited as a table, so it has to be saved as a table — and a table with one
+   * bad row must not lose the twenty good ones. Each row is filed through `defineProductMaster` (the
+   * same call the single-product form uses, so there is one path to a product's underwriting rules) and
+   * every refusal is collected with the row number it came from, which is what the grid writes back
+   * into the row's own cell.
+   */
+  defineProductMasters(w: World, rows: ProductRowInput[], options: { at?: string; by?: string } = {}): {
+    saved: ProductMaster[];
+    created: number;
+    updated: number;
+    rejected: Array<{ index: number; productId: string; reasons: string[] }>;
+  } {
+    const saved: ProductMaster[] = [];
+    const rejected: Array<{ index: number; productId: string; reasons: string[] }> = [];
+    let created = 0;
+    rows.forEach((row, index) => {
+      const productId = String(row.productId ?? '').trim().toUpperCase();
+      const reasons: string[] = [];
+      if (!productId) reasons.push('A row needs a Product ID before it can be filed.');
+      if (productId && !String(row.name ?? '').trim() && !this.products.has(productId)) {
+        reasons.push(`${productId} is not on file, so this row has to name the product it is filing.`);
+      }
+      const minAge = Number(row.minAge);
+      const maxAge = Number(row.maxAge);
+      if (Number.isFinite(minAge) && Number.isFinite(maxAge) && minAge >= maxAge) {
+        reasons.push(`An entry range of ${minAge}–${maxAge} admits nobody.`);
+      }
+      const auto = numericAmount(row.automaticBindingLimit);
+      const fac = numericAmount(row.facultativeThreshold);
+      if (auto !== null && fac !== null && fac < auto) {
+        reasons.push('The facultative threshold must be at or above the automatic binding limit, or every case goes to the reinsurer.');
+      }
+      const ai = numericAmount(row.aiStraightThroughLimit);
+      if (ai !== null && auto !== null && ai > auto) {
+        reasons.push('An AI straight-through limit above the automatic binding limit would let an agent bind what the treaty requires the reinsurer to see.');
+      }
+      if (reasons.length > 0) { rejected.push({ index, productId, reasons }); return; }
+      try {
+        const wasOnFile = this.products.has(productId);
+        saved.push(this.defineProductMaster(w, {
+          productId,
+          ...(row.name !== undefined ? { name: String(row.name) } : {}),
+          ...(row.secondaryName !== undefined ? { secondaryName: String(row.secondaryName) } : {}),
+          ...(row.category !== undefined ? { category: String(row.category) as PolicyCategory } : {}),
+          ...(row.line !== undefined ? { line: String(row.line) as ProductLine } : {}),
+          ...(row.minAge !== undefined ? { minAge: Number(row.minAge) } : {}),
+          ...(row.maxAge !== undefined ? { maxAge: Number(row.maxAge) } : {}),
+          ...(row.maxBmi !== undefined ? { maxBmi: Number(row.maxBmi) } : {}),
+          ...(row.baseRatePerThousand !== undefined ? { baseRatePerThousand: String(row.baseRatePerThousand) } : {}),
+          ...(row.incomeMultiple !== undefined ? { incomeMultiple: Number(row.incomeMultiple) } : {}),
+          ...(row.automaticBindingLimit !== undefined ? { automaticBindingLimit: String(row.automaticBindingLimit) } : {}),
+          ...(row.facultativeThreshold !== undefined ? { facultativeThreshold: String(row.facultativeThreshold) } : {}),
+          ...(row.aiStraightThroughLimit !== undefined ? { aiStraightThroughLimit: String(row.aiStraightThroughLimit) } : {}),
+          ...(row.variety !== undefined ? { variety: String(row.variety) } : {}),
+          ...(row.blurb !== undefined ? { blurb: String(row.blurb) } : {}),
+          ...(row.currency !== undefined ? { currency: String(row.currency) } : {}),
+          ...(row.acceptedCountries ? { acceptedCountries: row.acceptedCountries } : {}),
+          ...(row.defaultFunds ? { defaultFunds: row.defaultFunds } : {}),
+          by: options.by ?? 'product-factory-grid',
+        }));
+        if (!wasOnFile) created++;
+      } catch (error) {
+        rejected.push({ index, productId, reasons: [error instanceof Error ? error.message : String(error)] });
+      }
+    });
+    return { saved, created, updated: saved.length - created, rejected };
+  }
+
+  /**
+   * Copy a product and its tariff: the way a new variety is actually filed.
+   *
+   * `defineProductMaster` derives an unfiled product from the life manual, which is right for a term
+   * plan and wrong for a marine open cover. A copy takes the source's filed rules *and* its rate rows,
+   * so the new variety starts as an exact twin and the difference is what the operator then edits.
+   */
+  copyProductMaster(w: World, input: { sourceProductId: string; productId: string; name?: string; secondaryName?: string; copyRates?: boolean; by?: string }): {
+    master: ProductMaster; copiedRateRows: number;
+  } {
+    const sourceId = input.sourceProductId.trim().toUpperCase();
+    const targetId = input.productId.trim().toUpperCase();
+    const source = this.products.get(sourceId);
+    if (!source) throw new ErpError(`no product ${sourceId} to copy`);
+    if (!targetId) throw new ErpError('the copy needs a new Product ID');
+    if (this.products.has(targetId)) throw new ErpError(`${targetId} is already on file — copy to a new id rather than over ${targetId}`);
+    const master = this.defineProductMaster(w, {
+      productId: targetId,
+      name: input.name?.trim() || `${source.name} (copy)`,
+      secondaryName: input.secondaryName ?? source.secondaryName,
+      category: source.category,
+      line: source.line,
+      variety: source.variety,
+      blurb: source.blurb,
+      currency: source.currency,
+      minAge: source.rules.minAge,
+      maxAge: source.rules.maxAge,
+      referralMarginYears: source.rules.referralMarginYears,
+      maxBmi: source.rules.maxBmi,
+      incomeMultiple: source.rules.incomeMultiple,
+      baseRatePerThousand: toDecimalString(money(source.rules.baseRatePerThousandMinor, source.currency)),
+      automaticBindingLimit: toDecimalString(money(source.rules.automaticBindingLimitMinor, source.currency)),
+      facultativeThreshold: toDecimalString(money(source.rules.facultativeThresholdMinor, source.currency)),
+      aiStraightThroughLimit: toDecimalString(money(source.rules.aiStraightThroughMinor, source.currency)),
+      acceptedCountries: [...source.rules.acceptedCountries],
+      defaultFunds: [...source.defaultFunds],
+      by: input.by ?? 'product-factory-copy',
+    });
+    let copiedRateRows = 0;
+    if (input.copyRates !== false) {
+      for (const row of this.rating.listFor({ productId: sourceId })) {
+        this.rating.upsert({
+          ...row, productId: targetId, rowId: undefined,
+          note: row.note ? `Copied from ${sourceId}: ${row.note}` : `Copied from ${sourceId}`,
+          by: input.by ?? 'product-factory-copy',
+        });
+        copiedRateRows++;
+      }
+    }
+    return { master, copiedRateRows };
+  }
+
+  /**
+   * Price a named life from the grid, then apply what the partner contract says.
+   *
+   * The tariff answers "what does this risk cost"; the offer answers "what does this partner sell it
+   * for" — an absolute rate per 1,000 where the contract filed one, otherwise an uplift in basis
+   * points on the premium or on the monthly cost of insurance. Both steps are exact: an uplift is
+   * `applyBps` on money, never a float multiply, and the basis string names the row that priced it.
+   */
+  priceRisk(w: World, input: {
+    productId: string;
+    age: number;
+    gender?: string;
+    occupationClass?: number;
+    sumAssured?: string;
+    kind?: 'premium' | 'mortality';
+    channelCode?: string | null;
+    partnerId?: string | null;
+  }): {
+    price: RatePrice;
+    partner: { partnerId: string; name: string; channelCode: string; commissionBps: readonly number[] } | null;
+    basis: string;
+  } {
+    const kind = input.kind ?? 'premium';
+    const partnerId = (input.partnerId ?? '').trim().toUpperCase();
+    const partner = partnerId ? this.channels.partner(partnerId) : null;
+
+    /** One lookup in the tariff store; `specific` asks for the partner's own rows first. */
+    const lookup = (specific: boolean) => this.rating.price({
+      productId: input.productId, kind, age: Number(input.age),
+      gender: input.gender, occupationClass: input.occupationClass, sumAssured: input.sumAssured,
+      channelCode: input.channelCode ?? (specific ? partner?.channelCode ?? null : null),
+      partnerId: specific ? partnerId : null,
+    });
+    // A life sold through a partner is priced from that partner's rows when the tariff holds any, and
+    // from the base tariff underneath when it does not: the override is a row, not a fudge afterwards.
+    const throughPartner = partnerId ? lookup(true) : null;
+    const base = throughPartner && throughPartner.priced ? throughPartner : lookup(false);
+    if (!partnerId) {
+      return {
+        price: base, partner: null,
+        basis: base.priced ? `${base.basis} — the base tariff, no partner terms applied` : base.basis,
+      };
+    }
+    if (!partner) throw new ErpError(`no partner ${partnerId} — file the partner on its channel before pricing through it`);
+    const terms = this.channels.termsFor(partnerId, input.productId);
+    let amount = base.amount;
+    let basis = base.basis;
+    if (!base.priced) {
+      throw new ErpError(`${input.productId.toUpperCase()} cannot be priced for ${partnerId}: ${base.reasons[0] ?? 'no tariff row matched'}`);
+    }
+    const currency = base.amount.currency;
+    if (kind === 'premium' && terms.ratePerThousand !== null) {
+      const sumMinor = base.sumAssured.minor;
+      const rateMinor = parseAmount(terms.ratePerThousand, currency).minor;
+      amount = money((sumMinor * rateMinor) / (1000n * 10n ** BigInt(scaleOf(currency))), currency);
+      basis = `${terms.ratePerThousand} per 1,000 (the ${partnerId} contract's own rate) on ${formatAmount(base.sumAssured)}`;
+    } else {
+      const uplift = kind === 'mortality' ? terms.mortalityUpliftBps : terms.premiumUpliftBps;
+      if (uplift !== 0) {
+        amount = applyBps(amount, 10000 + uplift);
+        basis = `${basis} · ${uplift > 0 ? '+' : ''}${uplift} bps ${kind} uplift from ${terms.source}`;
+      } else {
+        basis = `${basis} · no uplift on ${terms.source}`;
+      }
+    }
+    return {
+      price: { ...base, amount, basis },
+      partner: { partnerId: partner.partnerId, name: partner.name, channelCode: partner.channelCode, commissionBps: terms.commissionBps },
+      basis,
+    };
+  }
+
+  /**
+   * The monthly cost of insurance a unit-linked policy is charged, taken from the grid rather than from
+   * the flat schedule. The insured's age, sex and occupational rank come from the underwriting file the
+   * policy was converted from — the risk the decision was taken on, not a guess at it — and the sum
+   * assured is the policy's own, so an increase in cover raises the charge without anyone remembering
+   * to re-key it.
+   */
+  mortalityChargeForPolicy(w: World, policyId: string, options: { fallBackToSchedule?: boolean } = {}): {
+    amount: Money; basis: string; fromTable: boolean; row: RateRow | null;
+  } {
+    const policy = this.policies.get(policyId);
+    if (!policy) throw new ErpError(`unknown policy ${policyId}`);
+    const application = policy.applicationId ? w.underwriting.list().find((a) => a.id === policy.applicationId) : undefined;
+    const profile = application?.profile;
+    const price = this.rating.price({
+      productId: policy.productId, kind: 'mortality',
+      age: profile?.age ?? Math.min(45, Math.max(18, policy.commencement ? 45 : 45)),
+      gender: profile?.sex ?? 'unisex',
+      occupationClass: profile?.occupationClass ?? 0,
+      sumAssuredMinor: policy.sumAssured.minor,
+    });
+    if (price.priced) {
+      return { amount: price.amount, basis: price.basis, fromTable: true, row: price.row };
+    }
+    if (options.fallBackToSchedule === false) {
+      throw new ErpError(`${policyId}: ${price.reasons.join(' ')}`);
+    }
+    const schedule = w.unitLinked.chargeSchedule();
+    const perMille = parseAmount((schedule.coiPerMilleMonthly / 100).toFixed(2), policy.currency);
+    const amount = money((policy.sumAssured.minor * perMille.minor) / (1000n * 10n ** BigInt(scaleOf(policy.currency))), policy.currency);
+    return {
+      amount, fromTable: false, row: null,
+      basis: `flat schedule: ${toDecimalString(perMille)} per 1,000 of ${formatAmount(policy.sumAssured)} each month (no grid row covers this life)`,
+    };
+  }
+
   /* ============================================= 8. MASTER SETTINGS */
 
   /**
@@ -1672,6 +2056,8 @@ export class ErpManager {
   defineProductMaster(w: World, input: {
     productId: string;
     name?: string;
+    /** The omni-channel display name, filed with the product. Empty string clears it. */
+    secondaryName?: string;
     category?: PolicyCategory;
     line?: ProductLine;
     variety?: string;
@@ -1694,11 +2080,12 @@ export class ErpManager {
     const productId = input.productId.trim().toUpperCase();
     if (!productId) throw new ErpError('productId is required');
     const onFile = productVariety(productId);
-    const name = (input.name ?? onFile?.name ?? '').trim();
+    const existing = this.products.get(productId);
+    const name = (input.name ?? onFile?.name ?? existing?.name ?? '').trim();
     if (!name) throw new ErpError('productId and name are required');
     const currency = (input.currency?.trim().toUpperCase() || this.regional.current.localCurrency);
-    const category: PolicyCategory = input.category ?? onFile?.category ?? 'conventional';
-    const line: ProductLine = input.line ?? onFile?.line ?? 'life';
+    const category: PolicyCategory = input.category ?? onFile?.category ?? existing?.category ?? 'conventional';
+    const line: ProductLine = input.line ?? onFile?.line ?? existing?.line ?? 'life';
     const varietyInput: ProductVariety = {
       ...(onFile ?? {
         productId, name, line, category,
@@ -1740,6 +2127,7 @@ export class ErpManager {
       line,
       variety: varietyInput.variety,
       blurb: varietyInput.blurb,
+      secondaryName: (input.secondaryName ?? existing?.secondaryName ?? '').trim(),
       entityId: category === 'takaful' ? w.takafulEntity : w.conventionalEntity,
       currency,
       defaultFunds: input.defaultFunds && input.defaultFunds.length > 0
@@ -1779,6 +2167,33 @@ export class ErpManager {
    * route a product reads it here rather than re-deriving rates from formatted snapshot strings.
    */
   listProductMasters(): ProductMaster[] { return [...this.products.values()]; }
+
+  /**
+   * The filed masters in the notation the configuration grid and its sheet use: money as plain decimals
+   * rather than as a currency-labelled figure, so a row can be downloaded, edited in a spreadsheet and
+   * uploaded back without anybody parsing a string that has " AED" on the end of it.
+   */
+  productSheet(): Array<{
+    productId: string; name: string; secondaryName: string; category: string; line: string;
+    minAge: number; maxAge: number; maxBmi: number | null; baseRatePerThousand: string;
+    incomeMultiple: number | null; automaticBindingLimit: string; facultativeThreshold: string; aiStraightThroughLimit: string;
+  }> {
+    return [...this.products.values()].map((p) => ({
+      productId: p.productId,
+      name: p.name,
+      secondaryName: p.secondaryName,
+      category: p.category,
+      line: p.line,
+      minAge: p.rules.minAge,
+      maxAge: p.rules.maxAge,
+      maxBmi: p.rules.maxBmi ?? null,
+      baseRatePerThousand: toDecimalString(money(p.rules.baseRatePerThousandMinor, p.currency)),
+      incomeMultiple: p.rules.incomeMultiple ?? null,
+      automaticBindingLimit: toDecimalString(money(p.rules.automaticBindingLimitMinor, p.currency)),
+      facultativeThreshold: toDecimalString(money(p.rules.facultativeThresholdMinor, p.currency)),
+      aiStraightThroughLimit: toDecimalString(money(p.rules.aiStraightThroughMinor, p.currency)),
+    }));
+  }
 
   productMaster(productId: string): ProductMaster {
     const product = this.products.get(productId);
@@ -2046,10 +2461,24 @@ export class ErpManager {
     const products = [...this.products.values()].map((p) => ({
       productId: p.productId,
       name: p.name,
+      secondaryName: p.secondaryName,
       category: p.category,
       line: p.line,
       variety: p.variety,
       blurb: p.blurb,
+      /** How the plan is shown on each channel's shelf, resolved through partner alias > channel alias >
+          the product's own secondary name > the registered name. */
+      channelNames: this.channels.channelsForProduct(p.productId).map((c) => ({
+        channelCode: c.channel.code, channelName: c.channel.name, partners: c.partners, secondaryName: c.secondaryName,
+      })),
+      partners: this.channels.partnersForProduct(p.productId).map((partner) => ({
+        partnerId: partner.partnerId, name: partner.name, channelCode: partner.channelCode, enabled: partner.enabled,
+      })),
+      /** The tariff grid filed against this product, and where it has holes. */
+      rateRows: this.rating.listFor({ productId: p.productId }).length,
+      rateGaps: this.rating.ageGaps(p.productId, 'premium').flatMap((g) => g.gaps.map((gap) => ({
+        gender: g.gender, occupationClass: g.occupationClass, from: gap.from, to: gap.to,
+      }))),
       entityId: p.entityId,
       currency: p.currency,
       defaultFunds: [...p.defaultFunds],
@@ -2103,6 +2532,15 @@ export class ErpManager {
         tenantSettings: { ...this.tenantSettings },
         regional: this.regionalSnapshot(),
         productLines: catalogueByLine().map((l) => ({ line: l.line, label: l.label, family: l.family, count: l.count, productIds: l.productIds })),
+        /** The rating grid: the rows, the statistics the screen heads with, and the file trail. */
+        rating: {
+          rows: this.rating.list(),
+          stats: this.rating.stats(),
+          trail: this.rating.audit(6),
+          template: this.rating.template(['PROD-UL-GLOBAL', 'PROD-LIFE-TERM', 'PROD-TKF-FAMILY']),
+        },
+        /** The omni-channel: channels with their partners, and each partner's products and terms. */
+        channels: this.channels.snapshot(),
         catalogueSize: PRODUCT_CATALOGUE.length,
         charges: {
           allocationChargeBps: charges.allocationChargeBps,

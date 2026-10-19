@@ -2,11 +2,11 @@
 
 **An AI-native Insurance ERP** — term and whole-of-life, critical illness, income protection, endowment, mortgage, medical, motor, travel, home and contents, property, liability, engineering, marine cargo, hull and aviation, group benefits, unit-linked and **takaful** (96 filed varieties across 17 lines) — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory), **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (530 cases) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (615 cases over 44 files) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + 530 tests + build
+npm run verify     # typecheck + 615 tests + build
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data
@@ -87,6 +87,7 @@ See [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md).
 | [`docs/07-TOUR.md`](docs/07-TOUR.md) | The sixty-minute guided tour of the live app, generated from `src/core/tour.ts` (the same data the console's Tour tab runs) |
 | [`docs/09-CUSTOMER-JOURNEY.md`](docs/09-CUSTOMER-JOURNEY.md) | The guided customer lifecycle: the nineteen gated sections, what "complete" means, why the gate lives in the core, the API, and what was verified |
 | [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md) | Tenant master settings: the regional card (country, time zone, date order, local and foreign currency), renaming journey fields, the 96-variety product catalogue, and the AI guide with its switch — the API, the refusals and what is verified |
+| [`docs/11-PRODUCT-CONFIG-RATING-AND-OMNI-CHANNEL.md`](docs/11-PRODUCT-CONFIG-RATING-AND-OMNI-CHANNEL.md) | The product shelf as an editable table with a copy-line and a bulk sheet, the rating grid (age × gender × occupational rank × sum assured, premium and unit-linked cost of insurance), per-channel secondary names, and the omni-channel master: channels, partners, per-partner products, rates, commission and clawback |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |

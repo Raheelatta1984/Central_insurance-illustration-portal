@@ -51,7 +51,7 @@ describe('the playbook covers every screen', () => {
       expect(seed, `journey:${stage.id}`).toBeDefined();
       expect(seed!.headline.length).toBeGreaterThan(12);
     }
-    for (const gate of ['regional', 'journey-fields', 'products', 'charges', 'takaful', 'authority', 'fx-vocabulary', 'command']) {
+    for (const gate of ['regional', 'journey-fields', 'products', 'product-rating', 'omni-channel', 'charges', 'takaful', 'authority', 'fx-vocabulary', 'command']) {
       expect(SECTION_GUIDES[`master:${gate}`], `master:${gate}`).toBeDefined();
     }
     // The claims and underwriting rails are where money actually moves; they are curated too.

@@ -5,6 +5,10 @@ import type { ConsoleTab } from '../core/tour';
 import { api } from './api';
 import { GuideBanner, GuideHeading } from './guide';
 import { SectionGroup, fields } from './sections';
+import { DEFAULT_PRODUCT_FORM, PRODUCT_PAGE_SIZE, ProductConfigGrid, type ProductForm } from './product-grid';
+export { PRODUCT_PAGE_SIZE };
+import { RatingTablesPanel } from './rating-views';
+import { OmniChannelPanel } from './channel-views';
 
 export const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({
   title,
@@ -2623,40 +2627,28 @@ function RegionalMasterPanel({ regional, busy, onSave, onQuote, onRemove }: {
  * form so an operator amends the numbers on file rather than retyping them, the shelf can be filtered
  * by line, and the money labels read the local currency from the regional master.
  */
-export type ProductForm = {
-  prodId: string;
-  prodName: string;
-  prodCat: 'unit-linked' | 'takaful' | 'conventional' | 'motor-payg';
-  prodLine: string;
-  minAge: number;
-  maxAge: number;
-  maxBmi: number;
-  baseRate: string;
-  incomeMultiple: number;
-  autoLimit: string;
-  facThreshold: string;
-  aiLimit: string;
-};
+/* The product factory's draft type, its default, and the editable grid itself all live in
+ * `product-grid.tsx`, so the sheet, the grid and this section read one definition. Re-exported here
+ * because the section below and the console's tests import them from this module. */
+export type { ProductForm };
+export { DEFAULT_PRODUCT_FORM };
 
-export const DEFAULT_PRODUCT_FORM: ProductForm = {
-  prodId: 'PROD-UL-GLOBAL', prodName: 'Global Unit-Linked Plan', prodCat: 'unit-linked', prodLine: 'life',
-  minAge: 18, maxAge: 65, maxBmi: 32, baseRate: '48.00', incomeMultiple: 15,
-  autoLimit: '1,000,000.00', facThreshold: '1,500,000.00', aiLimit: '250,000.00',
-};
-
-export function ProductFactoryPanel({ data, busy, form, setForm, onSave }: {
+export function ProductFactoryPanel({ data, busy, form, setForm, onSave, onRun, label }: {
   data: WorldSnapshot;
   busy: boolean;
   form: ProductForm;
   setForm: (patch: Partial<ProductForm>) => void;
   onSave: (payload: Record<string, unknown>) => Promise<unknown> | unknown;
+  /** The section's runner. Without it the grid files through `api` itself and the caller sees no spinner. */
+  onRun?: (label: string, fn: () => Promise<unknown>) => Promise<unknown>;
+  label?: (key: string, fallback: string) => string;
 }) {
   const productLines = data.erp.master.productLines;
   const productMasters = data.erp.master.products;
   const localCurrency = data.erp.master.regional.localCurrency;
-  const [lineFilter, setLineFilter] = useState<string>('all');
+  const masterLabel = label ?? ((key: string, fallback: string) => data.labels.en[key] ?? fallback);
 
-  const { prodId, prodName, prodCat, prodLine, minAge, maxAge, maxBmi, baseRate, incomeMultiple, autoLimit, facThreshold, aiLimit } = form;
+  const { prodId, prodName, prodCat, prodLine, minAge, maxAge, maxBmi, baseRate, incomeMultiple, autoLimit, facThreshold, aiLimit, secondaryName } = form;
   const setProdId = (v: string) => setForm({ prodId: v });
   const setProdName = (v: string) => setForm({ prodName: v });
   const setProdCat = (v: ProductForm['prodCat']) => setForm({ prodCat: v });
@@ -2689,61 +2681,24 @@ export function ProductFactoryPanel({ data, busy, form, setForm, onSave }: {
       autoLimit: strip(chosen.automaticBindingLimit),
       facThreshold: strip(chosen.facultativeThreshold),
       aiLimit: strip(chosen.aiStraightThroughLimit),
+      secondaryName: chosen.secondaryName ?? '',
     });
   };
 
   const chosenVariety = productMasters.find((p) => p.productId === prodId);
-  const shelves = lineFilter === 'all' ? productMasters : productMasters.filter((p) => p.line === lineFilter);
 
   return (
     <>
-        <div className="pills">
-          <Pill tone="ok">{data.erp.master.catalogueSize} varieties on file</Pill>
-          <Pill tone="info">{productLines.length} lines in {new Set(productLines.map((l) => l.family)).size} families</Pill>
-          <Pill tone="info">quoted in {localCurrency}</Pill>
-        </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          <label>
-            Show line
-            <select value={lineFilter} onChange={(e) => setLineFilter(e.target.value)} style={{ width: 260 }}>
-              <option value="all">All {productLines.length} lines ({productMasters.length} varieties)</option>
-              {productLines.map((l) => <option key={l.line} value={l.line}>{l.family} · {l.label} ({l.count})</option>)}
-            </select>
-          </label>
-          <span className="muted small">{shelves.length} row{shelves.length === 1 ? '' : 's'} shown</span>
-        </div>
-        <Table
-          head={[
-            'Product ID',
-            'Name',
-            'Variety',
-            'Category',
-            'Line',
-            'Entry Age',
-            'Max BMI',
-            'Base Rate / 1k',
-            'Income Multiple',
-            'Auto Binding Limit',
-            'Facultative Threshold',
-            'AI Straight-Through',
-          ]}
-          rows={shelves.map((p) => [
-            <b key={`${p.productId}-id`}>{p.productId}</b>,
-            <span key={`${p.productId}-n`} title={p.blurb}>{p.name}</span>,
-            p.variety,
-            <Pill key={`${p.productId}-c`} tone={p.category === 'takaful' ? 'ok' : 'info'}>
-              {p.category}
-            </Pill>,
-            p.line,
-            `${p.minAge}–${p.maxAge}`,
-            String(p.maxBmi ?? '—'),
-            p.baseRatePerThousand,
-            `${p.incomeMultiple ?? '—'}x`,
-            p.automaticBindingLimit,
-            p.facultativeThreshold,
-            p.aiStraightThroughLimit,
-          ])}
-        />
+      {/* The whole shelf, editable: every filed variety is a row, every cell is the master's own field,
+          and a row can be copied, reordered, saved on its own or filed in a bulk sheet. */}
+      <ProductConfigGrid
+        data={data}
+        busy={busy}
+        onRun={onRun}
+        label={label}
+        onFocusRow={(row) => setForm(row)}
+      />
+
         {chosenVariety && (
           <p className="small muted" style={{ marginTop: 8 }}>
             <b>{chosenVariety.variety}</b> — {chosenVariety.blurb} Filed for {chosenVariety.entityId} in {chosenVariety.currency}.
@@ -2831,11 +2786,21 @@ export function ProductFactoryPanel({ data, busy, form, setForm, onSave }: {
             AI Straight-Through Limit ({localCurrency})
             <input value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ width: 135 }} />
           </label>
+          <label>
+            {masterLabel('master.product.secondaryName', 'Omni-channel name')}
+            <input
+              value={secondaryName}
+              onChange={(e) => setForm({ secondaryName: e.target.value })}
+              placeholder={prodName || 'the name a shelf shows'}
+              style={{ width: 210 }}
+            />
+          </label>
           <button
             disabled={busy}
             onClick={() => onSave({
               productId: prodId,
               name: prodName,
+              secondaryName,
               category: prodCat,
               line: prodLine,
               minAge,
@@ -2872,7 +2837,7 @@ export function MasterSettingsErp({
   // be blocked before anyone presses save.
   const [form, setFormState] = useState<ProductForm>(DEFAULT_PRODUCT_FORM);
   const setForm = (patch: Partial<ProductForm>) => setFormState((current) => ({ ...current, ...patch }));
-  const { prodId, prodName, prodCat, prodLine, minAge, maxAge, maxBmi, baseRate, incomeMultiple, autoLimit, facThreshold, aiLimit } = form;
+  const { prodId, prodName, prodCat, prodLine, minAge, maxAge, maxBmi, baseRate, incomeMultiple, autoLimit, facThreshold, aiLimit, secondaryName } = form;
 
   // Unit-Linked Charges form
   const [allocBps, setAllocBps] = useState(data.erp.master.unitLinkedCharges.allocationChargeBps);
@@ -2941,6 +2906,33 @@ export function MasterSettingsErp({
       setBusy(false);
     }
   };
+
+  /**
+   * The grids' runner. It is `runAction` with the answer handed back to the caller, because a refusal has
+   * to land on the row that caused it: the notice tells the operator what happened, the return value tells
+   * the grid which of its rows to mark.
+   */
+  const runGrid = async (description: string, fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    let result: unknown = null;
+    try {
+      result = await fn();
+      await onReload();
+      setNotice(`${description}: ${JSON.stringify(result)}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+    return result;
+  };
+
+  const tariffRowsByProduct = new Map(data.erp.master.products.map((p) => [p.productId, p.rateRows ?? 0]));
+  const tariffGaps = data.erp.master.products.flatMap((p) => p.rateGaps ?? []);
+  const tariffGapProducts = data.erp.master.products.filter((p) => (p.rateGaps?.length ?? 0) > 0).length;
+  const unpricedUnitLinked = data.erp.master.products.filter((p) => (p.category === 'unit-linked' || p.category === 'takaful') && (tariffRowsByProduct.get(p.productId) ?? 0) === 0);
 
   const numericAmount = (value: string) => Number(String(value).replace(/[^0-9.]/g, '')) || 0;
 
@@ -3138,6 +3130,7 @@ export function MasterSettingsErp({
             [masterLabel('master.product.autoLimit', 'Automatic binding limit'), autoLimit],
             [masterLabel('master.product.facultativeThreshold', 'Facultative threshold'), facThreshold],
             [masterLabel('master.product.aiLimit', 'AI straight-through limit'), aiLimit],
+            [masterLabel('master.product.secondaryName', 'Omni-channel name'), secondaryName || '— the registered name is shown everywhere'],
           ),
           blockers: minAge >= maxAge
             ? [`An entry range of ${minAge}–${maxAge} admits nobody`]
@@ -3153,9 +3146,71 @@ export function MasterSettingsErp({
               busy={busy}
               form={form}
               setForm={setForm}
+              onRun={runGrid}
+              label={masterLabel}
               onSave={(payload) => runAction('Product master saved', () => api('/master/product', 'POST', payload))}
             />
           ),
+        },
+        {
+          id: 'product-rating',
+          title: 'Rating tables — by age, gender, occupational rank and sum assured',
+          subtitle: 'The premium a life is quoted at per 1,000, and the unit-linked cost of insurance it is charged each policy month — with the sheet a pricing team fills in and uploads',
+          // A master-data screen the desk opens on purpose: it lists what is filed and what is missing,
+          // but a tariff hole must not lock the settings screens that sit behind it.
+          informational: true,
+          badges: <Pill tone={data.erp.master.rating.stats.rows > 0 ? 'ok' : 'warn'}>{data.erp.master.rating.stats.rows} tariff row(s)</Pill>,
+          fields: fields(
+            [masterLabel('master.rating.rows', 'Tariff rows on file'), data.erp.master.rating.stats.rows],
+            [masterLabel('master.rating.scope', 'Product priced by band'), `${data.erp.master.rating.stats.productsCovered} of ${data.erp.master.products.length} products`],
+            ['Premium / mortality rows', `${data.erp.master.rating.stats.premiumRows} / ${data.erp.master.rating.stats.mortalityRows}`],
+            ['Channel and partner overrides', `${data.erp.master.rating.stats.channelRows} channel · ${data.erp.master.rating.stats.partnerRows} partner`],
+            [masterLabel('master.rating.gaps', 'Uncovered age bands'), tariffGaps.length],
+          ),
+          blockers: data.erp.master.rating.stats.rows === 0
+            ? ['No tariff is on file at all, so nobody can be quoted from a band — every life would be priced at the flat base rate.']
+            : [],
+          warnings: [
+            tariffGaps.length > 0
+              ? `${tariffGaps.length} age group(s) across ${tariffGapProducts} product(s) have no rate row: a life at those ages cannot be quoted, only referred.`
+              : '',
+            unpricedUnitLinked.length > 0
+              ? `${unpricedUnitLinked.length} unit-linked or takaful product(s) carry no mortality rows, so their cost of insurance falls back to the single monthly per-mille figure on the charge schedule.`
+              : '',
+          ].filter(Boolean),
+          // The tariff opens on the variety the shelf above is standing on, and choosing a product here
+          // moves the shelf's row with it: one product in focus across both grids, never two.
+          children: (
+            <RatingTablesPanel
+              data={data}
+              busy={busy}
+              onRun={runGrid}
+              productId={prodId}
+              onPickProduct={(next) => setForm({ prodId: next })}
+            />
+          ),
+        },
+        {
+          id: 'omni-channel',
+          title: 'Omni-channel setup — channels, partners, and what each partner sells at',
+          subtitle: 'Every route a plan is sold through, the partners on each route, and the products, rates, commission and clawback filed partner by partner',
+          informational: true,
+          badges: data.erp.master.channels.channelCount === 0
+            ? <Pill tone="warn">not set up</Pill>
+            : <Pill tone="ok">{data.erp.master.channels.channelCount} channel(s) · {data.erp.master.channels.partnerCount} partner(s)</Pill>,
+          fields: fields(
+            ['Omni-channels', data.erp.master.channels.channelCount],
+            ['Live channels', data.erp.master.channels.enabledChannelCount],
+            [masterLabel('master.channel.partner', 'Partner'), `${data.erp.master.channels.partnerCount} filed`],
+            ['Trading partners', data.erp.master.channels.enabledPartnerCount],
+            [masterLabel('master.channel.shelfName', 'Shelf name'), `${data.erp.master.channels.offerCount} product term(s)`],
+            ['Products on a shelf', data.erp.master.channels.productsOnShelf],
+          ),
+          blockers: data.erp.master.channels.channelCount === 0
+            ? ['Omni-channel is not set up. Until a channel exists no partner can be filed, nothing can be put on a partner\u2019s shelf, and every product can only be sold direct.']
+            : data.erp.master.channels.blockers.slice(0, 4),
+          warnings: data.erp.master.channels.warnings.slice(0, 4),
+          children: <OmniChannelPanel data={data} busy={busy} onRun={runGrid} />,
         },
         {
           id: 'charges',

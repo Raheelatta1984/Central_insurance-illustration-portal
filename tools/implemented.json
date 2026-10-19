@@ -1,5 +1,5 @@
 {
-  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done — but only if the evidence files exist and the module's tests pass. A module's test list may name more than one file: every listed file must pass before anything is claimed.",
+  "note": "What the fleet has actually built and verified so far. Each module lists capability keyword fragments; a backlog chunk whose capability text contains one of them, in one of the listed layers, is claimable as done \u2014 but only if the evidence files exist and the module's tests pass. A module's test list may name more than one file: every listed file must pass before anything is claimed. Rating tables, the product configuration sheet and the omni-channel registry are claimed under PROD and PARTY: the evidence is src/core/rating.test.ts, src/core/channels.test.ts, src/core/master.test.ts and src/ui/master-grids.test.ts.",
   "modules": {
     "PLAT": {
       "keywords": [
@@ -58,7 +58,9 @@
         "merge and split",
         "relationship graph",
         "cross-party existence lookup",
-        "identity documents"
+        "identity documents",
+        "omni-channel registry",
+        "partner commission and clawback"
       ],
       "layers": [
         "design",
@@ -71,7 +73,8 @@
       ],
       "evidence": [
         "src/core/party.ts",
-        "src/core/party.test.ts"
+        "src/core/party.test.ts",
+        "src/core/channels.ts"
       ]
     },
     "PROD": {
@@ -82,7 +85,11 @@
         "illustration rule set",
         "tariff tables",
         "product versioning",
-        "eligibility"
+        "eligibility",
+        "rating table",
+        "rate sample upload",
+        "product configuration sheet",
+        "occupational rank pricing"
       ],
       "layers": [
         "design",
@@ -91,7 +98,9 @@
         "test"
       ],
       "evidence": [
-        "src/core/unitlinked.ts"
+        "src/core/unitlinked.ts",
+        "src/core/rating.ts",
+        "src/core/product-config.ts"
       ]
     },
     "QUOT": {
@@ -564,8 +573,15 @@
       "src/core/reportingstore.test.ts",
       "src/core/idempotency.test.ts"
     ],
-    "PARTY": "src/core/party.test.ts",
-    "PROD": "src/core/unitlinked.test.ts",
+    "PARTY": [
+      "src/core/party.test.ts",
+      "src/core/channels.test.ts"
+    ],
+    "PROD": [
+      "src/core/unitlinked.test.ts",
+      "src/core/rating.test.ts",
+      "src/core/master.test.ts"
+    ],
     "QUOT": "src/core/regulatory.test.ts",
     "FUND": "src/core/fund.test.ts",
     "ULNK": "src/core/unitlinked.test.ts",

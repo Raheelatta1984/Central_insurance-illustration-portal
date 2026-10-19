@@ -27,6 +27,8 @@ import { unitsToDecimal } from './units.js';
 import { ClaimCause, RecoveryType } from './claims.js';
 import { exportLedger, importLedger, open, seal, snapshotText, LEDGER_SCHEMA_VERSION } from './persistence.js';
 import { DecisionOutcome, OccupationClass, ProductLine } from './underwriting.js';
+import { PRODUCT_COLUMN_LABELS, productExportCsv, productTemplateCsv, readProductSheet } from './product-config.js';
+import type { RateRowInput } from './rating.js';
 import { Basis, TreatyKind } from './reinsurance.js';
 import { IdType, IdentityDocument } from './party.js';
 import { FinancialAlterationKind, NonFinancialAlterationKind, PaymentFrequency, PolicyCategory, PolicyStatus } from './erp.js';
@@ -1336,6 +1338,350 @@ export async function dispatchApiRoute(
         ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
       });
       return ok({ productId: master.productId, name: master.name, category: master.category, line: master.line, variety: master.variety, blurb: master.blurb, currency: master.currency });
+    }
+
+    /* ------------------------------------------- the product grid: a table of products, saved as a table
+     *
+     * The console's product factory is editable in place, so it needs an endpoint that takes the whole
+     * grid, files every row through the same `defineProductMaster` the single-product form uses, and
+     * answers row by row: what was filed, what was refused and why. Nothing about a row is discarded
+     * because another row was wrong.
+     */
+    case 'POST /master/product/bulk': {
+      const rows = Array.isArray(payload['rows']) ? payload['rows'] as Record<string, unknown>[] : [];
+      if (rows.length === 0) return fail(400, { error: 'no product rows were sent' });
+      if (rows.length > 500) return fail(400, { error: `a grid saves at most 500 rows at a time (this one sent ${rows.length})` });
+      const result = state.world.erp.defineProductMasters(state.world, rows.map((row) => ({
+        ...(row['productId'] !== undefined ? { productId: String(row['productId']) } : {}),
+        ...(row['name'] !== undefined ? { name: String(row['name']) } : {}),
+        ...(row['secondaryName'] !== undefined ? { secondaryName: String(row['secondaryName']) } : {}),
+        ...(row['category'] !== undefined ? { category: String(row['category']) } : {}),
+        ...(row['line'] !== undefined ? { line: String(row['line']) } : {}),
+        ...(row['variety'] !== undefined ? { variety: String(row['variety']) } : {}),
+        ...(row['blurb'] !== undefined ? { blurb: String(row['blurb']) } : {}),
+        ...(row['currency'] !== undefined ? { currency: String(row['currency']) } : {}),
+        ...(row['minAge'] !== undefined ? { minAge: row['minAge'] as string | number } : {}),
+        ...(row['maxAge'] !== undefined ? { maxAge: row['maxAge'] as string | number } : {}),
+        ...(row['maxBmi'] !== undefined ? { maxBmi: row['maxBmi'] as string | number } : {}),
+        ...(row['baseRatePerThousand'] !== undefined ? { baseRatePerThousand: row['baseRatePerThousand'] as string | number } : {}),
+        ...(row['incomeMultiple'] !== undefined ? { incomeMultiple: row['incomeMultiple'] as string | number } : {}),
+        ...(row['automaticBindingLimit'] !== undefined ? { automaticBindingLimit: row['automaticBindingLimit'] as string | number } : {}),
+        ...(row['facultativeThreshold'] !== undefined ? { facultativeThreshold: row['facultativeThreshold'] as string | number } : {}),
+        ...(row['aiStraightThroughLimit'] !== undefined ? { aiStraightThroughLimit: row['aiStraightThroughLimit'] as string | number } : {}),
+        ...(Array.isArray(row['acceptedCountries']) ? { acceptedCountries: row['acceptedCountries'] as string[] } : {}),
+        ...(Array.isArray(row['defaultFunds']) ? { defaultFunds: row['defaultFunds'] as string[] } : {}),
+      })), { ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}) });
+      return ok({
+        saved: result.saved.length, created: result.created, updated: result.updated,
+        rejected: result.rejected,
+        products: result.saved.map((master) => ({
+          productId: master.productId, name: master.name, secondaryName: master.secondaryName,
+          category: master.category, line: master.line, currency: master.currency,
+        })),
+      });
+    }
+
+    case 'POST /master/product/copy': {
+      const copied = state.world.erp.copyProductMaster(state.world, {
+        sourceProductId: String(payload['sourceProductId'] ?? ''),
+        productId: String(payload['productId'] ?? ''),
+        ...(payload['name'] !== undefined ? { name: String(payload['name']) } : {}),
+        ...(payload['secondaryName'] !== undefined ? { secondaryName: String(payload['secondaryName']) } : {}),
+        ...(payload['copyRates'] !== undefined ? { copyRates: Boolean(payload['copyRates']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({
+        productId: copied.master.productId, name: copied.master.name, secondaryName: copied.master.secondaryName,
+        copiedRateRows: copied.copiedRateRows,
+      });
+    }
+
+    /* ------------------------------------------- the product sheet: download it, fill it in, upload it */
+    case 'GET /master/product/template': {
+      const only = (searchParams.get('products') ?? '').split(',').map((p) => p.trim().toUpperCase()).filter(Boolean);
+      const sheet = state.world.erp.productSheet().filter((p) => only.length === 0 || only.includes(p.productId));
+      return ok({ filename: `product-configuration-${state.world.asOf}.csv`, csv: productTemplateCsv(sheet), columns: PRODUCT_COLUMN_LABELS });
+    }
+
+    case 'GET /master/product/export':
+      return ok({ filename: `product-masters-${state.world.asOf}.csv`, csv: productExportCsv(state.world.erp.productSheet()) });
+
+    case 'POST /master/product/import': {
+      const csv = String(payload['csv'] ?? '');
+      if (!csv.trim()) return fail(400, { error: 'no file was uploaded' });
+      // A sheet whose header nobody can read is a 400 with the reason in it, not a stack trace: the
+      // uploader is a person with a spreadsheet, and the fix is one sentence long.
+      let sheet: ReturnType<typeof readProductSheet>;
+      try {
+        sheet = readProductSheet(csv);
+      } catch (error) {
+        return fail(400, { error: error instanceof Error ? error.message : String(error) });
+      }
+      if (sheet.rows.length === 0 && sheet.rejected.length === 0) return fail(400, { error: 'the sheet held nothing to file' });
+      const filed = state.world.erp.defineProductMasters(state.world, sheet.rows, {
+        by: payload['by'] === undefined ? 'bulk-upload' : String(payload['by']),
+      });
+      return ok({
+        read: sheet.read,
+        saved: filed.saved.length,
+        created: filed.created,
+        updated: filed.updated,
+        sheetRejected: sheet.rejected,
+        rejected: filed.rejected,
+        warnings: sheet.warnings,
+        products: filed.saved.map((master) => ({ productId: master.productId, name: master.name, secondaryName: master.secondaryName })),
+      });
+    }
+
+    /* ------------------------------------------- the rating tables (age, gender, occupation, sum assured) */
+    case 'GET /master/rates': {
+      const productId = searchParams.get('productId') ?? undefined;
+      const kind = (searchParams.get('kind') ?? undefined) as 'premium' | 'mortality' | undefined;
+      return ok({
+        rows: state.world.erp.rating.listFor({ ...(productId ? { productId } : {}), ...(kind ? { kind } : {}) }),
+        stats: state.world.erp.rating.stats(),
+        gaps: productId ? state.world.erp.rating.ageGaps(productId, kind ?? 'premium') : [],
+        overlaps: productId ? state.world.erp.rating.overlaps(productId, kind ?? 'premium') : [],
+        trail: state.world.erp.rating.audit(),
+      });
+    }
+
+    case 'GET /master/rates/template': {
+      const products = (searchParams.get('products') ?? '').split(',').map((p) => p.trim().toUpperCase()).filter(Boolean);
+      return ok({
+        filename: `rate-sample-${state.world.asOf}.csv`,
+        csv: state.world.erp.rating.template(products, { rows: Number(searchParams.get('bands') ?? 4) || 4 }),
+        columns: ['Product ID', 'Rate type', 'Gender', 'Age from', 'Age to', 'Occupation class', 'Sum assured from', 'Sum assured to', 'Channel', 'Partner', 'Rate per 1,000', 'Currency', 'Note'],
+      });
+    }
+
+    case 'GET /master/rates/export': {
+      const productId = searchParams.get('productId') ?? undefined;
+      return ok({
+        filename: `rate-table-${productId ? productId.toLowerCase() : 'all'}-${state.world.asOf}.csv`,
+        csv: state.world.erp.rating.exportCsv(productId ? { productId } : {}),
+      });
+    }
+
+    case 'POST /master/rates/upsert': {
+      const { at, by, ...row } = payload;
+      const filed = state.world.erp.rating.upsert({ ...(row as Record<string, string>), at: at === undefined ? undefined : String(at), by: by === undefined ? undefined : String(by) } as RateRowInput & { at?: string; by?: string });
+      return ok({ created: filed.created, row: filed.row, rows: state.world.erp.rating.count() });
+    }
+
+    /** The grid's "save all": many rows, applied row by row, each refusal reported with its row. */
+    case 'POST /master/rates/bulk': {
+      const rows = Array.isArray(payload['rows']) ? payload['rows'] as Record<string, unknown>[] : [];
+      if (rows.length === 0) return fail(400, { error: 'no rate rows were sent' });
+      if (rows.length > 2000) return fail(400, { error: `a tariff saves at most 2000 rows at a time (this one sent ${rows.length})` });
+      const result = state.world.erp.rating.upsertMany(rows as RateRowInput[], {
+        at: payload['at'] === undefined ? '' : String(payload['at']),
+        by: payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      });
+      return ok({
+        saved: result.saved.length, refused: result.rejected.length,
+        // The filed rows come back in the order they were sent, so the grid can re-key its draft to the
+        // ids the engine holds and a second save updates the row rather than adding a twin.
+        rows: result.saved, refusedRows: result.rejected, count: state.world.erp.rating.count(),
+        stats: state.world.erp.rating.stats(),
+      });
+    }
+
+    case 'POST /master/rates/clear': {
+      const productId = String(payload['productId'] ?? '').trim().toUpperCase();
+      if (!productId) return fail(400, { error: 'name the product whose tariff should be cleared' });
+      const cleared = state.world.erp.rating.clearFor(productId, payload['at'] === undefined ? '' : String(payload['at']), payload['by'] === undefined ? 'master-settings' : String(payload['by']));
+      return ok({ cleared, rows: state.world.erp.rating.count() });
+    }
+
+    case 'POST /master/rates/copy': {
+      const { at, by, rowId, ...patch } = payload;
+      const row = state.world.erp.rating.duplicate(String(rowId ?? ''), patch as RateRowInput, at === undefined ? '' : String(at), by === undefined ? 'master-settings' : String(by));
+      return ok({ row, rows: state.world.erp.rating.count() });
+    }
+
+    case 'POST /master/rates/delete': {
+      state.world.erp.rating.remove(String(payload['rowId'] ?? ''), payload['at'] === undefined ? '' : String(payload['at']), payload['by'] === undefined ? 'master-settings' : String(payload['by']));
+      return ok({ rows: state.world.erp.rating.count() });
+    }
+
+    case 'POST /master/rates/import': {
+      const csv = String(payload['csv'] ?? '');
+      if (!csv.trim()) return fail(400, { error: 'no file was uploaded' });
+      const report = state.world.erp.rating.importCsv(csv, {
+        mode: payload['mode'] === 'replace' ? 'replace' : 'append',
+        at: payload['at'] === undefined ? '' : String(payload['at']),
+        by: payload['by'] === undefined ? 'bulk-upload' : String(payload['by']),
+      });
+      return ok({ ...report, rows: state.world.erp.rating.count(), stats: state.world.erp.rating.stats() });
+    }
+
+    case 'POST /master/rates/price': {
+      const priced = state.world.erp.priceRisk(state.world, {
+        productId: String(payload['productId'] ?? ''),
+        age: Number(payload['age'] ?? 0),
+        ...(payload['gender'] !== undefined ? { gender: String(payload['gender']) } : {}),
+        ...(payload['occupationClass'] !== undefined ? { occupationClass: Number(payload['occupationClass']) } : {}),
+        ...(payload['sumAssured'] !== undefined ? { sumAssured: String(payload['sumAssured']) } : {}),
+        ...(payload['kind'] !== undefined ? { kind: String(payload['kind']) as 'premium' | 'mortality' } : {}),
+        ...(payload['channelCode'] !== undefined ? { channelCode: payload['channelCode'] === null ? null : String(payload['channelCode']) } : {}),
+        ...(payload['partnerId'] !== undefined ? { partnerId: payload['partnerId'] === null ? null : String(payload['partnerId']) } : {}),
+      });
+      return ok({
+        priced: priced.price.priced,
+        sumAssured: formatAmount(priced.price.sumAssured),
+        amount: formatAmount(priced.price.amount),
+        basis: priced.basis,
+        row: priced.price.row,
+        reasons: priced.price.reasons,
+        partner: priced.partner,
+      });
+    }
+
+    case 'POST /master/rates/mortality': {
+      const charged = state.world.erp.mortalityChargeForPolicy(state.world, String(payload['policyId'] ?? ''), {
+        ...(payload['fallBackToSchedule'] !== undefined ? { fallBackToSchedule: Boolean(payload['fallBackToSchedule']) } : {}),
+      });
+      return ok({
+        policyId: String(payload['policyId'] ?? ''),
+        monthlyCharge: formatAmount(charged.amount),
+        fromTable: charged.fromTable,
+        basis: charged.basis,
+        row: charged.row,
+      });
+    }
+
+    /* ------------------------------------------- the omni-channel: channels, partners, terms */
+    case 'GET /master/channels':
+      return ok(state.world.erp.channels.snapshot());
+
+    case 'POST /master/channels/bootstrap': {
+      const result = state.world.erp.channels.bootstrap(
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ ...result, ...state.world.erp.channels.status(), channels: state.world.erp.channels.listChannels() });
+    }
+
+    case 'POST /master/channels': {
+      const supports = (payload['supports'] ?? {}) as Record<string, unknown>;
+      const channel = state.world.erp.channels.upsertChannel({
+        code: String(payload['code'] ?? ''),
+        ...(payload['name'] !== undefined ? { name: String(payload['name']) } : {}),
+        ...(payload['secondaryName'] !== undefined ? { secondaryName: String(payload['secondaryName']) } : {}),
+        ...(payload['kind'] !== undefined ? { kind: String(payload['kind']) as never } : {}),
+        ...(payload['integration'] !== undefined ? { integration: String(payload['integration']) as never } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['commissionCapBps'] !== undefined ? { commissionCapBps: Number(payload['commissionCapBps']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(Object.keys(supports).length > 0 ? {
+          supports: {
+            quote: Boolean(supports['quote'] ?? true), bind: Boolean(supports['bind'] ?? false),
+            service: Boolean(supports['service'] ?? true), claim: Boolean(supports['claim'] ?? false),
+          },
+        } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ channel, ...state.world.erp.channels.status() });
+    }
+
+    case 'POST /master/channels/remove': {
+      state.world.erp.channels.removeChannel(String(payload['code'] ?? ''), payload['at'] === undefined ? '' : String(payload['at']), payload['by'] === undefined ? 'master-settings' : String(payload['by']));
+      return ok({ ...state.world.erp.channels.status(), channels: state.world.erp.channels.listChannels() });
+    }
+
+    case 'POST /master/channels/product-name': {
+      const named = state.world.erp.channels.setChannelProductName({
+        productId: String(payload['productId'] ?? ''),
+        channelCode: String(payload['channelCode'] ?? ''),
+        secondaryName: String(payload['secondaryName'] ?? ''),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ ...named, resolved: state.world.erp.channels.secondaryNameFor(named.productId, { channelCode: named.channelCode }) });
+    }
+
+    case 'POST /master/partners': {
+      const partner = state.world.erp.channels.upsertPartner({
+        partnerId: String(payload['partnerId'] ?? ''),
+        name: String(payload['name'] ?? ''),
+        channelCode: String(payload['channelCode'] ?? ''),
+        ...(payload['secondaryName'] !== undefined ? { secondaryName: String(payload['secondaryName']) } : {}),
+        ...(payload['country'] !== undefined ? { country: String(payload['country']) } : {}),
+        ...(payload['currency'] !== undefined ? { currency: String(payload['currency']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['settlementDays'] !== undefined ? { settlementDays: Number(payload['settlementDays']) } : {}),
+        ...(Array.isArray(payload['productIds']) ? { productIds: payload['productIds'] as string[] } : {}),
+        ...(Array.isArray(payload['commissionBps']) ? { commissionBps: (payload['commissionBps'] as unknown[]).map(Number) } : {}),
+        ...(payload['clawback'] !== undefined ? { clawback: payload['clawback'] as never } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ partner, ...state.world.erp.channels.status() });
+    }
+
+    case 'POST /master/partners/products': {
+      const partner = state.world.erp.channels.setPartnerProducts(
+        String(payload['partnerId'] ?? ''),
+        Array.isArray(payload['productIds']) ? (payload['productIds'] as string[]) : [],
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ partner, ...state.world.erp.channels.status() });
+    }
+
+    case 'POST /master/partners/remove': {
+      state.world.erp.channels.removePartner(String(payload['partnerId'] ?? ''), payload['at'] === undefined ? '' : String(payload['at']), payload['by'] === undefined ? 'master-settings' : String(payload['by']));
+      return ok({ ...state.world.erp.channels.status(), partners: state.world.erp.channels.listPartners() });
+    }
+
+    case 'POST /master/offers': {
+      const offer = state.world.erp.channels.upsertOffer({
+        partnerId: String(payload['partnerId'] ?? ''),
+        productId: String(payload['productId'] ?? ''),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['secondaryName'] !== undefined ? { secondaryName: String(payload['secondaryName']) } : {}),
+        ...(payload['premiumUpliftBps'] !== undefined ? { premiumUpliftBps: Number(payload['premiumUpliftBps']) } : {}),
+        ...(payload['mortalityUpliftBps'] !== undefined ? { mortalityUpliftBps: Number(payload['mortalityUpliftBps']) } : {}),
+        ...(payload['ratePerThousand'] !== undefined ? { ratePerThousand: payload['ratePerThousand'] === null ? null : String(payload['ratePerThousand']) } : {}),
+        ...(payload['commissionBps'] !== undefined ? { commissionBps: payload['commissionBps'] === null ? null : (payload['commissionBps'] as unknown[]).map(Number) } : {}),
+        ...(payload['clawback'] !== undefined ? { clawback: payload['clawback'] === null ? null : payload['clawback'] as never } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ offer, ...state.world.erp.channels.status() });
+    }
+
+    case 'POST /master/offers/remove': {
+      state.world.erp.channels.removeOffer(String(payload['partnerId'] ?? ''), String(payload['productId'] ?? ''), payload['at'] === undefined ? '' : String(payload['at']), payload['by'] === undefined ? 'master-settings' : String(payload['by']));
+      return ok({ ...state.world.erp.channels.status() });
+    }
+
+    /** What a partner earns on a premium, and what comes back if the policy does not persist. */
+    case 'POST /master/commission': {
+      const productId = String(payload['productId'] ?? '');
+      const partnerId = String(payload['partnerId'] ?? '');
+      const currency = String(payload['currency'] ?? state.world.erp.listProductMasters().find((p) => p.productId === productId.trim().toUpperCase())?.currency ?? state.world.erp.regionalSnapshot().localCurrency);
+      const premium = parseAmount(String(payload['premium'] ?? '0.00'), currency);
+      const commission = state.world.erp.channels.commissionFor({
+        partnerId, productId, premium,
+        ...(payload['policyYear'] !== undefined ? { policyYear: Number(payload['policyYear']) } : {}),
+      });
+      const clawback = state.world.erp.channels.clawbackFor({
+        partnerId, productId, commission: commission.commission,
+        periodsSinceInception: Number(payload['periodsSinceInception'] ?? 0),
+      });
+      return ok({
+        commission: formatAmount(commission.commission),
+        commissionBps: commission.bps,
+        policyYear: commission.policyYear,
+        schedule: commission.schedule,
+        commissionBasis: commission.basis,
+        clawback: formatAmount(clawback.recoverable),
+        clawbackBps: clawback.recoveryBps,
+        clawbackDue: clawback.recoverableNow,
+        clawbackBasis: clawback.basis,
+      });
     }
 
     /* ------------------------------------------- regional master: country, calendar and currencies */

@@ -19,7 +19,7 @@ import { CONSOLE_TABS } from '../core/tour.js';
 import { GuideBanner, GuideHeading, GuideProvider, GuideToggle, ScreenGuide } from './guide.js';
 import { SectionGroup, SectionStack, fields } from './sections.js';
 import { CustomerJourneyPanel } from './journey.js';
-import { DEFAULT_PRODUCT_FORM, JourneyFieldSettingsPanel, MasterSettingsErp, ProductFactoryPanel } from './erp-views.js';
+import { DEFAULT_PRODUCT_FORM, JourneyFieldSettingsPanel, MasterSettingsErp, PRODUCT_PAGE_SIZE, ProductFactoryPanel } from './erp-views.js';
 
 const data = worldSnapshot(buildWorld());
 const noop = async () => {};
@@ -250,7 +250,17 @@ describe('every screen of the console', () => {
     expect(html).toContain('PROD-HULL-MARINE');
     expect(plain(html)).toContain('Hull &amp; machinery');
     expect(plain(html)).toContain(`Base Rate / 1,000 (${data.erp.master.regional.localCurrency})`);
-    // Every filed variety is a row, so the screen shows what the engines will actually underwrite.
-    expect(html.split('<tr>').length - 1).toBe(data.erp.master.products.length + 1);
+    // The shelf is an editable grid now, so a page of varieties is what the screen shows — and the page
+    // size is the contract: the whole book stays reachable, it is just not ninety rows deep at a time.
+    const pageRows = (html.match(/class="gridRow/g) ?? []).length;
+    expect(pageRows, 'a page of editable product rows').toBe(Math.min(PRODUCT_PAGE_SIZE, data.erp.master.products.length));
+    expect(plain(html)).toContain(`page 1 of ${Math.ceil(data.erp.master.products.length / PRODUCT_PAGE_SIZE)}`);
+    // …and every row is a line of the master, with the cells the engines read: the entry ages, the
+    // rate per 1,000, the limits, and the omni-channel name a shelf shows the plan under.
+    for (const column of ['Product ID', 'Omni-channel name', 'Age from', 'Age to', 'Base rate per 1000', 'Facultative threshold', 'Tariff', 'Distribution']) {
+      expect(plain(html), `${column} header`).toContain(column);
+    }
+    // Copying a row is the point of a grid: a new variety starts as an exact twin of the one beside it.
+    expect(html).toContain('⧉ Copy line');
   });
 });
