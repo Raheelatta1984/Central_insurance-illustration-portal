@@ -893,6 +893,15 @@ function Labels({ data }: { data: WorldSnapshot }) {
 function App() {
   const [data, setData] = useState<WorldSnapshot | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
+  // The drawer only exists below 980px, so it starts closed and closes itself when the viewport grows.
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const wide = window.matchMedia('(min-width: 981px)');
+    const close = () => setNavOpen(false);
+    wide.addEventListener?.('change', close);
+    return () => wide.removeEventListener?.('change', close);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   // The guide switch. It starts from the world (so the console shows what the tenant last chose), it
   // flips instantly because a switch that waits on a round trip feels broken, and the change is filed
@@ -951,12 +960,16 @@ function App() {
     }
   }, [data, tab, load]);
   return (
-    <div className="app">
+    <div className={`app${navOpen ? ' navOpen' : ''}`}>
+      {/* Below 980px the rail is a drawer: a 250px column of navigation is most of a phone's width, and
+          a drawer the user opens is not. The scrim and the × both close it, and so does picking a tab. */}
+      <button type="button" className="navScrim" aria-label="Close the menu" tabIndex={navOpen ? 0 : -1} onClick={() => setNavOpen(false)} />
       <aside>
+        <button type="button" className="navClose" aria-label="Close the menu" onClick={() => setNavOpen(false)}>×</button>
         <div className="brand"><span className="logo">◈</span><div><b>Central Insurance ERP</b><small>{data?.tenant.name ?? 'connecting…'}</small></div></div>
         <nav>
           {TABS.map((t) => (
-            <button key={t.id} className={t.id === tab ? 'active' : ''} onClick={() => setTab(t.id)}>
+            <button key={t.id} className={t.id === tab ? 'active' : ''} onClick={() => { setTab(t.id); setNavOpen(false); }}>
               <span className="icon">{t.icon}</span>{t.label}
             </button>
           ))}
@@ -968,7 +981,8 @@ function App() {
       </aside>
       <main>
         <header className="top">
-          <div>
+          <div className="topHead">
+            <button type="button" className="navToggle" aria-label="Open the menu" onClick={() => setNavOpen(true)}>☰</button>
             <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
             <p className="muted small">Unit-linked · takaful · group finance · micro-duration cover — all from one core, all auditable.</p>
           </div>
@@ -2349,9 +2363,22 @@ const style = document.createElement('style');
 style.textContent = `
 :root { color-scheme: dark; --bg:#0b0f14; --panel:#131a22; --panel2:#182230; --line:#22303f; --text:#e8eef6; --muted:#8ba0b6; --accent:#3ea6ff; --ok:#2fbf71; --warn:#f0b429; --bad:#ef5b5b; }
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
-.app { display:grid; grid-template-columns: 250px 1fr; min-height:100vh; }
-aside { background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:16px; gap:14px; position:sticky; top:0; height:100vh; }
+/* Safari on iOS raises the root font size of an page it thinks is a desktop layout, and refuses to
+   shrink it back; pinning text-size-adjust is what keeps the console the same size on a phone. */
+html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+body {
+  margin:0; background:var(--bg); color:var(--text); font:14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* A phone that bounces the whole page while you scroll a table sideways is a phone you cannot work on. */
+  overscroll-behavior-y:none; -webkit-tap-highlight-color:transparent;
+}
+/* The rail is a fraction of the screen between 1180 and 1900px, and the content column is a
+   minmax(0,1fr) so a wide table shrinks the page instead of pushing it out to the right. */
+.app { display:grid; grid-template-columns: clamp(190px, 17vw, 250px) minmax(0, 1fr); min-height:100vh; min-height:100dvh; }
+aside {
+  background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; gap:14px;
+  padding:16px; padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  position:sticky; top:0; height:100vh; height:100dvh; overscroll-behavior:contain;
+}
 .brand { display:flex; gap:10px; align-items:center; }
 .brand .logo { width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(140deg,#3ea6ff,#2fbf71);color:#04121f;font-weight:700; }
 .brand small { display:block; color:var(--muted); font-size:11px; }
@@ -2361,11 +2388,23 @@ nav button:hover { background:var(--panel2); color:var(--text); }
 nav button.active { background:var(--panel2); color:var(--text); box-shadow: inset 2px 0 0 var(--accent); }
 nav .icon { width:16px; text-align:center; color:var(--accent); }
 aside footer { margin-top:auto; display:flex; flex-direction:column; gap:8px; }
-main { padding:22px 26px 60px; }
-.top { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:16px; }
+main {
+  padding:22px 26px 60px;
+  padding:22px calc(26px + env(safe-area-inset-right)) calc(60px + env(safe-area-inset-bottom)) 26px;
+  min-width:0;
+}
+.top { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:16px; flex-wrap:wrap; min-width:0; }
+.topRight { display:flex; flex-direction:column; align-items:flex-end; min-width:0; flex-wrap:wrap; }
+/* The rail becomes a drawer below 980px: nothing in a 250px column is worth stealing from a phone. */
+.navToggle, .navClose, .navScrim { display:none; }
+.topHead { display:flex; align-items:center; gap:10px; min-width:0; }
+.navToggle { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:9px; padding:6px 11px; font-size:16px; line-height:1; }
+.navClose { position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--muted); font-size:22px; line-height:1; padding:6px 10px; }
+.navScrim { position:fixed; inset:0; background:rgba(4,10,16,.6); border:0; padding:0; z-index:39; }
+aside { position:relative; }
 h1 { font-size:20px; margin:0; }
 h3 { margin:0 0 2px; font-size:14px; }
-.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap:14px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap:14px; }
 .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
 .card header p { margin:0 0 10px; color:var(--muted); font-size:12px; }
 .stat { display:flex; justify-content:space-between; gap:14px; padding:6px 0; border-bottom:1px dashed var(--line); }
@@ -2378,18 +2417,22 @@ h3 { margin:0 0 2px; font-size:14px; }
 .pill.warn { color:#ffe4a3; border-color:#6b5312; background:#332709; }
 .pill.bad { color:#ffc9c9; border-color:#6b2020; background:#331414; }
 .pill.info { color:#cfe6ff; border-color:#1f4a6b; background:#11212f; }
-.tableWrap { overflow:auto; margin-top:6px; }
+.tableWrap { overflow:auto; margin-top:6px; -webkit-overflow-scrolling:touch; }
+.tableWrap table { min-width:100%; }
+.tableWrap thead th { position:sticky; top:0; background:var(--panel); z-index:1; }
 table { width:100%; border-collapse:collapse; font-size:12.5px; }
 th { text-align:left; color:var(--muted); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
 td { padding:6px 8px; border-bottom:1px solid #182430; vertical-align:top; }
 tr:hover td { background:#141d27; }
-button { background:var(--accent); color:#04121f; border:0; border-radius:8px; padding:7px 12px; font-weight:600; cursor:pointer; font-size:12.5px; }
+button { background:var(--accent); color:#04121f; border:0; border-radius:8px; padding:7px 12px; min-height:34px; font-weight:600; cursor:pointer; font-size:12.5px; touch-action:manipulation; }
 button:hover { filter:brightness(1.08); }
 button:disabled { opacity:.5; cursor:default; }
 button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
 .row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin:8px 0; }
 label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
-input, select, textarea { background:#0d151d; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:7px 9px; font:inherit; }
+/* 16px is the size Safari on an iPhone will not zoom into: below it, tapping a field blows the whole
+   screen up and never puts it back. */
+input, select, textarea { background:#0d151d; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:7px 9px; font:inherit; max-width:100%; }
 textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
 .muted { color:var(--muted); } .small { font-size:12px; } .bad { color:var(--bad); } .warnText { color:var(--warn); }
 .list { margin:8px 0 0 18px; padding:0; } .list li { margin:3px 0; }
@@ -2462,7 +2505,7 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .grow { flex:1 1 auto; }
 
 /* Small notes are anchored to headings, not stretched into empty full-width frames. */
-.topRight { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+.topRight { display:flex; flex-direction:column; gap:8px; align-items:flex-end; max-width:100%; }
 .guideToggle { display:inline-flex; gap:7px; align-items:center; white-space:nowrap; }
 .guideToggle.on { color:#cfe6ff; border-color:#1f4a6b; background:#11212f; }
 /* ---- the AI guide: a sticky note against every section and subsection ---- */
@@ -2503,14 +2546,152 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .guideMore ul { margin:6px 0 0 16px; padding:0; }
 .guideMore li { margin:3px 0; }
 .guideLimit { display:block; color:#6b5a1e; font-size:10px; margin-top:10px; }
+/* ---- the editable grids: a product shelf, a tariff, a channel book ----
+ * A grid is a table you can type into, which means it has to survive three things at once: seventeen
+ * columns, a phone, and a cursor that is a finger. The frame scrolls sideways, the header stays put, and
+ * every cell keeps the currency notation the master uses — never a stripped number. */
+.gbar { display:flex; justify-content:space-between; align-items:flex-end; gap:10px 14px; flex-wrap:wrap; margin:10px 0 8px; }
+.gbarLeft, .gbarRight { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; min-width:0; }
+.gfilter { display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--muted); min-width:0; }
+.gfilter select, .gfilter input { min-width:0; width:100%; }
+.gnote { flex:1 1 260px; min-width:0; }
+.gframe { border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden; }
+.gframeScroll { overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; max-height:min(70vh, 760px); }
+.gframeScroll > table { margin:0; }
+.gcaption { margin:0; padding:7px 10px; border-bottom:1px solid var(--line); }
+.gscrollHint { display:none; }
+.gridTable { width:100%; min-width:max-content; font-size:12px; }
+.gridTable caption { caption-side:bottom; text-align:left; padding:7px 10px; color:var(--muted); font-size:11.5px; border-top:1px solid var(--line); background:var(--panel); }
+.gridTable th { position:sticky; top:0; z-index:2; background:var(--panel2); padding:7px 8px; font-size:11.5px; }
+.gridTable th .req { color:var(--warn); font-style:normal; margin-left:2px; }
+.gridTable td { padding:3px 5px; border-bottom:1px solid #182430; vertical-align:middle; }
+.gridTable tbody tr:hover td { background:#141d27; }
+.gridTable .colNum { width:38px; text-align:right; color:var(--muted); font-size:11px; white-space:nowrap; }
+.gridTable .colNote { min-width:150px; }
+.gridTable .colActions { width:1%; white-space:nowrap; }
+.gridRow.is-dirty > td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.gridRow.is-new > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.gridRow.is-error > td { background:#231316; }
+.gridRow.is-error > td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+.gridRow.is-focused > td { background:#13212f; }
+/* A cell is either a bare input/select or a span wrapping a number and its suffix; both have to read as
+   one box, and the box is what carries the dirty and refused colours. */
+.gcell { min-width:0; max-width:100%; background:#0d151d; border:1px solid transparent; border-radius:6px; padding:4px 6px; color:var(--text); font:inherit; font-size:12px; }
+input.gcell, select.gcell { display:block; }
+span.gcell { display:inline-flex; align-items:center; gap:4px; }
+span.gcell input { background:transparent; border:0; border-radius:0; padding:0; color:inherit; font:inherit; font-size:12px; min-width:0; }
+span.gcell input:focus { outline:none; }
+span.gcell em { color:var(--muted); font-style:normal; font-size:11px; white-space:nowrap; }
+.gcell:hover { border-color:var(--line); }
+.gcell:focus, .gcell:focus-within { border-color:var(--accent); outline:none; background:#0b131b; }
+.gcell::placeholder { color:#5c7288; }
+.gcell.is-dirty { border-color:#6b5312; }
+.gcell.is-error { border-color:#6b2020; background:#2a1414; }
+.gcell:disabled { opacity:.6; }
+.cellNumber { font-variant-numeric:tabular-nums; text-align:right; }
+.cellStatic { display:block; padding:4px 2px; font-size:12px; white-space:nowrap; }
+.cellSelect { max-width:150px; }
+.cellStack { display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
+.capabilityCells { flex-direction:row; flex-wrap:wrap; align-items:center; gap:2px 8px; }
+.checkLabel { display:flex; flex-direction:row; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+.checkLabel.tiny { font-size:11px; gap:4px; }
+.checkLabel input { width:auto; }
+.rowActions { display:flex; gap:4px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
+.rowActions button { padding:4px 8px; font-size:11px; min-height:28px; }
+.iconBtn { padding:4px 8px; font-size:11.5px; }
+.rowError { color:var(--bad); font-size:11px; line-height:1.35; margin-top:2px; }
+.gridFooter { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:8px 0 0; }
+.pager { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.pager button { padding:5px 10px; font-size:12px; }
+.statPills { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.subGrid { margin-top:16px; padding-top:12px; border-top:1px dashed var(--line); }
+.subGrid h4 { margin:0 0 2px; font-size:13px; }
+.manualCard { margin-top:14px; padding:11px 13px; border:1px solid var(--line); border-radius:10px; background:var(--panel2); }
+.manualCard p { margin:6px 0; }
+.miniTable { width:100%; font-size:12px; margin-top:8px; }
+.miniTable th { position:static; }
+.tariffHead { padding:0 0 4px; }
+.fileInput { display:inline-flex; align-items:center; gap:6px; position:relative; }
+.fileHidden { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+code, pre { overflow-wrap:anywhere; }
+
+@media (max-width:1280px) {
+  /* A 13-inch MacBook has 1280 of usable width and a console that wants 1400: give the content the
+     space and let the rail be a rail, not a column of headings. */
+  .app { grid-template-columns: clamp(178px, 15vw, 210px) minmax(0, 1fr); }
+  main { padding:20px 20px 48px; }
+  .grid { grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); gap:12px; }
+}
+@media (min-width:1700px) {
+  .app { grid-template-columns: 280px minmax(0, 1fr); }
+  main { padding:26px 40px 70px; }
+  .card { padding:16px 20px; }
+}
+@media (max-width:980px) {
+  /* Tablet and the small-window laptop: the rail goes off-canvas and the cards stop competing. */
+  .app { grid-template-columns: minmax(0, 1fr); }
+  aside {
+    position:fixed; inset:0 auto 0 0; z-index:40; width:min(310px, 84vw); height:100vh; height:100dvh;
+    transform:translateX(-102%); transition:transform .18s ease; box-shadow:0 18px 50px rgba(0,0,0,.5);
+  }
+  .app.navOpen aside { transform:none; }
+  .app.navOpen .navScrim { display:block; }
+  .navToggle, .navClose { display:inline-flex; align-items:center; }
+  .topRight { align-items:flex-start; }
+  .grid { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
+}
 @media (max-width:700px) {
-  main { padding:16px 12px 40px; min-width:0; }
-  .grid { grid-template-columns:minmax(0, 1fr); }
+  main { padding:14px 10px calc(34px + env(safe-area-inset-bottom)) 10px; min-width:0; }
+  h1 { font-size:17px; }
+  .grid { grid-template-columns:minmax(0, 1fr); gap:10px; }
+  .card { padding:12px 12px; border-radius:10px; }
   .sectionHead { flex-wrap:wrap; }
   .sectionToggle { min-width:0; }
   .sectionState .bar { display:none; }
   .guideNote { width:100%; max-width:100%; }
   .sectionGuideSlot { padding-left:16px; }
+  /* On a phone a wide table scrolls sideways and the header keeps its place; the hint tells you that
+     the rest of the columns exist, because a horizontal scrollbar is invisible on iOS. */
+  .gframe { border-radius:10px; }
+  .gframeScroll { max-height:none; }
+  .gscrollHint { display:inline; color:var(--accent); }
+  .gridTable th { padding:8px 8px; }
+  .gridTable td { padding:5px 6px; }
+  .gridTable input, .gridTable select { min-height:34px; }
+  /* 16px or Safari zooms the page in on focus and never quite comes back out. */
+  input.gcell, select.gcell, span.gcell, span.gcell input { font-size:16px; }
+  .gbarRight { gap:6px; }
+  .gbarRight button { flex:1 1 140px; }
+  .rowActions button { min-height:34px; padding:6px 10px; }
+  .gbar, .gridFooter { align-items:stretch; }
+  .gbarRight, .gbarLeft, .pager { width:100%; }
+  .gbarLeft button, .gridFooter button { flex:1 1 auto; }
+  .gfilter { flex:1 1 100%; }
+  input, select, textarea { font-size:16px; }
+  .row { gap:8px; }
+  .row label, .subGrid .row label { flex:1 1 100%; }
+}
+@media (max-width:700px) and (orientation:landscape) {
+  /* A phone on its side is 380px of height: the sticky rail and a 70vh table eat all of it. */
+  aside { height:auto; position:static; transform:none; }
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .gframe { max-height:none; }
+}
+@media (hover:none) and (pointer:coarse) {
+  /* A thumb, not a mouse: every target a grid offers is at least 44px tall, and nothing depends on hover. */
+  button { min-height:44px; padding:9px 14px; }
+  .rowActions button, .iconBtn { min-height:38px; padding:7px 11px; }
+  .gcell { min-height:38px; padding:8px 8px; }
+  .gridTable tbody tr:hover td { background:transparent; }
+  .navToggle { min-height:40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  aside { transition:none; }
+}
+@supports not (height: 100dvh) {
+  /* Safari 15 and earlier have no dvh; the sticky rail falls back to the viewport it does know. */
+  aside { height:100vh; }
 }
 @media print { .guideNote { box-shadow:none; transform:none; } .stickyArrow, .stickyTape { display:none; } }
 `;

@@ -55,7 +55,7 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Central Insurance ERP — customer demo pack</title>
 <style>
   :root { color-scheme: dark; --bg:#0b1117; --panel:#111a23; --line:#1f2c39; --text:#e7eef6; --muted:#8ea3b8; --accent:#3ddc97; --warn:#ffd166; }

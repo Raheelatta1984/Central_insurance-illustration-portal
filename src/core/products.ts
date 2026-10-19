@@ -25,6 +25,9 @@ import { COUNTRIES } from './regional.js';
 /** How a policy is administered and accounted for: the four books the ERP keeps. */
 export type PolicyCategory = 'unit-linked' | 'takaful' | 'conventional' | 'motor-payg';
 
+/** The four books a product can be administered and accounted for in, in the order the grid lists them. */
+export const PRODUCT_CATEGORIES: readonly PolicyCategory[] = Object.freeze(['unit-linked', 'takaful', 'conventional', 'motor-payg'] as const);
+
 /** Every country pack on file: the territory a worldwide line accepts without a referral. */
 export const WORLDWIDE: readonly string[] = COUNTRIES.map((c) => c.code);
 
