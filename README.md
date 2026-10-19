@@ -1,12 +1,12 @@
 # Central Insurance Illustration Portal
 
-**An AI-native Insurance ERP** — life, medical, general, group, travel, unit-linked and **takaful** — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
+**An AI-native Insurance ERP** — term and whole-of-life, critical illness, income protection, endowment, mortgage, medical, motor, travel, home and contents, property, liability, engineering, marine cargo, hull and aviation, group benefits, unit-linked and **takaful** (96 filed varieties across 17 lines) — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), the API server and the operator console are implemented, typechecked, tested (467 cases) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory), **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (530 cases) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + 467 tests + build
+npm run verify     # typecheck + 530 tests + build
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data
@@ -42,6 +42,37 @@ administration, quotations, funds, reinsurance and master settings use the same 
 See [`docs/09-CUSTOMER-JOURNEY.md`](docs/09-CUSTOMER-JOURNEY.md) for the sequence, the gate contract, the
 alternatives considered and what is verified.
 
+## Whose platform is this, and what does it sell?
+
+The **Master settings & ERP** tab is where a tenant says who it is, and every other screen reads that
+answer instead of hardcoding it:
+
+- **Country, region, calendar and money.** 39 country packs (regulator, regions, IANA time zone,
+  currency, locale, date order, week start), 44 time zones, 36 currencies. Pick Malaysia and the console
+  header shows Kuala Lumpur at UTC+08:00 in ringgit; the foreign rate card is rebased onto the new local
+  currency on exact rationals rather than dropped, and the ledger keeps its own base currency because
+  every amount stays explicit about the money it is in. One rate card, quotable from either door.
+- **Renaming.** A field's display name is a filed setting next to `mandatory` and `editable`: rename
+  "Sum assured" to "Amount of cover" once and the form, the outstanding-field checklist and the refusal
+  that names the field all say the new words, with who/when/from/to on the trail. The existing label
+  registry does the same for the regulated vocabulary in both languages.
+- **Products.** 96 varieties across 17 lines are seeded as product masters with their own underwriting
+  manuals — entry ages, tariff, income multiple, binding limits, evidence bands, territories — so a hull
+  risk prices and routes through the same engine as a term life, and the journey ranks all of them
+  against the needs questionnaire by the objective each one answers.
+
+## The guide on every section
+
+Every screen and every section carries a sticky note: what it is for, what to do in it, what to watch,
+and the engine's live figures folded in — so it says "96 product masters across 17 lines" rather than
+"several products". The notes are data in `src/core/guide.ts` (one per tab, one per curated section, and
+a composed note for any section nobody curated), rendered by `src/ui/guide.tsx` through a provider above
+the tab body. One switch in the header hides them all, and the change is filed — on the guide's own
+trail and on the AI ledger — because "was this operator shown the guidance?" deserves a factual answer.
+The notes never override a rule: the gates and refusals run either way.
+
+See [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md).
+
 ## Documents
 
 | Document | What it covers |
@@ -55,6 +86,7 @@ alternatives considered and what is verified.
 | [`docs/05-DECISIONS.md`](docs/05-DECISIONS.md) | The decisions I took on your behalf, each with its rationale and how to reverse it |
 | [`docs/07-TOUR.md`](docs/07-TOUR.md) | The sixty-minute guided tour of the live app, generated from `src/core/tour.ts` (the same data the console's Tour tab runs) |
 | [`docs/09-CUSTOMER-JOURNEY.md`](docs/09-CUSTOMER-JOURNEY.md) | The guided customer lifecycle: the nineteen gated sections, what "complete" means, why the gate lives in the core, the API, and what was verified |
+| [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md) | Tenant master settings: the regional card (country, time zone, date order, local and foreign currency), renaming journey fields, the 96-variety product catalogue, and the AI guide with its switch — the API, the refusals and what is verified |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |

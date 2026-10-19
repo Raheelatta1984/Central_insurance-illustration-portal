@@ -42,8 +42,12 @@ describe('the console renders', () => {
       h(React.Fragment, null, h(GuideTopBanner), claimsPanel),
     ));
     expect(guided).toContain('AI guide for Claims');
-    expect(guided).toContain('AI guide for 1. Register a claim request');
     expect(guided).toContain('Local contextual guidance only');
+    // The per-section note is the engine's curated note (src/core/guide.ts), keyed to the section and
+    // carried by the one section the rail has open. Asserted by that key rather than by a sentence, so
+    // the rule "every open section carries a guide, and no closed one does" is what fails if it breaks.
+    expect(guided).toContain('data-guide="claims:register"');
+    expect(guided.split('data-guide="').length - 1).toBe(1);
 
     const quiet = renderToString(h(
       GuideProvider,
@@ -51,6 +55,7 @@ describe('the console renders', () => {
       h(React.Fragment, null, h(GuideTopBanner), claimsPanel),
     ));
     expect(quiet).not.toContain('AI guide');
+    expect(quiet).not.toContain('data-guide');
   });
 
   it('renders every retrofitted panel without throwing, each with one section open', () => {

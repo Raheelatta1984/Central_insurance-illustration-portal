@@ -580,13 +580,24 @@ function specialEditor(fieldId: string, args: BuildArgs): React.ReactNode | null
     );
   }
   if (stage.id === 'recommendation' && fieldId === 'productId') {
+    // Ninety-odd varieties across seventeen lines: grouped by line, so the operator picks a shelf and
+    // then a variety rather than scrolling one flat list of every product the tenant has ever filed.
+    const byLine = new Map<string, typeof journey.products>();
+    for (const p of journey.products) {
+      const line = String((p as { line?: string }).line ?? p.category);
+      byLine.set(line, [...(byLine.get(line) ?? []), p]);
+    }
     return (
       <select value={String(value ?? '')} onChange={(e) => set({ productId: e.target.value })}>
         <option value="">— choose from the ranked list below —</option>
-        {journey.products.map((p) => (
-          <option key={p.productId} value={p.productId}>
-            {p.name} · {p.category} · {p.minAge}–{p.maxAge} · rate {p.baseRatePerThousand} per 1,000
-          </option>
+        {[...byLine.entries()].map(([line, list]) => (
+          <optgroup key={line} label={`${line} (${list.length})`}>
+            {list.map((p) => (
+              <option key={p.productId} value={p.productId} title={String((p as { blurb?: string }).blurb ?? '')}>
+                {String((p as { variety?: string }).variety ?? p.name)} — {p.name} · {p.category} · {p.minAge}–{p.maxAge} · rate {p.baseRatePerThousand} per 1,000
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     );

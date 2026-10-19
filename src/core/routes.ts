@@ -1313,9 +1313,12 @@ export async function dispatchApiRoute(
     case 'POST /master/product': {
       const master = state.world.erp.defineProductMaster(state.world, {
         productId: String(payload['productId'] ?? ''),
-        name: String(payload['name'] ?? ''),
-        category: (String(payload['category'] ?? 'conventional') as PolicyCategory),
-        line: (String(payload['line'] ?? 'life') as ProductLine),
+        // Anything the caller left out is left out on purpose: the product factory prefills the name,
+        // the category and the line from the catalogue, and an empty default here would quietly turn a
+        // filed takaful variety into a conventional one.
+        ...(payload['name'] !== undefined ? { name: String(payload['name']) } : {}),
+        ...(payload['category'] !== undefined ? { category: String(payload['category']) as PolicyCategory } : {}),
+        ...(payload['line'] !== undefined ? { line: String(payload['line']) as ProductLine } : {}),
         ...(payload['minAge'] !== undefined ? { minAge: Number(payload['minAge']) } : {}),
         ...(payload['maxAge'] !== undefined ? { maxAge: Number(payload['maxAge']) } : {}),
         ...(payload['maxBmi'] !== undefined ? { maxBmi: Number(payload['maxBmi']) } : {}),
@@ -1325,8 +1328,54 @@ export async function dispatchApiRoute(
         ...(payload['facultativeThreshold'] !== undefined ? { facultativeThreshold: String(payload['facultativeThreshold']) } : {}),
         ...(payload['aiStraightThroughLimit'] !== undefined ? { aiStraightThroughLimit: String(payload['aiStraightThroughLimit']) } : {}),
         ...(Array.isArray(payload['defaultFunds']) ? { defaultFunds: payload['defaultFunds'] as string[] } : {}),
+        ...(payload['variety'] !== undefined ? { variety: String(payload['variety']) } : {}),
+        ...(payload['blurb'] !== undefined ? { blurb: String(payload['blurb']) } : {}),
+        ...(payload['currency'] !== undefined ? { currency: String(payload['currency']) } : {}),
+        ...(payload['evidenceProfile'] !== undefined ? { evidenceProfile: String(payload['evidenceProfile']) } : {}),
+        ...(Array.isArray(payload['acceptedCountries']) ? { acceptedCountries: payload['acceptedCountries'] as string[] } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
       });
-      return ok({ productId: master.productId, name: master.name, category: master.category, line: master.line });
+      return ok({ productId: master.productId, name: master.name, category: master.category, line: master.line, variety: master.variety, blurb: master.blurb, currency: master.currency });
+    }
+
+    /* ------------------------------------------- regional master: country, calendar and currencies */
+    case 'GET /master/regional':
+      return ok(state.world.erp.regionalSnapshot());
+
+    case 'POST /master/regional': {
+      const regional = state.world.erp.updateRegionalMaster({
+        ...(payload['country'] !== undefined ? { country: String(payload['country']) } : {}),
+        ...(payload['region'] !== undefined ? { region: String(payload['region']) } : {}),
+        ...(payload['operatingRegion'] !== undefined ? { operatingRegion: String(payload['operatingRegion']) } : {}),
+        ...(payload['timezone'] !== undefined ? { timezone: String(payload['timezone']) } : {}),
+        ...(payload['dateFormat'] !== undefined ? { dateFormat: String(payload['dateFormat']) } : {}),
+        ...(payload['timeFormat'] !== undefined ? { timeFormat: String(payload['timeFormat']) } : {}),
+        ...(payload['weekStart'] !== undefined ? { weekStart: String(payload['weekStart']) } : {}),
+        ...(payload['locale'] !== undefined ? { locale: String(payload['locale']) } : {}),
+        ...(payload['localCurrency'] !== undefined ? { localCurrency: String(payload['localCurrency']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+      });
+      return ok(regional);
+    }
+
+    case 'POST /master/regional/currency': {
+      const regional = state.world.erp.setRegionalForeignCurrencyMaster({
+        code: String(payload['code'] ?? ''),
+        rate: payload['rate'] === undefined ? 0 : String(payload['rate']),
+        ...(payload['asOf'] !== undefined ? { asOf: String(payload['asOf']) } : {}),
+        ...(payload['kind'] !== undefined ? { kind: String(payload['kind']) as 'pegged' | 'floating' } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok(regional);
+    }
+
+    case 'POST /master/regional/currency/remove': {
+      const regional = state.world.erp.removeRegionalForeignCurrencyMaster({
+        code: String(payload['code'] ?? ''),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok(regional);
     }
 
     case 'POST /master/charges': {
@@ -1773,8 +1822,35 @@ export async function dispatchApiRoute(
     case 'GET /journey':
       return ok(state.world.journey.snapshot(state.world));
 
-    case 'POST /journey/field-settings':
-      return ok({ fieldSettings: state.world.journey.updateFieldSettings(payload['fieldSettings']) });
+    case 'POST /journey/field-settings': {
+      // Labels travel with the mandatory/editable flags: a tenant renames a field and decides whether
+      // it is required in the same filed setting, and both are audited in the same call.
+      const fieldSettings = state.world.journey.updateFieldSettings(payload['fieldSettings'], {
+        ...(payload['by'] ? { by: String(payload['by']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+      });
+      return ok({ fieldSettings, fieldRenames: state.world.journey.renameAudit().map((r) => ({ ...r })), renamedFieldCount: state.world.journey.renameAudit().length });
+    }
+
+    /* ------------------------------------------- the AI guide: the sticky note on every section */
+    case 'GET /guide':
+      return ok(state.world.guide.snapshot(state.world));
+
+    case 'POST /guide/preference': {
+      const enabled = Boolean(payload['enabled']);
+      const by = String(payload['by'] ?? 'console-operator');
+      const change = state.world.guide.setPreference({ enabled, by, ...(payload['at'] ? { at: String(payload['at']) } : {}) });
+      // A guidance preference is an agent-visible setting, so it goes on the AI ledger too: "was the
+      // operator shown the guidance at the time?" has to be answerable from a record, not a memory.
+      const proposed = state.world.ai.propose({
+        agent: 'agent/console-guide', module: 'guide', intent: enabled ? 'enable-section-guidance' : 'disable-section-guidance',
+        riskClass: 'low', at: change.at, inputs: { by, enabled }, output: { enabled, note: change.note }, dryRun: false, costUsd: 0,
+      });
+      // The desk has already applied it, so the ledger says executed rather than leaving a low-risk
+      // preference looking like work somebody still has to do.
+      const action = proposed.requiresHuman ? proposed : state.world.ai.execute(proposed.id);
+      return ok({ ...change, enabled: state.world.guide.isEnabled(), actionId: action.id, status: action.status });
+    }
 
     case 'POST /journey/open': {
       const opened = state.world.journey.open(state.world, {

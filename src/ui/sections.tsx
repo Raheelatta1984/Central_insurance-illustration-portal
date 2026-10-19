@@ -19,7 +19,7 @@
  * same rail drives the customer journey, a quotation, a policy conversion, an alteration or a claim.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GuideNote } from './guide';
+import { GuideBanner } from './guide';
 
 export type SectionStatus = 'complete' | 'in-progress' | 'ready' | 'blocked' | 'locked';
 
@@ -216,7 +216,16 @@ export const SectionStack: React.FC<SectionStackProps> = ({
 
               {locked && open && (
                 <div className="sectionBody" id={`section-body-${section.id}`}>
-                  <GuideNote title={section.title} subtitle={section.subtitle} status={section.status} missing={section.missing} blockers={section.blockers} warnings={section.warnings} compact />
+                  {/* The note for this section rides with the section: it is the first thing in the
+                      body and it stays put while the operator scrolls a long form. */}
+                  <GuideBanner
+                    section={section.id}
+                    title={section.title}
+                    status={section.status}
+                    percent={section.percent}
+                    missing={section.missing}
+                    blockers={section.blockers}
+                  />
                   <div className="warnBox small">
                     This section is closed until <b>{section.lockedByTitle ?? 'the section before it'}</b> is 100% complete.
                     The sequence is enforced by the same gate the API uses, so nothing here can be submitted early.
@@ -227,7 +236,14 @@ export const SectionStack: React.FC<SectionStackProps> = ({
 
               {!locked && open && (
                 <div className="sectionBody" id={`section-body-${section.id}`}>
-                  <GuideNote title={section.title} subtitle={section.subtitle} status={section.status} missing={section.missing} blockers={section.blockers} warnings={section.warnings} compact />
+                  <GuideBanner
+                    section={section.id}
+                    title={section.title}
+                    status={section.status}
+                    percent={section.percent}
+                    missing={section.missing}
+                    blockers={section.blockers}
+                  />
                   {section.meta && <div className="sectionMeta">{section.meta}</div>}
                   <MissingList missing={section.missing} blockers={section.blockers} warnings={section.warnings} />
                   {section.children}

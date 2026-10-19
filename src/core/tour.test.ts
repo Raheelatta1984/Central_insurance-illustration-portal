@@ -29,7 +29,7 @@ describe('the 60-minute tour', () => {
 
   it('covers the money-moving tabs, not just the pretty ones', () => {
     const tabs = new Set<ConsoleTab>(TOUR.map((s) => s.tab as ConsoleTab));
-    for (const required of ['overview', 'policyholder', 'decisions', 'cover', 'funds', 'takaful', 'group', 'underwriting', 'claims', 'durability'] as ConsoleTab[]) {
+    for (const required of ['overview', 'journey', 'master', 'policyholder', 'decisions', 'cover', 'funds', 'takaful', 'group', 'underwriting', 'claims', 'durability'] as ConsoleTab[]) {
       expect(tabs.has(required), `tour must include ${required}`).toBe(true);
     }
   });

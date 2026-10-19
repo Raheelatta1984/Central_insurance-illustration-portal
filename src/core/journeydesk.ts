@@ -17,6 +17,7 @@ import { Money, formatAmount, money, parseAmount } from './money.js';
 import { unitsToDecimal } from './units.js';
 import { DecisionOutcome, OccupationClass, ProductRules, CONDITION_RULES, FAMILY_HISTORY_RULES, PURSUIT_RULES } from './underwriting.js';
 import { AE_PACK, PACKS, RegulatoryPack } from './regulatory.js';
+import { productVariety } from './products.js';
 import { NeedsAnswer, ProductCandidate, evaluateNeeds, questionnaireFor } from './needs.js';
 import { FundOption, RiskGrade, allocationProgress } from './allocation.js';
 import { OCCUPATION_LABELS, RIDER_CATALOGUE, RiderSelection, loadingBreakdown, medicalRequirements } from './loadings.js';
@@ -28,7 +29,7 @@ import {
 } from './uwroute.js';
 import {
   Answers, JOURNEY_STAGES, JourneyArtefacts, JourneyCase, JourneyContext, JourneyProgress,
-  JourneyStageId, JourneyStatus, JourneyFieldSettings, emptyAnswers, journeyProgress, stageSpec,
+  JourneyStageId, JourneyStatus, JourneyFieldSettings, emptyAnswers, fieldLabel, journeyProgress, stageSpec,
 } from './journey.js';
 
 export class JourneyDeskError extends Error {}
@@ -58,11 +59,22 @@ export const IN_HOUSE_QUEUE: UnderwritingQueue = {
  * adds the investment or takaful objectives on top.
  */
 export function objectivesFor(line: string, category: string): readonly string[] {
+  // The objectives are the questionnaire's own vocabulary: a product answers one or more of them, and
+  // the recommendation ranks it on that. Every line in the catalogue maps onto them, so widening the
+  // catalogue cannot leave a product that silently matches nothing.
   switch (line) {
     case 'medical': return ['health-cover'];
     case 'motor': return ['debt-cover'];
     case 'travel': return ['health-cover', 'family-protection'];
     case 'group': return ['business-continuity', 'family-protection'];
+    case 'critical-illness': return ['income-replacement', 'health-cover', 'family-protection'];
+    case 'income-protection': return ['income-replacement', 'debt-cover', 'family-protection'];
+    case 'endowment': return ['retirement-savings', 'education-funding', 'family-protection'];
+    case 'mortgage': return ['debt-cover', 'family-protection'];
+    case 'personal-accident': return ['income-replacement', 'family-protection'];
+    case 'home': return ['family-protection', 'debt-cover'];
+    case 'property': case 'liability': case 'engineering': case 'general': return ['business-continuity'];
+    case 'marine': case 'hull': return ['business-continuity', 'debt-cover'];
     default: break;
   }
   switch (category) {
@@ -70,6 +82,22 @@ export function objectivesFor(line: string, category: string): readonly string[]
     case 'takaful': return ['family-protection', 'retirement-savings', 'education-funding'];
     default: return ['family-protection', 'income-replacement', 'debt-cover'];
   }
+}
+
+/**
+ * Validate a display name coming from master settings. Wording that reaches a customer-facing form is
+ * filed data: it is trimmed, it is bounded, and it carries no markup, because a label is read aloud by
+ * a screen reader and printed on a schedule. An empty or absent label means "use the default".
+ */
+export function normaliseFieldLabel(value: unknown, stageId: string, fieldId: string, currentLabel: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') throw new JourneyDeskError(`the label for ${stageId}.${fieldId} must be text`);
+  const text = value.replace(/\s+/g, ' ').trim();
+  if (text === '') return undefined;
+  if (text.length > 80) throw new JourneyDeskError(`the label for ${stageId}.${fieldId} must be 80 characters or fewer (${text.length} given)`);
+  if (/[<>{}]/.test(text)) throw new JourneyDeskError(`the label for ${stageId}.${fieldId} cannot contain markup characters (<, >, {, })`);
+  if (text === currentLabel) return undefined;
+  return text;
 }
 
 /** A formatted money label back into money, without assuming the currency suffix is there. */
@@ -102,7 +130,7 @@ export function productCatalogue(w: World): Array<ProductCandidate & { rules: Pr
     return {
       productId: p.productId,
       name: p.name,
-      line: (rules.line === 'critical-illness' ? 'life' : rules.line) as ProductCandidate['line'],
+      line: rules.line,
       category: p.category,
       entityId: p.entityId,
       currency: p.currency,
@@ -140,9 +168,11 @@ export function fundOptions(w: World): FundOption[] {
 export class JourneyDesk {
   private readonly cases = new Map<string, JourneyCase>();
   private seq = 0;
-  private readonly fieldSettings: Record<string, Record<string, { mandatory: boolean; editable: boolean }>> = Object.fromEntries(
+  private readonly fieldSettings: Record<string, Record<string, { mandatory: boolean; editable: boolean; label?: string }>> = Object.fromEntries(
     JOURNEY_STAGES.map((stage) => [stage.id, Object.fromEntries(stage.fields.map((field) => [field.id, { mandatory: field.mandatory, editable: field.editable }]))]),
   );
+  /** Who renamed which field, from what to what. A label is user-facing wording, so it is audited. */
+  private readonly fieldRenames: Array<{ at: string; by: string; stageId: string; stageTitle: string; fieldId: string; from: string; to: string }> = [];
 
   constructor(
     readonly quotations: QuotationBook,
@@ -158,8 +188,23 @@ export class JourneyDesk {
     return Object.fromEntries(Object.entries(this.fieldSettings).map(([stage, fields]) => [stage, Object.fromEntries(Object.entries(fields).map(([id, value]) => [id, { ...value }]))]));
   }
 
-  updateFieldSettings(input: unknown): JourneyFieldSettings {
+  /** The renames on file, newest last: what a compliance reviewer asks for when a form reads oddly. */
+  renameAudit(): ReadonlyArray<{ at: string; by: string; stageId: string; stageTitle: string; fieldId: string; from: string; to: string }> {
+    return this.fieldRenames;
+  }
+
+  /**
+   * Save the field rules for the journey: mandatory, editable, and the label each field is shown with.
+   *
+   * A label is validated like the filed data it is: short wording, no markup, never a blank that would
+   * leave a form field with no name. The change is written to the rename audit with the actor and the
+   * time. An empty label is not an error — it means "go back to the default", which is how a tenant
+   * undoes a rename without anyone having to remember what the default was.
+   */
+  updateFieldSettings(input: unknown, meta: { by?: string; at?: string } = {}): JourneyFieldSettings {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new JourneyDeskError('field settings must be a stage-to-field object');
+    const by = meta.by?.trim() || 'master-settings';
+    const at = meta.at?.trim() || new Date().toISOString();
     const next = input as Record<string, unknown>;
     for (const [stageId, rawFields] of Object.entries(next)) {
       const stage = JOURNEY_STAGES.find((candidate) => candidate.id === stageId);
@@ -169,8 +214,14 @@ export class JourneyDesk {
         if (!field || !raw || typeof raw !== 'object' || Array.isArray(raw)) throw new JourneyDeskError(`unknown field setting: ${stageId}.${fieldId}`);
         const setting = raw as Record<string, unknown>;
         if (typeof setting['mandatory'] !== 'boolean' || typeof setting['editable'] !== 'boolean') throw new JourneyDeskError(`mandatory and editable must be boolean for ${stageId}.${fieldId}`);
-        if (field.kind === 'readonly' && setting['editable']) throw new JourneyDeskError(`${stageId}.${fieldId} is a calculated read-only field`);
-        this.fieldSettings[stageId]![fieldId] = { mandatory: setting['mandatory'], editable: setting['editable'] };
+        const prior = this.fieldSettings[stageId]![fieldId]!;
+        const shownAs = fieldLabel(stageId, field, this.getFieldSettings());
+        if (field.kind === 'readonly' && setting['editable']) throw new JourneyDeskError(`${shownAs} is a calculated read-only field`);
+        const label = normaliseFieldLabel(setting['label'], stageId, fieldId, field.label);
+        if (label !== (prior.label ?? field.label)) {
+          this.fieldRenames.push({ at, by, stageId, stageTitle: stage.title, fieldId, from: prior.label ?? field.label, to: label ?? field.label });
+        }
+        this.fieldSettings[stageId]![fieldId] = { mandatory: setting['mandatory'], editable: setting['editable'], ...(label ? { label } : {}) };
       }
     }
     return this.getFieldSettings();
@@ -181,7 +232,7 @@ export class JourneyDesk {
     for (const field of stage.fields) {
       const setting = this.fieldSettings[stageId]?.[field.id];
       if (setting?.editable === false && Object.prototype.hasOwnProperty.call(incoming, field.id) && JSON.stringify(incoming[field.id]) !== JSON.stringify(existing[field.id])) {
-        throw new JourneyDeskError(`${field.label} is locked by master settings`);
+        throw new JourneyDeskError(`${fieldLabel(stageId, field, this.getFieldSettings())} is locked by master settings`);
       }
     }
   }
@@ -1049,14 +1100,29 @@ export class JourneyDesk {
       illustrationWording: pack.illustration.wording,
       quotationValidityDays: DEFAULT_VALIDITY_DAYS,
       fieldSettings: this.getFieldSettings(),
+      fieldRenames: this.fieldRenames.map((r) => ({ ...r })),
+      renamedFieldCount: this.fieldRenames.length,
       stages: JOURNEY_STAGES.map((s) => ({
         id: s.id, order: s.order, title: s.title, shortTitle: s.shortTitle, purpose: s.purpose,
         regulatoryBasis: s.regulatoryBasis, owner: s.owner, detailTab: s.detailTab,
         produces: [...s.produces],
-        fields: s.fields.map((fd) => ({ id: fd.id, label: fd.label, kind: fd.kind, mandatory: this.fieldSettings[s.id]?.[fd.id]?.mandatory ?? fd.mandatory, editable: this.fieldSettings[s.id]?.[fd.id]?.editable ?? fd.editable, options: fd.options ? [...fd.options] : undefined, hint: fd.hint, group: fd.group })),
+        fields: s.fields.map((fd) => ({
+          id: fd.id,
+          label: fieldLabel(s.id, fd, this.getFieldSettings()),
+          defaultLabel: fd.label,
+          renamed: (this.fieldSettings[s.id]?.[fd.id]?.label ?? '') !== '',
+          kind: fd.kind,
+          mandatory: this.fieldSettings[s.id]?.[fd.id]?.mandatory ?? fd.mandatory,
+          editable: this.fieldSettings[s.id]?.[fd.id]?.editable ?? fd.editable,
+          options: fd.options ? [...fd.options] : undefined, hint: fd.hint, group: fd.group,
+        })),
       })),
       products: products.map((p) => ({
         productId: p.productId, name: p.name, category: p.category, entityId: p.entityId, currency: p.currency,
+        // The line and the variety travel with the candidate, so the console can group ninety
+        // varieties into the shelves an underwriter actually thinks in.
+        line: p.line, variety: productVariety(p.productId)?.variety ?? p.name,
+        blurb: productVariety(p.productId)?.blurb ?? '',
         minAge: p.minAge, maxAge: p.maxAge, objectives: [...p.objectives], shariahCompliant: p.shariahCompliant,
         investmentLinked: p.investmentLinked, minimumRiskAppetite: p.minimumRiskAppetite, defaultFunds: [...p.defaultFunds],
         baseRatePerThousand: formatAmount(money(p.baseRatePerThousandMinor, p.currency)),
@@ -1144,6 +1210,9 @@ export interface JourneySnapshot {
   quotationValidityDays: number;
   stages: Array<Record<string, unknown>>;
   fieldSettings: JourneyFieldSettings;
+  /** The rename trail: who changed which field's wording, from what to what, and when. */
+  fieldRenames: ReadonlyArray<{ at: string; by: string; stageId: string; stageTitle: string; fieldId: string; from: string; to: string }>;
+  renamedFieldCount: number;
   products: Array<Record<string, unknown>>;
   funds: FundOption[];
   riders: Array<Record<string, unknown>>;

@@ -9,8 +9,9 @@ import { createRoot } from 'react-dom/client';
 import type { WorldSnapshot } from '../core/demo';
 
 import { CONSOLE_TABS, ConsoleTab, TOUR, TourStep, tourMinutes } from '../core/tour';
+import { applyDateFormat, applyTimeFormat, zonedParts } from '../core/regional';
 import { api } from './api';
-import { GuideNote, GuideProvider, GuideTopBanner } from './guide';
+import { GuideBanner, GuideProvider, GuideToggle, GuideTopBanner, ScreenGuide } from './guide';
 import { CustomerJourneyPanel } from './journey';
 import {
   ClaimsManagementPanel,
@@ -26,13 +27,45 @@ type Tab = ConsoleTab;
 
 const TABS = CONSOLE_TABS;
 
-const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({ title, subtitle, children, wide }) => (
+const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean; guide?: boolean }> = ({ title, subtitle, children, wide, guide = true }) => (
   <section className="card" style={wide ? { gridColumn: '1 / -1' } : undefined}>
     <header><h3>{title}</h3>{subtitle && <p>{subtitle}</p>}</header>
-    <GuideNote title={title} subtitle={subtitle} />
+    {/* Every card is a section of a screen, and every section carries its note. A card that is pure
+        chrome can opt out with `guide={false}`; nothing opts out by default. */}
+    {guide && <GuideBanner compact title={title} />}
     {children}
   </section>
 );
+
+/** The tenant's own calendar and money, in the header: where the regional master settings land. */
+type RegionalView = WorldSnapshot['erp']['master']['regional'];
+
+const RegionalPills: React.FC<{ regional: RegionalView }> = ({ regional }) => {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const clock = useMemo(() => {
+    try {
+      const parts = zonedParts(new Date().toISOString(), regional.timezone);
+      return `${applyDateFormat(parts.day, parts.month, parts.year, regional.dateFormat)} · ${applyTimeFormat(parts.hour, parts.minute, regional.timeFormat)}`;
+    } catch {
+      return 'clock unavailable';
+    }
+    // `tick` is the only thing that makes this re-read the wall clock.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, regional]);
+  return (
+    <>
+      <Pill tone="info">{regional.countryName} · {regional.operatingRegion}</Pill>
+      <Pill tone="info">{regional.timezone} {regional.utcOffsetLabel}</Pill>
+      <Pill tone="ok" >{clock}</Pill>
+      <Pill tone="info">local {regional.localCurrency}</Pill>
+      <Pill tone="info">{regional.foreignCurrencies.length} FX quote{regional.foreignCurrencies.length === 1 ? '' : 's'}</Pill>
+    </>
+  );
+};
 
 const Pill: React.FC<{ tone?: 'ok' | 'warn' | 'bad' | 'info'; children: React.ReactNode }> = ({ tone = 'info', children }) => (
   <span className={`pill ${tone}`}>{children}</span>
@@ -863,17 +896,36 @@ function Labels({ data }: { data: WorldSnapshot }) {
 function App() {
   const [data, setData] = useState<WorldSnapshot | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
-  const [guideEnabled, setGuideEnabled] = useState(() => {
-    try { return window.localStorage.getItem('central-insurance-ai-guide') === 'enabled'; } catch { return false; }
-  });
   const [error, setError] = useState<string | null>(null);
+  // The guide switch. It starts from the world (so the console shows what the tenant last chose), it
+  // flips instantly because a switch that waits on a round trip feels broken, and the change is filed
+  // through the API so the audit trail answers "was this operator shown the guidance?".
+  const [guideOn, setGuideOn] = useState(true);
+  const [guideSeeded, setGuideSeeded] = useState(false);
+  const [guideBusy, setGuideBusy] = useState(false);
   const load = useCallback(async () => {
     try { setData(await api<WorldSnapshot>('/world')); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }, []);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    try { window.localStorage.setItem('central-insurance-ai-guide', guideEnabled ? 'enabled' : 'disabled'); } catch { /* storage can be unavailable in private or embedded contexts */ }
-  }, [guideEnabled]);
+    if (!data || guideSeeded) return;
+    setGuideOn(data.guide.enabled);
+    setGuideSeeded(true);
+  }, [data, guideSeeded]);
+  const toggleGuide = useCallback(async (next: boolean) => {
+    setGuideOn(next);
+    setGuideBusy(true);
+    setError(null);
+    try {
+      const changed = await api<{ enabled: boolean }>('/guide/preference', 'POST', { enabled: next, by: 'console-operator' });
+      setGuideOn(changed.enabled);
+    } catch (e) {
+      setGuideOn(!next);
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGuideBusy(false);
+    }
+  }, []);
   const body = useMemo(() => {
     if (!data) return null;
     switch (tab) {
@@ -918,32 +970,30 @@ function App() {
         </footer>
       </aside>
       <main>
-        <GuideProvider enabled={guideEnabled} tab={tab}>
-          <header className="top">
-            <div>
-              <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
-              <p className="muted small">Unit-linked · takaful · group finance · micro-duration cover — all from one core, all auditable.</p>
+        <header className="top">
+          <div>
+            <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
+            <p className="muted small">Unit-linked · takaful · group finance · micro-duration cover — all from one core, all auditable.</p>
+          </div>
+          <div className="topRight">
+            <GuideToggle enabled={guideOn} busy={guideBusy} onToggle={(next) => { void toggleGuide(next); }} />
+            <div className="pills">
+              <Pill tone="ok">books balanced</Pill>
+              <Pill tone="info">as of {data?.asOf ?? '—'}</Pill>
+              {data && <RegionalPills regional={data.erp.master.regional} />}
             </div>
-            <div className="topControls">
-              <button
-                type="button"
-                className={`aiGuideToggle${guideEnabled ? ' enabled' : ''}`}
-                aria-pressed={guideEnabled}
-                onClick={() => setGuideEnabled((enabled) => !enabled)}
-                title={guideEnabled ? 'Turn off contextual AI guidance' : 'Turn on contextual AI guidance'}
-              >
-                <span aria-hidden="true">✦</span> AI guide <b>{guideEnabled ? 'On' : 'Off'}</b>
-              </button>
-              <div className="pills">
-                <Pill tone="ok">books balanced</Pill>
-                <Pill tone="info">as of {data?.asOf ?? '—'}</Pill>
-              </div>
-            </div>
-          </header>
-          <GuideTopBanner />
-          {error && <div className="errorBox">{error}</div>}
-          {body ?? <div className="loading">Loading the world…</div>}
-        </GuideProvider>
+          </div>
+        </header>
+        {error && <div className="errorBox">{error}</div>}
+        {data ? (
+          <GuideProvider data={data} tab={tab} enabled={guideOn}>
+            <ScreenGuide />
+            <GuideTopBanner />
+            {body ?? <div className="loading">Loading the world…</div>}
+          </GuideProvider>
+        ) : (
+          <div className="loading">Loading the world…</div>
+        )}
       </main>
     </div>
   );
@@ -2369,7 +2419,9 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .okText { color:#7ee2a8; }
 
 /* ---- the guided journey: closed sections, one open, the next one opening itself ---- */
-.sections { padding:0; overflow:hidden; }
+/* overflow:clip keeps the rounded corners without making the rail a scroll container, which would
+   trap the sticky guide notes inside it: a sticky element only sticks against its nearest scrollport. */
+.sections { padding:0; overflow:visible; overflow:clip; }
 .sections > header.sectionsHead { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; padding:14px 16px 10px; border-bottom:1px solid var(--line); }
 .sectionsRail { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
 .railPercent { display:flex; gap:8px; align-items:center; min-width:150px; }
@@ -2427,6 +2479,37 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .extra { margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); }
 .summaryRows { margin:6px 0; }
 .grow { flex:1 1 auto; }
+
+/* ---- the AI guide: a sticky note on every section, and one switch above every tab ---- */
+.topRight { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+.guideToggle { display:inline-flex; gap:7px; align-items:center; white-space:nowrap; }
+.guideToggle.on { color:#cfe6ff; border-color:#1f4a6b; background:#11212f; }
+.guideNote { position:sticky; top:44px; z-index:12; margin:8px 0 10px; border:1px solid #1f4a6b; border-left:3px solid var(--accent); border-radius:10px; background:linear-gradient(180deg,#132231,#101a25); box-shadow:0 8px 20px rgba(0,0,0,.30); }
+.guideNote.ok { border-color:#1f5f3f; border-left-color:var(--ok); background:linear-gradient(180deg,#122519,#101a25); }
+.guideNote.warn { border-color:#6b5312; border-left-color:var(--warn); background:linear-gradient(180deg,#241f10,#101a25); }
+.guideNote.bad { border-color:#6b2020; border-left-color:var(--bad); background:linear-gradient(180deg,#261414,#101a25); }
+.guideNote > summary { display:flex; gap:10px; align-items:center; padding:8px 12px; cursor:pointer; list-style:none; }
+.guideNote > summary::-webkit-details-marker { display:none; }
+.guideNote > summary:hover { background:rgba(255,255,255,.035); }
+.guideMark { color:var(--accent); font-size:13px; flex:0 0 auto; }
+.guideHead { display:flex; flex-direction:column; gap:1px; flex:1 1 auto; min-width:0; }
+.guideHead b { font-size:12.5px; font-weight:600; }
+.guideHead small { color:var(--muted); font-size:11px; }
+.guideCue { color:var(--muted); width:14px; text-align:center; flex:0 0 auto; }
+.guideNote[open] .guideCue { transform:rotate(180deg); }
+.guideBody { padding:2px 14px 12px 34px; border-top:1px dashed var(--line); }
+.guideBody p { margin:8px 0; font-size:12.5px; }
+.guideDo ol { margin:4px 0 0 18px; padding:0; font-size:12.5px; }
+.guideDo li { margin:3px 0; }
+.guideFacts { margin-top:8px; }
+.guideFacts ul { font-size:12px; color:var(--muted); }
+.guideLimit { margin-top:10px; font-style:italic; }
+.guideNote.compact > summary { padding:6px 10px; }
+.guideNote.compact .guideHead small { display:none; }
+.guideNote.compact .guideBody { padding:2px 12px 10px 32px; }
+/* The note for the screen itself sits above the notes for its sections. */
+.guideNote.screen { position:sticky; top:0; z-index:30; margin:0 0 14px; }
+@media print { .guideNote { position:static; box-shadow:none; } }
 `;
 document.head.appendChild(style);
 

@@ -10,6 +10,12 @@ export const CURRENCY_SCALE: Record<string, number> = {
   AED: 2, SAR: 2, QAR: 2, USD: 2, EUR: 2, GBP: 2, MYR: 2, INR: 2, PKR: 2,
   BHD: 3, KWD: 3, OMR: 3, JOD: 3,
   IDR: 0, JPY: 0, KRW: 0,
+  /* The regional master may name any of these as the local currency of a tenant's book, so the
+     scale table has to hold them all: an amount in a currency we cannot scale is an amount we
+     cannot print, and "unknown currency" is not an answer a console should give an operator. */
+  AUD: 2, BDT: 2, BRL: 2, CAD: 2, CHF: 2, CNY: 2, CZK: 2, DKK: 2, EGP: 2, GHS: 2, HKD: 2,
+  HUF: 2, KES: 2, LBP: 2, LKR: 2, MAD: 2, MXN: 2, NGN: 2, NOK: 2, NPR: 2, NZD: 2, PHP: 2,
+  PLN: 2, RSD: 2, SEK: 2, SGD: 2, THB: 2, TND: 3, TRY: 2, VND: 0, ZAR: 2, IQD: 3, AFN: 2,
 };
 
 export type Currency = string;

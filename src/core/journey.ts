@@ -436,7 +436,19 @@ export interface JourneyCase {
   computed: JourneyComputed;
 }
 
-export type JourneyFieldSettings = Readonly<Record<string, Readonly<Record<string, { mandatory: boolean; editable: boolean }>>>>;
+/**
+ * What master settings may say about a field: whether the operator must fill it in, whether they may
+ * edit it, and **what it is called**. The rename is a filed setting like the other two, so a tenant
+ * that says "Contribution" rather than "Premium" says it on the form, in the missing-field checklist
+ * and in the refusal message that names the field — three places that used to be able to disagree.
+ */
+export type JourneyFieldSettings = Readonly<Record<string, Readonly<Record<string, { mandatory: boolean; editable: boolean; label?: string }>>>>;
+
+/** The label a field shows, taking master settings into account. */
+export function fieldLabel(stageId: string, field: { id: string; label: string }, settings?: JourneyFieldSettings): string {
+  const renamed = settings?.[stageId]?.[field.id]?.label;
+  return renamed && renamed.trim() !== '' ? renamed : field.label;
+}
 
 export interface JourneyContext {
   readonly fieldSettings?: JourneyFieldSettings;
@@ -502,8 +514,10 @@ export function fieldGaps(stage: StageSpec, answers: Answers, settings?: Journey
     const required = Boolean(field.mandatoryWhen?.(answers)) || (override?.mandatory ?? field.mandatory);
     if (!required) continue;
     total += 1;
+    // The checklist names the field the way the tenant named it, so an operator looking for
+    // "Contribution" is not told that "Premium" is missing.
     if (filled(answers[field.id], field.kind)) answered += 1;
-    else missing.push(field.label);
+    else missing.push(fieldLabel(stage.id, field, settings));
   }
   return { missing, answered, total };
 }
@@ -1337,7 +1351,12 @@ export function journeyProgress(caze: JourneyCase, ctx: JourneyContext, options:
     states.push({
       id: stage.id, order: stage.order, title: stage.title, shortTitle: stage.shortTitle,
       purpose: stage.purpose, regulatoryBasis: stage.regulatoryBasis, owner: stage.owner,
-      detailTab: stage.detailTab, fields: stage.fields.map((fd) => ({ ...fd, mandatory: ctx.fieldSettings?.[stage.id]?.[fd.id]?.mandatory ?? fd.mandatory, editable: ctx.fieldSettings?.[stage.id]?.[fd.id]?.editable ?? fd.editable })), produces: stage.produces,
+      detailTab: stage.detailTab, fields: stage.fields.map((fd) => ({
+        ...fd,
+        label: fieldLabel(stage.id, fd, ctx.fieldSettings),
+        mandatory: ctx.fieldSettings?.[stage.id]?.[fd.id]?.mandatory ?? fd.mandatory,
+        editable: ctx.fieldSettings?.[stage.id]?.[fd.id]?.editable ?? fd.editable,
+      })), produces: stage.produces,
       ...review, complete, percent: complete ? 100 : locked ? 0 : review.percent, status, submitted,
       lockedBy: blockedBy,
       lockedByTitle: blockedBy ? stageSpec(blockedBy).title : null,
