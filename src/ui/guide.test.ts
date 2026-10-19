@@ -1,11 +1,14 @@
 /**
- * The guide on screen: a note at the top of every section, and a switch that hides them all.
+ * The guide on screen: a sticky note against every section and subsection, and a switch that hides
+ * them all.
  *
- * Rendered server-side against the real world snapshot, the way `console.test.ts` does it, because the
- * failure worth catching here is not a wrong sentence — it is a screen with no note on it, a note that
- * pushes a section open, or a switch that hides the notes but leaves their markup behind. The last test
- * in each group re-counts `aria-expanded`, which is how the rail's "exactly one section open" rule is
- * proved: the notes must not disturb it.
+ * Rendered server-side against the real world snapshot, the way `console.test.ts` does it, because
+ * the failure worth catching here is not a wrong sentence — it is a screen with no note on it, a
+ * note that pushes a section open, or a switch that hides the notes but leaves their markup behind.
+ * The notes are paper: a GUIDE badge, a "Step N · title", a "Do this" line, a hand-drawn arrow, and
+ * a close button — and the paper must never be mistaken for an open section, which is why the last
+ * test in each group re-counts `aria-expanded`: the rail's "exactly one section open" rule must
+ * survive a stack of notes.
  */
 import { describe, expect, it } from 'vitest';
 import React from 'react';
@@ -33,16 +36,16 @@ const plain = (html: string) => html.replace(/<!--[^>]*-->/g, '');
 const notes = (html: string) => html.split('data-guide="').length - 1;
 const openSections = (html: string) => html.split('aria-expanded="true"').length - 1;
 
+const CLAIM_GATES = [
+  { id: 'register', title: 'Register a claim request', fields: fields(['Claim id', 'CLM-1'], ['Date of loss', '']) },
+  { id: 'reserve', title: 'Reserve the claim', fields: fields(['Reserve', '']) },
+  { id: 'settle', title: 'Settle, pay and recover', fields: fields(['Settlement', '']) },
+];
+
 describe('the note rides with the section', () => {
-  it('puts a small guide in every section heading, including closed sections', () => {
-    const html = withGuide(h(SectionGroup, {
-      gates: [
-        { id: 'register', title: 'Register a claim request', fields: fields(['Claim id', 'CLM-1'], ['Date of loss', '']) },
-        { id: 'reserve', title: 'Reserve the claim', fields: fields(['Reserve', '']) },
-        { id: 'settle', title: 'Settle, pay and recover', fields: fields(['Settlement', '']) },
-      ],
-    }), 'claims');
-    // Every rail heading has its own trigger; guides never open the underlying section.
+  it('puts a sticky note in every section, including closed sections', () => {
+    const html = withGuide(h(SectionGroup, { gates: CLAIM_GATES }), 'claims');
+    // Every rail heading gets its own paper; notes never open the underlying section.
     expect(notes(html)).toBe(3);
     expect(html).toContain('data-guide="claims:reserve"');
     expect(html).toContain('data-guide="claims:settle"');
@@ -79,17 +82,59 @@ describe('the note rides with the section', () => {
   });
 
   it('leaves a panel alone when nothing provides the notes, so an embed or a test renders as before', () => {
-    const bare = renderToString(h(SectionGroup, {
-      gates: [{ id: 'register', title: 'Register a claim request', fields: fields(['Claim id', 'CLM-1']) }],
-    }));
+    const bare = renderToString(h(SectionGroup, { gates: CLAIM_GATES }));
     expect(notes(bare)).toBe(0);
     expect(openSections(bare)).toBe(1);
   });
 });
 
+describe('the paper', () => {
+  it('reads like the sketch: a GUIDE badge, a step title, a Do this line and an arrow down at the form', () => {
+    const html = withGuide(h(SectionGroup, { gates: CLAIM_GATES }), 'claims');
+    expect(html).toContain('class="stickyBadge"');
+    expect(plain(html)).toContain('GUIDE');
+    // The open section is step one, so its paper says so.
+    expect(plain(html)).toContain('Step 1 · Register a claim request');
+    expect(plain(html)).toContain('Do this:');
+    // The closed sections behind it are numbered too.
+    expect(plain(html)).toContain('Step 2 · Reserve the claim');
+    expect(plain(html)).toContain('Step 3 · Settle, pay and recover');
+    // Every note carries the hand-drawn arrow and the × in a circle.
+    expect(html.split('class="stickyArrow"').length - 1).toBe(3);
+    expect(html.split('aria-label="Dismiss this guide note"').length - 1).toBe(3);
+    // And a fresh render has not dismissed anything: no reshow pin anywhere.
+    expect(html).not.toContain('stickyReshow');
+    // The paper never carries the rail's own state attribute: exactly one aria-expanded per section
+    // toggle, none on the notes — the rail's "exactly one open" rule survives a stack of papers.
+    expect((html.match(/aria-expanded=/g) ?? []).length).toBe(3);
+    expect(openSections(html)).toBe(1);
+  });
+
+  it('keeps the curated words on the compact paper too, trimmed by CSS rather than dropped', () => {
+    const html = withGuide(h(SectionGroup, { gates: CLAIM_GATES }), 'claims');
+    // The closed sections' notes are the compact ones — and they still say what to watch for.
+    const idx = html.indexOf('data-guide="claims:reserve"');
+    const noteStart = html.lastIndexOf('class="guideNote', idx);
+    const reserveNote = html.slice(noteStart, idx + 3000);
+    expect(reserveNote.slice(0, 120)).toContain('compact');
+    expect(plain(reserveNote)).toContain(SECTION_GUIDES['claims:reserve']!.watch ?? 'Watch');
+    expect(reserveNote).toContain('Watch:');
+  });
+
+  it('keeps each arrow inside the note it belongs to', () => {
+    const html = withGuide(h(SectionGroup, { gates: CLAIM_GATES }), 'claims');
+    const starts = CLAIM_GATES.map((g) => html.indexOf(`data-guide="claims:${g.id}"`));
+    starts.forEach((start, i) => {
+      expect(start, CLAIM_GATES[i]!.id).toBeGreaterThan(-1);
+      const end = i + 1 < starts.length ? starts[i + 1]! : html.length;
+      expect(html.slice(start, end)).toContain('class="stickyArrow"');
+    });
+  });
+});
+
 describe('the switch', () => {
   it('hides every note when it is off, and says so on the button', () => {
-    const node = h(SectionGroup, { gates: [{ id: 'register', title: 'Register a claim request', fields: fields(['Claim id', 'CLM-1']) }] });
+    const node = h(SectionGroup, { gates: [CLAIM_GATES[0]!] });
     expect(notes(withGuide(node, 'claims', false))).toBe(0);
     expect(notes(withGuide(node, 'claims', true))).toBe(1);
     // The rail's own behaviour is untouched either way.
@@ -105,7 +150,7 @@ describe('the switch', () => {
 
   it('writes a note for the screen itself, above its sections', () => {
     const html = withGuide(h('div', null, h(ScreenGuide, {}), h(SectionGroup, {
-      gates: [{ id: 'register', title: 'Register a claim request', fields: fields(['Claim id', 'CLM-1']) }],
+      gates: [CLAIM_GATES[0]!],
     })), 'claims');
     expect(html).toContain('data-guide="screen:claims"');
     expect(html).toContain('guideNote info screen');
@@ -118,7 +163,7 @@ describe('every screen of the console', () => {
     for (const tab of CONSOLE_TABS) {
       const html = withGuide(h(ScreenGuide, {}), tab.id);
       expect(html, tab.id).toContain(`data-guide="screen:${tab.id}"`);
-      expect(html, tab.id).toContain(TAB_GUIDES[tab.id]!.headline);
+      expect(plain(html), tab.id).toContain(TAB_GUIDES[tab.id]!.headline);
     }
   });
 
@@ -131,13 +176,16 @@ describe('every screen of the console', () => {
     expect(html).toContain('data-guide="journey:identity"');
     expect(html).toContain('data-guide="journey:recommendation"');
     expect(notes(html)).toBeGreaterThanOrEqual(19);
+    // The open section of the journey is step five: its paper says so.
+    expect(plain(html)).toContain('Step 5 · Coverage &amp; premium calculation');
   });
 
-  it('places a subsection guide next to its heading, using the same switch', () => {
+  it('places a subsection note next to its heading, using the same switch', () => {
     const node = h(GuideHeading, { title: 'What the engine computed' });
     const html = withGuide(node, 'journey');
     expect(html).toContain('<h4 class="small">What the engine computed</h4>');
     expect(html).toContain('data-guide="journey:what-the-engine-computed"');
+    expect(plain(html)).toContain('Do this:');
     expect(withGuide(node, 'journey', false)).not.toContain('data-guide');
   });
 

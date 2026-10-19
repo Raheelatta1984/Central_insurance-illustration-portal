@@ -2465,44 +2465,54 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .topRight { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
 .guideToggle { display:inline-flex; gap:7px; align-items:center; white-space:nowrap; }
 .guideToggle.on { color:#cfe6ff; border-color:#1f4a6b; background:#11212f; }
-.cardHeading, .guideHeading { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+/* ---- the AI guide: a sticky note against every section and subsection ---- */
+.cardHeading, .guideHeading { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-bottom:4px; }
 .cardHeading h3, .guideHeading h4 { margin:0; }
-.guideHeading { margin:12px 0 6px; }
-.screenGuide { display:flex; align-items:center; gap:9px; margin:0 0 14px; flex-wrap:wrap; }
-.screenGuide .guideBody { left:0; right:auto; }
-.guideNote { position:relative; display:inline-block; width:max-content; max-width:100%; flex:0 0 auto; vertical-align:middle; z-index:1; color:#ffe4a3; }
-.guideNote[open] { z-index:50; }
-.guideNote > summary { display:inline-flex; align-items:center; gap:6px; max-width:100%; padding:3px 9px; border:1px solid #816823; border-radius:7px; background:#332709; color:#ffe4a3; cursor:pointer; list-style:none; font-size:11px; font-weight:650; line-height:1.4; box-shadow:2px 2px 0 #1a170d; }
-.guideNote > summary::-webkit-details-marker { display:none; }
-.guideNote > summary:hover, .guideNote[open] > summary { background:#4a3712; }
-.guideNote > summary:focus-visible { outline:2px solid #ffe4a3; outline-offset:3px; }
-.guideNote.ok > summary { border-color:#427b50; }
-.guideNote.bad > summary { border-color:#b45b50; }
-.guideNote.screen > summary { padding:6px 10px; font-size:12px; white-space:normal; text-align:left; }
-.guideMark { font-size:13px; flex:none; }
-.guideCue { font-size:10px; flex:none; }
-.guideNote[open] .guideCue { transform:rotate(180deg); }
-.guideBody { position:absolute; top:calc(100% + 8px); right:0; width:340px; max-width:calc(100vw - 32px); max-height:min(420px, 65vh); overflow:auto; padding:12px 14px; border:1px solid #ad8531; border-radius:10px; background:#30260f; color:#fff1cd; box-shadow:5px 6px 0 #14181d, 0 10px 25px rgba(0,0,0,.4); font-size:12px; line-height:1.5; white-space:normal; font-weight:400; }
-.guideBody::before { content:'✳  AI guide'; display:block; color:#e5bc59; font-weight:700; font-size:10px; letter-spacing:.07em; text-transform:uppercase; margin-bottom:5px; }
-.guideBody strong { display:block; font-size:13px; line-height:1.35; }
-.guideBody p { margin:6px 0; }
-.guideDo { padding:6px 9px; border-left:2px solid #e4ae42; background:rgba(255,255,255,.05); }
-.guideDo p { margin:3px 0 0; }
-.guideWatch { color:#ffdc99; }
-.guideMore { margin:8px 0; color:#e9cd92; }
-.guideMore > summary { cursor:pointer; }
-.guideMore ul { margin:6px 0 0 15px; padding:0; }
+.guideHeading { margin:14px 0 4px; }
+.sectionGuideSlot { padding:4px 16px 0 54px; }
+.screenGuide { margin:0 0 20px; }
+/* The paper: yellow, wobbly hand-drawn border, a strip of tape, and a tilt that is the same on the
+   server render and the browser render so the note never flickers. */
+.guideNote { position:relative; display:block; width:max-content; max-width:100%; padding:15px 18px 13px 16px; margin:10px 0 16px; background:linear-gradient(180deg,#fce97f 0%,#f6dd58 60%,#f0d348 100%); color:#241d05; border:2px solid #241d05; border-radius:14px 5px 18px 7px / 7px 18px 5px 14px; box-shadow:4px 6px 0 rgba(0,0,0,.38), 0 16px 30px rgba(0,0,0,.35); transform:rotate(var(--tilt,-0.7deg)); font-size:12.5px; line-height:1.45; z-index:5; }
+.guideNote:hover { transform:rotate(0deg); transition:transform .12s ease; }
+.guideNote.compact { max-width:500px; padding:11px 14px 11px 13px; margin:8px 0 12px; font-size:12px; }
+.guideNote.compact .stickyTitle { font-size:13.5px; }
+.guideNote.compact .stickyArrow { left:12px; bottom:-19px; width:42px; height:26px; }
+.guideNote.compact .stickyWhy { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:6px; }
+.guideNote.compact .guideLimit { display:none; }
+.guideNote.screen { width:100%; max-width:780px; }
+.guideNote.screen .stickyTitle { font-size:16px; }
+.guideNote[data-tone="bad"] { border-color:#5c1f14; box-shadow:4px 6px 0 rgba(92,31,20,.45), 0 16px 30px rgba(0,0,0,.35); }
+.stickyTape { position:absolute; top:-10px; left:24px; width:72px; height:20px; background:rgba(226,232,238,.8); border:1px solid rgba(120,130,140,.4); transform:rotate(-3deg); box-shadow:0 2px 3px rgba(0,0,0,.25); }
+.stickyBadge { display:inline-block; background:#1d1a12; color:#f6dd58; font-size:10px; font-weight:800; letter-spacing:.16em; padding:3px 9px 2px; border-radius:5px; transform:rotate(-1.2deg); margin-bottom:8px; }
+.stickyTitle { display:block; font-size:15px; font-weight:750; line-height:1.3; padding-right:28px; }
+.stickyHeadline { display:block; font-style:italic; font-weight:600; font-size:12px; color:#4a3a10; margin:3px 0 0; padding-right:24px; }
+.stickyWhy { margin:8px 0 0; color:#3c3108; }
+.stickyDo { margin:8px 0 0; }
+.stickyDo b { font-weight:800; }
+.stickySteps { margin:3px 0 0; padding-left:18px; }
+.stickySteps li { margin:2px 0; }
+.stickyWatch { margin:8px 0 0; color:#9c3b1e; }
+.stickyClose { position:absolute; top:7px; right:7px; width:26px; height:26px; display:grid; place-items:center; padding:0; border:1.6px solid #6b5312; border-radius:50%; background:rgba(255,255,255,.45); color:#3d3009; font-size:14px; font-weight:700; line-height:1; cursor:pointer; }
+.stickyClose:hover { background:#fff; filter:none; }
+.stickyClose:focus-visible { outline:2px solid #241d05; outline-offset:2px; }
+.stickyArrow { position:absolute; left:16px; bottom:-24px; width:52px; height:32px; pointer-events:none; }
+.stickyReshow { font-size:12px; padding:4px 10px; margin:10px 0 14px; }
+.guideMore { margin:9px 0 0; color:#4a3a10; }
+.guideMore > summary { cursor:pointer; font-weight:700; font-size:11.5px; }
+.guideMore ul { margin:6px 0 0 16px; padding:0; }
 .guideMore li { margin:3px 0; }
-.guideLimit { display:block; color:#d4bc88; font-size:10px; margin-top:8px; }
+.guideLimit { display:block; color:#6b5a1e; font-size:10px; margin-top:10px; }
 @media (max-width:700px) {
   main { padding:16px 12px 40px; min-width:0; }
   .grid { grid-template-columns:minmax(0, 1fr); }
   .sectionHead { flex-wrap:wrap; }
   .sectionToggle { min-width:0; }
   .sectionState .bar { display:none; }
-  .screenGuide .guideBody, .cardHeading .guideBody, .guideHeading .guideBody { left:0; right:auto; }
+  .guideNote { width:100%; max-width:100%; }
+  .sectionGuideSlot { padding-left:16px; }
 }
-@media print { .guideBody { position:static; box-shadow:none; } }
+@media print { .guideNote { box-shadow:none; transform:none; } .stickyArrow, .stickyTape { display:none; } }
 `;
 document.head.appendChild(style);
 
