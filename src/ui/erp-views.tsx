@@ -9,6 +9,7 @@ import { DEFAULT_PRODUCT_FORM, PRODUCT_PAGE_SIZE, ProductConfigGrid, type Produc
 export { PRODUCT_PAGE_SIZE };
 import { RatingTablesPanel } from './rating-views';
 import { OmniChannelPanel } from './channel-views';
+import { EntityThemeOnboardingPanel, OmniThemePanel, PartnerThemePanel } from './theme-views';
 
 export const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({
   title,
@@ -2832,6 +2833,15 @@ export function MasterSettingsErp({
   onReload: () => Promise<void>;
   onNavigate: (tab: ConsoleTab) => void;
 }) {
+  const partnerBrandLayer = data.themes.partnerThemes.find(layer => layer.enabled);
+  const omniBrandLayer = data.themes.omniThemes.find(layer => layer.enabled);
+  const brandSurface = (layer: WorldSnapshot['themes']['layers'][number] | undefined, children: React.ReactNode) => (
+    <div className={layer ? 'scopedBrandSurface hasScopedBrand' : 'scopedBrandSurface'} style={layer?.cssVariables as React.CSSProperties | undefined}>
+      {layer?.images.headerDataUrl && <img className="scopedBrandHeader" src={layer.images.headerDataUrl} alt={`${layer.ownerName} header`} />}
+      {children}
+      {layer?.images.footerDataUrl && <img className="scopedBrandFooter" src={layer.images.footerDataUrl} alt={`${layer.ownerName} footer`} />}
+    </div>
+  );
   // The product factory's draft, held in the panel that renders it (see ProductFactoryPanel). What
   // stays here is what the gate itself reports: the numbers as they would be filed, so the section can
   // be blocked before anyone presses save.
@@ -3210,7 +3220,7 @@ export function MasterSettingsErp({
             ? ['Omni-channel is not set up. Until a channel exists no partner can be filed, nothing can be put on a partner\u2019s shelf, and every product can only be sold direct.']
             : data.erp.master.channels.blockers.slice(0, 4),
           warnings: data.erp.master.channels.warnings.slice(0, 4),
-          children: <OmniChannelPanel data={data} busy={busy} onRun={runGrid} />,
+          children: brandSurface(omniBrandLayer, <OmniChannelPanel data={data} busy={busy} onRun={runGrid} />),
         },
         {
           id: 'charges',
@@ -3535,6 +3545,31 @@ export function MasterSettingsErp({
         </div>
             </>
           ),
+        },
+
+        {
+          id: 'entity-theme-onboarding',
+          title: 'Entity brand theme onboarding — global application layer',
+          subtitle: 'Upload an entity logo, header/footer imagery and colours; generate an AI-assisted palette and apply a visual layer across every tab.',
+          informational: true,
+          badges: <Pill tone="info">{data.themes.entityThemes.length} entity theme(s)</Pill>,
+          children: <EntityThemeOnboardingPanel data={data} onReload={onReload} />,
+        },
+        {
+          id: 'partner-theme-onboarding',
+          title: 'Partner brand onboarding — scoped customer-facing surfaces',
+          subtitle: 'Partner themes are restricted to Partner settings, Customer journey and Quotation generation; the global entity theme remains the base.',
+          informational: true,
+          badges: <Pill tone="info">{data.themes.partnerThemes.length} partner theme(s)</Pill>,
+          children: brandSurface(partnerBrandLayer, <PartnerThemePanel data={data} onReload={onReload} />),
+        },
+        {
+          id: 'omni-theme-onboarding',
+          title: 'Omni-channel brand onboarding — scoped customer-facing surfaces',
+          subtitle: 'Channel themes are independently scoped to Partner settings, Customer journey and Quotation generation.',
+          informational: true,
+          badges: <Pill tone="info">{data.themes.omniThemes.length} omni-channel theme(s)</Pill>,
+          children: brandSurface(omniBrandLayer, <OmniThemePanel data={data} onReload={onReload} />),
         },
       ]}
     />

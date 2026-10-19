@@ -168,7 +168,7 @@ export const TextCell: React.FC<{
   <input
     type="text"
     className={cellClass(!!dirty, !!error, 'cellText')}
-    style={width ? { width } : undefined}
+    style={width ? { width: '100%', maxWidth: width, minWidth: 0 } : { width: '100%', minWidth: 0 }}
     value={value}
     placeholder={placeholder}
     maxLength={maxLength}
@@ -185,7 +185,7 @@ export const NumberCell: React.FC<{
     <input
       type="number"
       className="cellNumber"
-      style={width ? { width } : undefined}
+      style={width ? { width: '100%', maxWidth: width, minWidth: 0 } : { width: '100%', minWidth: 0 }}
       value={String(value ?? '')}
       step={step}
       min={min}

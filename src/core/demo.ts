@@ -39,6 +39,10 @@ import { QuotationBook } from './quotation.js';
 import { PaymentBook } from './payments.js';
 import { DEFAULT_ROUTING_LIMITS, UnderwritingDesk } from './uwroute.js';
 import { JourneyCase } from './journey.js';
+import { FundsAccountingRegistry } from './funds-accounting.js';
+import { SuperFundsRegistry } from './super-funds.js';
+import { DataWarehouse } from './warehouse.js';
+import { ThemeRegistry } from './theme.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -86,6 +90,10 @@ export interface World {
   readonly journey: JourneyDesk;
   /** The AI guide: the sticky note on every section of every screen, and the switch that hides them. */
   readonly guide: GuideDesk;
+  readonly fundsAccounting: FundsAccountingRegistry;
+  readonly superFunds: SuperFundsRegistry;
+  readonly warehouse: DataWarehouse;
+  readonly themes: ThemeRegistry;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -104,6 +112,10 @@ export function buildWorld(): World {
   const ledger = new Ledger(currency);
   ledger.registerFx({ from: 'USD', to: 'AED', numerator: 367n, denominator: 100n, asOf: '2026-09-01' });
   ledger.registerFx({ from: 'MYR', to: 'AED', numerator: 82n, denominator: 100n, asOf: '2026-09-01' });
+  // Illustrative rates make the seeded country accounting packs postable; production should replace them with filed FX quotes.
+  ledger.registerFx({ from: 'AUD', to: 'AED', numerator: 245n, denominator: 100n, asOf: '2026-09-01' });
+  ledger.registerFx({ from: 'SAR', to: 'AED', numerator: 98n, denominator: 100n, asOf: '2026-09-01' });
+  ledger.registerFx({ from: 'GBP', to: 'AED', numerator: 470n, denominator: 100n, asOf: '2026-09-01' });
 
   const conventionalEntity = 'ALK-CONV';
   const takafulEntity = 'ALK-TKF';
@@ -713,6 +725,32 @@ export function buildWorld(): World {
 
   const registers: ReadonlyArray<ReplayableRegister> = [reinsurance, retakaful, claims, takafulClaims];
 
+  const fundsAccounting = new FundsAccountingRegistry({
+    ledger,
+    defaultEntity: { entityId: conventionalEntity, currency },
+    entityForCountry: (country, fundId) => {
+      if (country === 'MY') return { entityId: malaysiaEntity, currency: 'MYR' };
+      if (country === 'AE' && ['PRF', 'PIF', 'OPF', 'TKF-EQ'].includes(fundId)) return { entityId: takafulEntity, currency };
+      return { entityId: conventionalEntity, currency };
+    },
+  });
+  fundsAccounting.bootstrapDefaults();
+  // Seed a couple of vouchers for the console to show
+  try {
+    fundsAccounting.postEvent({ policyId: 'UL-000123', productId: 'PROD-UL-GLOBAL', fundId: 'FGLOBAL', eventType: 'premium-received', amount: '5000', currency, partnerId: 'DXB-BROKER-01', omniChannel: 'BROKER', subChannel: 'BROKER-DIFC', at: `${'2026-10-05'}T09:30:00+04:00`, by: 'seed' });
+    fundsAccounting.postEvent({ policyId: 'UL-000123', productId: 'PROD-UL-GLOBAL', fundId: 'FGLOBAL', eventType: 'deposit-amount', amount: '4850', currency, partnerId: 'DXB-BROKER-01', at: `${'2026-10-05'}T09:35:00+04:00`, by: 'seed' });
+    fundsAccounting.postEvent({ policyId: 'UL-000123', productId: 'PROD-UL-GLOBAL', fundId: 'FBAL', eventType: 'investment-gain', amount: '320', currency, at: `${'2026-10-05'}T10:00:00+04:00`, by: 'seed' });
+    fundsAccounting.postEvent({ policyId: 'SUPER-000001', productId: 'PROD-SUPER-ACCUM', fundId: 'SUPER-BAL', eventType: 'processing-charge', amount: '6.50', currency: 'AUD', country: 'AU', at: `${'2026-10-05'}T08:00:00+04:00`, by: 'seed' });
+  } catch { /* seed failures are non-critical */ }
+
+  const superFunds = new SuperFundsRegistry();
+  superFunds.bootstrapDefaults();
+
+  const warehouse = new DataWarehouse();
+
+  const themes = new ThemeRegistry();
+  themes.bootstrapDefaults();
+
   const baseWorld = {
     registers,
     tenant, entities: [
@@ -725,6 +763,7 @@ export function buildWorld(): World {
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
+    fundsAccounting, superFunds, warehouse, themes,
   } as unknown as World;
   const erp = new ErpManager(baseWorld);
   const withErp: World = { ...baseWorld, erp } as World;
@@ -747,7 +786,7 @@ export function buildWorld(): World {
   // The guide is a desk, not a screen: it holds the switch and its audit trail, and reads the world
   // when it composes notes, so the figures inside a note are the engine's and never a typed string.
   const guide = new GuideDesk({ at: `${withErp.asOf}T12:00:00Z`, by: 'console-default' });
-  return { ...withErp, journey, guide };
+  return { ...withErp, journey, guide, fundsAccounting, superFunds, warehouse, themes };
 }
 
 /**
@@ -1445,6 +1484,10 @@ export function worldSnapshot(w: World) {
     erp: w.erp.snapshot(w),
     journey: w.journey.snapshot(w),
     guide: w.guide.snapshot(w),
+    fundsAccounting: w.fundsAccounting.snapshot(),
+    superFunds: w.superFunds.snapshot(),
+    warehouse: w.warehouse.snapshot(w),
+    themes: w.themes.snapshot(),
     days: DAYS,
     generatedAt: new Date().toISOString(),
   };

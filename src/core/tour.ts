@@ -26,6 +26,9 @@ export const CONSOLE_TABS = [
   { id: 'decisions', label: 'Decision theatre', icon: '⇄' },
   { id: 'cover', label: 'Cover control', icon: '⏻' },
   { id: 'funds', label: 'Funds & NAV', icon: '≣' },
+  { id: 'funds-accounting', label: 'Funds accounting', icon: '▦' },
+  { id: 'super-funds', label: 'Super funds', icon: '⬢' },
+  { id: 'warehouse', label: 'Data warehouse', icon: '⊞' },
   { id: 'takaful', label: 'Takaful', icon: '☾' },
   { id: 'group', label: 'Group finance', icon: '⌂' },
   { id: 'underwriting', label: 'Underwriting', icon: '⚖' },
@@ -61,7 +64,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world'],
   },
   {
-    at: '00:04', minutes: 5, tab: 'journey', title: 'Walk a sale through nineteen closed sections',
+    at: '00:04', minutes: 4, tab: 'journey', title: 'Walk a sale through nineteen closed sections',
     why: 'This is the front door of the whole ERP: onboarding, needs analysis, recommendation, cover, loadings, riders, medical evidence, funds, beneficiaries, the underwriting decision, a quotation PDF emailed to the customer, six ways to pay, the binding route, conversion — and then allocation and investment progress. Every section starts closed, and the next one opens itself only when the one before it is 100% complete on its mandatory fields.',
     doThis: [
       'Read the rail: four sections ticked, section 5 (coverage & premium) open, everything behind it locked.',
@@ -77,7 +80,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/journey', 'POST /api/journey/save', 'POST /api/journey/submit', 'POST /api/journey/quotation/pdf'],
   },
   {
-    at: '00:09', minutes: 3, tab: 'master', title: 'Set the tenant: country, calendar, money, fields and products',
+    at: '00:08', minutes: 2, tab: 'master', title: 'Set the tenant: country, calendar, money, fields and products',
     why: 'Everything the console shows is filed somewhere. This is the screen where a tenant says where it operates, what it calls a premium, which fields are mandatory and which products exist — and every other screen reads those answers instead of hardcoding them.',
     doThis: [
       'Open section 1 and read the regional card: country, operating region, IANA time zone, date and clock format, local currency, and the foreign rate card with the date each rate was quoted.',
@@ -93,7 +96,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/master/regional', 'POST /api/master/regional', 'POST /api/master/regional/currency', 'POST /api/journey/field-settings', 'POST /api/master/product'],
   },
   {
-    at: '00:12', minutes: 5, tab: 'policyholder', title: 'Look through a unit-linked policy into real instruments',
+    at: '00:10', minutes: 4, tab: 'policyholder', title: 'Look through a unit-linked policy into real instruments',
     why: 'This is the claim that beats ILAS: not just fund accounting, but genuine look-through into the instruments the fund actually holds, with a price date on every exposure.',
     doThis: [
       'Read the fund value and the units held per fund.',
@@ -107,7 +110,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world', 'GET /api/units'],
   },
   {
-    at: '00:17', minutes: 5, tab: 'decisions', title: 'Price a switch and a withdrawal before anything moves',
+    at: '00:14', minutes: 4, tab: 'decisions', title: 'Price a switch and a withdrawal before anything moves',
     why: 'A real decision theatre: units, price, valuation date, dealing rule, fees and lock-in blockers — all shown before the customer commits, with the illustration clearly labelled as an illustration.',
     doThis: [
       'Set a switch amount, pick the funds, and read the preview: units out, units in, fee, net invested.',
@@ -122,7 +125,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/preview/switch', 'POST /api/preview/withdrawal'],
   },
   {
-    at: '00:22', minutes: 4, tab: 'cover', title: 'Pay for cover only while cover is on',
+    at: '00:18', minutes: 3, tab: 'cover', title: 'Pay for cover only while cover is on',
     why: 'Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restarts by itself, and a day is either paid or cover suspends — there is no halfway charge.',
     doThis: [
       'Look at the segments: start, stop, daily rate, what has been charged.',
@@ -137,7 +140,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/cover/start', 'POST /api/cover/stop', 'POST /api/cover/tick'],
   },
   {
-    at: '00:26', minutes: 5, tab: 'funds', title: 'Run the NAV engine and see the rules behind a price',
+    at: '00:21', minutes: 4, tab: 'funds', title: 'Run the NAV engine and see the rules behind a price',
     why: 'Fund managers and auditors argue about valuation points. Here the cut-off, the business-day calendar, the floor price and its named residual are all visible, and reconciliation is an assertion, not a promise.',
     doThis: [
       'Read the valuation history per fund, including today.',
@@ -152,7 +155,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/world'],
   },
   {
-    at: '00:31', minutes: 5, tab: 'takaful', title: 'Run a takaful window that is structural, not cosmetic',
+    at: '00:25', minutes: 4, tab: 'takaful', title: 'Run a takaful window that is structural, not cosmetic',
     why: 'Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the pool is short, and a surplus that cannot be distributed until the actuary, the Shariah Committee and the board have all signed — with the UAE rule that participants never receive surplus applied on top.',
     doThis: [
       'Read the three pool balances and the operator fund.',
@@ -167,7 +170,7 @@ export const TOUR: TourStep[] = [
     api: ['POST /api/takaful/approve'],
   },
   {
-    at: '00:36', minutes: 4, tab: 'group', title: 'Consolidate three entities, two currencies, one set of books',
+    at: '00:29', minutes: 3, tab: 'group', title: 'Consolidate three entities, two currencies, one set of books',
     why: 'The part most ERP demos fake: assets and liabilities at the closing rate, income and expenses at the average rate, equity at the rate on the day it moved, the gap shown as a translation reserve, intercompany eliminated, and a minority interest stated rather than absorbed.',
     doThis: [
       'Read the three entities: functional currency, ownership, net assets, result, translation reserve.',
@@ -182,7 +185,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/group', 'POST /api/group/consolidate'],
   },
   {
-    at: '00:40', minutes: 5, tab: 'underwriting', title: 'Underwrite against a manual held as data',
+    at: '00:32', minutes: 4, tab: 'underwriting', title: 'Underwrite against a manual held as data',
     why: 'Loadings are shown line by line with the reason and the evidence each one demands, referrals go to a named human, and anything above the automatic binding limit is flagged for the reinsurer before the policy is issued. An AI agent may accept or rate inside its own limit and may never decline.',
     doThis: [
       'Read the accepted book: standard premium against loaded premium.',
@@ -197,7 +200,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/underwriting', 'POST /api/underwriting/decide'],
   },
   {
-    at: '00:45', minutes: 5, tab: 'claims', title: 'Pay a claim through authority, not through a spreadsheet',
+    at: '00:36', minutes: 4, tab: 'claims', title: 'Pay a claim through authority, not through a spreadsheet',
     why: 'Triage decides straight-through, referral or decline; a reserve is a booked liability rather than a note; approval is checked against a real authority table; settlement releases the reserve and recoveries are posted as their own income. In the takaful window the same workflow draws on the participants risk fund.',
     doThis: [
       'Read the position: reserved, expense incurred, cash paid, recoveries, net cost.',
@@ -212,7 +215,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/claims', 'POST /api/claims/register', 'POST /api/claims/approve', 'POST /api/claims/settle'],
   },
   {
-    at: '00:50', minutes: 4, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
+    at: '00:40', minutes: 3, tab: 'reinsurance', title: 'Hand part of the risk to someone else, on the record',
     why: 'An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty\'s promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary\'s exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.',
     doThis: [
       'Read the two statements: the conventional book and the takaful window, each with its own treaties.',
@@ -243,7 +246,58 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/reinsurance', 'GET /api/reinsurance/security', 'GET /api/extracts', 'POST /api/extracts/issue', 'POST /api/extracts/verify', 'POST /api/reinsurance/cede', 'POST /api/reinsurance/facultative', 'POST /api/reinsurance/recover', 'POST /api/reinsurance/event', 'POST /api/reinsurance/reinstate', 'POST /api/reinsurance/deposit', 'POST /api/reinsurance/deposit/settle', 'POST /api/reinsurance/settle', 'POST /api/reinsurance/security/hold', 'POST /api/reinsurance/security/call', 'POST /api/reinsurance/security/call/settle', 'POST /api/reinsurance/security/release', 'POST /api/reinsurance/security/interest'],
   },
   {
-    at: '00:54', minutes: 3, tab: 'durability', title: 'Prove the books, and the reporting registers, can be restored',
+    at: '00:43', minutes: 4, tab: 'funds-accounting', title: 'Configure fund accounting per country and watch the vouchers write themselves',
+    why: 'Every fund posts differently per country standard — IFRS 17 in the UAE, SOCPA in Saudi Arabia, BNM MFRS 17 in Malaysia, AASB 17 for Australian super — and every policy event (deposit, accrual, premium adjustment, allocation, gain, loss, withdrawal, sum-assured reduction, sum-at-risk) posts a balanced double-entry voucher whose description names the policy, product, partner, omni-channel, sub-channel and fund. The dynamic mapping is the rule: product → fund → GL accounts with priority so a partner-specific row wins over a product-generic one.',
+    doThis: [
+      'Read the country configs: AE (IFRS17/CBUAE), SA (SOCPA), MY (BNM-MFRS17), AU (LOCAL-GAAP), GB (IFRS17) — each with currency and fiscal year end.',
+      'Open the fund config table: country × product line × fund × valuation method × revenue recognition, then the dynamic mappings — fund → debit/credit accounts keyed by product, sub-product, partner, channel, sub-channel and policy with a priority.',
+      'Use the event simulator: pick a policy, a product, a partner, a channel, a sub-channel, a fund and an event (e.g. premium-received → deposit-amount → accruals → premium adjustments → investment allocations → investment gain → partial withdrawal → reduced sum assured). Press Post — the voucher appears with the full description and the mapping it used.',
+      'Read the voucher list: each line carries the GL accounts, the amount, the mapping id and the note — and the ledger proof beside it stays balanced.',
+    ],
+    expect: [
+      'A country config cannot be created with a non-ISO country or currency; the refusal says so.',
+      'A mapping that maps debit === credit is refused — a voucher must move money, not park it.',
+      'The voucher description always names the policy, product, partner, channel, sub-channel and fund — and which mapping was resolved — so an auditor never asks “why did this account move”.',
+      'All vouchers are balanced by construction and the total voucher count increments with each event.',
+    ],
+    api: ['GET /api/funds-accounting', 'POST /api/funds-accounting/country', 'POST /api/funds-accounting/mapping', 'POST /api/funds-accounting/event'],
+  },
+  {
+    at: '00:47', minutes: 4, tab: 'super-funds', title: 'Run a superannuation book: members, monthly charges and pro-rata income allocation',
+    why: 'Alongside life, medical, group life, motor, hull, home-contents and travel sits the super funds book — a unit-linked accumulation product with monthly processing charges (admin + investment fee) and investment income allocation via premium post-adjustment. The member balance, the charge run and the allocation artefact are all auditable.',
+    doThis: [
+      'Read the super products: Accumulation (Balanced Growth), Pension (Conservative Income), TTR (Flexible Growth) — each with admin fee and investment-fee BPS.',
+      'Open the member register: two members seeded, each with fund, balance, contributions, charges and income.',
+      'Press “Run monthly charges”: the admin + pro-rated investment fee is deducted from each active member and the run appears in the history.',
+      'Enter a fund (SUPER-BAL), a period (2026-10) and an investment gain, press “Allocate income” — the gain is split pro-rata to balances and credited via premium post-adjustment.',
+    ],
+    expect: [
+      'A super product with a member policy cannot be deleted — the refusal names the holders.',
+      'A contribution of zero or negative is refused.',
+      'A charge run on a book with no active members is refused.',
+      'Income allocation on a zero-balance book is refused, and the note carries the method: “premium post-adjustment”.',
+    ],
+    api: ['GET /api/super-funds', 'POST /api/super-funds/product', 'POST /api/super-funds/policy', 'POST /api/super-funds/charge', 'POST /api/super-funds/allocate'],
+  },
+  {
+    at: '00:51', minutes: 4, tab: 'warehouse', title: 'Query the single warehouse that feeds every BI tool',
+    why: 'Data analysts, engineers and scientists read from one place: nine materialised datasets (policy, premium, fund, claim, reinsurance, commission schedule, super, voucher and member-balance facts), each with grain, source, row count, columns, sample rows and lineage. Five native dashboards render in the console, and complete CSV/JSON exports can feed Power BI, Tableau, Qlik, Databricks or Data Fabric once deployment credentials are configured.',
+    doThis: [
+      'Read the nine datasets: policy-fact, premium-fact, fund-fact, claim-fact, reinsurance-fact, commission-fact, super-fact, voucher-fact and member-balance-fact — each with columns, sample rows and lineage back to the ledger, NAV or registry it came from.',
+      'Open the dashboards: Premium & persistency (Power BI), Fund performance (Tableau), Claims & reinsurance (Qlik Sense), Finance & vouchers (Databricks/Data Fabric) and Distribution (QlikView) — with KPIs, filters and refresh cadence.',
+      'Pick a dataset (e.g. voucher-fact) and press “Export CSV” — a fingerprinted export appears with rows, bytes and owner.',
+      'Read the connector recipes: Power BI (XMLA/DirectQuery), Tableau (Hyper), QlikView/Qlik Sense, Databricks (Delta/Unity Catalog) and Data Fabric (OneLake shortcut) — each names its protocol and required auth; they remain unconfigured until the deployment supplies credentials.',
+    ],
+    expect: [
+      'Every dataset states its grain, its source registry and its freshness date — the same asOf as the world the warehouse was cut from.',
+      'An unknown dataset id is refused with the name the caller sent.',
+      'Exports accumulate and are fingerprinted; the last 20 are on the screen.',
+      'The lineage summary says in one sentence why there is a single book: every BI artefact is a derivative of the same ledger.',
+    ],
+    api: ['GET /api/warehouse', 'POST /api/warehouse/export'],
+  },
+  {
+    at: '00:55', minutes: 3, tab: 'durability', title: 'Prove the books, and the reporting registers, can be restored',
     why: 'A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text — and does the same for the reporting registers: the returns, rule decisions, letters and filings are sealed together, replayed into a fresh world and checked one by one, with a hash-chained outbox proving nothing was dropped between snapshots.',
     doThis: [
       'Read the snapshot summary: accounts, journals, size, fingerprint.',
@@ -259,8 +313,11 @@ export const TOUR: TourStep[] = [
     ],
     api: ['GET /api/state', 'POST /api/state/drill', 'GET /api/state/registers', 'POST /api/state/registers/drill'],
   },
+
+
+
   {
-    at: '00:57', minutes: 3, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
+    at: '00:58', minutes: 2, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
     why: 'The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs, and the submission log with the supervisor’s references — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.',
     doThis: [
       'Onboarding: read the chip read, the government lookup and the OCR consensus, then find the field in the review queue.',

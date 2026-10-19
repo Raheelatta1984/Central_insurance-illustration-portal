@@ -2,7 +2,7 @@
 
 **An AI-native Insurance ERP** — term and whole-of-life, critical illness, income protection, endowment, mortgage, medical, motor, travel, home and contents, property, liability, engineering, marine cargo, hull and aviation, group benefits, unit-linked and **takaful** (96 filed varieties across 17 lines) — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (615 cases over 44 files) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (637 cases over 50 files) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
 
 ```bash
 npm install
@@ -88,6 +88,7 @@ See [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md).
 | [`docs/09-CUSTOMER-JOURNEY.md`](docs/09-CUSTOMER-JOURNEY.md) | The guided customer lifecycle: the nineteen gated sections, what "complete" means, why the gate lives in the core, the API, and what was verified |
 | [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md) | Tenant master settings: the regional card (country, time zone, date order, local and foreign currency), renaming journey fields, the 96-variety product catalogue, and the AI guide with its switch — the API, the refusals and what is verified |
 | [`docs/11-PRODUCT-CONFIG-RATING-AND-OMNI-CHANNEL.md`](docs/11-PRODUCT-CONFIG-RATING-AND-OMNI-CHANNEL.md) | The product shelf as an editable table with a copy-line and a bulk sheet, the rating grid (age × gender × occupational rank × sum assured, premium and unit-linked cost of insurance), per-channel secondary names, and the omni-channel master: channels, partners, per-partner products, rates, commission and clawback |
+| [`docs/12-FUNDS-SUPER-WAREHOUSE-AND-BRANDING.md`](docs/12-FUNDS-SUPER-WAREHOUSE-AND-BRANDING.md) | Country-specific funds accounting, event-to-voucher mappings, super-fund member administration and charges, warehouse datasets/exports/connector recipes, theme scope and omni-channel sub-channels |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
@@ -156,6 +157,10 @@ node tools/generate-backlog.mjs --long-tail=99999999   # open the tap fully (lar
 - **Smart onboarding** — chip read of ID documents, government data lookup, multi-engine OCR with consensus, bilingual fields with per-field translation.
 - **Any-shape ingestion** — files, Excel, text, JSON, XML, email, API; asynchronous, idempotent, supervised by a rogue validation fleet.
 - **Per-country regulatory packs** — need analysis, product admission, illustration wording, disclosure, takaful rules, data residency, regulator returns.
+- **Funds accounting by country and event** — standards, fund/product mappings and balanced debit/credit vouchers keyed by policy, partner, channel and sub-channel, posted into the ledger.
+- **Super funds** — accumulation, pension and TTR member policies with monthly charges and exact pro-rata gain/loss allocation through premium post-adjustment.
+- **Analyst warehouse** — nine lineage-bearing datasets, native dashboard definitions and full CSV/JSON exports for Power BI, Tableau, Qlik, Databricks and Data Fabric setup.
+- **Brand onboarding** — global entity themes plus partner/channel-scoped themes and uploaded logo/header/footer assets, with a local dominant-colour palette assistant.
 - **Every label translatable and renameable per tenant** — so the same ERP speaks a takaful entity's regulated vocabulary without code changes.
 
 ## What runs today
