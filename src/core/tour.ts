@@ -29,6 +29,7 @@ export const CONSOLE_TABS = [
   { id: 'funds-accounting', label: 'Funds accounting', icon: '▦' },
   { id: 'super-funds', label: 'Super funds', icon: '⬢' },
   { id: 'warehouse', label: 'Data warehouse', icon: '⊞' },
+  { id: 'batch', label: 'Batch processing', icon: '▤' },
   { id: 'takaful', label: 'Takaful', icon: '☾' },
   { id: 'group', label: 'Group finance', icon: '⌂' },
   { id: 'underwriting', label: 'Underwriting', icon: '⚖' },
@@ -42,6 +43,8 @@ export const CONSOLE_TABS = [
   { id: 'ledger', label: 'Books', icon: '∑' },
   { id: 'labels', label: 'Labels & rename', icon: '⌘' },
   { id: 'durability', label: 'Durability', icon: '⟲' },
+  { id: 'theme', label: 'Application theme', icon: '◐' },
+  { id: 'whats-new', label: "What's New", icon: '✦' },
 ] as const;
 
 export type ConsoleTab = (typeof CONSOLE_TABS)[number]['id'];
