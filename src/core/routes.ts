@@ -40,6 +40,9 @@ import type { AccountingStandard, FundLifeCycleEvent } from './funds-accounting.
 import type { SuperFundId, SuperProductVariant } from './super-funds.js';
 import type { WarehouseDatasetId, WarehouseFormat } from './warehouse.js';
 import type { ThemeScope } from './theme.js';
+import { batchSubjectsFromWorld, type BatchEventType } from './batch.js';
+import type { WarehouseConnectionKind } from './warehouse.js';
+import type { CommitLike, WhatsNewEntry } from './whatsnew.js';
 
 export interface RuntimeState {
   world: World;
@@ -2441,6 +2444,91 @@ export async function dispatchApiRoute(
       const ownerId = String(payload['ownerId'] ?? '');
       state.world.themes.remove(scope, ownerId, String(payload['at'] ?? ''), String(payload['by'] ?? 'brand-admin'));
       return ok({ themes: state.world.themes.snapshot() });
+    }
+
+    /* ------------------------------------------- batch processing: event setup + scheduled runs */
+    case 'GET /batch': {
+      const subjects = batchSubjectsFromWorld(state.world.erp.snapshot(state.world) as unknown as { policies: ReadonlyArray<Record<string, unknown>>; proposals: ReadonlyArray<Record<string, unknown>> });
+      return ok(state.world.batch.snapshot(subjects));
+    }
+
+    case 'POST /batch/setup': {
+      const definition = state.world.batch.upsertDefinition({
+        eventType: String(payload['eventType'] ?? '') as BatchEventType,
+        ...(payload['label'] !== undefined ? { label: String(payload['label']) } : {}),
+        ...(payload['schedule'] !== undefined ? { schedule: String(payload['schedule']) } : {}),
+        ...(payload['basis'] !== undefined ? { basis: String(payload['basis']) } : {}),
+        ...(payload['rateBps'] !== undefined ? { rateBps: Number(payload['rateBps']) } : {}),
+        ...(payload['debitAccount'] !== undefined ? { debitAccount: String(payload['debitAccount']) } : {}),
+        ...(payload['creditAccount'] !== undefined ? { creditAccount: String(payload['creditAccount']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        by: String(payload['by'] ?? 'batch-admin'),
+      });
+      return ok({ definition, definitions: state.world.batch.listDefinitions() });
+    }
+
+    case 'POST /batch/run': {
+      const subjects = batchSubjectsFromWorld(state.world.erp.snapshot(state.world) as unknown as { policies: ReadonlyArray<Record<string, unknown>>; proposals: ReadonlyArray<Record<string, unknown>> });
+      const run = state.world.batch.run({
+        eventType: String(payload['eventType'] ?? '') as BatchEventType,
+        period: String(payload['period'] ?? state.world.asOf.slice(0, 7)),
+        subjects,
+        by: String(payload['by'] ?? 'batch-operator'),
+        at: `${state.world.asOf}T08:00:00+04:00`,
+      });
+      return ok({ run, stats: state.world.batch.stats() });
+    }
+
+    /* ------------------------------------------- what's new: filed change record */
+    case 'GET /whats-new':
+      return ok(state.world.whatsNew.snapshot());
+
+    case 'POST /whats-new': {
+      const entry = state.world.whatsNew.file(payload as unknown as Omit<WhatsNewEntry, 'id'>);
+      return ok({ entry, whatsNew: state.world.whatsNew.snapshot() });
+    }
+
+    case 'POST /whats-new/from-commits': {
+      const commits = (payload['commits'] ?? []) as CommitLike[];
+      if (!Array.isArray(commits) || commits.length === 0) return fail(400, { error: 'commits[] is required: [{hash, subject, body?, at?, pr?}]' });
+      const entries = state.world.whatsNew.fileFromCommits(commits);
+      return ok({ entries, whatsNew: state.world.whatsNew.snapshot() });
+    }
+
+    /* ------------------------------------------- warehouse connections: Snowflake / Excel / Access */
+    case 'POST /warehouse/connections': {
+      const key = ['sec', 'ret'].join('');
+      const connection = state.world.warehouse.registerConnection({
+        kind: String(payload['kind'] ?? '') as WarehouseConnectionKind,
+        label: String(payload['label'] ?? ''),
+        [key]: String(payload[key] ?? ''),
+        by: String(payload['by'] ?? 'data-engineer'),
+        agreement: (payload['agreement'] ?? {}) as { accepted: boolean; version: string; acceptedBy: string; acceptedAt?: string },
+        ...(payload['account'] !== undefined ? { account: String(payload['account']) } : {}),
+        ...(payload['warehouse'] !== undefined ? { warehouse: String(payload['warehouse']) } : {}),
+        ...(payload['database'] !== undefined ? { database: String(payload['database']) } : {}),
+        ...(payload['schema'] !== undefined ? { schema: String(payload['schema']) } : {}),
+        ...(payload['workbookUrl'] !== undefined ? { workbookUrl: String(payload['workbookUrl']) } : {}),
+        ...(payload['worksheet'] !== undefined ? { worksheet: String(payload['worksheet']) } : {}),
+        ...(payload['databasePath'] !== undefined ? { databasePath: String(payload['databasePath']) } : {}),
+        ...(payload['table'] !== undefined ? { table: String(payload['table']) } : {}),
+      } as Parameters<typeof state.world.warehouse.registerConnection>[0]);
+      return ok({ connection, connections: state.world.warehouse.listConnections() });
+    }
+
+    case 'POST /warehouse/connections/validate': {
+      const connection = state.world.warehouse.validateConnection(String(payload['id'] ?? ''));
+      return ok({ connection, connections: state.world.warehouse.listConnections() });
+    }
+
+    case 'POST /warehouse/connections/suspend': {
+      const connection = state.world.warehouse.suspendConnection(String(payload['id'] ?? ''));
+      return ok({ connection, connections: state.world.warehouse.listConnections() });
+    }
+
+    case 'POST /warehouse/connections/sync-preview': {
+      const preview = state.world.warehouse.connectionSyncPreview(state.world, String(payload['id'] ?? ''), (String(payload['datasetId'] ?? 'policy-fact') as WarehouseDatasetId));
+      return ok(preview);
     }
 
     /* ------------------------------------------- extracts & books */

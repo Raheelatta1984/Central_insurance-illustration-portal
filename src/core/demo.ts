@@ -43,6 +43,8 @@ import { FundsAccountingRegistry } from './funds-accounting.js';
 import { SuperFundsRegistry } from './super-funds.js';
 import { DataWarehouse } from './warehouse.js';
 import { ThemeRegistry } from './theme.js';
+import { BatchRegistry, batchSubjectsFromWorld } from './batch.js';
+import { WhatsNewRegistry } from './whatsnew.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -94,6 +96,8 @@ export interface World {
   readonly superFunds: SuperFundsRegistry;
   readonly warehouse: DataWarehouse;
   readonly themes: ThemeRegistry;
+  readonly batch: BatchRegistry;
+  readonly whatsNew: WhatsNewRegistry;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -747,6 +751,9 @@ export function buildWorld(): World {
   superFunds.bootstrapDefaults();
 
   const warehouse = new DataWarehouse();
+  const batch = new BatchRegistry();
+  batch.bootstrapDefaults();
+  const whatsNew = new WhatsNewRegistry();
 
   const themes = new ThemeRegistry();
   themes.bootstrapDefaults();
@@ -786,7 +793,7 @@ export function buildWorld(): World {
   // The guide is a desk, not a screen: it holds the switch and its audit trail, and reads the world
   // when it composes notes, so the figures inside a note are the engine's and never a typed string.
   const guide = new GuideDesk({ at: `${withErp.asOf}T12:00:00Z`, by: 'console-default' });
-  return { ...withErp, journey, guide, fundsAccounting, superFunds, warehouse, themes };
+  return { ...withErp, journey, guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew };
 }
 
 /**
@@ -1488,6 +1495,8 @@ export function worldSnapshot(w: World) {
     superFunds: w.superFunds.snapshot(),
     warehouse: w.warehouse.snapshot(w),
     themes: w.themes.snapshot(),
+    batch: w.batch.snapshot(batchSubjectsFromWorld(w.erp.snapshot(w) as unknown as { policies: ReadonlyArray<Record<string, unknown>>; proposals: ReadonlyArray<Record<string, unknown>> })),
+    whatsNew: w.whatsNew.snapshot(),
     days: DAYS,
     generatedAt: new Date().toISOString(),
   };

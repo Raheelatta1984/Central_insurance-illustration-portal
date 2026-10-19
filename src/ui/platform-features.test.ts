@@ -7,6 +7,9 @@ import { SuperFundsPanel } from './super-funds-views.js';
 import { WarehousePanel } from './warehouse-views.js';
 import { EntityThemeOnboardingPanel, OmniThemePanel, PartnerThemePanel } from './theme-views.js';
 import { OmniChannelPanel } from './channel-views.js';
+import { BatchPanel } from './batch-views.js';
+import { WhatsNewPanel } from './whatsnew-views.js';
+import { ApplicationThemePanel } from './theme-tab.js';
 
 const h = React.createElement;
 const reload = async () => {};
@@ -42,6 +45,27 @@ describe('expanded operational tabs render from the live world', () => {
     expect(html).toContain('recipes, not authenticated live external connections');
     expect(html).toContain('4. Connectors (Power BI → Data Fabric)');
     expect(html).toContain('Download complete CSV');
+  });
+
+  it('renders batch processing, the top-level theme tab and whats-new from the live world', () => {
+    const batch = renderToString(h(BatchPanel, { data, onReload: reload }));
+    expect(batch).toContain('Batch processing — quotations, issuance');
+    expect(batch).toContain('Monthly anniversary — mortality');
+    expect(batch).toContain('skipped-terminal');
+    expect(batch).toContain('UL-LAPSED-001');
+
+    const theme = renderToString(h(ApplicationThemePanel, { data, onReload: reload }));
+    expect(theme).toContain('Application theme — brand the whole application');
+    expect(theme).toContain('previously only reachable inside Master settings');
+
+    const whatsNew = renderToString(h(WhatsNewPanel, { data, onReload: reload }));
+    expect(whatsNew).toContain("What&#x27;s New — every change, explained");
+    expect(whatsNew).toContain('What you need to do');
+    expect(whatsNew).toContain('Snowflake, Excel and Access warehouse connections');
+
+    const warehouse = renderToString(h(WarehousePanel, { data, onReload: reload }));
+    expect(warehouse).toContain('5. Connections — Snowflake / Excel / Access + PII masking');
+    expect(warehouse).toContain('Data warehouse — single tab');
   });
 
   it('renders the three onboarding scopes and a child route under a channel', () => {

@@ -25,6 +25,9 @@ import {
 import { FundsAccountingPanel } from './funds-accounting-views';
 import { SuperFundsPanel } from './super-funds-views';
 import { WarehousePanel } from './warehouse-views';
+import { BatchPanel } from './batch-views';
+import { WhatsNewPanel } from './whatsnew-views';
+import { ApplicationThemePanel } from './theme-tab';
 
 type Tab = ConsoleTab;
 
@@ -981,6 +984,9 @@ function App() {
       case 'funds-accounting': return <FundsAccountingPanel data={data} onReload={load} />;
       case 'super-funds': return <SuperFundsPanel data={data} onReload={load} />;
       case 'warehouse': return <WarehousePanel data={data} onReload={load} />;
+      case 'batch': return <BatchPanel data={data} onReload={load} />;
+      case 'theme': return <ApplicationThemePanel data={data} onReload={load} />;
+      case 'whats-new': return <WhatsNewPanel data={data} onReload={load} />;
       case 'takaful': return <Takaful data={data} onReload={load} />;
       case 'group': return <GroupFinance data={data} />;
       case 'underwriting': return <Underwriting data={data} onReload={load} onNavigate={setTab} />;
