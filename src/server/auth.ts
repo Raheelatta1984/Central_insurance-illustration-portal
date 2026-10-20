@@ -79,10 +79,14 @@ export function authenticate(config: AuthConfig, req: IncomingMessage): Principa
   return undefined;
 }
 
-const CLAIMS_ROLES = ['claims-officer', 'claims-manager', 'head-of-claims', 'chief-claims-officer', 'ai-straight-through'];
+const CLAIMS_ROLES = [
+  'claims-officer', 'claims-manager', 'claim-officer', 'claim-manager',
+  'settlement-officer', 'settlement-manager',
+  'head-of-claims', 'chief-claims-officer', 'ai-straight-through',
+];
 
 function has(principal: Principal, roles: readonly string[]): boolean {
-  return principal.roles.includes('admin') || roles.some((r) => principal.roles.includes(r));
+  return principal.roles.includes('admin') || principal.roles.includes('administration') || roles.some((r) => principal.roles.includes(r));
 }
 
 /**
@@ -96,11 +100,11 @@ export function authorize(
   payload: Record<string, unknown>,
 ): string | null {
   if (method === 'GET' || method === 'OPTIONS') return null;
-  if (path === '/reset' && !principal.roles.includes('admin')) {
+  if (path === '/reset' && !principal.roles.includes('admin') && !principal.roles.includes('administration')) {
     return 'resetting the world requires an admin principal';
   }
-  if (path.startsWith('/master/') && !has(principal, ['master-admin'])) {
-    return 'master settings require a master-admin (or admin) principal';
+  if (path.startsWith('/master/') && !has(principal, ['master-admin', 'configurator', 'fund-configuration'])) {
+    return 'master settings require a master-admin, configurator or admin principal';
   }
   if (path.startsWith('/claims/')) {
     if (!has(principal, CLAIMS_ROLES)) return 'claims decisions require a claims authority role';
@@ -116,7 +120,7 @@ export function authorize(
   if (path === '/takaful/distribute' && !has(principal, ['board'])) {
     return 'distributing takaful surplus requires a board (or admin) principal';
   }
-  if (path === '/ai/approve' && !has(principal, ['ai-governor', 'underwriter', 'claims-manager'])) {
+  if (path === '/ai/approve' && !has(principal, ['ai-governor', 'underwriter', 'underwriter-manager', 'claims-manager', 'claim-manager', 'supervisor'])) {
     return 'approving an AI action requires an ai-governor/underwriter/claims-manager (or admin) principal';
   }
   return null;

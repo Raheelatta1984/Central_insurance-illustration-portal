@@ -34,6 +34,13 @@ import {
   Answers, JOURNEY_STAGES, JourneyArtefacts, JourneyCase, JourneyContext, JourneyProgress,
   JourneyStageId, JourneyStatus, JourneyFieldSettings, emptyAnswers, fieldLabel, journeyProgress, stageSpec,
 } from './journey.js';
+import {
+  AgeCalculationRegistry,
+  AutoPickResolution,
+  DependentProductRule,
+  buildSmartSuggestions,
+  resolveCustomerAutoPick,
+} from './autopick.js';
 
 export class JourneyDeskError extends Error {}
 
@@ -1282,13 +1289,23 @@ export class JourneyDesk {
       // product, per omni-channel and per sub-channel, and a blank falls back to its parent.
       channelOptions: w.erp.channels.listChannels().map((c) => ({ code: c.code, name: c.name })),
       subChannelOptions: w.erp.channels.listSubChannels().map((c) => ({ code: c.code, name: c.name, parentChannelCode: c.parentChannelCode })),
+      ageCalculation: w.erp.ageCalculation.snapshot(),
+      dependentProducts: w.erp.dependentProducts.snapshot(),
+      smartSuggestions: buildSmartSuggestions(w),
       mail: this.mailStatus(),
       cases: this.list().map((c) => {
         const progress = this.progress(w, c.caseId);
+        const autoPick = resolveCustomerAutoPick(w, {
+          caseId: c.caseId,
+          partyId: c.artefacts.partyId,
+          productId: String(c.answers.recommendation?.['productId'] ?? ''),
+          dob: String(c.answers.identity?.['dateOfBirth'] ?? ''),
+        });
         return {
           caseId: c.caseId, customerName: c.customerName, status: c.status, openedAt: c.openedAt,
           openedBy: c.openedBy, country: c.country, currency: c.currency,
           artefacts: { ...c.artefacts },
+          autoPick,
           log: [...c.log].reverse().map((l) => ({ ...l })),
           progress: serialiseJourneyProgress(progress),
         };
@@ -1329,6 +1346,9 @@ export interface JourneySnapshot {
   /** The omni-channels and sub-channels a case may have been sold through. */
   channelOptions: Array<{ code: string; name: string }>;
   subChannelOptions: Array<{ code: string; name: string; parentChannelCode: string }>;
+  ageCalculation: ReturnType<AgeCalculationRegistry['snapshot']>;
+  dependentProducts: { rules: DependentProductRule[] };
+  smartSuggestions: ReturnType<typeof buildSmartSuggestions>;
   /** How the quotation email would leave the building: the transport, and whether it is configured. */
   mail: { transport: string; configured: boolean; reason: string } | null;
   quotations: Array<Record<string, unknown>>;
@@ -1336,6 +1356,7 @@ export interface JourneySnapshot {
   cases: Array<{
     caseId: string; customerName: string; status: JourneyStatus; openedAt: string; openedBy: string;
     country: string; currency: string; artefacts: JourneyArtefacts;
+    autoPick?: AutoPickResolution;
     log: Array<Record<string, unknown>>; progress: Record<string, unknown>;
   }>;
 }

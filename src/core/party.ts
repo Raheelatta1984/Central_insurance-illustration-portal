@@ -23,6 +23,16 @@ export interface Party {
   readonly kind: 'person' | 'organisation';
   readonly names: { en: string; ar?: string };
   readonly dateOfBirth?: string;
+  readonly sex?: 'male' | 'female';
+  readonly smoker?: boolean;
+  readonly heightCm?: number;
+  readonly weightKg?: number;
+  readonly occupationClass?: 1 | 2 | 3 | 4 | 5;
+  readonly occupationTitle?: string;
+  readonly annualIncome?: string;
+  readonly beneficiaryName?: string;
+  readonly beneficiaryRelationship?: string;
+  readonly dependentProducts?: string[];
   readonly ids: IdentityDocument[];
   readonly phones: string[];
   readonly emails: string[];

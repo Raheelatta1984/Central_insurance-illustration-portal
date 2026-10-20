@@ -88,6 +88,7 @@ function defaultAction(category: WhatsNewCategory): string {
 
 function areaFor(subject: string): string {
   const s = subject.toLowerCase();
+  if (s.includes('security') || s.includes('rbac') || s.includes('doa') || s.includes('profile')) return 'Access & DOA';
   if (s.includes('batch') || s.includes('anniversary') || s.includes('clawback')) return 'Batch processing';
   if (s.includes('warehouse') || s.includes('snowflake') || s.includes('mask')) return 'Data warehouse';
   if (s.includes('theme') || s.includes('brand')) return 'Application theme';
@@ -99,6 +100,13 @@ function areaFor(subject: string): string {
 
 /** Filed entries. Newest first. The auto-generator above appends future commits in the same shape. */
 export const WHATS_NEW_SEED: ReadonlyArray<WhatsNewEntry> = [
+  {
+    id: 'WN-0009', at: '2026-10-20', title: 'Enterprise 36-profile pre-load security gate, AI RBAC & DOA approvals (including Batch processing authority), zero-duplicate auto-pick & configurable Age Nearest/Next/Last setup', category: 'security',
+    source: 'PR #31 · docs/17-RBAC-DOA-AUTOPICK-AND-SMART-COMBOBOX.md', area: 'Access & DOA', risk: 'high',
+    why: 'The platform previously opened straight into full operational menus with no persona security gate, no Delegation-of-Authority (DOA) approval workflow with approver notifications, repeated entry of customer DOB/age/height/weight/dependent products across screens, and fixed age entry without configurable actuarial age rules.',
+    what: 'Added a pre-load Security Profile Selection Gate covering all 36 enterprise profiles (Administration with complete unrestricted access, Supervisor, Configurator, Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Bancassurance Ops, Fund Config, Accountant, Finance, Cost Controller, Fund Investment, Agents 1/2/Marsh/Supervisor, Banca 1/2/Supervisor, Branch Officer/Manager, Bank Manager, Aggregator, Direct Customer, Referral Partners 1/2), a dedicated Access & DOA tab with AI tab/section/sub-section recommendations + Segregation-of-Duties checks, Entity × Channel × Sub-Channel supervisor mapping with live approver notifications, automatic customer/proposal/dependent-product Auto-Pick memory, editable + suggested SmartComboBox controls, and Master Settings actuarial age configuration (Age Nearest Birthday, Age Next Birthday, Age Last Birthday).',
+    whatYouNeedToDo: 'Select your profile at the pre-load gate (choose Administration for complete unrestricted access), review Entity × Channel × Sub-Channel DOA chains in Access & DOA, and verify your tenant default Age Calculation Basis (ANB / ANxB / ALB) and dependent-product auto-pick rules in Master settings.',
+  },
   {
     id: 'WN-0008', at: '2026-10-20', title: 'Live ERP / portal / application theme engine, Batch processing & warehouse offline bundle sync, and PR #10 / PR #11 audit logs', category: 'fix',
     source: 'PR #12 · live theme & deployment sync', area: 'Application theme', risk: 'medium',

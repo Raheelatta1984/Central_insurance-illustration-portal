@@ -61,16 +61,22 @@ export const TAB_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze({
     doThis: ['Read the entity pills: conventional, takaful window and the Malaysian subsidiary, each with its own regulator and currency.', 'Check the books card: both entity books must report balanced.', 'Press the buttons along the top to walk into a journey, a proposal or a claim.'],
     watch: 'A figure that looks wrong here is wrong everywhere: it is the same snapshot every other screen reads.',
   },
+  'access-doa': {
+    headline: 'Thirty-six profiles, three-tier RBAC, AI advisor and live DOA routing',
+    body: 'Every operator enters through the profile security layer — from Administration (complete unrestricted access) through technical desks (Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Finance, Cost Control, Fund Config & Investment) to Agency, Marsh Broker, Bancassurance, Branch, Aggregator, Direct Customer and Referral Partners. AI recommends optimal Tabs, Sections and Sub-Sections with Segregation-of-Duties checks, while Entity × Channel × Sub-Channel mappings route out-of-limit actions to the right supervisor with instant approver notifications.',
+    doThis: ['Switch between profiles or launch the Pre-Load Profile Gate to experience each persona\u2019s tailored workspace and landing screen.', 'Run the AI Access & SoD Advisor on any profile to inspect confidence scores, toxic-combination checks and one-click apply.', 'Test a DOA request above an officer\u2019s cap and watch the notification land in the mapped Supervisor / Manager inbox for approval or escalation.'],
+    watch: 'Administration holds permanent complete access and cannot lock itself out; no non-admin requester may self-approve their own DOA request.',
+  },
   journey: {
-    headline: 'The sale on rails: nineteen sections, one open',
-    body: 'This is the front door of the ERP. Every section starts closed; the one the engine recommends opens itself, and the next one opens only when this one is 100% complete on its mandatory fields and its domain gates. The same gate runs in the API, so a script cannot walk past the sequence either.',
-    doThis: ['Work the open section, then submit it and watch the next one open itself.', 'Reopen a completed section and clear a mandatory field: the refusal names the field.', 'Read each section\u2019s guide note before filling it in — that is what this banner is for.'],
+    headline: 'The sale on rails: nineteen sections, one open — with zero duplicate entry',
+    body: 'This is the front door of the ERP. Every section starts closed; the one the engine recommends opens itself, and the next one opens only when this one is 100% complete on its mandatory fields and its domain gates. Previously provided customer data — DOB, actuarial age (Nearest / Next / Last), height, weight, smoker status, income and dependent riders/products — auto-picks automatically across sections.',
+    doThis: ['Pick an existing customer or enter DOB once and watch age, build, contact and dependent riders auto-populate downstream.', 'Work the open section, then submit it and watch the next one open itself.', 'Reopen a completed section and clear a mandatory field: the refusal names the field.'],
     watch: 'Conditional, legal and regulatory requirements stay hard gates. Master settings can relax an ordinary required flag; they cannot relax a rule the pack insists on.',
   },
   master: {
     headline: 'Change what the whole system means, without a release',
-    body: 'Master settings is where the tenant is configured: the product shelf as an editable grid, the rating tables by age, gender, occupational rank and sum assured, the omni-channel and what each partner is paid, the charge schedule, the takaful window, the claims authority matrix, the FX rate card, the vocabulary, which journey fields are mandatory or editable and what they are called, and the country, region, calendar, time zone and currencies the whole console runs on.',
-    doThis: ['Set country, region, time zone and currencies first: every date and every new product is read against them.', 'Define or re-file a product in the factory grid, price it in the rating tables, then check it appears in the journey\u2019s recommendation list.', 'If the omni-channel is not set up, the button files the six standard routes; then the partners, their shelves, commission and clawback are yours to file.', 'Rename a journey field or a vocabulary label and watch the change reach the screens that render it.'],
+    body: 'Master settings is where the tenant is configured: country, calendar, time zone and currencies, actuarial age auto-calculation (Age Nearest / Age Next / Age Last) with per-product overrides, dependent product & rider auto-pick rules, smart editable combo-box suggestions, the product shelf grid, rating tables, omni-channel and partner commissions, multi-country providers, unit-linked charges, takaful window, claims authority matrix, FX rate card and regulated vocabulary.',
+    doThis: ['Set country, region, time zone, currencies and actuarial age calculation basis (ANB / ANxB / ALB) first: every quote and customer auto-pick reads them.', 'Define or re-file a product in the factory grid with smart combo-box names/descriptions and configure its auto-picked dependent riders.', 'If the omni-channel is not set up, the button files the six standard routes; then the partners, their shelves, commission and clawback are yours to file.', 'Rename a journey field or a vocabulary label and watch the change reach the screens that render it.'],
     watch: 'These settings are filed data with an audit trail, not preferences: a change here re-prices new business and re-words documents, so it is recorded with the actor and the time.',
   },
   email: {
@@ -295,6 +301,42 @@ export const SECTION_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze
   'claims:settle': { headline: 'Pay it, then recover what someone else owes', body: 'Settlement posts the payment against the reserve and closes the case; recovery records salvage, subrogation or a reinsurance recovery, with the ageing that follows it. Both sides produce journals.', doThis: ['Settle the approved amount and read the journal.', 'Record a recovery with its type and amount.', 'Check the outstanding recovery appears in the reinsurance ageing.'], watch: 'A settlement above the approved amount is refused: the decision, not the payment, is the authority.' },
   'reinsurance:treaty': { headline: 'Register the counterparty and the treaty behind it', body: 'A treaty is filed with its kind, basis, line of business, cession, commission, settlement period, the security it requires and whether it is deposit-accounted. Retakaful treaties are registered separately from conventional ones and never carry interest.', doThis: ['Register the reinsurer with its rating and licence class.', 'File the treaty with its cession and commission.', 'Set the security requirement — it is measured against what the counterparty owes us.'], watch: 'A deposit-accounted treaty recognises no premium income and no claim expense: the balance sheet carries it until settlement.' },
   'reinsurance:register': { headline: 'Cede a risk, or place one facultatively', body: 'Ceding moves a share of a named risk onto a treaty and posts the premium, commission and recoverable. A facultative placement asks the reinsurer to accept the named risk first, and the premium only moves once they have.', doThis: ['Choose the treaty and read its basis and line of business.', 'Cede with the policy, sum insured and premium — naming the same risk twice is refused.', 'For a facultative placement, wait for the acceptance before the premium moves.'], watch: 'Participant money offered to a conventional treaty is refused: the two books stay apart by construction.' },
+  'master:age-autopick': {
+    headline: 'Actuarial age rules (Nearest / Next / Last), dependent products and smart combo suggestions',
+    body: 'Choose how every date of birth becomes an insurance age across the tenant — Age Nearest Birthday (ANB), Age Next Birthday (ANxB) or Age Last Birthday (ALB) — file per-product overrides, and configure which dependent riders and linked cover products auto-pick when a base plan is selected.',
+    doThis: ['Pick the tenant default age calculation basis (ANB, ANxB or ALB) and test any date of birth in the live side-by-side probe.', 'File per-product overrides where a line of business prices on a different birthday basis.', 'Configure auto-picked dependent riders and companion products so advisors never re-key them across screens.'],
+    watch: 'Changing the age basis changes the rated age on new quotations from that moment forward; issued policies retain the age filed at underwriting.',
+  },
+  'access-doa:profile-directory': {
+    headline: 'Thirty-six security profiles across seven operational and channel families',
+    body: 'Every persona — Administration (complete unrestricted access), Supervisor, Configurator, Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Bancassurance Ops, Fund Config, Accountant, Finance, Cost Controller, Fund Investment, Agents 1/2/Marsh/Supervisor, Banca 1/2/Supervisor, Branch Officer/Manager, Bank Manager, Aggregator, Direct Customer and Referral Partners 1/2 — has its own least-privilege workspace and DOA cap.',
+    doThis: ['Filter by family or search any profile, inspect its allowed tabs and DOA threshold, and click Switch Profile to enter that workspace immediately.', 'Clone any profile to create a regional or desk-specific variant without touching Administration.', 'Click Launch Pre-Load Profile Selector in the header whenever you want to return to the pre-load gate screen.'],
+    watch: 'Administration holds permanent complete access to every tab, section, sub-section and approval gate so the platform can never lock itself out.',
+  },
+  'access-doa:ai-advisor': {
+    headline: 'AI-recommended tabs, sections, sub-sections and Segregation-of-Duties checks',
+    body: 'Select any profile or type a free-text role description to run the deterministic AI Access Advisor. It scores every tab, section and sub-section, recommends a decimal DOA cap and supervisor chain, flags toxic Segregation-of-Duties combinations, and logs every run on the AI ledger.',
+    doThis: ['Select a profile or enter a custom role description and click Run AI Access Advisor.', 'Review confidence scores and any Segregation-of-Duties warnings (such as Claim Approval + Cash Settlement Release on one role).', 'Click Apply AI Recommendation to update the profile and record the change on both audit logs.'],
+    watch: 'AI recommendations advise and apply only to non-admin roles; money-moving authority above DOA still requires human supervisor approval.',
+  },
+  'access-doa:matrix-editor': {
+    headline: 'Three-tier permission control: Tab → Section → Sub-Section',
+    body: 'Grant Full Read/Write, Read-Only or Hidden access at tab, section and sub-section granularity. Frontline channels stay clean and focused while technical and finance desks see only the exact sections their mandate requires.',
+    doThis: ['Pick a profile and toggle Full, Read or None on any tab, section or sub-section.', 'Save changes and switch into that profile to verify the sidebar and section badges live.', 'Keep claim adjudication separate from settlement release on non-admin roles.'],
+    watch: 'Lowering a tab permission automatically updates its sections unless explicitly overridden.',
+  },
+  'access-doa:supervision-map': {
+    headline: 'Route approvals dynamically by Entity × Channel × Sub-Channel',
+    body: 'Map every combination of Legal Entity (ALK-CONV, ALK-TKF, ALK-MY), Distribution Channel (AGENCY, BROKER-MARSH, BANCA, AGGREGATOR, DIRECT, REFERRAL, HEAD-OFFICE) and Sub-Channel (AGENCY-DESK-1, MARSH-AGENCY, BANCA-PREMIER-1, BRANCH-RETAIL-01, technical desks) to its first-line Supervisor and second-line Manager with explicit DOA caps.',
+    doThis: ['Inspect how Marsh broker cases route to Agent Supervisor → Underwriter Manager while retail branch cases route to Branch Manager → Bank Manager.', 'Add or update a mapping row for a specific Entity, Channel and Sub-Channel.', 'Verify the routing immediately in the DOA Simulator below.'],
+    watch: 'Specific Entity + Channel + Sub-Channel matches take priority over wildcard (*) rules.',
+  },
+  'access-doa:doa-queue': {
+    headline: 'Delegation of Authority (DOA) approvals and real-time approver notifications',
+    body: 'When any officer, advisor, branch desk or partner submits an action above their DOA limit, the engine creates a tracked DOA request and sends an instant notification to the mapped Supervisor/Manager (plus Administration visibility). Approvers can approve within their cap, escalate upward, or reject with reasons — notifying the requester immediately.',
+    doThis: ['Simulate or raise a DOA request above an officer\u2019s cap and watch the Approver Notification count increment immediately.', 'Switch into the assigned Supervisor/Manager (or stay in Administration) and click Approve, Escalate or Reject.', 'Check that an approver whose own DOA is exceeded automatically escalates to the next tier rather than breaching authority.'],
+    watch: 'No non-admin profile can approve its own DOA request — four-eyes control is enforced in the core engine.',
+  },
 });
 
 /* ------------------------------------------------------------------ composing a note */
@@ -435,6 +477,11 @@ export function worldFacts(w: World): Record<string, string[]> {
       `${parties} customers, ${products.length} products on file, ${funds.length} funds with published valuations.`,
       `Books: conventional ${balanced ? 'balanced' : 'OUT OF BALANCE'}, takaful window ${takafulBalanced ? 'balanced' : 'OUT OF BALANCE'}.`,
       openClaims > 0 ? `${openClaims} claim(s) open and ${awaiting} AI action(s) waiting on a human.` : `No claims open; ${awaiting} AI action(s) waiting on a human.`,
+    ],
+    'access-doa': [
+      ...shared,
+      `${w.rbac.listProfiles().length} security profiles configured across 7 operational & distribution families; active profile: ${w.rbac.activeProfile().name} (DOA cap ${w.rbac.snapshot().profiles.find((p) => p.id === w.rbac.activeProfile().id)?.doaLimitLabel ?? 'Unlimited'}).`,
+      `${w.rbac.snapshot().supervisionMappings.length} Entity × Channel × Sub-Channel supervision chains and ${w.rbac.snapshot().doaRequests.filter((r) => r.status === 'pending' || r.status === 'escalated').length} pending DOA approval(s) in queue.`,
     ],
     journey: [
       ...shared,

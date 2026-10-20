@@ -15,8 +15,12 @@ export interface ApiOptions {
 
 function authHeaders(win: { localStorage?: { getItem(key: string): string | null } }): Record<string, string> {
   try {
+    const headers: Record<string, string> = {};
     const token = win.localStorage?.getItem('portal-api-token');
-    return token ? { authorization: `Bearer ${token}` } : {};
+    if (token) headers['authorization'] = `Bearer ${token}`;
+    const profileId = win.localStorage?.getItem('portal-active-profile');
+    if (profileId) headers['x-portal-profile'] = profileId;
+    return headers;
   } catch {
     return {};
   }

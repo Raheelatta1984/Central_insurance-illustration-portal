@@ -46,6 +46,7 @@ import { ThemeRegistry } from './theme.js';
 import { BatchRegistry, batchSubjectsFromWorld } from './batch.js';
 import { WhatsNewRegistry } from './whatsnew.js';
 import { EmailConfigRegistry } from './email-config.js';
+import { SecurityGovernanceRegistry } from './rbac.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -101,6 +102,8 @@ export interface World {
   readonly whatsNew: WhatsNewRegistry;
   /** Sending accounts and the event routes that choose one: who writes to the customer, from where. */
   readonly emailConfig: EmailConfigRegistry;
+  /** 36-profile pre-load security gate, 3-tier RBAC, AI Access & SoD Advisor, Entity×Channel×Sub-Channel supervision & DOA queue. */
+  readonly rbac: SecurityGovernanceRegistry;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -603,6 +606,10 @@ export function buildWorld(): World {
   const parties = new PartyRegistry(tenant.id);
   const ahmed: Party = {
     id: 'PTY-0001', kind: 'person', names: { en: 'Ahmed Al Mansoori', ar: 'أحمد المنصوري' }, dateOfBirth: '1985-04-12',
+    sex: 'male', smoker: false, heightCm: 178, weightKg: 76, occupationClass: 1,
+    occupationTitle: 'Senior executive — corporate office', annualIncome: '480000.00',
+    beneficiaryName: 'Mariam Al Mansoori', beneficiaryRelationship: 'Spouse',
+    dependentProducts: ['critical-illness', 'waiver-of-premium'],
     ids: [
       { type: 'emirates-id', value: '784-1985-1234567-1', country: 'AE', source: 'chip', confidence: 0.999 },
       { type: 'driving-licence', value: 'DL-AE-99120', country: 'AE', source: 'ocr', confidence: 0.94 },
@@ -613,6 +620,10 @@ export function buildWorld(): World {
   };
   const sara: Party = {
     id: 'PTY-0002', kind: 'person', names: { en: 'Sara Khalifa', ar: 'سارة خليفة' }, dateOfBirth: '1990-11-02',
+    sex: 'female', smoker: false, heightCm: 165, weightKg: 60, occupationClass: 2,
+    occupationTitle: 'Medical & clinical specialist', annualIncome: '510000.00',
+    beneficiaryName: 'Khalifa Al Nahyan', beneficiaryRelationship: 'Parent / Father / Mother',
+    dependentProducts: ['critical-illness', 'waiver-of-premium'],
     ids: [{ type: 'emirates-id', value: '784-1990-7654321-9', country: 'AE', source: 'government-lookup', confidence: 0.98 }],
     phones: ['+971 55 987 6543'], emails: ['sara.khalifa@example.ae'],
     addresses: [{ line: 'Al Maryah Island, Tower 4', city: 'Abu Dhabi', country: 'AE' }], roles: ['policyholder'],
@@ -767,6 +778,7 @@ export function buildWorld(): World {
   // Departmental mailboxes and their event routes. The configuration is data with an audit trail;
   // credentials stay in the environment, referenced by name and never stored here.
   const emailConfig = new EmailConfigRegistry({ clock: () => '2026-10-05T12:00:00+04:00' });
+  const rbac = new SecurityGovernanceRegistry();
 
   const baseWorld = {
     registers,
@@ -780,7 +792,7 @@ export function buildWorld(): World {
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
-    fundsAccounting, superFunds, warehouse, themes,
+    fundsAccounting, superFunds, warehouse, themes, rbac,
   } as unknown as World;
   const erp = new ErpManager(baseWorld);
   const withErp: World = { ...baseWorld, erp } as World;
@@ -803,7 +815,7 @@ export function buildWorld(): World {
   // The guide is a desk, not a screen: it holds the switch and its audit trail, and reads the world
   // when it composes notes, so the figures inside a note are the engine's and never a typed string.
   const guide = new GuideDesk({ at: `${withErp.asOf}T12:00:00Z`, by: 'console-default' });
-  return { ...withErp, journey, guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig };
+  return { ...withErp, journey, guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig, rbac };
 }
 
 /**
@@ -1454,7 +1466,23 @@ export function worldSnapshot(w: World) {
       coverageAr: w.labels.coverage('ar'),
     },
     parties: {
-      list: w.parties.list().map((p) => ({ id: p.id, name: p.names.en, nameAr: p.names.ar, dob: p.dateOfBirth, ids: p.ids, phones: p.phones, emails: p.emails, roles: p.roles, holdings: w.parties.holdingsOf(p.id) })),
+      list: w.parties.list().map((p) => {
+        const ageCalc = p.dateOfBirth
+          ? (() => { try { return w.erp.ageCalculation.calculate(p.dateOfBirth!, w.asOf); } catch { return null; } })()
+          : null;
+        return {
+          id: p.id, name: p.names.en, nameAr: p.names.ar, dob: p.dateOfBirth,
+          calculatedAge: ageCalc?.effectiveAge ?? null,
+          ageBasis: ageCalc?.basis ?? w.erp.ageCalculation.basisForProduct(),
+          sex: p.sex, smoker: p.smoker, heightCm: p.heightCm, weightKg: p.weightKg,
+          occupationClass: p.occupationClass, occupationTitle: p.occupationTitle,
+          annualIncome: p.annualIncome, beneficiaryName: p.beneficiaryName,
+          beneficiaryRelationship: p.beneficiaryRelationship,
+          dependentProducts: p.dependentProducts ?? [],
+          ids: p.ids, phones: p.phones, emails: p.emails, addresses: p.addresses,
+          roles: p.roles, holdings: w.parties.holdingsOf(p.id),
+        };
+      }),
       consent: (() => { const c = w.parties.consent(w.consentId)!; return { id: c.id, scopes: [...c.scopes], expiresAt: c.expiresAt, purpose: c.purpose, grantedTo: c.grantedTo }; })(),
       partnerLookup: { outcome: partnerLookup.outcome, reason: partnerLookup.reason, disclosed: partnerLookup.disclosed, match: partnerLookup.match },
       partnerLookupDenied: { outcome: partnerLookupDenied.outcome, reason: partnerLookupDenied.reason },
@@ -1508,6 +1536,7 @@ export function worldSnapshot(w: World) {
     batch: w.batch.snapshot(batchSubjectsFromWorld(w.erp.snapshot(w) as unknown as { policies: ReadonlyArray<Record<string, unknown>>; proposals: ReadonlyArray<Record<string, unknown>> })),
     whatsNew: w.whatsNew.snapshot(),
     emailConfig: w.emailConfig.snapshot(),
+    security: w.rbac.snapshot(),
     days: DAYS,
     // The demo world's business date at midday in its operating zone — deliberately not wall
     // time, so the snapshot (and the recorded offline demo built from it) is reproducible.

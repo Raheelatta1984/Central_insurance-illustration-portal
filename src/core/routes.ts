@@ -48,6 +48,13 @@ import { batchSubjectsFromWorld, type BatchEventType } from './batch.js';
 import { RequestValidationError, reqString, reqEnum, reqInt, optBool } from './validate.js';
 import type { WarehouseConnectionKind } from './warehouse.js';
 import type { CommitLike, WhatsNewEntry } from './whatsnew.js';
+import type { AccessLevel, DoaActionKind, ProfileFamily } from './rbac.js';
+import {
+  type AgeBasis,
+  type HalfYearRule,
+  calculateActuarialAge,
+  resolveCustomerAutoPick,
+} from './autopick.js';
 
 export interface RuntimeState {
   world: World;
@@ -351,12 +358,28 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /parties/create': {
+      const parseCsv = (v: unknown): string[] =>
+        Array.isArray(v)
+          ? v.map(String).map((s) => s.trim()).filter(Boolean)
+          : typeof v === 'string' && v.trim()
+            ? v.split(',').map((s) => s.trim()).filter(Boolean)
+            : [];
       const created = state.world.erp.createCustomer(state.world, {
         ...(payload['id'] ? { id: String(payload['id']) } : {}),
         kind: payload['kind'] === 'organisation' ? 'organisation' : 'person',
         nameEn: String(payload['nameEn'] ?? payload['name'] ?? ''),
         ...(payload['nameAr'] ? { nameAr: String(payload['nameAr']) } : {}),
         ...(payload['dateOfBirth'] ? { dateOfBirth: String(payload['dateOfBirth']) } : {}),
+        ...(payload['sex'] === 'male' || payload['sex'] === 'female' ? { sex: payload['sex'] } : {}),
+        ...(payload['smoker'] !== undefined ? { smoker: Boolean(payload['smoker']) } : {}),
+        ...(payload['heightCm'] !== undefined && String(payload['heightCm']).trim() !== '' ? { heightCm: Number(payload['heightCm']) } : {}),
+        ...(payload['weightKg'] !== undefined && String(payload['weightKg']).trim() !== '' ? { weightKg: Number(payload['weightKg']) } : {}),
+        ...(payload['occupationClass'] !== undefined && String(payload['occupationClass']).trim() !== '' ? { occupationClass: Number(payload['occupationClass']) as 1 | 2 | 3 | 4 | 5 } : {}),
+        ...(payload['occupationTitle'] ? { occupationTitle: String(payload['occupationTitle']) } : {}),
+        ...(payload['annualIncome'] ? { annualIncome: String(payload['annualIncome']) } : {}),
+        ...(payload['beneficiaryName'] ? { beneficiaryName: String(payload['beneficiaryName']) } : {}),
+        ...(payload['beneficiaryRelationship'] ? { beneficiaryRelationship: String(payload['beneficiaryRelationship']) } : {}),
+        ...(payload['dependentProducts'] !== undefined ? { dependentProducts: parseCsv(payload['dependentProducts']) } : {}),
         ...(payload['idType'] ? { idType: String(payload['idType']) as IdType } : {}),
         ...(payload['idValue'] ? { idValue: String(payload['idValue']) } : {}),
         ...(payload['country'] ? { country: String(payload['country']) } : {}),
@@ -373,11 +396,27 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /parties/update': {
+      const parseCsv = (v: unknown): string[] =>
+        Array.isArray(v)
+          ? v.map(String).map((s) => s.trim()).filter(Boolean)
+          : typeof v === 'string' && v.trim()
+            ? v.split(',').map((s) => s.trim()).filter(Boolean)
+            : [];
       const updated = state.world.erp.updateCustomer(state.world, {
         partyId: String(payload['partyId'] ?? ''),
         ...(payload['nameEn'] ? { nameEn: String(payload['nameEn']) } : {}),
         ...(payload['nameAr'] !== undefined ? { nameAr: String(payload['nameAr']) } : {}),
         ...(payload['dateOfBirth'] ? { dateOfBirth: String(payload['dateOfBirth']) } : {}),
+        ...(payload['sex'] === 'male' || payload['sex'] === 'female' ? { sex: payload['sex'] } : {}),
+        ...(payload['smoker'] !== undefined ? { smoker: Boolean(payload['smoker']) } : {}),
+        ...(payload['heightCm'] !== undefined && String(payload['heightCm']).trim() !== '' ? { heightCm: Number(payload['heightCm']) } : {}),
+        ...(payload['weightKg'] !== undefined && String(payload['weightKg']).trim() !== '' ? { weightKg: Number(payload['weightKg']) } : {}),
+        ...(payload['occupationClass'] !== undefined && String(payload['occupationClass']).trim() !== '' ? { occupationClass: Number(payload['occupationClass']) as 1 | 2 | 3 | 4 | 5 } : {}),
+        ...(payload['occupationTitle'] ? { occupationTitle: String(payload['occupationTitle']) } : {}),
+        ...(payload['annualIncome'] ? { annualIncome: String(payload['annualIncome']) } : {}),
+        ...(payload['beneficiaryName'] ? { beneficiaryName: String(payload['beneficiaryName']) } : {}),
+        ...(payload['beneficiaryRelationship'] ? { beneficiaryRelationship: String(payload['beneficiaryRelationship']) } : {}),
+        ...(payload['dependentProducts'] !== undefined ? { dependentProducts: parseCsv(payload['dependentProducts']) } : {}),
         ...(payload['phone'] ? { phone: String(payload['phone']) } : {}),
         ...(payload['email'] ? { email: String(payload['email']) } : {}),
         ...(payload['addressLine'] ? { addressLine: String(payload['addressLine']) } : {}),
@@ -511,17 +550,19 @@ export async function dispatchApiRoute(
         ...(payload['beneficiaryName'] ? { beneficiaryName: String(payload['beneficiaryName']) } : {}),
         ...(payload['beneficiaryRelationship'] ? { beneficiaryRelationship: String(payload['beneficiaryRelationship']) } : {}),
         ...(Array.isArray(payload['targetFunds']) ? { targetFunds: payload['targetFunds'] as string[] } : {}),
-        age: Number(payload['age'] ?? 35),
-        sex: payload['sex'] === 'female' ? 'female' : 'male',
-        smoker: Boolean(payload['smoker'] ?? false),
-        heightCm: Number(payload['heightCm'] ?? 175),
-        weightKg: Number(payload['weightKg'] ?? 75),
-        occupationClass: (Number(payload['occupationClass'] ?? 1) as OccupationClass),
+        ...(payload['dob'] ? { dob: String(payload['dob']) } : {}),
+        ...(payload['age'] !== undefined && String(payload['age']).trim() !== '' ? { age: Number(payload['age']) } : {}),
+        ...(payload['sex'] === 'male' || payload['sex'] === 'female' ? { sex: payload['sex'] } : {}),
+        ...(payload['smoker'] !== undefined ? { smoker: Boolean(payload['smoker']) } : {}),
+        ...(payload['heightCm'] !== undefined && String(payload['heightCm']).trim() !== '' ? { heightCm: Number(payload['heightCm']) } : {}),
+        ...(payload['weightKg'] !== undefined && String(payload['weightKg']).trim() !== '' ? { weightKg: Number(payload['weightKg']) } : {}),
+        ...(payload['occupationClass'] !== undefined && String(payload['occupationClass']).trim() !== '' ? { occupationClass: Number(payload['occupationClass']) as OccupationClass } : {}),
+        ...(payload['dependentProducts'] !== undefined ? { dependentProducts: parseList(payload['dependentProducts']) } : {}),
         pursuits: parseList(payload['pursuits']),
         conditions: parseList(payload['conditions']),
         familyHistory: parseList(payload['familyHistory']),
-        residenceCountry: String(payload['residenceCountry'] ?? 'AE'),
-        annualIncome: String(payload['annualIncome'] ?? '360,000.00'),
+        ...(payload['residenceCountry'] ? { residenceCountry: String(payload['residenceCountry']) } : {}),
+        ...(payload['annualIncome'] !== undefined && String(payload['annualIncome']).trim() !== '' ? { annualIncome: String(payload['annualIncome']) } : {}),
         ...(payload['at'] ? { at: String(payload['at']) } : {}),
       });
       return ok(created);
@@ -3335,6 +3376,297 @@ export async function dispatchApiRoute(
         policyUnits: state.world.unitLinked.unitsHeld('UL-000123').map((h) => ({ fundId: h.fundId, units: unitsToDecimal(h.units) })),
         reproduce: state.world.unitLinked.reproduce('UL-000123'),
       });
+
+    /* ---------- 36-profile pre-load security gate, AI RBAC, DOA approvals & smart auto-pick */
+    case 'GET /security/rbac':
+      return ok(state.world.rbac.snapshot());
+
+    case 'POST /security/session': {
+      const profile = state.world.rbac.selectActiveProfile(
+        String(payload['profileId'] ?? 'administration'),
+        payload['at'] ? String(payload['at']) : undefined,
+      );
+      return ok({
+        profile,
+        security: state.world.rbac.snapshot(),
+        world: worldSnapshot(state.world),
+      });
+    }
+
+    case 'POST /security/profile': {
+      const profile = state.world.rbac.upsertProfile({
+        id: String(payload['id'] ?? payload['name'] ?? ''),
+        ...(payload['name'] ? { name: String(payload['name']) } : {}),
+        ...(payload['title'] ? { title: String(payload['title']) } : {}),
+        ...(payload['family'] ? { family: String(payload['family']) as ProfileFamily } : {}),
+        ...(payload['badge'] ? { badge: String(payload['badge']) } : {}),
+        ...(payload['summary'] || payload['description'] ? { summary: String(payload['summary'] ?? payload['description']) } : {}),
+        ...(payload['defaultLandingTab'] ? { defaultLandingTab: String(payload['defaultLandingTab']) } : {}),
+        ...(payload['entityScope'] ? { entityScope: String(payload['entityScope']) } : {}),
+        ...(payload['channelScope'] ? { channelScope: String(payload['channelScope']) } : {}),
+        ...(payload['subChannelScope'] ? { subChannelScope: String(payload['subChannelScope']) } : {}),
+        ...(payload['doaLimitAed'] !== undefined || payload['doaLimit'] !== undefined
+          ? { doaLimitAed: payload['doaLimitAed'] === null ? null : String(payload['doaLimitAed'] ?? payload['doaLimit']) }
+          : {}),
+        ...(payload['piiAccess'] === 'full' || payload['piiAccess'] === 'masked' || payload['piiAccess'] === 'own-only'
+          ? { piiAccess: payload['piiAccess'] }
+          : {}),
+        ...(payload['reportsToProfileId'] !== undefined || payload['supervisorProfileId'] !== undefined
+          ? { reportsToProfileId: String(payload['reportsToProfileId'] ?? payload['supervisorProfileId']) || null }
+          : {}),
+        ...(payload['escalationProfileId'] !== undefined || payload['managerProfileId'] !== undefined
+          ? { escalationProfileId: String(payload['escalationProfileId'] ?? payload['managerProfileId']) || null }
+          : {}),
+        ...(payload['tabAccess'] && typeof payload['tabAccess'] === 'object'
+          ? { tabAccess: payload['tabAccess'] as Record<string, AccessLevel> }
+          : payload['tabs'] && typeof payload['tabs'] === 'object'
+            ? { tabAccess: payload['tabs'] as Record<string, AccessLevel> }
+            : {}),
+        ...(payload['sectionAccess'] && typeof payload['sectionAccess'] === 'object'
+          ? { sectionAccess: payload['sectionAccess'] as Record<string, AccessLevel> }
+          : payload['sections'] && typeof payload['sections'] === 'object'
+            ? { sectionAccess: payload['sections'] as Record<string, AccessLevel> }
+            : {}),
+        ...(payload['subSectionAccess'] && typeof payload['subSectionAccess'] === 'object'
+          ? { subSectionAccess: payload['subSectionAccess'] as Record<string, AccessLevel> }
+          : payload['subSections'] && typeof payload['subSections'] === 'object'
+            ? { subSectionAccess: payload['subSections'] as Record<string, AccessLevel> }
+            : {}),
+        ...(payload['cloneFromProfileId'] || payload['cloneFrom']
+          ? { cloneFromProfileId: String(payload['cloneFromProfileId'] ?? payload['cloneFrom']) }
+          : {}),
+        by: String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+      });
+      return ok({ profile, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'POST /security/ai/recommend': {
+      const recommendation = state.world.rbac.recommendAccess({
+        ...(payload['profileId'] ? { profileId: String(payload['profileId']) } : {}),
+        ...(payload['roleDescription'] ? { roleDescription: String(payload['roleDescription']) } : {}),
+      });
+      state.world.ai.propose({
+        agent: 'rbac-sod-advisor-v2',
+        module: 'access-doa',
+        intent: 'recommend-role-permissions',
+        riskClass: 'low',
+        at: `${state.world.asOf}T12:05:00+04:00`,
+        dryRun: false,
+        costUsd: 0.01,
+        inputs: {
+          profileId: recommendation.profileId,
+          roleDescription: payload['roleDescription'] ? String(payload['roleDescription']) : null,
+        },
+        output: {
+          confidencePct: recommendation.confidencePct,
+          recommendedDoaLimit: recommendation.recommendedDoaLimit,
+          sodWarnings: recommendation.sodWarnings.length,
+        },
+      });
+      return ok({ recommendation, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'POST /security/ai/apply': {
+      const profileId = String(payload['profileId'] ?? '');
+      const actor = String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id);
+      const applied = state.world.rbac.applyAiRecommendation(profileId, actor);
+      const action = state.world.ai.propose({
+        agent: 'rbac-sod-advisor-v2',
+        module: 'access-doa',
+        intent: 'apply-role-permissions',
+        riskClass: 'medium',
+        at: `${state.world.asOf}T12:06:00+04:00`,
+        dryRun: false,
+        costUsd: 0.02,
+        inputs: { profileId, actor },
+        output: {
+          confidencePct: applied.recommendation.confidencePct,
+          recommendedDoaLimit: applied.recommendation.recommendedDoaLimit,
+        },
+      });
+      state.world.ai.approve(action.id, actor);
+      return ok({ ...applied, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'POST /security/mapping': {
+      const parseOfficers = (v: unknown): string[] =>
+        Array.isArray(v)
+          ? v.map(String).map((s) => s.trim()).filter(Boolean)
+          : typeof v === 'string' && v.trim()
+            ? v.split(',').map((s) => s.trim()).filter(Boolean)
+            : ['agent-1'];
+      const mapping = state.world.rbac.upsertSupervisionMapping({
+        ...(payload['id'] ? { id: String(payload['id']) } : {}),
+        entityId: String(payload['entityId'] ?? '*'),
+        channelCode: String(payload['channelCode'] ?? '*'),
+        subChannelCode: String(payload['subChannelCode'] ?? '*'),
+        department: String(payload['department'] ?? 'Channel & Desk Supervision'),
+        officerProfileIds: parseOfficers(payload['officerProfileIds']),
+        supervisorProfileId: String(payload['supervisorProfileId'] ?? 'supervisor'),
+        managerProfileId: String(payload['managerProfileId'] ?? 'administration'),
+        supervisorDoaLimitAed: String(payload['supervisorDoaLimitAed'] ?? payload['supervisorDoaLimit'] ?? '1000000'),
+        managerDoaLimitAed: String(payload['managerDoaLimitAed'] ?? payload['managerDoaLimit'] ?? '5000000'),
+        active: payload['active'] !== undefined ? Boolean(payload['active']) : true,
+        note: String(payload['note'] ?? ''),
+        by: String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+      });
+      return ok({ mapping, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'POST /security/mapping/delete': {
+      state.world.rbac.deleteSupervisionMapping(
+        String(payload['id'] ?? ''),
+        String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+      );
+      return ok({ security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'POST /security/doa/evaluate': {
+      const evaluation = state.world.rbac.evaluateDoa({
+        requesterProfileId: String(payload['requesterProfileId'] ?? payload['profileId'] ?? state.world.rbac.activeProfile().id),
+        actionKind: (String(payload['actionKind'] ?? 'underwriting-decision') as DoaActionKind),
+        amount: String(payload['amount'] ?? '0'),
+        currency: String(payload['currency'] ?? 'AED'),
+        ...(payload['entityId'] ? { entityId: String(payload['entityId']) } : {}),
+        ...(payload['channelCode'] ? { channelCode: String(payload['channelCode']) } : {}),
+        ...(payload['subChannelCode'] ? { subChannelCode: String(payload['subChannelCode']) } : {}),
+        ...(payload['tabId'] ? { tabId: String(payload['tabId']) } : {}),
+      });
+      return ok({ evaluation });
+    }
+
+    case 'POST /security/doa/request': {
+      const result = state.world.rbac.submitDoaRequest({
+        requesterProfileId: String(payload['requesterProfileId'] ?? state.world.rbac.activeProfile().id),
+        actionKind: (String(payload['actionKind'] ?? 'underwriting-decision') as DoaActionKind),
+        subjectRef: String(payload['subjectRef'] ?? 'REF-MANUAL'),
+        tabId: String(payload['tabId'] ?? 'overview'),
+        ...(payload['sectionId'] ? { sectionId: String(payload['sectionId']) } : {}),
+        ...(payload['entityId'] ? { entityId: String(payload['entityId']) } : {}),
+        ...(payload['channelCode'] ? { channelCode: String(payload['channelCode']) } : {}),
+        ...(payload['subChannelCode'] ? { subChannelCode: String(payload['subChannelCode']) } : {}),
+        amount: String(payload['amount'] ?? '500000'),
+        currency: String(payload['currency'] ?? 'AED'),
+        reason: String(payload['reason'] ?? 'Out-of-authority transaction submitted for DOA sign-off'),
+      });
+      return ok({
+        autoApproved: result.autoApproved,
+        requestId: result.request.id,
+        request: result.request,
+        status: result.request.status,
+        notificationsSent: result.notificationsSent,
+        security: state.world.rbac.snapshot(),
+        world: worldSnapshot(state.world),
+      });
+    }
+
+    case 'POST /security/doa/decide': {
+      const rawDecision = String(payload['decision'] ?? 'approve');
+      const decision: 'approve' | 'reject' | 'escalate' =
+        rawDecision === 'rejected' || rawDecision === 'reject'
+          ? 'reject'
+          : rawDecision === 'escalated' || rawDecision === 'escalate'
+            ? 'escalate'
+            : 'approve';
+      const result = state.world.rbac.decideDoaRequest({
+        requestId: String(payload['requestId'] ?? ''),
+        actorProfileId: String(payload['actorProfileId'] ?? payload['decidedByProfileId'] ?? state.world.rbac.activeProfile().id),
+        decision,
+        ...(payload['note'] ? { note: String(payload['note']) } : {}),
+      });
+      return ok({
+        requestId: result.request.id,
+        status: result.request.status,
+        notificationsSent: result.notificationsSent,
+        security: state.world.rbac.snapshot(),
+        world: worldSnapshot(state.world),
+      });
+    }
+
+    case 'POST /security/notifications/read': {
+      const marked = state.world.rbac.markNotificationsRead({
+        ...(payload['profileId'] ? { profileId: String(payload['profileId']) } : {}),
+        ...(payload['notificationId'] ? { notificationId: String(payload['notificationId']) } : {}),
+      });
+      return ok({ marked, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'GET /master/age-calculation':
+      return ok(state.world.erp.ageCalculation.snapshot());
+
+    case 'POST /master/age-calculation': {
+      const actor = String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id);
+      const productOverrides: Record<string, AgeBasis | '' | null> = {};
+      if (payload['productOverrides'] && typeof payload['productOverrides'] === 'object') {
+        Object.assign(productOverrides, payload['productOverrides'] as Record<string, AgeBasis | '' | null>);
+      }
+      if (payload['productId']) {
+        productOverrides[String(payload['productId'])] = payload['clearOverride']
+          ? null
+          : (String(payload['productBasis'] ?? payload['basis'] ?? 'age-nearest') as AgeBasis);
+      }
+      const ageCalculation = state.world.erp.ageCalculation.update({
+        ...(payload['defaultBasis'] ? { defaultBasis: String(payload['defaultBasis']) as AgeBasis } : {}),
+        ...(payload['halfYearRule'] ? { halfYearRule: String(payload['halfYearRule']) as HalfYearRule } : {}),
+        ...(payload['autoSyncDobToAge'] !== undefined ? { autoSyncDobToAge: Boolean(payload['autoSyncDobToAge']) } : {}),
+        ...(Object.keys(productOverrides).length > 0 ? { productOverrides } : {}),
+        by: actor,
+      });
+      return ok({
+        ageCalculation,
+        world: worldSnapshot(state.world),
+      });
+    }
+
+    case 'POST /master/age-calculation/probe': {
+      const dob = String(payload['dob'] ?? '1990-11-02');
+      const valuationDate = String(payload['valuationDate'] ?? state.world.asOf);
+      const halfRule = state.world.erp.ageCalculation.snapshot().halfYearRule;
+      const comparison = {
+        'age-nearest': calculateActuarialAge(dob, valuationDate, 'age-nearest', halfRule),
+        'age-next': calculateActuarialAge(dob, valuationDate, 'age-next', halfRule),
+        'age-last': calculateActuarialAge(dob, valuationDate, 'age-last', halfRule),
+      };
+      const effective = state.world.erp.ageCalculation.calculate(
+        dob,
+        valuationDate,
+        payload['productId'] ? String(payload['productId']) : undefined,
+      );
+      return ok({ dob, valuationDate, effective, comparison });
+    }
+
+    case 'POST /master/dependent-products': {
+      const listFrom = (v: unknown): string[] =>
+        Array.isArray(v)
+          ? v.map(String).map((s) => s.trim()).filter(Boolean)
+          : typeof v === 'string' && v.trim()
+            ? v.split(',').map((s) => s.trim()).filter(Boolean)
+            : [];
+      const rule = state.world.erp.dependentProducts.upsertRule({
+        baseProductId: String(payload['baseProductId'] ?? 'PROD-UL-GLOBAL'),
+        autoPickCodes: listFrom(payload['autoPickCodes'] ?? payload['autoPickedRiders']),
+        optionalCodes: listFrom(payload['optionalCodes']),
+        linkedProductIds: listFrom(payload['linkedProductIds'] ?? payload['suggestedCompanionProducts']),
+        note: String(payload['note'] ?? 'Updated in Master Settings'),
+        by: String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+      });
+      return ok({
+        rule,
+        dependentProducts: state.world.erp.dependentProducts.snapshot(),
+        world: worldSnapshot(state.world),
+      });
+    }
+
+    case 'POST /autopick/resolve': {
+      const autoPick = resolveCustomerAutoPick(state.world, {
+        ...(payload['partyId'] || payload['customerId'] ? { partyId: String(payload['partyId'] ?? payload['customerId']) } : {}),
+        ...(payload['caseId'] ? { caseId: String(payload['caseId']) } : {}),
+        ...(payload['productId'] ? { productId: String(payload['productId']) } : {}),
+        ...(payload['dob'] ? { dob: String(payload['dob']) } : {}),
+        ...(payload['valuationDate'] ? { valuationDate: String(payload['valuationDate']) } : {}),
+      });
+      return ok({ autoPick });
+    }
 
     case 'POST /reset': {
       // Replace the whole state in one assignment so a concurrent dispatch can never observe a

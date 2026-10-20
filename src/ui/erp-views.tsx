@@ -11,6 +11,8 @@ export { PRODUCT_PAGE_SIZE };
 import { RatingTablesPanel } from './rating-views';
 import { OmniChannelPanel } from './channel-views';
 import { EntityThemeOnboardingPanel, OmniThemePanel, PartnerThemePanel } from './theme-views';
+import { SmartComboBox, SmartMultiComboBox } from './combobox';
+import { AGE_BASIS_CATALOGUE, type AgeBasis, tryCalculateActuarialAge } from '../core/autopick';
 
 export const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }> = ({
   title,
@@ -81,6 +83,11 @@ export function CustomerManagementPanel({
   const [nameAr, setNameAr] = useState('فاطمة السويدي');
   const [kind, setKind] = useState<'person' | 'organisation'>('person');
   const [dob, setDob] = useState('1988-07-19');
+  const [custSex, setCustSex] = useState<'male' | 'female'>('female');
+  const [custSmoker, setCustSmoker] = useState(false);
+  const [custHeightCm, setCustHeightCm] = useState(166);
+  const [custWeightKg, setCustWeightKg] = useState(61);
+  const [custDependentProducts, setCustDependentProducts] = useState<string[]>(['critical-illness', 'waiver-of-premium']);
   const [idType, setIdType] = useState('emirates-id');
   const [idValue, setIdValue] = useState('784-1988-4455667-2');
   const [idSource, setIdSource] = useState<'chip' | 'government-lookup' | 'ocr' | 'manual'>('chip');
@@ -90,6 +97,10 @@ export function CustomerManagementPanel({
   const [city, setCity] = useState('Dubai');
   const [country, setCountry] = useState('AE');
   const [grantTo, setGrantTo] = useState('DXB-BROKER-01');
+
+  const activeAgeBasis = data.erp.master.ageCalculation.defaultBasis;
+  const custAgeCalc = tryCalculateActuarialAge(dob, data.asOf, activeAgeBasis, data.erp.master.ageCalculation.halfYearRule);
+  const custBmi = custHeightCm > 0 ? Math.round((custWeightKg / ((custHeightCm / 100) ** 2)) * 10) / 10 : 0;
 
   // Update customer state
   const [editPartyId, setEditPartyId] = useState(data.parties.list[0]?.id ?? 'PTY-0001');
@@ -172,6 +183,42 @@ export function CustomerManagementPanel({
           <label>
             Date of Birth / Inc.
             <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+            {custAgeCalc && (
+              <small className="muted">
+                Auto Age: <b>{custAgeCalc.effectiveAge}</b> ({custAgeCalc.basisCode} · ALB {custAgeCalc.ageLast} / ANB {custAgeCalc.ageNearest} / ANxB {custAgeCalc.ageNext})
+              </small>
+            )}
+          </label>
+          <label>
+            Height (cm)
+            <input type="number" value={custHeightCm} onChange={(e) => setCustHeightCm(Number(e.target.value))} style={{ width: 82 }} />
+          </label>
+          <label>
+            Weight (kg)
+            <input type="number" value={custWeightKg} onChange={(e) => setCustWeightKg(Number(e.target.value))} style={{ width: 82 }} />
+            <small className="muted">BMI {custBmi}</small>
+          </label>
+          <label>
+            Sex
+            <select value={custSex} onChange={(e) => setCustSex(e.target.value as 'male' | 'female')}>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </label>
+          <label>
+            Smoker
+            <select value={custSmoker ? 'yes' : 'no'} onChange={(e) => setCustSmoker(e.target.value === 'yes')}>
+              <option value="no">Non-smoker</option>
+              <option value="yes">Smoker</option>
+            </select>
+          </label>
+          <label style={{ minWidth: 265 }}>
+            Dependent Products / Riders (Auto-Picked Downstream)
+            <SmartMultiComboBox
+              values={custDependentProducts}
+              onChange={setCustDependentProducts}
+              suggestions={data.erp.master.smartSuggestions.dependentProducts}
+            />
           </label>
           <label>
             ID Document Type
@@ -216,7 +263,12 @@ export function CustomerManagementPanel({
           </label>
           <label>
             City
-            <input value={city} onChange={(e) => setCity(e.target.value)} />
+            <SmartComboBox
+              value={city}
+              onChange={setCity}
+              suggestions={data.erp.master.smartSuggestions.cities}
+              style={{ width: 145 }}
+            />
           </label>
           <label>
             Country
@@ -224,7 +276,13 @@ export function CustomerManagementPanel({
           </label>
           <label>
             Initial Partner Consent
-            <input value={grantTo} onChange={(e) => setGrantTo(e.target.value)} placeholder="e.g. DXB-BROKER-01" />
+            <SmartComboBox
+              value={grantTo}
+              onChange={setGrantTo}
+              suggestions={data.erp.master.smartSuggestions.partnerIds}
+              placeholder="e.g. DXB-BROKER-01"
+              style={{ width: 175 }}
+            />
           </label>
           <button
             disabled={busy}
@@ -250,6 +308,11 @@ export function CustomerManagementPanel({
                   city,
                   roles: ['policyholder', 'life-assured'],
                   grantConsentTo: grantTo || undefined,
+                  sex: custSex,
+                  smoker: custSmoker,
+                  heightCm: custHeightCm,
+                  weightKg: custWeightKg,
+                  dependentProducts: custDependentProducts,
                 }),
               )
             }
@@ -417,22 +480,83 @@ export function ProposalManagementPanel({
   onReload: () => Promise<void>;
   onNavigate?: (tab: ConsoleTab) => void;
 }) {
-  const [partyId, setPartyId] = useState(data.parties.list[0]?.id ?? 'PTY-0001');
-  const [productId, setProductId] = useState(data.erp.master.products[0]?.productId ?? 'PROD-LIFE-TERM');
+  const initialParty = data.parties.list[0];
+  const initialProductId = data.erp.master.products[0]?.productId ?? 'PROD-LIFE-TERM';
+  const initialBasis: AgeBasis =
+    data.erp.master.ageCalculation.productOverrides[initialProductId] ?? data.erp.master.ageCalculation.defaultBasis;
+  const initialAgeCalc = tryCalculateActuarialAge(
+    initialParty?.dob ?? '1985-04-12',
+    data.asOf,
+    initialBasis,
+    data.erp.master.ageCalculation.halfYearRule,
+  );
+  const initialRule = data.erp.master.dependentProducts.rules.find((r) => r.baseProductId === initialProductId);
+
+  const [partyId, setPartyId] = useState(initialParty?.id ?? 'PTY-0001');
+  const [productId, setProductId] = useState(initialProductId);
+  const [proposalDob, setProposalDob] = useState(initialParty?.dob ?? '1985-04-12');
   const [sumAssured, setSumAssured] = useState('350,000.00');
   const [paymentFrequency, setPaymentFrequency] = useState<'monthly' | 'quarterly' | 'annual' | 'single'>('annual');
   const [termYears, setTermYears] = useState(20);
-  const [beneficiaryName, setBeneficiaryName] = useState('Mariam Al Mansoori');
-  const [beneficiaryRelationship, setBeneficiaryRelationship] = useState('Spouse');
-  const [age, setAge] = useState(34);
-  const [sex, setSex] = useState<'male' | 'female'>('male');
-  const [smoker, setSmoker] = useState(false);
-  const [heightCm, setHeightCm] = useState(176);
-  const [weightKg, setWeightKg] = useState(74);
-  const [occupationClass, setOccupationClass] = useState(1);
+  const [beneficiaryName, setBeneficiaryName] = useState(initialParty?.beneficiaryName ?? 'Mariam Al Mansoori');
+  const [beneficiaryRelationship, setBeneficiaryRelationship] = useState(initialParty?.beneficiaryRelationship ?? 'Spouse');
+  const [age, setAge] = useState(initialAgeCalc?.effectiveAge ?? 41);
+  const [sex, setSex] = useState<'male' | 'female'>(initialParty?.sex ?? 'male');
+  const [smoker, setSmoker] = useState(Boolean(initialParty?.smoker ?? false));
+  const [heightCm, setHeightCm] = useState(initialParty?.heightCm ?? 178);
+  const [weightKg, setWeightKg] = useState(initialParty?.weightKg ?? 76);
+  const [occupationClass, setOccupationClass] = useState<number>(initialParty?.occupationClass ?? 1);
+  const [dependentProducts, setDependentProducts] = useState<string[]>(
+    initialParty?.dependentProducts && initialParty.dependentProducts.length > 0
+      ? [...initialParty.dependentProducts]
+      : [...(initialRule?.autoPickCodes ?? ['accidental-death', 'waiver-of-premium'])],
+  );
   const [pursuits, setPursuits] = useState('');
   const [conditions, setConditions] = useState('');
-  const [annualIncome, setAnnualIncome] = useState('420,000.00');
+  const [annualIncome, setAnnualIncome] = useState(initialParty?.annualIncome ?? '480,000.00');
+
+  const productAgeBasis: AgeBasis =
+    data.erp.master.ageCalculation.productOverrides[productId] ?? data.erp.master.ageCalculation.defaultBasis;
+  const liveAgeCalc = tryCalculateActuarialAge(
+    proposalDob,
+    data.asOf,
+    productAgeBasis,
+    data.erp.master.ageCalculation.halfYearRule,
+  );
+
+  // Auto-recompute age whenever DOB, Product Age Basis, or Master Age Calculation basis changes
+  useEffect(() => {
+    if (liveAgeCalc) {
+      setAge(liveAgeCalc.effectiveAge);
+    }
+  }, [liveAgeCalc?.effectiveAge, productAgeBasis, proposalDob]);
+
+  // Auto-pick previously entered fields whenever the operator switches Customer or Base Product
+  const applyCustomerAutoPick = (nextPartyId: string, nextProdId: string) => {
+    const p = data.parties.list.find((item) => item.id === nextPartyId);
+    const prodRule = data.erp.master.dependentProducts.rules.find((r) => r.baseProductId === nextProdId);
+    const nextDob = p?.dob ?? proposalDob;
+    const basis: AgeBasis =
+      data.erp.master.ageCalculation.productOverrides[nextProdId] ?? data.erp.master.ageCalculation.defaultBasis;
+    const calc = tryCalculateActuarialAge(nextDob, data.asOf, basis, data.erp.master.ageCalculation.halfYearRule);
+    setProposalDob(nextDob);
+    if (calc) setAge(calc.effectiveAge);
+    if (p?.sex) setSex(p.sex);
+    if (p?.smoker !== undefined) setSmoker(p.smoker);
+    if (p?.heightCm) setHeightCm(p.heightCm);
+    if (p?.weightKg) setWeightKg(p.weightKg);
+    if (p?.occupationClass) setOccupationClass(p.occupationClass);
+    if (p?.annualIncome) setAnnualIncome(p.annualIncome);
+    if (p?.beneficiaryName) setBeneficiaryName(p.beneficiaryName);
+    if (p?.beneficiaryRelationship) setBeneficiaryRelationship(p.beneficiaryRelationship);
+    const mergedDeps = [
+      ...new Set([
+        ...(p?.dependentProducts ?? []),
+        ...(prodRule?.autoPickCodes ?? []),
+      ]),
+    ];
+    if (mergedDeps.length > 0) setDependentProducts(mergedDeps);
+  };
 
   // Conversion state
   const convertibleProposals = data.erp.proposals.filter((p) => !p.convertedPolicyId);
@@ -506,26 +630,58 @@ export function ProposalManagementPanel({
           warnings: proposalWarnings,
           children: (
             <>
+        <div className="autoPickBanner" data-autopick-banner="proposal">
+          <Pill tone="ok">⚡ Smart Auto-Pick Active</Pill>
+          <span className="small">
+            Pre-populated from <b>{partyId}</b> golden record + Master Age Rule <b>{productAgeBasis}</b>
+            {liveAgeCalc ? ` (DOB ${proposalDob} → Age ${liveAgeCalc.effectiveAge} [${liveAgeCalc.basisCode}] · ALB ${liveAgeCalc.ageLast} / ANB ${liveAgeCalc.ageNearest} / ANxB ${liveAgeCalc.ageNext})` : ''}
+            {' '}· Height <b>{heightCm} cm</b> · Weight <b>{weightKg} kg</b> (BMI <b>{bmi}</b>) · Dependent covers <b>{dependentProducts.length}</b>. Every field stays editable.
+          </span>
+          <button
+            type="button"
+            className="ghost"
+            style={{ marginLeft: 'auto', padding: '3px 9px', fontSize: 11.5 }}
+            onClick={() => applyCustomerAutoPick(partyId, productId)}
+          >
+            ↻ Re-sync from Customer Memory
+          </button>
+        </div>
         <div className="row">
           <label>
-            Customer (Party)
-            <select value={partyId} onChange={(e) => setPartyId(e.target.value)}>
+            Customer (Party — Auto-Picks Fields)
+            <select
+              value={partyId}
+              onChange={(e) => {
+                setPartyId(e.target.value);
+                applyCustomerAutoPick(e.target.value, productId);
+              }}
+            >
               {data.parties.list.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.id} — {p.name}
+                  {p.id} — {p.name} ({p.dob})
                 </option>
               ))}
             </select>
           </label>
           <label>
             Product
-            <select value={productId} onChange={(e) => setProductId(e.target.value)}>
+            <select
+              value={productId}
+              onChange={(e) => {
+                setProductId(e.target.value);
+                applyCustomerAutoPick(partyId, e.target.value);
+              }}
+            >
               {data.erp.master.products.map((prod) => (
                 <option key={prod.productId} value={prod.productId}>
                   {prod.productId} — {prod.name} ({prod.category})
                 </option>
               ))}
             </select>
+          </label>
+          <label>
+            Date of Birth (Auto-Picked)
+            <input type="date" value={proposalDob} onChange={(e) => setProposalDob(e.target.value)} />
           </label>
           <label>
             Sum Assured (AED)
@@ -553,13 +709,23 @@ export function ProposalManagementPanel({
           </label>
           <label>
             Relationship
-            <input value={beneficiaryRelationship} onChange={(e) => setBeneficiaryRelationship(e.target.value)} style={{ width: 110 }} />
+            <SmartComboBox
+              value={beneficiaryRelationship}
+              onChange={setBeneficiaryRelationship}
+              suggestions={data.erp.master.smartSuggestions.relationships}
+              style={{ width: 145 }}
+            />
           </label>
         </div>
         <div className="row">
           <label>
-            Age
-            <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} style={{ width: 70 }} />
+            Age ({liveAgeCalc?.basisCode ?? 'Auto'})
+            <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} style={{ width: 78 }} />
+            {liveAgeCalc && (
+              <small className="muted">
+                ALB {liveAgeCalc.ageLast} · ANB {liveAgeCalc.ageNearest} · ANxB {liveAgeCalc.ageNext}
+              </small>
+            )}
           </label>
           <label>
             Sex
@@ -582,6 +748,7 @@ export function ProposalManagementPanel({
           <label>
             Weight (kg)
             <input type="number" value={weightKg} onChange={(e) => setWeightKg(Number(e.target.value))} style={{ width: 85 }} />
+            <small className="muted">BMI {bmi}</small>
           </label>
           <label>
             Occupation Class
@@ -592,20 +759,32 @@ export function ProposalManagementPanel({
               <option value={4}>Class 4 (Hazardous Industrial)</option>
             </select>
           </label>
-          <label>
-            Pursuits (comma-sep)
-            <input
-              value={pursuits}
-              onChange={(e) => setPursuits(e.target.value)}
-              placeholder="e.g. motorsport, scuba-deep"
+          <label style={{ minWidth: 270 }}>
+            Dependent Products &amp; Linked Riders (Auto-Picked + Editable)
+            <SmartMultiComboBox
+              values={dependentProducts}
+              onChange={setDependentProducts}
+              suggestions={data.erp.master.smartSuggestions.dependentProducts}
             />
           </label>
           <label>
-            Medical Conditions
-            <input
+            Pursuits (Suggested + Custom)
+            <SmartComboBox
+              value={pursuits}
+              onChange={setPursuits}
+              suggestions={data.erp.master.smartSuggestions.pursuits}
+              placeholder="e.g. motorsport, scuba-deep"
+              style={{ width: 195 }}
+            />
+          </label>
+          <label>
+            Medical Conditions (Suggested + Custom)
+            <SmartComboBox
               value={conditions}
-              onChange={(e) => setConditions(e.target.value)}
+              onChange={setConditions}
+              suggestions={data.erp.master.smartSuggestions.conditions}
               placeholder="e.g. diabetes-type-2, asthma-mild"
+              style={{ width: 205 }}
             />
           </label>
           <label>
@@ -615,10 +794,11 @@ export function ProposalManagementPanel({
           <button
             disabled={busy}
             onClick={() =>
-              runAction('Proposal registered & assessed', () =>
+              runAction('Proposal registered & assessed (memory persisted)', () =>
                 api('/underwriting/register', 'POST', {
                   partyId,
                   productId,
+                  dob: proposalDob,
                   sumAssured,
                   paymentFrequency,
                   termYears,
@@ -627,6 +807,7 @@ export function ProposalManagementPanel({
                   age,
                   sex,
                   smoker,
+                  dependentProducts,
                   heightCm,
                   weightKg,
                   occupationClass,
@@ -2730,8 +2911,14 @@ export function ProductFactoryPanel({ data, busy, form, setForm, onSave, onRun, 
             <input value={prodId} onChange={(e) => setProdId(e.target.value)} style={{ width: 170 }} />
           </label>
           <label>
-            Product Name
-            <input value={prodName} onChange={(e) => setProdName(e.target.value)} style={{ width: 250 }} />
+            Product Name (Editable + AI Suggested)
+            <SmartComboBox
+              value={prodName}
+              onChange={setProdName}
+              suggestions={data.erp.master.smartSuggestions.productNames}
+              placeholder="Select suggested product name or type custom name"
+              style={{ width: 270 }}
+            />
           </label>
           <label>
             Category
@@ -2794,12 +2981,13 @@ export function ProductFactoryPanel({ data, busy, form, setForm, onSave, onRun, 
             <input value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ width: 135 }} />
           </label>
           <label>
-            {masterLabel('master.product.secondaryName', 'Omni-channel name')}
-            <input
+            {masterLabel('master.product.secondaryName', 'Product description / Omni-channel name')}
+            <SmartComboBox
               value={secondaryName}
-              onChange={(e) => setForm({ secondaryName: e.target.value })}
-              placeholder={prodName || 'the name a shelf shows'}
-              style={{ width: 210 }}
+              onChange={(v) => setForm({ secondaryName: v })}
+              suggestions={data.erp.master.smartSuggestions.productDescriptions}
+              placeholder={prodName || 'Suggested product description or custom shelf wording'}
+              style={{ width: 280 }}
             />
           </label>
           <button
@@ -3108,6 +3296,14 @@ export function MasterSettingsErp({
               {notice && <div className="code small">{notice}</div>}
               {error && <div className="errorBox">{error}</div>}
             </>
+          ),
+        },
+        {
+          id: 'age-autopick',
+          title: 'Actuarial age calculation (Nearest / Age Next / Age Last) & smart auto-pick memory',
+          subtitle: `Tenant default: ${data.erp.master.ageCalculation.defaultBasis} (${AGE_BASIS_CATALOGUE.find((b) => b.id === data.erp.master.ageCalculation.defaultBasis)?.code ?? 'ANB'}) · ${Object.keys(data.erp.master.ageCalculation.productOverrides).length} product override(s) · ${data.erp.master.dependentProducts.rules.length} dependent-product rule(s)`,
+          children: (
+            <AgeAndAutoPickMasterGate data={data} busy={busy} runAction={runAction} />
           ),
         },
         {
@@ -3619,3 +3815,193 @@ export function MasterSettingsErp({
     />
   );
 }
+
+function AgeAndAutoPickMasterGate({
+  data,
+  busy,
+  runAction,
+}: {
+  data: WorldSnapshot;
+  busy: boolean;
+  runAction: (label: string, fn: () => Promise<unknown>) => Promise<void>;
+}) {
+  const ageCfg = data.erp.master.ageCalculation;
+  const [basis, setBasis] = useState<AgeBasis>(ageCfg.defaultBasis);
+  const [halfYearRule, setHalfYearRule] = useState<'six-months' | 'days'>(ageCfg.halfYearRule);
+  const [overrideProductId, setOverrideProductId] = useState(data.erp.master.products[0]?.productId ?? 'PROD-LIFE-TERM');
+  const [overrideBasis, setOverrideBasis] = useState<AgeBasis>('age-next');
+  const [probeDob, setProbeDob] = useState('1990-11-02');
+  const [probeRefDate, setProbeRefDate] = useState(data.asOf);
+  const [depProdId, setDepProdId] = useState(data.erp.master.products[0]?.productId ?? 'PROD-LIFE-TERM');
+  const existingDepRule = data.erp.master.dependentProducts.rules.find((r) => r.baseProductId === depProdId);
+  const [depAutoCodes, setDepAutoCodes] = useState<string[]>([...(existingDepRule?.autoPickCodes ?? ['accidental-death', 'waiver-of-premium'])]);
+  const [depOptionalCodes, setDepOptionalCodes] = useState<string[]>([...(existingDepRule?.optionalCodes ?? ['critical-illness'])]);
+
+  useEffect(() => {
+    setBasis(ageCfg.defaultBasis);
+    setHalfYearRule(ageCfg.halfYearRule);
+  }, [ageCfg.defaultBasis, ageCfg.halfYearRule]);
+
+  const probeAlb = tryCalculateActuarialAge(probeDob, probeRefDate, 'age-last', halfYearRule);
+  const probeAnb = tryCalculateActuarialAge(probeDob, probeRefDate, 'age-nearest', halfYearRule);
+  const probeAnxb = tryCalculateActuarialAge(probeDob, probeRefDate, 'age-next', halfYearRule);
+
+  return (
+    <>
+      <p className="small muted">
+        Configure how every quotation, customer onboarding journey, proposal screen, and tariff lookup derives insurance entry age from Date of Birth — and which dependent riders/companion products auto-populate without duplicate entry.
+      </p>
+      <div className="row">
+        <label>
+          Global Default Age Basis
+          <select value={basis} onChange={(e) => setBasis(e.target.value as AgeBasis)}>
+            {AGE_BASIS_CATALOGUE.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label} ({item.code})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Half-Year Tie Rule (ANB)
+          <select value={halfYearRule} onChange={(e) => setHalfYearRule(e.target.value as 'six-months' | 'days')}>
+            <option value="six-months">6 Calendar Months Rule (Actuarial Standard)</option>
+            <option value="days">Exact Day-Count Half-Year Rule (182.5 days)</option>
+          </select>
+        </label>
+        <button
+          disabled={busy}
+          onClick={() =>
+            runAction(`Master Age Basis set to ${basis}`, () =>
+              api('/master/age-calculation', 'POST', { defaultBasis: basis, halfYearRule }),
+            )
+          }
+        >
+          Save Global Age Rule
+        </button>
+      </div>
+
+      <div className="manualCard" style={{ marginTop: 10 }}>
+        <b>Live Actuarial DOB → Insurance Age Comparison Probe</b>
+        <div className="row" style={{ marginTop: 8 }}>
+          <label>
+            Sample Date of Birth
+            <input type="date" value={probeDob} onChange={(e) => setProbeDob(e.target.value)} />
+          </label>
+          <label>
+            Valuation / Effective Date
+            <input type="date" value={probeRefDate} onChange={(e) => setProbeRefDate(e.target.value)} />
+          </label>
+          <button type="button" className="ghost" onClick={() => setProbeDob('1990-11-02')}>
+            Preset: Sara Khalifa (1990-11-02)
+          </button>
+          <button type="button" className="ghost" onClick={() => setProbeDob('1985-04-12')}>
+            Preset: Ahmed Al Mansoori (1985-04-12)
+          </button>
+        </div>
+        <div className="pills" style={{ marginTop: 8 }}>
+          <Pill tone={basis === 'age-last' ? 'ok' : 'info'}>
+            Age Last (ALB): <b>{probeAlb?.effectiveAge ?? '—'}</b> {basis === 'age-last' ? '★ Active' : ''}
+          </Pill>
+          <Pill tone={basis === 'age-nearest' ? 'ok' : 'info'}>
+            Age Nearest (ANB): <b>{probeAnb?.effectiveAge ?? '—'}</b> {basis === 'age-nearest' ? '★ Active' : ''}
+          </Pill>
+          <Pill tone={basis === 'age-next' ? 'ok' : 'info'}>
+            Age Next (ANxB): <b>{probeAnxb?.effectiveAge ?? '—'}</b> {basis === 'age-next' ? '★ Active' : ''}
+          </Pill>
+          {probeAnb && (
+            <span className="small muted">
+              {probeAnb.daysSinceLastBirthday}d since last birthday · {probeAnb.daysToNextBirthday}d to next birthday ({probeAnb.formulaNote})
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="row" style={{ marginTop: 12 }}>
+        <label>
+          Per-Product Age Basis Override
+          <select value={overrideProductId} onChange={(e) => setOverrideProductId(e.target.value)}>
+            {data.erp.master.products.map((p) => (
+              <option key={p.productId} value={p.productId}>
+                {p.productId} — {p.name} ({ageCfg.productOverrides[p.productId] ?? `inherits ${ageCfg.defaultBasis}`})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Override Basis
+          <select value={overrideBasis} onChange={(e) => setOverrideBasis(e.target.value as AgeBasis)}>
+            {AGE_BASIS_CATALOGUE.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label} ({item.code})
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          disabled={busy}
+          onClick={() =>
+            runAction(`Product ${overrideProductId} age override set to ${overrideBasis}`, () =>
+              api('/master/age-calculation', 'POST', { productId: overrideProductId, basis: overrideBasis }),
+            )
+          }
+        >
+          Apply Product Override
+        </button>
+      </div>
+
+      <div className="row" style={{ marginTop: 12 }}>
+        <label>
+          Base Product (Dependent Cover Auto-Pick Rule)
+          <select
+            value={depProdId}
+            onChange={(e) => {
+              const next = e.target.value;
+              setDepProdId(next);
+              const rule = data.erp.master.dependentProducts.rules.find((r) => r.baseProductId === next);
+              setDepAutoCodes([...(rule?.autoPickCodes ?? [])]);
+              setDepOptionalCodes([...(rule?.optionalCodes ?? [])]);
+            }}
+          >
+            {data.erp.master.products.map((p) => (
+              <option key={p.productId} value={p.productId}>
+                {p.productId} — {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ minWidth: 280 }}>
+          Auto-Picked Dependent Riders / Companion Covers
+          <SmartMultiComboBox
+            values={depAutoCodes}
+            onChange={setDepAutoCodes}
+            suggestions={data.erp.master.smartSuggestions.dependentProducts}
+          />
+        </label>
+        <label style={{ minWidth: 250 }}>
+          Suggested Optional Covers
+          <SmartMultiComboBox
+            values={depOptionalCodes}
+            onChange={setDepOptionalCodes}
+            suggestions={data.erp.master.smartSuggestions.dependentProducts}
+          />
+        </label>
+        <button
+          disabled={busy}
+          onClick={() =>
+            runAction(`Dependent product rule updated for ${depProdId}`, () =>
+              api('/master/dependent-products', 'POST', {
+                baseProductId: depProdId,
+                autoPickCodes: depAutoCodes,
+                optionalCodes: depOptionalCodes,
+              }),
+            )
+          }
+        >
+          Save Dependent Cover Rule
+        </button>
+      </div>
+    </>
+  );
+}
+

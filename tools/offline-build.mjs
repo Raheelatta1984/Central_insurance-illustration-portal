@@ -27,6 +27,8 @@ if (existsSync(routesServerPath)) {
   const state = createRuntimeState(1);
   const freshPaths = [
     '/world',
+    '/security/rbac',
+    '/master/age-calculation',
     '/themes',
     '/batch',
     '/whats-new',
@@ -39,12 +41,42 @@ if (existsSync(routesServerPath)) {
     '/master/email',
     '/master/providers',
   ];
-  for (const p of freshPaths) {
-    const res = await dispatchApiRoute(state, 'GET', p, new URLSearchParams(), {});
-    const serialized = JSON.parse(
-      JSON.stringify(res.body, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
-    );
-    record.responses[`GET /api${p}`] = { status: res.status, body: serialized };
+  function fnvBodyHash(text) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < text.length; i += 1) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  }
+  const fixedNow = '2026-10-20T00:00:00.000Z';
+  const realDateNow = Date.now;
+  Date.now = () => Date.parse(fixedNow);
+  const OrigDate = globalThis.Date;
+  // Freeze generated timestamps during deterministic offline snapshot synthesis so `git diff` stays clean
+  class DeterministicDate extends OrigDate {
+    constructor(...args) {
+      if (args.length === 0) super(fixedNow);
+      else super(...args);
+    }
+    static now() { return OrigDate.parse(fixedNow); }
+  }
+  globalThis.Date = DeterministicDate;
+  try {
+    for (const p of freshPaths) {
+      const res = await dispatchApiRoute(state, 'GET', p, new URLSearchParams(), {});
+      const serialized = JSON.parse(
+        JSON.stringify(res.body, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
+      );
+      record.responses[`GET /api${p}`] = { status: res.status, body: serialized };
+    }
+    // Remove any multi-snapshot session keys so offline-responses.json stays compact (< 2 MB)
+    for (const k of Object.keys(record.responses)) {
+      if (k.startsWith('POST /api/security/session')) delete record.responses[k];
+    }
+  } finally {
+    globalThis.Date = OrigDate;
+    Date.now = realDateNow;
   }
   // Deterministic output: only rewrite (and only then re-stamp capturedAt) when a recorded
   // answer actually changed — otherwise every `npm run verify` dirties the tree and CI cannot
@@ -92,6 +124,20 @@ const shim = `
     try { path = new URL(url, window.location.href).pathname; } catch (e) { /* keep as-is */ }
 
     if (path.indexOf('/api') !== 0) return realFetch ? realFetch(input, init) : reply({}, 404);
+
+    if (method === 'POST' && path === '/api/security/session' && RESPONSES['GET /api/world']) {
+      try {
+        var reqObj = JSON.parse(String(sent || '{}'));
+        var worldBase = RESPONSES['GET /api/world'].body || RESPONSES['GET /api/world'];
+        var picked = (worldBase.security && worldBase.security.profiles || []).find(function (p) { return p.id === reqObj.profileId; })
+          || (worldBase.security && worldBase.security.profiles || [])[0];
+        var nextWorld = Object.assign({}, worldBase, {
+          security: Object.assign({}, worldBase.security, { activeProfileId: picked ? picked.id : 'administration' }),
+        });
+        RESPONSES['GET /api/world'] = { status: 200, body: nextWorld };
+        return reply({ profile: picked, security: nextWorld.security, world: nextWorld }, 200);
+      } catch (_e) { /* fall through */ }
+    }
 
     function bodyHash(text) {
       var h = 0x811c9dc5;

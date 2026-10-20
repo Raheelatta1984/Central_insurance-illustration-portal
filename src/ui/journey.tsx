@@ -14,6 +14,8 @@ import type { JourneyStageId } from '../core/journey';
 import { api } from './api';
 import { MissingList, SectionModel, SectionStack, SummaryRows } from './sections';
 import { GuideHeading } from './guide';
+import { SmartComboBox, SmartMultiComboBox } from './combobox';
+import { tryCalculateActuarialAge } from '../core/autopick';
 
 /* ------------------------------------------------------------------ the shape the API returns */
 
@@ -427,17 +429,62 @@ function buildSection(args: BuildArgs): SectionModel {
   const fieldEditors: React.ReactNode[] = [];
   const rendered = new Set<string>();
 
+  const caseSummary = args.journey.cases.find((c) => c.caseId === args.caseId) ?? args.journey.cases[0];
+  const matchedParty = args.data.parties.list.find((p) => p.name === caseSummary?.customerName) ?? args.data.parties.list[0];
+  const activeBasis = args.data.erp.master.ageCalculation.defaultBasis;
+  const ageCalc = matchedParty?.dob
+    ? tryCalculateActuarialAge(matchedParty.dob, args.data.asOf, activeBasis, args.data.erp.master.ageCalculation.halfYearRule)
+    : null;
+  const autoPick = matchedParty ? {
+    dob: matchedParty.dob,
+    ageCalculation: ageCalc,
+    age: ageCalc?.effectiveAge ?? null,
+    sex: matchedParty.sex ?? null,
+    smoker: matchedParty.smoker ?? null,
+    heightCm: matchedParty.heightCm ?? null,
+    weightKg: matchedParty.weightKg ?? null,
+    bmi: matchedParty.heightCm && matchedParty.weightKg
+      ? Math.round((matchedParty.weightKg / ((matchedParty.heightCm / 100) ** 2)) * 10) / 10
+      : null,
+    occupationClass: matchedParty.occupationClass ?? null,
+    annualIncome: matchedParty.annualIncome ?? null,
+    dependentProducts: matchedParty.dependentProducts ? [...matchedParty.dependentProducts] : ['critical-illness', 'waiver-of-premium'],
+  } : undefined;
+  const resolveAutoDefault = (fieldId: string): unknown => {
+    if (!autoPick) return undefined;
+    switch (fieldId) {
+      case 'age': return autoPick.ageCalculation?.effectiveAge ?? autoPick.age ?? undefined;
+      case 'dateOfBirth':
+      case 'dob': return autoPick.dob ?? undefined;
+      case 'sex': return autoPick.sex ?? undefined;
+      case 'smoker': return autoPick.smoker ?? undefined;
+      case 'heightCm': return autoPick.heightCm ?? undefined;
+      case 'weightKg': return autoPick.weightKg ?? undefined;
+      case 'occupationClass': return autoPick.occupationClass ?? undefined;
+      case 'annualIncome': return autoPick.annualIncome ?? undefined;
+      case 'riders': return autoPick.dependentProducts;
+      default: return undefined;
+    }
+  };
+
   const renderField = (field: FieldView) => {
     if (rendered.has(field.id)) return null;
     rendered.add(field.id);
-    const value = draft[field.id];
+    const rawValue = draft[field.id];
+    const autoDefault = resolveAutoDefault(field.id);
+    const value = rawValue !== undefined && rawValue !== '' ? rawValue : autoDefault;
     const special = specialEditor(field.id, args);
     if (special) {
       return <div className="field wide" key={field.id}><span>{field.label}{field.mandatory && <i className="req">*</i>}{!field.editable && <small className="muted"> · locked by master settings</small>}{field.hint && <small className="muted"> {field.hint}</small>}</span><fieldset disabled={!field.editable} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>{special}</fieldset></div>;
     }
     return (
       <label className="field" key={field.id}>
-        <span>{field.label}{field.mandatory && <i className="req">*</i>}{!field.editable && <small className="muted"> · locked by master settings</small>}</span>
+        <span>
+          {field.label}
+          {field.mandatory && <i className="req">*</i>}
+          {rawValue === undefined && autoDefault !== undefined && <small className="okText"> · auto-picked</small>}
+          {!field.editable && <small className="muted"> · locked by master settings</small>}
+        </span>
         {field.kind === 'boolean' && <YesNo value={value} disabled={!field.editable} onChange={(v) => set({ [field.id]: v })} />}
         {field.kind === 'select' && (
           <select disabled={!field.editable} value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })}>
@@ -450,11 +497,27 @@ function buildSection(args: BuildArgs): SectionModel {
           <input disabled={!field.editable} type="number" inputMode="decimal" value={String(value ?? '')} onChange={(e) => set({ [field.id]: e.target.value })} />
         )}
         {(field.kind === 'text' || field.kind === 'signature' || field.kind === 'readonly') && (
-          <input disabled={!field.editable} value={String(value ?? '')} readOnly={field.kind === 'readonly'} onChange={(e) => set({ [field.id]: e.target.value })} />
+          field.id === 'relationship' && field.editable ? (
+            <SmartComboBox
+              value={String(value ?? '')}
+              onChange={(v) => set({ [field.id]: v })}
+              suggestions={args.data.erp.master.smartSuggestions.relationships}
+            />
+          ) : (
+            <input disabled={!field.editable} value={String(value ?? '')} readOnly={field.kind === 'readonly'} onChange={(e) => set({ [field.id]: e.target.value })} />
+          )
         )}
         {field.kind === 'list' && (
-          <input disabled={!field.editable} value={Array.isArray(value) ? (value as unknown[]).join(', ') : String(value ?? '')} placeholder="comma separated"
-            onChange={(e) => set({ [field.id]: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
+          field.id === 'riders' && field.editable ? (
+            <SmartMultiComboBox
+              values={Array.isArray(value) ? (value as string[]) : String(value ?? '').split(',').map((s) => s.trim()).filter(Boolean)}
+              onChange={(vals) => set({ [field.id]: vals })}
+              suggestions={args.data.erp.master.smartSuggestions.dependentProducts}
+            />
+          ) : (
+            <input disabled={!field.editable} value={Array.isArray(value) ? (value as unknown[]).join(', ') : String(value ?? '')} placeholder="comma separated"
+              onChange={(e) => set({ [field.id]: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
+          )
         )}
         {field.hint && <small className="muted">{field.hint}</small>}
       </label>
@@ -466,10 +529,34 @@ function buildSection(args: BuildArgs): SectionModel {
     if (editor) fieldEditors.push(editor);
   }
 
+  const syncRememberedFields = () => {
+    const nextPatch: Record<string, unknown> = {};
+    for (const field of fields) {
+      const candidate = resolveAutoDefault(field.id);
+      if (candidate !== undefined) nextPatch[field.id] = candidate;
+    }
+    if (Object.keys(nextPatch).length > 0) patch(id, nextPatch);
+  };
+
   const body = (
     <>
       <p className="muted small purpose">{stage.purpose}</p>
       <p className="small ruleNote"><b>Why this section exists:</b> {stage.regulatoryBasis} <span className="pill">owned by {stage.owner}</span></p>
+      {autoPick && fields.some((f) => resolveAutoDefault(f.id) !== undefined) && (
+        <div className="autoPickBanner">
+          <span className="pill ok">⚡ Smart Auto-Pick</span>
+          <span className="small">
+            Remembered from customer record: DOB <b>{autoPick.dob ?? '—'}</b> → Age <b>{autoPick.ageCalculation?.effectiveAge ?? autoPick.age ?? '—'}</b> ({autoPick.ageCalculation?.basisCode ?? 'ANB'})
+            {autoPick.heightCm ? ` · Height ${autoPick.heightCm} cm` : ''}
+            {autoPick.weightKg ? ` · Weight ${autoPick.weightKg} kg` : ''}
+            {autoPick.bmi ? ` (BMI ${autoPick.bmi})` : ''}
+            {autoPick.dependentProducts.length > 0 ? ` · Dependent covers: ${autoPick.dependentProducts.join(', ')}` : ''}
+          </span>
+          <button type="button" className="ghost" style={{ marginLeft: 'auto', padding: '2px 8px', fontSize: 11.5 }} onClick={syncRememberedFields}>
+            ↻ Sync Remembered Fields
+          </button>
+        </div>
+      )}
       <div className="fieldGrid">{fieldEditors}</div>
       {stage.summary.length > 0 && (
         <>
