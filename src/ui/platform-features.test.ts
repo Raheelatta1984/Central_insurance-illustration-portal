@@ -81,5 +81,14 @@ describe('expanded operational tabs render from the live world', () => {
     const channelHtml = renderToString(h(OmniChannelPanel, { data: channelData, busy: false, onRun: run }));
     expect(channelHtml).toContain('Sub-channels — named routes inside an omni-channel');
     expect(channelHtml).toContain('Parent channel');
+
+    // The rates a quotation is allowed to assume: filed per product, narrowed per channel and
+    // sub-channel, with a figure left blank meaning "inherit it from the parent".
+    const ratesHtml = renderToString(h(OmniChannelPanel, { data: channelData, busy: false, onRun: run }));
+    expect(ratesHtml).toContain('Illustration rates');
+    expect(ratesHtml).toContain('Pessimistic');
+    expect(ratesHtml).toContain('Optimistic');
+    expect(ratesHtml).toContain('File these rates');
+    expect(ratesHtml).toContain('inherit');
   });
 });

@@ -57,7 +57,9 @@ export interface PortalServerOptions {
 
 export function createPortalServer(options: PortalServerOptions = {}): Server {
   const env = options.env ?? process.env;
-  const state: RuntimeState = options.state ?? createRuntimeState(1);
+  // The mail desk is chosen from the environment this process was started with, and the world is
+  // handed it: a quotation email is a delivery, not a record of an intention to deliver.
+  const state: RuntimeState = options.state ?? createRuntimeState(1, undefined, env);
   const dist = resolve(options.dist ?? join(process.cwd(), 'dist'));
   const auth = options.auth ?? loadAuthConfig(env);
   const log = options.log ?? ((line: string) => console.error(line));
@@ -317,13 +319,18 @@ if (isMain) {
     process.exit(1);
   }
   const auth = loadAuthConfig();
-  const server = createPortalServer({ auth });
+  const state = createRuntimeState(1, undefined, process.env);
+  const server = createPortalServer({ auth, state });
   server.listen(PORT, HOST, () => {
     console.log(`Insurance ERP API listening on http://${HOST}:${PORT}`);
     console.log(auth.enabled
       ? `Authentication: enabled (${auth.principals.size} principal(s)); actor identity is taken from the token.`
       : 'Authentication: DEMO MODE — the API is open. Set PORTAL_AUTH_TOKENS before exposing this beyond a demo.');
     if (usingDemoVaultSecret()) console.log('PII masking: demo vault secret (set PII_VAULT_SECRET in a real deployment).');
+    const mail = state.mailer.status(process.env);
+    console.log(mail.configured
+      ? `Quotation email: LIVE via ${mail.transport} from ${mail.from}.`
+      : `Quotation email: NOT DELIVERED (${mail.transport}) — ${mail.reason} Set MAIL_FROM and the GOOGLE_* credentials to send for real.`);
     console.log('State: in-memory demo world (rebuilt on every boot).');
   });
   const shutdown = (signal: string) => {

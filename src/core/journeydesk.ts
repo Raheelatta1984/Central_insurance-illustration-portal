@@ -18,12 +18,14 @@ import { Money, formatAmount, money, parseAmount } from './money.js';
 import { unitsToDecimal } from './units.js';
 import { DecisionOutcome, OccupationClass, ProductRules, CONDITION_RULES, FAMILY_HISTORY_RULES, PURSUIT_RULES } from './underwriting.js';
 import { AE_PACK, PACKS, RegulatoryPack } from './regulatory.js';
+import { buildIllustration } from './illustration.js';
 import { productVariety } from './products.js';
 import { NeedsAnswer, ProductCandidate, evaluateNeeds, questionnaireFor } from './needs.js';
 import { FundOption, RiskGrade, allocationProgress } from './allocation.js';
 import { OCCUPATION_LABELS, RIDER_CATALOGUE, RiderSelection, loadingBreakdown, medicalRequirements } from './loadings.js';
 import { PAYMENT_METHODS, PaymentBook, PaymentMethod } from './payments.js';
-import { DEFAULT_VALIDITY_DAYS, QuotationBook, QuotationChargeLine, QuotationFacts } from './quotation.js';
+import { DEFAULT_VALIDITY_DAYS, QuotationBook, QuotationChargeLine, QuotationEmail, QuotationFacts } from './quotation.js';
+import { MailDelivery, Mailer } from './mailer.js';
 import {
   DEFAULT_ROUTING_LIMITS, FREELANCE_PANEL, RoutingDecision, RoutingLimits, UnderwritingDesk,
   UnderwritingQueue, routeUnderwriting,
@@ -180,6 +182,33 @@ export class JourneyDesk {
     readonly payments: PaymentBook,
     readonly underwritingDesk: UnderwritingDesk,
   ) {}
+
+  /**
+   * Attach the mailer that delivers a dispatched quotation. The book is constructed by the world
+   * builder, which knows nothing about the environment the process runs in; the server attaches the
+   * transport it chose from that environment once the world exists.
+   */
+  attachMailer(mailer: Mailer | null): void { this.quotations.attachMailer(mailer); }
+
+  /** How the quotation email would leave the building, for the console to show before it promises. */
+  mailStatus(): ReturnType<QuotationBook['mailerStatus']> { return this.quotations.mailerStatus(); }
+
+  /**
+   * Dispatch the current quotation and *send* it. Everything else in the journey is synchronous
+   * because it is a state machine on one case; delivery is the one step that talks to the world
+   * outside, so it is the one step that is awaited.
+   */
+  async deliverQuotation(input: {
+    quotationId: string;
+    to?: string;
+    language?: 'en' | 'ar' | 'both';
+    consentId?: string;
+    at?: string;
+    by?: string;
+    buyLink?: string;
+  }): Promise<{ email: QuotationEmail; delivery: MailDelivery }> {
+    return this.quotations.deliver(input);
+  }
 
   /* ------------------------------------------------------------------ case handling */
 
@@ -771,6 +800,7 @@ export class JourneyDesk {
             pages: issued.record.pdf.pages, fingerprint: issued.record.pdf.fingerprint, opens: issued.record.pdf.opens,
           },
           compliance: issued.record.compliance.map((c) => ({ label: c.label, passes: c.passes, hard: c.hard, detail: c.detail })),
+          illustration: issued.record.illustration,
           email,
         };
       }
@@ -987,6 +1017,9 @@ export class JourneyDesk {
 
   private quotationFacts(w: World, caze: JourneyCase, at: string, by: string): QuotationFacts {
     const ctx = this.context(w, caze);
+    // The pack in force for this customer's country files the default illustration rates a product,
+    // a channel or a sub-channel may narrow down but may never silently replace.
+    const pack: RegulatoryPack = PACKS[caze.country] ?? AE_PACK;
     const product = ctx.products.find((p) => p.productId === String(caze.answers['recommendation']?.['productId'] ?? ''));
     if (!product) throw new JourneyDeskError('no product chosen — the quotation cannot be assembled');
     const party = caze.artefacts.partyId ? w.parties.get(caze.artefacts.partyId) : null;
@@ -1032,6 +1065,42 @@ export class JourneyDesk {
     if (!decision) throw new JourneyDeskError('the case has not been assessed — a quotation cannot be issued on an unassessed risk');
     const charges = w.unitLinked.chargeSchedule();
 
+    /*
+     * The benefit illustration. Its years are the customer's: the benefit term they selected, the
+     * premium paying term they selected (blank means "for the whole term"), and the frequency they
+     * pay at. Its rates are filed: the sub-channel they were sold through, then the omni-channel,
+     * then the product master, then the regulatory pack for their country.
+     */
+    const termYears = Math.max(1, Math.round(Number(coverage?.['termYears'] ?? 20)));
+    const payingTermYears = Math.max(0, Math.round(Number(coverage?.['premiumPayingTermYears'] ?? 0)));
+    const entryAge = Math.round(Number(coverage?.['age'] ?? 35));
+    const channelCode = String(coverage?.['channelCode'] ?? '').trim() || null;
+    const subChannelCode = String(coverage?.['subChannelCode'] ?? '').trim() || null;
+    const packRates = pack.illustration.scenarioRatesBps;
+    const resolvedRates = w.erp.channels.illustrationRatesFor(product.productId, { channelCode, subChannelCode }, packRates);
+    const illustration = buildIllustration({
+      currency: product.currency,
+      sumAssured,
+      premiumPerFrequency: plan && plan.investable.minor > 0n
+        ? plan.investable
+        : { minor: totalPayable.minor / (frequency === 'monthly' ? 12n : frequency === 'quarterly' ? 4n : frequency === 'semi-annual' ? 2n : 1n), currency: totalPayable.currency },
+      paymentFrequency: frequency as QuotationFacts['paymentFrequency'],
+      premiumPayingTermYears: payingTermYears,
+      benefitTermYears: termYears,
+      entryAge,
+      rates: resolvedRates.rates,
+      rateSources: resolvedRates.sources,
+      charges: {
+        allocationChargeBps: charges.allocationChargeBps,
+        coiPerMilleMonthly: charges.coiPerMilleMonthly,
+        adminFeeMonthlyMinor: charges.adminFeeMonthlyMinor,
+        surrenderChargeBpsByYear: [...charges.surrenderChargeBpsByYear],
+      },
+      // Only an arrangement that actually invests a contribution has a fund value to project.
+      investmentLinked: product.category === 'unit-linked' || product.category === 'takaful',
+      generatedAt: at,
+    });
+
     return {
       tenant: { name: w.tenant.name },
       customer: {
@@ -1051,7 +1120,7 @@ export class JourneyDesk {
         entityId: product.entityId, currency: product.currency, shariahCompliant: product.shariahCompliant,
       },
       sumAssured,
-      termYears: Number(coverage?.['termYears'] ?? 20),
+      termYears,
       paymentFrequency: frequency as QuotationFacts['paymentFrequency'],
       premiumPerFrequency: plan && plan.investable.minor > 0n ? plan.investable : { minor: totalPayable.minor / divisor, currency: totalPayable.currency },
       standardPremium,
@@ -1074,7 +1143,12 @@ export class JourneyDesk {
         referrals: ctx.application?.referrals ?? [],
       },
       needs: { needId: evaluation.needId, pack: evaluation.pack, completed: evaluation.completed, percent: evaluation.percent },
-      illustration: { wording: ctx.illustrationWording, scenariosShown: 3, coolingOffDays: ctx.coolingOffDays },
+      illustration: {
+        wording: ctx.illustrationWording,
+        scenariosShown: illustration.scenarios.length,
+        coolingOffDays: ctx.coolingOffDays,
+        table: illustration,
+      },
       comparisonPresented: caze.answers['recommendation']?.['alternativesPresented'] === true,
       consentId: caze.artefacts.consentId,
       issuedAt: at,
@@ -1171,7 +1245,11 @@ export class JourneyDesk {
         customerName: q.customerName, productName: q.productName, sumAssured: q.sumAssured,
         totalPayable: q.totalPayable, issuedAt: q.issuedAt, expiresAt: q.expiresAt,
         pdf: { fileName: q.pdf.fileName, bytes: q.pdf.bytes, pages: q.pdf.pages, fingerprint: q.pdf.fingerprint, opens: q.pdf.opens },
-        email: q.email ? { messageId: q.email.messageId, to: q.email.to, subject: q.email.subject, dispatchedAt: q.email.dispatchedAt, attachment: q.email.attachment } : null,
+        illustration: q.illustration,
+        email: q.email ? {
+          messageId: q.email.messageId, to: q.email.to, subject: q.email.subject,
+          dispatchedAt: q.email.dispatchedAt, attachment: q.email.attachment, delivery: q.email.delivery,
+        } : null,
         finalisation: q.finalisation ? { signedBy: q.finalisation.signedBy, signedAt: q.finalisation.signedAt, buyToken: q.finalisation.buyToken, coolingOffEndsOn: q.finalisation.coolingOffEndsOn } : null,
         compliance: q.compliance.map((c) => ({ label: c.label, passes: c.passes, hard: c.hard, detail: c.detail })),
         blockers: [...q.blockers], warnings: [...q.warnings],
@@ -1187,6 +1265,11 @@ export class JourneyDesk {
         } : null,
         reconciliation: p.reconciliation, note: p.note,
       })),
+      // Which doors a case may have been sold through: the illustration rates are filed per
+      // product, per omni-channel and per sub-channel, and a blank falls back to its parent.
+      channelOptions: w.erp.channels.listChannels().map((c) => ({ code: c.code, name: c.name })),
+      subChannelOptions: w.erp.channels.listSubChannels().map((c) => ({ code: c.code, name: c.name, parentChannelCode: c.parentChannelCode })),
+      mail: this.mailStatus(),
       cases: this.list().map((c) => {
         const progress = this.progress(w, c.caseId);
         return {
@@ -1230,6 +1313,11 @@ export interface JourneySnapshot {
   };
   engagements: Array<Record<string, unknown>>;
   reinsuranceAssists: Array<Record<string, unknown>>;
+  /** The omni-channels and sub-channels a case may have been sold through. */
+  channelOptions: Array<{ code: string; name: string }>;
+  subChannelOptions: Array<{ code: string; name: string; parentChannelCode: string }>;
+  /** How the quotation email would leave the building: the transport, and whether it is configured. */
+  mail: { transport: string; configured: boolean; reason: string } | null;
   quotations: Array<Record<string, unknown>>;
   payments: Array<Record<string, unknown>>;
   cases: Array<{

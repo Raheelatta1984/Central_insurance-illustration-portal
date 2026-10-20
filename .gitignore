@@ -1,5 +1,7 @@
 # generated / regenerable
 backlog/long-tail.jsonl
+# the mail smoke test writes the message it received here, so a human can read it
+tmp/
 node_modules/
 dist/
 coverage/

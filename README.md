@@ -92,8 +92,9 @@ See [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md).
 | [`docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md`](docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md) | Batch processing (quotation/illustration/issuance + monthly-anniversary mortality, premium/commission accrual, clawback, fund charges, dividends) with event-based accounting setups and the lapse/withdrawal/surrender stop rule; What's New generated from commits; Snowflake/Excel/Access warehouse connections with breach agreement, fingerprint-only secrets and rotating one-way PII masking; the Application theme tab |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The live CI pipeline (typecheck → lint → tests with coverage → build → generated-artefact sync check → a small fleet pass). |
-| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 178 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
+| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 185 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
 | [`docs/14-REVIEW-REMEDIATION.md`](docs/14-REVIEW-REMEDIATION.md) | The 2026-10-20 external review: what was fixed, what was consciously deferred, and why. |
+| [`docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md`](docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md) | The quotation email that actually leaves the building (Gmail API OAuth2, honest failure, `npm run mail:smoke`), and the benefit illustration: three filed return scenarios, the customer's own benefit and payment terms, and the product / omni-channel / sub-channel cascade |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
 
 ## Deployment
@@ -153,9 +154,29 @@ refused rather than silently discarding value.
 
 Render (or Railway, or Fly) gives the process the persistence its design assumes. The free tier spins down when idle, which is harmless here: the world rebuilds deterministically in about 36 ms.
 
+### Letting the server email a customer
+
+The quotation email is sent through the **Gmail API** (OAuth2), not SMTP. With no credentials the
+server runs a `dry-run` transport: it records the message it *would* have sent and says so on the
+boot line and on every screen that shows delivery, rather than pretending.
+
+| Variable | Meaning |
+| --- | --- |
+| `MAIL_FROM` | the address quotations are sent from — nothing is sent without it |
+| `MAIL_FROM_NAME` | display name, e.g. `Central Insurance quotations` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | the OAuth desktop client and the refresh token, scope `…/auth/gmail.send` |
+| `GOOGLE_MAIL_USER` | `me` (default), or the mailbox when sending as a delegated user |
+| `MAIL_DRY_RUN=1` | hold and record, even with credentials present |
+
+`GET /api/mail/status` reports the transport, the from address, whether it is live, the session's
+sent/failed/not-sent counts and which settings are present (never their values).
+`npm run build:server && npm run mail:smoke` proves the whole path — journey to quotation, message
+composed, PDF attached, provider refusal recorded — against a stand-in for Google, with no mailbox
+involved. Full write-up: [`docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md`](docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md).
+
 ### No database — Neon is not required
 
-There is no SQL, no ORM, no driver and no `DATABASE_URL` anywhere in the codebase. The environment variables read are `PORT`, `HOST`, `NODE_ENV`, `PORTAL_AUTH_TOKENS` / `PORTAL_API_TOKEN`, `PORTAL_CORS_ORIGIN`, `PORTAL_ALLOW_DEMO` and `PII_VAULT_SECRET`, and nothing under `src/` writes to disk. The demo world is built in memory by `buildWorld()` and reproduced byte-identically on every boot — verified by the durability drill (`POST /api/state/drill`), which reseals the books, restores them into a fresh ledger and confirms `fingerprintStable: true` with every entity balanced.
+There is no SQL, no ORM, no driver and no `DATABASE_URL` anywhere in the codebase. The environment variables read are `PORT`, `HOST`, `NODE_ENV`, `PORTAL_AUTH_TOKENS` / `PORTAL_API_TOKEN`, `PORTAL_CORS_ORIGIN`, `PORTAL_ALLOW_DEMO`, `PII_VAULT_SECRET` and the mail settings above, and nothing under `src/` writes to disk. The demo world is built in memory by `buildWorld()` and reproduced byte-identically on every boot — verified by the durability drill (`POST /api/state/drill`), which reseals the books, restores them into a fresh ledger and confirms `fingerprintStable: true` with every entity balanced.
 
 [`src/core/persistence.ts`](src/core/persistence.ts) is the seam where a database would go later, and it is deliberately not one yet: a canonical snapshot codec (bigint/Date/Map/Set-safe, SHA-256 fingerprinted, schema-versioned, with a migration planner) written so any future store — file, Postgres `jsonb`, an outbox — shares it. Add Neon when state must survive restarts or scale past one process, not before.
 

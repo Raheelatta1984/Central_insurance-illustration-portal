@@ -301,3 +301,88 @@ describe('what the console is shown', () => {
     expect(snap.unfiled.length).toBeGreaterThan(0);
   });
 });
+
+describe('the illustration rates a quotation may assume', () => {
+  /** The pack in force for the UAE: 4% / 8% / 12%, filed in the regulatory module rather than here. */
+  const PACK = { lowBps: 400, midBps: 800, highBps: 1200 };
+
+  /** A tenant with the standard channels and one bancassurance counter filed. */
+  function world(): World {
+    const w = fresh();
+    w.erp.channels.bootstrap('2026-10-05T09:00:00Z', 'distribution-lead');
+    w.erp.channels.upsertSubChannel({
+      code: 'BANCA-COUNTER', name: 'Bank branch counter', parentChannelCode: 'BANCASSURANCE',
+      channelType: 'bancassurance-counter', enabled: true, at: '2026-10-05T09:10:00Z', by: 'distribution-lead',
+    });
+    return w;
+  }
+
+  it('falls back from the sub-channel to the channel, the product, the pack and the built-in floor', () => {
+    const w = world();
+    const product = 'PROD-UL-GLOBAL';
+
+    expect(w.erp.channels.illustrationRatesFor(product, {}, PACK).level).toBe('pack');
+    expect(w.erp.channels.illustrationRatesFor(product, {}, PACK).rates).toEqual(PACK);
+
+    // A product row narrows the pack …
+    w.erp.channels.setIllustrationRates({ productId: product, midBps: 600, by: 'pricing-actuary' });
+    const byProduct = w.erp.channels.illustrationRatesFor(product, {}, PACK);
+    expect(byProduct.level).toBe('product');
+    expect(byProduct.rates.midBps).toBe(600);
+    expect(byProduct.rates.lowBps).toBe(400);                 // untouched: still the pack's
+
+    // … an omni-channel row narrows the product row …
+    w.erp.channels.setIllustrationRates({ productId: product, channelCode: 'BANCASSURANCE', highBps: 1000, by: 'pricing-actuary' });
+    const byChannel = w.erp.channels.illustrationRatesFor(product, { channelCode: 'BANCASSURANCE' }, PACK);
+    expect(byChannel.level).toBe('channel');
+    expect(byChannel.rates).toEqual({ lowBps: 400, midBps: 600, highBps: 1000 });
+
+    // … and a sub-channel row narrows the channel row, inheriting whatever it leaves out.
+    w.erp.channels.setIllustrationRates({
+      productId: product, channelCode: 'BANCASSURANCE', subChannelCode: 'BANCA-COUNTER', lowBps: 200, by: 'pricing-actuary',
+    });
+    const bySub = w.erp.channels.illustrationRatesFor(product, { channelCode: 'BANCASSURANCE', subChannelCode: 'BANCA-COUNTER' }, PACK);
+    expect(bySub.level).toBe('sub-channel');
+    expect(bySub.rates).toEqual({ lowBps: 200, midBps: 600, highBps: 1000 });
+    // Every figure says which row it came from, so a quotation can be defended figure by figure.
+    expect(bySub.sources.lowBps).toMatch(/sub-channel/);
+    expect(bySub.sources.midBps).toMatch(/product/);
+    expect(bySub.sources.highBps).toMatch(/omni-channel/);
+  });
+
+  it('falls through to the built-in floor when even the pack is silent', () => {
+    const w = world();
+    const rates = w.erp.channels.illustrationRatesFor('PROD-UL-GLOBAL', {});
+    expect(rates.level).toBe('built-in');
+    expect(rates.rates.midBps).toBeGreaterThan(0);
+    expect(rates.sources.midBps).toMatch(/built-in/);
+  });
+
+  it('refuses a product the factory does not hold, and a channel the tenant has not filed', () => {
+    const w = world();
+    expect(() => w.erp.channels.setIllustrationRates({ productId: 'PROD-NOT-FILED', midBps: 600 }))
+      .toThrowError(/not filed in the product factory/);
+    expect(() => w.erp.channels.setIllustrationRates({ productId: 'PROD-UL-GLOBAL', channelCode: 'BANKWALL', midBps: 600 }))
+      .toThrowError(/is not filed on this tenant/);
+    expect(() => w.erp.channels.setIllustrationRates({ productId: 'PROD-UL-GLOBAL', subChannelCode: 'NO-SUCH-COUNTER', midBps: 600 }))
+      .toThrowError(/is not filed on this tenant/);
+  });
+
+  it('removes a row when every figure is left blank, and leaves an audit trail of the filings', () => {
+    const w = world();
+    w.erp.channels.setIllustrationRates({ productId: 'PROD-UL-GLOBAL', midBps: 600, by: 'pricing-actuary', at: '2026-10-05T09:20:00Z' });
+    expect(w.erp.channels.listIllustrationRates()).toHaveLength(1);
+
+    // Filing nothing at all is "stop overriding", not "override with nothing".
+    w.erp.channels.setIllustrationRates({ productId: 'PROD-UL-GLOBAL', by: 'pricing-actuary', at: '2026-10-05T09:25:00Z' });
+    expect(w.erp.channels.listIllustrationRates()).toHaveLength(0);
+    expect(w.erp.channels.illustrationRatesFor('PROD-UL-GLOBAL', {}, PACK).level).toBe('pack');
+
+    w.erp.channels.setIllustrationRates({ productId: 'PROD-UL-GLOBAL', lowBps: 300, by: 'pricing-actuary', at: '2026-10-05T09:30:00Z' });
+    expect(w.erp.channels.clearIllustrationRates({ productId: 'PROD-UL-GLOBAL', by: 'pricing-actuary' })).toBe(true);
+    expect(w.erp.channels.clearIllustrationRates({ productId: 'PROD-UL-GLOBAL', by: 'pricing-actuary' })).toBe(false);
+    const trail = w.erp.channels.illustrationRateAudit(10).map((entry) => entry.detail).join(' | ');
+    expect(trail).toMatch(/filed Mid 6\.00%/);
+    expect(trail).toMatch(/removed; this scope now inherits from its parent/);
+  });
+});

@@ -162,6 +162,13 @@ export const JOURNEY_STAGES: readonly StageSpec[] = [
       f('sumAssured', 'Sum assured', 'amount', true),
       f('termYears', 'Term (years)', 'number', true),
       f('paymentFrequency', 'Payment frequency', 'select', true, { options: ['monthly', 'quarterly', 'semi-annual', 'annual', 'single'] }),
+      // The payment terms the customer selects: how many years they pay for, which is not always
+      // how long they are covered for. Blank means "for the whole term".
+      f('premiumPayingTermYears', 'Premium paying term (years)', 'number', false, { hint: 'how many years the customer pays for; blank = for the whole benefit term' }),
+      // The illustration rates are filed per product, per omni-channel and per sub-channel, so the
+      // case has to say which door it came through before the rates can be resolved.
+      f('channelCode', 'Sold through (omni-channel)', 'select', false, { options: [], hint: 'blank = the product master’s own rates' }),
+      f('subChannelCode', 'Sub-channel', 'select', false, { options: [], hint: 'blank = inherit from the omni-channel' }),
       f('annualIncome', 'Gross annual income', 'amount', true),
       f('age', 'Entry age', 'number', true),
       f('sex', 'Sex', 'select', true, { options: ['male', 'female'] }),

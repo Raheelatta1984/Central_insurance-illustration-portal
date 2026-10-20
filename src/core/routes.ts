@@ -34,7 +34,10 @@ import { IdType, IdentityDocument } from './party.js';
 import { FinancialAlterationKind, NonFinancialAlterationKind, PaymentFrequency, PolicyCategory, PolicyStatus } from './erp.js';
 import { Locale } from './labels.js';
 import { RiskClass } from './ai.js';
-import { serialiseJourneyProgress } from './journeydesk.js';
+import { productCatalogue, serialiseJourneyProgress } from './journeydesk.js';
+import { Mailer } from './mailer.js';
+import { buildIllustration, illustrationView } from './illustration.js';
+import { randomTokenHex } from './hash.js';
 import { JourneyStageId } from './journey.js';
 import type { AccountingStandard, FundLifeCycleEvent } from './funds-accounting.js';
 import type { SuperFundId, SuperProductVariant } from './super-funds.js';
@@ -53,16 +56,32 @@ export interface RuntimeState {
   store: ReportingStore;
   storeError?: string;
   keys: IdempotencyKeys;
+  /**
+   * The mail desk, chosen from the environment the process started with. It is what makes "email the
+   * quotation to the customer" a delivery rather than a record of an intention to deliver.
+   */
+  mailer: Mailer;
+  /** The same environment, kept only so the status screen can say which settings are present. */
+  mailEnv: Record<string, string | undefined>;
   takafulApprovals: { actuary?: { recommended: boolean; by: string; at: string }; shariah?: { approved: boolean; by: string; at: string }; board?: { endorsed: boolean; by: string; at: string } };
 }
 
-export function createRuntimeState(version = 1, now: () => string = () => new Date().toISOString()): RuntimeState {
+export function createRuntimeState(
+  version = 1,
+  now: () => string = () => new Date().toISOString(),
+  env: Record<string, string | undefined> = {},
+): RuntimeState {
+  const world = buildWorld();
+  const mailer = Mailer.fromEnv(env);
+  world.journey.attachMailer(mailer);
   return {
-    world: buildWorld(),
+    world,
     version,
     now,
     store: new ReportingStore(),
     keys: new IdempotencyKeys(),
+    mailer,
+    mailEnv: env,
     takafulApprovals: {},
   };
 }
@@ -2691,13 +2710,37 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /journey/submit': {
+      const answers = (payload['answers'] ?? {}) as Record<string, unknown>;
       const result = state.world.journey.submit(state.world, {
         caseId: String(payload['caseId'] ?? ''),
         stageId: String(payload['stageId'] ?? 'identity') as JourneyStageId,
-        ...(payload['answers'] ? { answers: payload['answers'] as Record<string, unknown> } : {}),
+        ...(payload['answers'] ? { answers } : {}),
         ...(payload['by'] ? { by: String(payload['by']) } : {}),
         ...(payload['at'] ? { at: String(payload['at']) } : {}),
       });
+      /*
+       * The quotation stage is the one stage whose answer is a promise to the customer, so it is the
+       * one stage that talks to something outside the case: the mail desk. Everything else stays
+       * synchronous, and a delivery failure is reported next to the accepted stage rather than
+       * rolling back a quotation the customer is about to be shown.
+       */
+      let delivery: Record<string, unknown> | null = null;
+      if (result.stageId === 'quotation' && result.accepted && answers['sendEmail'] === true) {
+        const quotationId = String(result.artefacts.quotationId ?? '');
+        if (quotationId !== '') {
+          const sent = await state.world.journey.deliverQuotation({
+            quotationId,
+            ...(answers['emailTo'] ? { to: String(answers['emailTo']) } : {}),
+            language: (String(answers['emailLanguage'] ?? 'both')) as 'en' | 'ar' | 'both',
+            ...(result.artefacts.consentId ? { consentId: String(result.artefacts.consentId) } : {}),
+            ...(payload['at'] ? { at: String(payload['at']) } : {}),
+            by: String(payload['by'] ?? 'quotation-desk'),
+            buyLink: `https://portal.example/buy/${quotationId}?token=${randomTokenHex(16)}`,
+          });
+          // The delivery carries its own `to`; the email record's `to` is the masked audit copy.
+          delivery = { ...sent.delivery, messageId: sent.email.messageId, auditTo: sent.email.to };
+        }
+      }
       return ok({
         caseId: result.caseId,
         stageId: result.stageId,
@@ -2705,6 +2748,7 @@ export async function dispatchApiRoute(
         reason: result.reason,
         artefacts: { ...result.artefacts },
         detail: result.detail,
+        ...(delivery ? { delivery } : {}),
         progress: serialiseJourneyProgress(result.progress),
       });
     }
@@ -2720,6 +2764,147 @@ export async function dispatchApiRoute(
         caseId: abandoned.caseId,
         status: abandoned.status,
         progress: serialiseJourneyProgress(state.world.journey.progress(state.world, abandoned.caseId)),
+      });
+    }
+
+    /**
+     * Email the quotation — for real. The transport answers, and its answer is recorded on the
+     * quotation: `sent` with the provider's message id, or `failed`/`not-sent` with the sentence a
+     * human has to act on. Nothing here pretends a delivery happened because a record was written.
+     */
+    case 'POST /journey/quotation/email': {
+      const quotationId = String(payload['quotationId'] ?? '');
+      const sent = await state.world.journey.deliverQuotation({
+        quotationId,
+        ...(payload['to'] ? { to: String(payload['to']) } : {}),
+        language: (String(payload['language'] ?? 'both')) as 'en' | 'ar' | 'both',
+        ...(payload['consentId'] ? { consentId: String(payload['consentId']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+        by: String(payload['by'] ?? 'quotation-desk'),
+        ...(payload['buyLink'] ? { buyLink: String(payload['buyLink']) } : {}),
+      });
+      return ok({
+        quotationId: sent.email.quotationId,
+        version: sent.email.version,
+        messageId: sent.email.messageId,
+        to: sent.email.to,
+        subject: sent.email.subject,
+        attachment: sent.email.attachment,
+        dispatchedAt: sent.email.dispatchedAt,
+        delivery: sent.delivery,
+      });
+    }
+
+    case 'GET /mail/status':
+      return ok({ ...state.mailer.status(state.mailEnv), history: state.mailer.history(10) });
+
+    /** The button that proves the credentials before a customer is promised anything. */
+    case 'POST /mail/test': {
+      const to = String(payload['to'] ?? '');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return fail(400, { error: `"${to}" is not a deliverable email address` });
+      const delivery = await state.mailer.sendTest(to, String(payload['subject'] ?? 'Central Insurance portal — delivery test'));
+      return ok({ to, delivery });
+    }
+
+    /* -------------------------------------- the filed illustration rates: product, channel, sub-channel */
+
+    case 'GET /master/illustration-rates': {
+      const channels = state.world.erp.channels;
+      const products = productCatalogue(state.world);
+      const wanted = String(searchParams.get('productId') ?? '').trim().toUpperCase();
+      return ok({
+        rates: channels.listIllustrationRates(),
+        audit: channels.illustrationRateAudit(20),
+        // The cascade as it stands for the products on the grid, so an empty row is visibly inherited.
+        resolved: (wanted ? products.filter((p) => p.productId === wanted) : products).map((p) => ({
+          productId: p.productId,
+          name: p.name,
+          category: p.category,
+          default: channels.illustrationRatesFor(p.productId, {}, AE_PACK.illustration.scenarioRatesBps),
+        })),
+        packRates: AE_PACK.illustration.scenarioRatesBps,
+      });
+    }
+
+    case 'POST /master/illustration-rates': {
+      const rateOf = (key: string): number | undefined => {
+        const raw = payload[key];
+        if (raw === undefined || raw === null || String(raw).trim() === '') return undefined;
+        return Number(raw);
+      };
+      const row = state.world.erp.channels.setIllustrationRates({
+        productId: String(payload['productId'] ?? ''),
+        ...(payload['channelCode'] ? { channelCode: String(payload['channelCode']) } : {}),
+        ...(payload['subChannelCode'] ? { subChannelCode: String(payload['subChannelCode']) } : {}),
+        ...(rateOf('lowBps') === undefined ? {} : { lowBps: rateOf('lowBps')! }),
+        ...(rateOf('midBps') === undefined ? {} : { midBps: rateOf('midBps')! }),
+        ...(rateOf('highBps') === undefined ? {} : { highBps: rateOf('highBps')! }),
+        ...(payload['note'] ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+        by: String(payload['by'] ?? 'master-settings'),
+      });
+      const productId = String(payload['productId'] ?? '').trim().toUpperCase();
+      return ok({
+        row,
+        resolved: row
+          ? state.world.erp.channels.illustrationRatesFor(productId, {
+            channelCode: String(payload['channelCode'] ?? '') || null,
+            subChannelCode: String(payload['subChannelCode'] ?? '') || null,
+          }, AE_PACK.illustration.scenarioRatesBps)
+          : null,
+        rates: state.world.erp.channels.listIllustrationRates(),
+      });
+    }
+
+    case 'POST /master/illustration-rates/remove': {
+      const removed = state.world.erp.channels.clearIllustrationRates({
+        productId: String(payload['productId'] ?? ''),
+        ...(payload['channelCode'] ? { channelCode: String(payload['channelCode']) } : {}),
+        ...(payload['subChannelCode'] ? { subChannelCode: String(payload['subChannelCode']) } : {}),
+        ...(payload['at'] ? { at: String(payload['at']) } : {}),
+        by: String(payload['by'] ?? 'master-settings'),
+      });
+      return ok({ removed, rates: state.world.erp.channels.listIllustrationRates() });
+    }
+
+    /** What the illustration would look like for a term and a payment term, before anything is filed. */
+    case 'POST /journey/illustration/preview': {
+      const productId = String(payload['productId'] ?? '').trim().toUpperCase();
+      const product = productCatalogue(state.world).find((p) => p.productId === productId);
+      if (!product) return fail(400, { error: `${productId} is not filed in the product factory` });
+      const currency = String(payload['currency'] ?? product.currency);
+      const channelCode = String(payload['channelCode'] ?? '').trim() || null;
+      const subChannelCode = String(payload['subChannelCode'] ?? '').trim() || null;
+      const sumAssured = parseAmount(String(payload['sumAssured'] ?? '100,000'), currency);
+      const termYears = Math.max(1, Math.round(Number(payload['benefitTermYears'] ?? payload['termYears'] ?? 20)));
+      const payingTerm = Math.max(0, Math.round(Number(payload['premiumPayingTermYears'] ?? 0)));
+      const premium = parseAmount(String(payload['premiumPerFrequency'] ?? '1,000'), currency);
+      const resolved = state.world.erp.channels.illustrationRatesFor(productId, { channelCode, subChannelCode }, AE_PACK.illustration.scenarioRatesBps);
+      const charges = state.world.unitLinked.chargeSchedule();
+      const illustration = buildIllustration({
+        currency,
+        sumAssured,
+        premiumPerFrequency: premium,
+        paymentFrequency: (String(payload['paymentFrequency'] ?? 'annual')) as 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'single',
+        premiumPayingTermYears: payingTerm,
+        benefitTermYears: termYears,
+        entryAge: Math.round(Number(payload['entryAge'] ?? 35)),
+        rates: resolved.rates,
+        rateSources: resolved.sources,
+        charges: {
+          allocationChargeBps: charges.allocationChargeBps,
+          coiPerMilleMonthly: charges.coiPerMilleMonthly,
+          adminFeeMonthlyMinor: charges.adminFeeMonthlyMinor,
+          surrenderChargeBpsByYear: [...charges.surrenderChargeBpsByYear],
+        },
+        investmentLinked: product.category === 'unit-linked' || product.category === 'takaful',
+        ...(payload['at'] ? { generatedAt: String(payload['at']) } : {}),
+      });
+      return ok({
+        productId,
+        currency,
+        rates: resolved,
+        illustration: illustrationView(illustration),
       });
     }
 

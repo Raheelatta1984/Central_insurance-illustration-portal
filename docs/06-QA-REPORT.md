@@ -147,3 +147,33 @@ filed schedule, labelled as such, when a band is missing) and by the policy-char
 | Batch processing & What's New (PR #11) | `src/core/batch.ts` + `src/core/batch.test.ts` (8) + `src/core/whatsnew.ts` + `src/ui/batch-views.tsx` + `src/ui/whatsnew-views.tsx`: 9 batch events with filed debit/credit setups, idempotent job+period+subject runs, `skipped-terminal` stop rule on lapsed/withdrawn/surrendered policies (with clawback targeting leavers), and commit-to-changelog generator |
 | Application theme & offline bundle sync (PR #10, PR #11 & PR #12) | `src/core/theme.ts` + `src/core/theme.test.ts` (4) + `src/ui/theme-tab.tsx` + `src/ui/theme-views.tsx` + `src/ui/main.tsx` + `demo/offline.html`: active-first theme priority (`POST /themes/activate`), 6 one-click brand presets (*Midnight Slate*, *Royal Takaful Emerald & Gold*, *Gulf Sovereign Gold & Navy*, *DIFC Executive Crimson*, *Arabian Sea Cyan & Violet*, *Executive Daylight*), full 8-token WCAG-AA AI palette derivation, CSS variable wiring across inputs/tables/grids/scoped surfaces, AI ledger + theme audit trail logging, and automatic `demo/offline.html` rebuild in `npm run build` |
 
+## 2026-10-20 — the quotation email that actually leaves, and the benefit illustration
+
+`npm run verify` clean (typecheck + lint + coverage + build: lines 89.49%, branches 68.92%, functions 91.08%, against the 80/65/75 ratchet); **767 tests over 63 files**; `npm run mail:smoke` green end to end.
+
+| Area | Evidence |
+| --- | --- |
+| Outbound mail | `src/core/mailer.ts` + `src/core/mailer.test.ts`: RFC 822 composition, RFC 2047 subject encoding so an Arabic subject survives, the body pair nested as `multipart/alternative` with the PDF as a disposition, and a Gmail API transport that refreshes an OAuth2 token, caches it, and retries a 401 exactly once |
+| Quotation delivery | `src/core/quotation-delivery.test.ts` (7): the transport really is called with the customer's full address and a PDF that begins `%PDF-`; the audit copy keeps the address masked; a provider refusal is recorded on the quotation while the quotation itself is untouched; no mailer attached answers `not-sent` rather than pretending; a refused quotation never reaches a transport; no `MAIL_FROM` never reaches one either; and the history is kept newest first for the operator chasing "it never arrived" |
+| The illustration engine | `src/core/illustration.ts` + `src/core/illustration.test.ts`: one row per benefit year, milestone rows, three scenarios, the payment term, and decimal `BigInt` throughout |
+| The rate cascade | `src/core/channels.test.ts` (4 new): sub-channel → channel → product → pack → built-in floor, per-figure sources, refusal for a product the factory does not hold or a channel the tenant has not filed, and a row removed when every figure is left blank |
+| The routes | `src/core/routes.test.ts` (6 new): `/mail/status` (which settings are present, never their values), `/mail/test` refusing a malformed address, `/journey/quotation/email` refusing a quotation that was never issued, the rates filer and remover, and the illustration preview (30 rows for a 30-year term, 400 for a product that is not filed) |
+| The console | `src/ui/platform-features.test.ts`: the illustration rates grid renders on the omni-channel master, with the inherit-from-the-parent affordance |
+| End to end | `tools/mail-smoke.mjs` (`npm run mail:smoke`): a stand-in for the two Google endpoints, a whole journey walked to the quotation stage, and the message Google would have received inspected — envelope, address, bilingual body, illustration table, PDF attachment, and a provider refusal recorded as `failed` |
+
+**Bugs found and fixed while building it**
+
+* `buildMime` put the HTML part beside the plain part inside `multipart/mixed`. Mail clients then offer
+  the reading copy as an *attachment*; it is now nested in `multipart/alternative`.
+* `illustrationView` sliced the milestone row at index 1, so `values` began with the year and the age —
+  every table that renders the label, the year and the age printed them twice. It slices at 3 now.
+* The resolved rate `level` said `pack` even when no pack was supplied and the figures had come from the
+  built-in floor. The pack layer is only pushed when the caller supplies one, so the label names the layer
+  the figures actually came from.
+* The quotation email's body quoted the headline but not the table, so a customer had to open the PDF to
+  learn the twenty-year figure. Both body parts now carry the milestone table.
+
+**Deliberately additive (risk gate)** — the illustration rates are filed data with the regulatory pack as
+their default, so no product's projection changed until somebody files a row: `AE_PACK` (4/8/12%) and
+`MY_PACK` (3/6.5/9.5%) answer exactly as the pack always did, and every figure on a quotation names the row
+it came from.

@@ -21,7 +21,17 @@ export interface RegulatoryPack {
   readonly version: string;
   readonly effectiveFrom: string;
   readonly needAnalysisRequiredFor: ReadonlyArray<PreSaleContext['productLine']>;
-  readonly illustration: { readonly mustShowScenarios: number; readonly wording: string; readonly coolingOffDays: number };
+  readonly illustration: {
+    readonly mustShowScenarios: number;
+    readonly wording: string;
+    readonly coolingOffDays: number;
+    /**
+     * The scenario rates the pack files as its default: pessimistic, mid and optimistic growth, in
+     * basis points a year. A product, an omni-channel or a sub-channel may file its own; when they
+     * leave a figure out it is this one the illustration falls back to.
+     */
+    readonly scenarioRatesBps: { readonly lowBps: number; readonly midBps: number; readonly highBps: number };
+  };
   readonly takaful: { readonly modelsAllowed: readonly string[]; readonly surplusToSaversAllowed: boolean; readonly fullValuationBeforeSurplus: boolean; readonly requiresShariahApproval: boolean };
   readonly dataResidency: { readonly country: string; readonly notes: string };
   readonly reporting: ReadonlyArray<{ code: string; name: string; frequency: string }>;
@@ -37,6 +47,7 @@ export const AE_PACK: RegulatoryPack = {
     mustShowScenarios: 3,
     wording: 'This illustration is not a forecast and does not constitute financial advice. Values may fall as well as rise.',
     coolingOffDays: 30,
+    scenarioRatesBps: { lowBps: 400, midBps: 800, highBps: 1200 },
   },
   takaful: { modelsAllowed: ['wakalah', 'mudarabah', 'waqf', 'hybrid'], surplusToSaversAllowed: false, fullValuationBeforeSurplus: true, requiresShariahApproval: true },
   dataResidency: { country: 'AE', notes: 'Customer data processed in-country unless an approved transfer framework applies.' },
@@ -56,6 +67,8 @@ export const MY_PACK: RegulatoryPack = {
     mustShowScenarios: 3,
     wording: 'This illustration is for information only. Actual returns depend on future investment performance and are not guaranteed.',
     coolingOffDays: 15,
+    // BNM-flavoured: the Malaysian pack files a narrower, more conservative band than the UAE one.
+    scenarioRatesBps: { lowBps: 300, midBps: 650, highBps: 950 },
   },
   takaful: { modelsAllowed: ['wakalah', 'mudarabah', 'hybrid'], surplusToSaversAllowed: true, fullValuationBeforeSurplus: true, requiresShariahApproval: true },
   dataResidency: { country: 'MY', notes: 'Data stored in Malaysia for locally-licensed operators.' },
