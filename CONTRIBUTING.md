@@ -6,7 +6,7 @@ contract. The short version for a code change:
 ## Setup
 
 ```bash
-nvm use            # Node 20 (see .nvmrc / package.json engines)
+nvm use            # Node 22 (see .nvmrc / package.json engines)
 npm install
 npm run verify     # typecheck + lint + tests with coverage + build (must be clean)
 npm start          # console + API on :8787 (demo mode unless PORTAL_AUTH_TOKENS is set)
