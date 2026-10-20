@@ -1,14 +1,38 @@
-import { createRuntimeState, dispatchApiRoute, isDomainRefusal } from '../core/routes';
+import { createRuntimeState, dispatchApiRoute, httpStatusForError } from '../core/routes';
+import { randomTokenHex } from '../core/hash';
 
 // Never construct or mutate a second world in live mode. Offline mode is explicitly set by the demo.
 let localState: ReturnType<typeof createRuntimeState> | undefined;
 
-export async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {
-  const win = window as unknown as { __OFFLINE__?: unknown };
+export interface ApiOptions {
+  /**
+   * Reuse one idempotency key across the retries of a single user intent (double-click,
+   * network retry) so the server replays the first answer instead of applying the change
+   * twice. A fresh key is minted per call when not supplied.
+   */
+  readonly idempotencyKey?: string;
+}
+
+function authHeaders(win: { localStorage?: { getItem(key: string): string | null } }): Record<string, string> {
+  try {
+    const token = win.localStorage?.getItem('portal-api-token');
+    return token ? { authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown, options: ApiOptions = {}): Promise<T> {
+  const win = window as unknown as { __OFFLINE__?: unknown; localStorage?: { getItem(key: string): string | null } };
   if (!win.__OFFLINE__) {
     const res = await fetch(`/api${path}`, {
       method,
-      ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+      headers: {
+        ...authHeaders(win),
+        ...(method === 'POST' ? { 'idempotency-key': options.idempotencyKey ?? randomTokenHex(16) } : {}),
+        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     if (!(res.headers.get('content-type') ?? '').includes('application/json')) {
       throw new Error(`${path} returned a non-JSON response (${res.status}); live state was not changed locally`);
@@ -47,7 +71,7 @@ export async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?
     if (err instanceof Error && (err.message.includes('refused (') || err.message.includes('failed:'))) {
       throw err;
     }
-    const status = isDomainRefusal(err) ? 409 : 500;
+    const status = httpStatusForError(err);
     const sentence = err instanceof Error ? err.message : String(err);
     const what = status < 500 ? `${path} refused (${status})` : `${path} failed: ${status}`;
     throw new Error(`${what} — ${sentence}`);

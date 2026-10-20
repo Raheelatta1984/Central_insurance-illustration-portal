@@ -80,9 +80,9 @@ describe('canonical codec', () => {
     expect(fingerprintOf({ b: 3n, a: new Map([['z', 1n], ['a', 2n]]) })).not.toBe(fingerprintOf(a));
   });
 
-  it('fingerprints are 16 hex characters and change with the input', () => {
+  it('fingerprints are 64 hex characters (SHA-256) and change with the input', () => {
     const f = fingerprint('hello');
-    expect(f).toMatch(/^[0-9a-f]{16}$/);
+    expect(f).toMatch(/^[0-9a-f]{64}$/);
     expect(fingerprint('hello')).toBe(f);
     expect(fingerprint('hellp')).not.toBe(f);
   });
@@ -96,7 +96,7 @@ describe('snapshot envelope', () => {
     expect(snap.codecVersion).toBe(CODEC_VERSION);
     const back = open(snap) as typeof payload;
     expect(back.units).toBe(81000007n);
-    expect(snap.fingerprint).toMatch(/^[0-9a-f]{16}$/);
+    expect(snap.fingerprint).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('refuses a payload that was edited after sealing', () => {

@@ -13,9 +13,15 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
-      - name: Tests (money proof included)
-        run: npm run test
+      - name: Lint
+        run: npm run lint
+      - name: Tests with coverage (money proof included)
+        run: npm run test:coverage
       - name: Build UI and server
         run: npm run build
+      - name: Generated artefacts must be in sync with the code
+        run: |
+          npm run docs:api
+          git diff --exit-code -- demo/ docs/API-REFERENCE.md
       - name: Fleet backlog check (claimable chunks must still be verified)
         run: node tools/fleet.mjs --limit=5 --dry

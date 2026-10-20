@@ -27,6 +27,7 @@
  * Money rule: a rate is a decimal amount per 1,000 of sum assured. It is parsed with `parseAmount`,
  * held to its exact scale and multiplied with `BigInt`; no float ever touches the arithmetic.
  */
+import { parseCsv, toCsv } from './csv.js';
 import { formatAmount, Money, parseAmount, roundRational, scaleOf } from './money.js';
 
 export class RateError extends Error {}
@@ -133,45 +134,7 @@ function rateKey(row: Pick<RateRow, 'productId' | 'kind' | 'gender' | 'ageFrom' 
   ].join('|');
 }
 
-/** Quoted-CSV split: a product name or a note may contain a comma, and that must not shift the row. */
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let cell = '';
-  let row: string[] = [];
-  let quoted = false;
-  let touched = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
-    if (quoted) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') { cell += '"'; i++; } else quoted = false;
-      } else cell += ch;
-      continue;
-    }
-    if (ch === '"') { quoted = true; touched = true; continue; }
-    if (ch === ',') { row.push(cell.trim()); cell = ''; touched = true; continue; }
-    if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && text[i + 1] === '\n') i++;
-      row.push(cell.trim());
-      rows.push(row);
-      row = []; cell = ''; touched = false;
-      continue;
-    }
-    cell += ch; touched = true;
-  }
-  if (touched || cell.length > 0 || row.length > 0) { row.push(cell.trim()); rows.push(row); }
-  return rows;
-}
-
-export function csvCell(value: string): string {
-  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
-
-export function toCsv(header: readonly string[], rows: readonly (readonly string[])[]): string {
-  const lines = [header.map(csvCell).join(',')];
-  for (const r of rows) lines.push(r.map(csvCell).join(','));
-  return `${lines.join('\r\n')}\r\n`;
-}
+export { parseCsv, csvCell, toCsv } from './csv.js';
 
 const slugKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 

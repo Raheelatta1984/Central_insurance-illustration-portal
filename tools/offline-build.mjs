@@ -23,6 +23,7 @@ const routesServerPath = resolve(ROOT, 'dist-server/core/routes.js');
 if (existsSync(routesServerPath)) {
   const require = createRequire(import.meta.url);
   const { createRuntimeState, dispatchApiRoute } = require(routesServerPath);
+  const beforeRefresh = JSON.stringify({ ...record, capturedAt: '' });
   const state = createRuntimeState(1);
   const freshPaths = [
     '/world',
@@ -43,8 +44,14 @@ if (existsSync(routesServerPath)) {
     );
     record.responses[`GET /api${p}`] = { status: res.status, body: serialized };
   }
-  record.capturedAt = new Date().toISOString();
-  writeFileSync(responsesPath, JSON.stringify(record, null, 2));
+  // Deterministic output: only rewrite (and only then re-stamp capturedAt) when a recorded
+  // answer actually changed — otherwise every `npm run verify` dirties the tree and CI cannot
+  // tell real demo drift from clock noise.
+  const stamped = { ...record, capturedAt: new Date().toISOString() };
+  if (JSON.stringify({ ...stamped, capturedAt: '' }) !== beforeRefresh) {
+    writeFileSync(responsesPath, JSON.stringify(stamped, null, 2));
+    Object.assign(record, stamped);
+  }
 }
 
 const html = readFileSync(dist, 'utf8');

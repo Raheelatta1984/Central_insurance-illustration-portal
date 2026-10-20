@@ -10,6 +10,7 @@
  */
 import { Ledger, Account, JournalEntry } from './ledger.js';
 import { Currency, FxRate } from './money.js';
+import { sha256Hex } from './hash.js';
 
 export const CODEC_VERSION = 1;
 
@@ -89,16 +90,14 @@ function compareEncodedPairs(a: [unknown, unknown], b: [unknown, unknown]): numb
 
 /* ------------------------------------------------------------ fingerprints */
 
-/** FNV-1a 64 over UTF-16 code units, hex, 16 chars. Dependency-free so the console can verify too. */
+/**
+ * SHA-256 over the UTF-8 text, hex, 64 chars. This used to be a 64-bit FNV-1a checksum, which
+ * anyone could recompute after editing a sealed payload — a fingerprint that is asked to detect
+ * tampering must be a cryptographic hash. Snapshots sealed by older builds carry FNV
+ * fingerprints and are refused by `open()` as written by a different encoder; re-seal them.
+ */
 export function fingerprint(text: string): string {
-  let hash = 0xcbf29ce484222325n;
-  const prime = 0x100000001b3n;
-  const mask = 0xffffffffffffffffn;
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= BigInt(text.charCodeAt(i));
-    hash = (hash * prime) & mask;
-  }
-  return hash.toString(16).padStart(16, '0');
+  return sha256Hex(text);
 }
 
 export function fingerprintOf(value: unknown): string {

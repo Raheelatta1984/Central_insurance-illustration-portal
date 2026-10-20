@@ -5,6 +5,7 @@
  * Units are held to 6 decimal places, prices to 6 decimal places of the currency minor unit.
  * Everything is exact integer arithmetic — no accumulating float error in a 30-year policy.
  */
+export class UnitsError extends Error {}
 import { Money, RoundingMode, roundRational, money, zero, scaleOf } from './money.js';
 
 export const UNITS_SCALE = 1_000_000n;      // 6 dp of units
@@ -15,7 +16,7 @@ export interface Price { readonly micro: bigint; readonly currency: string }
 export function priceFromDecimal(input: string | number, currency: string): Price {
   const s = typeof input === 'number' ? input.toFixed(8) : input.trim();
   const m = /^(-)?(\d+)(?:\.(\d+))?$/.exec(s);
-  if (!m) throw new Error(`cannot parse price "${input}"`);
+  if (!m) throw new UnitsError(`cannot parse price "${input}"`);
   const neg = m[1] ? -1n : 1n;
   const int = BigInt(m[2]!);
   const frac = (m[3] ?? '').padEnd(6, '0').slice(0, 6);
@@ -40,7 +41,7 @@ export function priceToDecimal(p: Price): string {
 export function unitsFromDecimal(input: string | number): bigint {
   const s = typeof input === 'number' ? input.toString() : input.trim();
   const m = /^(-)?(\d+)(?:\.(\d+))?$/.exec(s);
-  if (!m) throw new Error(`cannot parse units "${input}"`);
+  if (!m) throw new UnitsError(`cannot parse units "${input}"`);
   const neg = m[1] ? -1n : 1n;
   return neg * (BigInt(m[2]!) * UNITS_SCALE + BigInt((m[3] ?? '').padEnd(6, '0').slice(0, 6)));
 }
@@ -60,7 +61,7 @@ export function valueOfUnits(units: bigint, price: Price, mode: RoundingMode = '
 
 /** Units purchasable with an amount at a price. */
 export function unitsForAmount(amount: Money, price: Price, mode: RoundingMode = 'half-up'): bigint {
-  if (amount.currency !== price.currency) throw new Error(`currency mismatch ${amount.currency}/${price.currency}`);
+  if (amount.currency !== price.currency) throw new UnitsError(`currency mismatch ${amount.currency}/${price.currency}`);
   return roundRational(amount.minor * UNITS_SCALE * PRICE_SCALE, price.micro, mode);
 }
 

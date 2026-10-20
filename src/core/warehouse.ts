@@ -9,6 +9,8 @@
  * than pretending those external services are already authenticated.
  */
 
+import { toCsv } from './csv.js';
+import { sha256Hex } from './hash.js';
 import type { World } from './demo.js';
 import { parseAmount } from './money.js';
 import { PiiMasker, MASKING_METHODS } from './pii-masking.js';
@@ -173,26 +175,23 @@ function amountParts(value: unknown, fallbackCurrency = 'AED'): { minor: string;
   const currency = text.match(/\b([A-Z]{3})$/)?.[1] ?? fallbackCurrency;
   const amount = text.replace(/\s+[A-Z]{3}$/, '').replace(/,/g, '');
   try { return { minor: parseAmount(amount || '0', currency).minor.toString(), currency }; }
-  catch { return { minor: '0', currency }; }
+  catch {
+    // An unparsable amount in an export must fail the export, not silently become 0.00 — a
+    // wrong-but-plausible number in a warehouse feed is worse than no feed.
+    throw new WarehouseError(`warehouse amount "${text}" is not a decimal amount in ${currency}`);
+  }
 }
 
 function csvContent(columns: readonly string[], rows: ReadonlyArray<RecordRow>): string {
-  const quote = (value: unknown) => {
-    const text = String(value ?? '');
-    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  return [columns.map(quote).join(','), ...rows.map(row => columns.map(c => quote(row[c] ?? '')).join(','))].join('\r\n') + '\r\n';
+  // The shared codec (`csv.ts`) — including its spreadsheet formula-injection guard, which matters
+  // here most of all: these exports carry customer- and partner-controlled names into Excel.
+  return toCsv(columns, rows.map((row) => columns.map((c) => String(row[c] ?? ''))));
 }
 
 function contentFingerprint(value: string): string {
-  // Stable, portable content identifier usable in both Node and the browser bundle. This is not a
-  // signature: deployments requiring tamper evidence should sign the export with their key service.
-  let hash = 0xcbf29ce484222325n;
-  for (const byte of new TextEncoder().encode(value)) {
-    hash ^= BigInt(byte);
-    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
-  }
-  return hash.toString(16).padStart(16, '0');
+  // SHA-256 content identifier, identical in Node and the browser bundle. This is not a
+  // signature: deployments requiring non-repudiation should sign the export with their key service.
+  return sha256Hex(value);
 }
 
 function dataset(input: Omit<WarehouseDataset, 'rowCount' | 'sample'> & { rows: RecordRow[] }): WarehouseDataset {

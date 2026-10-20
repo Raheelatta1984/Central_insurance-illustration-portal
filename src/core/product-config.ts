@@ -14,9 +14,12 @@
  * turned conventional — are enforced where they always were, in the ERP, row by row, so a bulk save
  * cannot smuggle past them.
  */
+import { parseCsv, toCsv } from './csv.js';
 import type { ProductRowInput } from './erp.js';
 import { parseAmount } from './money.js';
 import { PRODUCT_CATEGORIES, PRODUCT_LINES } from './products.js';
+
+export class ProductConfigError extends Error {}
 
 export interface ProductColumn {
   readonly key: keyof ProductRowInput & string;
@@ -83,34 +86,10 @@ export function productTemplateCsv(products: ReadonlyArray<{
   return toCsv(header, rows);
 }
 
-function toCsv(header: readonly string[], rows: readonly (readonly string[])[]): string {
-  const esc = (v: string) => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-  return `${[header, ...rows].map((r) => r.map(esc).join(',')).join('\r\n')}\r\n`;
-}
 
 /** The header text a column is known by on the sheet — what a refusal message should call it. */
 function labelOf(key: string): string {
   return PRODUCT_COLUMNS.find((c) => String(c.key) === key)?.label ?? key;
-}
-
-function splitCsvLine(line: string): string[] {
-  const cells: string[] = [];
-  let cell = '';
-  let quoted = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (quoted) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') { cell += '"'; i++; } else quoted = false;
-      } else cell += ch;
-      continue;
-    }
-    if (ch === '"') { quoted = true; continue; }
-    if (ch === ',') { cells.push(cell.trim()); cell = ''; continue; }
-    cell += ch;
-  }
-  cells.push(cell.trim());
-  return cells;
 }
 
 /**
@@ -120,23 +99,24 @@ function splitCsvLine(line: string): string[] {
  * there, and the screen shows both reports side by side.
  */
 export function readProductSheet(text: string, options: { limit?: number } = {}): ProductSheetReport {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0 && !l.trim().startsWith('#'));
+  // One shared codec (`csv.ts`): quoted cells may contain commas and newlines, which the old
+  // line-at-a-time split mangled — this module's own export could not always be re-imported.
+  const sheet = parseCsv(text).filter((r) => r.some((c) => c.trim().length > 0) && !(r[0] ?? '').trim().startsWith('#'));
   const report: ProductSheetReport = { read: 0, applied: 0, rejected: [], warnings: [], rows: [] };
-  if (lines.length < 2) throw new Error('The sheet has no rows under its header.');
-  const header = splitCsvLine(lines[0]!);
+  if (sheet.length < 2) throw new ProductConfigError('The sheet has no rows under its header.');
+  const header = sheet[0]!;
   const mapping = header.map((h, i) => ({ i, col: columnFor(h) })).filter((m): m is { i: number; col: ProductColumn } => m.col !== undefined);
-  if (mapping.length === 0) throw new Error(`No column in the header was recognised (${header.slice(0, 4).join(', ')}…). Download the template and fill that.`);
+  if (mapping.length === 0) throw new ProductConfigError(`No column in the header was recognised (${header.slice(0, 4).join(', ')}…). Download the template and fill that.`);
   const ignored = header.filter((h, i) => h.trim().length > 0 && !mapping.some((m) => m.i === i));
   if (ignored.length > 0) report.warnings.push(`Ignored column(s) this system does not have a field for: ${ignored.join(', ')}.`);
   const missing = PRODUCT_COLUMNS.filter((c) => c.required && !mapping.some((m) => m.col.key === c.key)).map((c) => c.label);
-  if (missing.length > 0) throw new Error(`The sheet is missing required column(s): ${missing.join(', ')}.`);
+  if (missing.length > 0) throw new ProductConfigError(`The sheet is missing required column(s): ${missing.join(', ')}.`);
 
   const limit = options.limit ?? 500;
-  const body = lines.slice(1);
-  if (body.length > limit) throw new Error(`This sheet has ${body.length} rows and a grid saves at most ${limit} at a time. Split it by line of business and save again — rows already filed stay filed.`);
+  const body = sheet.slice(1);
+  if (body.length > limit) throw new ProductConfigError(`This sheet has ${body.length} rows and a grid saves at most ${limit} at a time. Split it by line of business and save again — rows already filed stay filed.`);
 
-  body.forEach((line, index) => {
-    const cells = splitCsvLine(line);
+  body.forEach((cells, index) => {
     const raw: Record<string, string> = {};
     for (const m of mapping) raw[m.col.key] = cells[m.i] ?? '';
     const productId = (raw['productId'] ?? '').trim().toUpperCase();

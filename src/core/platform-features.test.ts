@@ -62,7 +62,7 @@ describe('new operational tabs are backed by the world and API', () => {
     expect(payload.content).toContain('voucher_id,event_id,event_type');
     expect(payload.content).toContain('VCH-0001001');
     expect(payload.rows).toBeGreaterThan(0);
-    expect(payload.fingerprint.length).toBe(16);
+    expect(payload.fingerprint.length).toBe(64);
 
     const theme = await call(state, 'POST', '/themes/upload', {
       scope: 'partner', ownerId: 'BROKER-1', ownerName: 'Broker One', useAi: true,

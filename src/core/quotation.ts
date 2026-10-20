@@ -15,6 +15,7 @@
 import { Money, add, compare, formatAmount, money, zero } from './money.js';
 import { PdfDocument, PdfFile, renderPdf, verifyPdf } from './pdf.js';
 import { fingerprint } from './persistence.js';
+import { randomTokenHex } from './hash.js';
 
 export class QuotationError extends Error {}
 
@@ -490,7 +491,9 @@ export class QuotationBook {
       coolingOffEndsOn: addDays(at, record.facts.illustration.coolingOffDays),
       coolingOffStatement: `You have ${record.facts.illustration.coolingOffDays} day(s) from delivery of the policy to cancel without reason and receive a refund less any medical examination cost.`,
       readyToBuyOnline: true,
-      buyToken: fingerprint(`${record.quotationId}|buy|${signatureReference}`).slice(0, 16),
+      // A CSPRNG token, never a hash of the quotation id/signature: whoever holds the emailed
+      // link holds the right to buy, so it must not be derivable from public identifiers.
+      buyToken: randomTokenHex(16),
     };
     this.records.set(key(record.quotationId, record.version), { ...record, status: 'finalised', finalisation });
     return finalisation;

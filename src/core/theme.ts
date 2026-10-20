@@ -395,7 +395,9 @@ export class ThemeRegistry {
     for (const [kind, dataUrl] of imageData) {
       if (!dataUrl) continue;
       if (dataUrl.length > 1_500_000) throw new ThemeError(`${kind} exceeds 1.5 MB; resize the brand image before upload`);
-      if (!/^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(dataUrl)) {
+      // Common encoders wrap base64 at 76 columns: whitespace in the payload is normalised away
+      // for the shape check instead of refusing an otherwise valid brand image.
+      if (!/^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(dataUrl.replace(/\s+/g, ''))) {
         throw new ThemeError(`${kind} must be a base64 PNG, JPEG, WebP or SVG image`);
       }
     }

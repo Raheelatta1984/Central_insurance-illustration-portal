@@ -19,6 +19,7 @@
  *    without re-processing the items that already succeeded.
  *  - Amounts are integer minor units (bigint). No floats anywhere near money.
  */
+import { parseAmount } from './money.js';
 
 export type BatchEventType =
   | 'quotation-generation'
@@ -239,8 +240,14 @@ export class BatchRegistry {
 /** Build batch subjects from the ERP snapshot shapes the world already exposes. */
 export function batchSubjectsFromWorld(erp: { policies: ReadonlyArray<Record<string, unknown>>; proposals: ReadonlyArray<Record<string, unknown>> }): BatchSubject[] {
   const parseMinor = (label: unknown): bigint => {
-    const n = Number(String(label ?? '0').replace(/[^0-9.-]/g, ''));
-    return BigInt(Math.round((Number.isFinite(n) ? n : 0) * 100));
+    // Snapshot labels are formatted amounts ("250,000.00 AED"): parse them with the exact money
+    // parser (currency-aware scale), never regex + float. A label that is not an amount (e.g.
+    // "—" for a proposal with no sum assured yet) reads as zero basis.
+    const text = String(label ?? '').trim();
+    const currency = text.match(/\b([A-Z]{3})$/)?.[1] ?? 'AED';
+    const numeric = text.replace(/\s+[A-Z]{3}$/, '').replace(/,/g, '').trim();
+    if (numeric === '' || numeric === '—') return 0n;
+    try { return parseAmount(numeric, currency).minor; } catch { return 0n; }
   };
   const statusOf = (raw: string): BatchSubjectStatus => {
     const s = raw.toLowerCase();

@@ -189,7 +189,7 @@ describe('POST /journey', () => {
     expect(pdf.body.opens).toBe(true);
     expect(pdf.body.pages).toBeGreaterThan(0);
     expect(pdf.body.text).toContain('Noura Saeed Al Zaabi');
-    expect(pdf.body.fingerprint).toHaveLength(16);
+    expect(pdf.body.fingerprint).toHaveLength(64);
 
     // The money, the policy and the books are all reachable from the world the console renders.
     const world = (await call(state, 'GET', '/world')).body;

@@ -25,7 +25,7 @@
 import { Ledger } from './ledger.js';
 import { ActionClock } from './actionlog.js';
 import { Currency, Money, add, compare, formatAmount, sub, zero } from './money.js';
-import { Basis, TreatyRegister } from './reinsurance.js';
+import { Basis, ReinsuranceError, TreatyRegister } from './reinsurance.js';
 import { Claim, ClaimsEngine } from './claims.js';
 import { fingerprintOf } from './persistence.js';
 
@@ -899,8 +899,14 @@ export class ExtractEngine {
       const cession = this.deps.register.shareFor(policyId);
       const share = BigInt(cession.shareBps);
       return { minor: (amount.minor * share) / 10_000n, currency: amount.currency };
-    } catch {
-      return zero(amount.currency);   // no cession on that policy: the whole cost is ours, and that is a fact too
+    } catch (error) {
+      // Only the one expected fact — no cession on that policy — means a zero share (the whole
+      // cost is ours, and that is a fact too). Anything else is a bug, and a supervisory extract
+      // must fail rather than quietly understate the reinsurer's share.
+      if (error instanceof ReinsuranceError && /no cession is on the schedule/.test(error.message)) {
+        return zero(amount.currency);
+      }
+      throw error;
     }
   }
 
@@ -920,7 +926,10 @@ export class ExtractEngine {
   /** Claims on policies the treaty programme actually covers. */
   private cededClaims(): readonly Claim[] {
     return this.deps.claims.list().filter((c) => {
-      try { this.deps.register.shareFor(c.policyId); return true; } catch { return false; }
+      try { this.deps.register.shareFor(c.policyId); return true; } catch (error) {
+        if (error instanceof ReinsuranceError && /no cession is on the schedule/.test(error.message)) return false;
+        throw error;
+      }
     });
   }
 

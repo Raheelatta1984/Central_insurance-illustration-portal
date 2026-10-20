@@ -375,9 +375,9 @@ export class SuperFundsRegistry {
     return allocation;
   }
 
-  bootstrapDefaults(): void {
+  bootstrapDefaults(at: string = '2026-10-05T00:00:00+04:00'): void {
     if (this.products.size > 0) return;
-    const now = new Date().toISOString();
+    const now = at; // business-date seed (see funds-accounting): reproducible worlds only
     this.upsertProduct({ productId: 'PROD-SUPER-ACCUM', name: 'Super Accumulation — Balanced Growth', variant: 'accumulation', minAge: 18, maxAge: 75, defaultFunds: ['SUPER-BAL', 'SUPER-GROWTH'], monthlyAdminFeeMinor: 650n, investmentFeeBpsAnnual: 85, insurancePremiumPerMilleMonthly: 0.45, at: now, by: 'seed' });
     this.upsertProduct({ productId: 'PROD-SUPER-PENSION', name: 'Super Pension — Conservative Income', variant: 'pension', minAge: 55, maxAge: 90, defaultFunds: ['SUPER-CONSERV', 'SUPER-BAL'], monthlyAdminFeeMinor: 450n, investmentFeeBpsAnnual: 65, at: now, by: 'seed' });
     this.upsertProduct({ productId: 'PROD-SUPER-TTR', name: 'Transition to Retirement — Flexible Growth', variant: 'transition-to-retirement', minAge: 55, maxAge: 75, defaultFunds: ['SUPER-BAL', 'SUPER-CONSERV'], monthlyAdminFeeMinor: 550n, investmentFeeBpsAnnual: 75, at: now, by: 'seed' });

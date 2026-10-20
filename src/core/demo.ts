@@ -745,7 +745,10 @@ export function buildWorld(): World {
     fundsAccounting.postEvent({ policyId: 'UL-000123', productId: 'PROD-UL-GLOBAL', fundId: 'FGLOBAL', eventType: 'deposit-amount', amount: '4850', currency, partnerId: 'DXB-BROKER-01', at: `${'2026-10-05'}T09:35:00+04:00`, by: 'seed' });
     fundsAccounting.postEvent({ policyId: 'UL-000123', productId: 'PROD-UL-GLOBAL', fundId: 'FBAL', eventType: 'investment-gain', amount: '320', currency, at: `${'2026-10-05'}T10:00:00+04:00`, by: 'seed' });
     fundsAccounting.postEvent({ policyId: 'SUPER-000001', productId: 'PROD-SUPER-ACCUM', fundId: 'SUPER-BAL', eventType: 'processing-charge', amount: '6.50', currency: 'AUD', country: 'AU', at: `${'2026-10-05'}T08:00:00+04:00`, by: 'seed' });
-  } catch { /* seed failures are non-critical */ }
+  } catch (error) {
+    // A half-seeded world showing plausible gaps is worse than a failed boot: fail loudly.
+    throw new Error(`seeding funds-accounting vouchers failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   const superFunds = new SuperFundsRegistry();
   superFunds.bootstrapDefaults();
@@ -1498,7 +1501,9 @@ export function worldSnapshot(w: World) {
     batch: w.batch.snapshot(batchSubjectsFromWorld(w.erp.snapshot(w) as unknown as { policies: ReadonlyArray<Record<string, unknown>>; proposals: ReadonlyArray<Record<string, unknown>> })),
     whatsNew: w.whatsNew.snapshot(),
     days: DAYS,
-    generatedAt: new Date().toISOString(),
+    // The demo world's business date at midday in its operating zone — deliberately not wall
+    // time, so the snapshot (and the recorded offline demo built from it) is reproducible.
+    generatedAt: `${w.asOf}T12:00:00+04:00`,
   };
 }
 
