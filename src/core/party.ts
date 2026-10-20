@@ -64,6 +64,14 @@ export function normaliseId(value: string): string {
   return value.replace(/[\s-]/g, '').toUpperCase();
 }
 
+/**
+ * The score an exact identity-document match contributes, and the threshold at which two records
+ * are *certainly* the same customer rather than two people who resemble each other. Nothing else
+ * gets there: a full name, date of birth, phone and email together are still only a strong
+ * suspicion, because families share names, phones and inboxes — an Emirates ID is one person.
+ */
+export const EXACT_IDENTITY_SCORE = 1000;
+
 function nameTokens(name: string): string[] {
   return name.toLowerCase().normalize('NFKD').replace(/[^a-z\u0600-\u06ff\s]/g, ' ').split(/\s+/).filter(Boolean).sort();
 }
@@ -75,7 +83,7 @@ export function scoreMatch(candidate: Partial<Party> & { ids?: IdentityDocument[
   const cIds = (candidate.ids ?? []).map((i) => ({ type: i.type, value: normaliseId(i.value) }));
   for (const e of existing.ids) {
     const hit = cIds.find((c) => c.type === e.type && c.value === normaliseId(e.value));
-    if (hit) { score += 1000; reasons.push(`${e.type} number matches exactly`); }
+    if (hit) { score += EXACT_IDENTITY_SCORE; reasons.push(`${e.type} number matches exactly`); }
   }
   const cName = candidate.names?.en;
   if (cName) {
@@ -92,12 +100,56 @@ export function scoreMatch(candidate: Partial<Party> & { ids?: IdentityDocument[
   return { score, reasons };
 }
 
-export function matchParties(candidate: Partial<Party> & { ids?: IdentityDocument[] }, existingParties: Party[], threshold = 1000): MatchCandidate[] {
+export function matchParties(candidate: Partial<Party> & { ids?: IdentityDocument[] }, existingParties: Party[], threshold = EXACT_IDENTITY_SCORE): MatchCandidate[] {
   return existingParties
     .filter((p) => !p.mergedInto)
     .map((p) => { const { score, reasons } = scoreMatch(candidate, p); return { partyId: p.id, score, reasons }; })
     .filter((c) => c.score >= threshold)
     .sort((a, b) => b.score - a.score);
+}
+
+/** Follow `mergedInto` pointers to the surviving golden record for a party. */
+export function goldenRecordOf(party: Party, existingParties: readonly Party[]): Party {
+  const byId = new Map(existingParties.map((p) => [p.id, p]));
+  let current = party;
+  const seen = new Set<string>();
+  while (current.mergedInto && byId.has(current.mergedInto) && !seen.has(current.id)) {
+    seen.add(current.id);
+    current = byId.get(current.mergedInto)!;
+  }
+  return current;
+}
+
+/**
+ * A *certain* duplicate of the candidate: an existing record holding the same identity document
+ * (same type, same number once spaces and dashes are normalised away — `784-1985-1234567-1` and
+ * `784198512345671` are one document). This is the check customer creation runs *before*
+ * generating a new customer number: a certain duplicate is retrieved, never re-created, because
+ * a second golden record for one human being splits every holding, consent and claim across two
+ * customer numbers. Weaker resemblances (name, date of birth, phone, email) are *possible*
+ * duplicates for `matchParties` and a human to resolve — collapsing two different people who
+ * merely resemble each other would be worse than the duplicate. A match against a record that
+ * was merged away resolves to the golden record it was merged into.
+ */
+export function findExactDuplicate(
+  candidate: Partial<Party> & { ids?: IdentityDocument[] },
+  existingParties: readonly Party[],
+): { party: Party; match: MatchCandidate } | undefined {
+  const documents = (candidate.ids ?? []).filter((i) => normaliseId(i.value) !== '');
+  if (documents.length === 0) return undefined;
+  for (const existing of existingParties) {
+    const held = existing.ids.find((e) => documents.some((c) => c.type === e.type && normaliseId(c.value) === normaliseId(e.value)));
+    if (!held) continue;
+    const party = goldenRecordOf(existing, existingParties);
+    const { score, reasons } = scoreMatch(candidate, party);
+    const match: MatchCandidate = {
+      partyId: party.id,
+      score: Math.max(score, EXACT_IDENTITY_SCORE),
+      reasons: reasons.some((r) => r.endsWith('number matches exactly')) ? reasons : [`${held.type} number matches exactly`, ...reasons],
+    };
+    return { party, match };
+  }
+  return undefined;
 }
 
 export class PartyRegistry {
@@ -110,6 +162,20 @@ export class PartyRegistry {
 
   upsert(party: Party): Party { this.parties.set(party.id, party); return party; }
   get(id: string): Party | undefined { return this.parties.get(id); }
+
+  /** The surviving golden record for a customer number, following merges; undefined if unknown. */
+  goldenRecord(id: string): Party | undefined {
+    const party = this.parties.get(id);
+    return party ? goldenRecordOf(party, this.list()) : undefined;
+  }
+
+  /**
+   * The customer already holding one of these identity documents, if any — the answer to
+   * "does this person already have a customer number?" that creation asks before minting one.
+   */
+  findByIdentityDocument(ids: readonly IdentityDocument[]): Party | undefined {
+    return findExactDuplicate({ ids: [...ids] }, this.list())?.party;
+  }
   list(): Party[] { return [...this.parties.values()]; }
   recordHoldings(partyId: string, holdings: Holding[]): void { this.holdings.set(partyId, holdings); }
   holdingsOf(partyId: string): Holding[] { return this.holdings.get(partyId) ?? []; }
