@@ -28,6 +28,7 @@ import { WarehousePanel } from './warehouse-views';
 import { BatchPanel } from './batch-views';
 import { WhatsNewPanel } from './whatsnew-views';
 import { ApplicationThemePanel } from './theme-tab';
+import { EmailConfigurationPanel } from './email-views';
 
 type Tab = ConsoleTab;
 
@@ -115,6 +116,7 @@ function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab
             <button onClick={() => onNavigate('super-funds')}>⬢ Super Funds</button>
             <button onClick={() => onNavigate('warehouse')}>⊞ Data Warehouse &amp; Security</button>
             <button onClick={() => onNavigate('batch')}>▤ Batch Processing</button>
+            <button onClick={() => onNavigate('email')}>✉ Email Configuration</button>
             <button onClick={() => onNavigate('theme')}>◐ Application Theme</button>
             <button onClick={() => onNavigate('whats-new')}>✦ What&apos;s New Log</button>
             <button onClick={() => onNavigate('reinsurance')}>+ Register Reinsurer / Treaty</button>
@@ -1019,6 +1021,7 @@ function App() {
       case 'overview': return <Overview data={data} onNavigate={setTab} />;
       case 'journey': return <CustomerJourneyPanel data={data} onReload={load} onNavigate={setTab} />;
       case 'master': return <MasterSettingsErp data={data} onReload={load} onNavigate={setTab} />;
+      case 'email': return <EmailConfigurationPanel data={data} onReload={load} />;
       case 'policyholder': return <Policyholder data={data} onReload={load} />;
       case 'decisions': return <Decisions data={data} />;
       case 'cover': return <Cover data={data} onReload={load} />;

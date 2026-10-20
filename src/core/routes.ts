@@ -36,6 +36,7 @@ import { Locale } from './labels.js';
 import { RiskClass } from './ai.js';
 import { productCatalogue, serialiseJourneyProgress } from './journeydesk.js';
 import { Mailer } from './mailer.js';
+import { EmailConfigError } from './email-config.js';
 import { buildIllustration, illustrationView } from './illustration.js';
 import { randomTokenHex } from './hash.js';
 import { JourneyStageId } from './journey.js';
@@ -74,6 +75,10 @@ export function createRuntimeState(
   const world = buildWorld();
   const mailer = Mailer.fromEnv(env);
   world.journey.attachMailer(mailer);
+  // Event routing is attached beside the transport: the account is the tenant's, the credentials are
+  // the process's, and a quotation is sent by the mailbox filed for `quotation.issued`.
+  world.journey.attachEmailConfig(world.emailConfig);
+  mailer.setEventFromResolver((eventKey) => world.emailConfig.fromAddressFor(eventKey));
   return {
     world,
     version,
@@ -1567,7 +1572,10 @@ export async function dispatchApiRoute(
         ...(payload['sumAssured'] !== undefined ? { sumAssured: String(payload['sumAssured']) } : {}),
         ...(payload['kind'] !== undefined ? { kind: String(payload['kind']) as 'premium' | 'mortality' } : {}),
         ...(payload['channelCode'] !== undefined ? { channelCode: payload['channelCode'] === null ? null : String(payload['channelCode']) } : {}),
+        ...(payload['subChannelCode'] !== undefined ? { subChannelCode: payload['subChannelCode'] === null ? null : String(payload['subChannelCode']) } : {}),
         ...(payload['partnerId'] !== undefined ? { partnerId: payload['partnerId'] === null ? null : String(payload['partnerId']) } : {}),
+        ...(payload['providerId'] !== undefined ? { providerId: payload['providerId'] === null ? null : String(payload['providerId']) } : {}),
+        ...(payload['country'] !== undefined ? { country: payload['country'] === null ? null : String(payload['country']) } : {}),
       });
       return ok({
         priced: priced.price.priced,
@@ -1577,6 +1585,7 @@ export async function dispatchApiRoute(
         row: priced.price.row,
         reasons: priced.price.reasons,
         partner: priced.partner,
+        sale: priced.sale ? { allowed: priced.sale.allowed, reasons: priced.sale.reasons, currency: priced.sale.currency, context: priced.sale.context } : null,
       });
     }
 
@@ -1753,6 +1762,202 @@ export async function dispatchApiRoute(
         clawbackBps: clawback.recoveryBps,
         clawbackDue: clawback.recoverableNow,
         clawbackBasis: clawback.basis,
+      });
+    }
+
+    /* ------------------------------------------- insurance providers, branches, reinsurance & selling */
+
+    case 'GET /master/providers':
+      return ok(state.world.erp.providers.snapshot());
+
+    case 'POST /master/providers': {
+      const provider = state.world.erp.providers.upsertProvider({
+        providerId: String(payload['providerId'] ?? ''),
+        homeCountry: String(payload['homeCountry'] ?? ''),
+        ...(payload['name'] !== undefined ? { name: String(payload['name']) } : {}),
+        ...(payload['legalName'] !== undefined ? { legalName: String(payload['legalName']) } : {}),
+        ...(payload['homeCurrency'] !== undefined ? { homeCurrency: String(payload['homeCurrency']) } : {}),
+        ...(payload['regulator'] !== undefined ? { regulator: String(payload['regulator']) } : {}),
+        ...(payload['productTypePermission'] !== undefined ? { productTypePermission: payload['productTypePermission'] as string } : {}),
+        ...(payload['homeLicenceNumber'] !== undefined ? { homeLicenceNumber: String(payload['homeLicenceNumber']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ provider, providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/remove': {
+      state.world.erp.providers.removeProvider(
+        String(payload['providerId'] ?? ''),
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/branch': {
+      const branch = state.world.erp.providers.registerBranch({
+        providerId: String(payload['providerId'] ?? ''),
+        country: String(payload['country'] ?? ''),
+        registrationNumber: String(payload['registrationNumber'] ?? ''),
+        ...(payload['name'] !== undefined ? { name: String(payload['name']) } : {}),
+        ...(payload['regulator'] !== undefined ? { regulator: String(payload['regulator']) } : {}),
+        ...(payload['licenceType'] !== undefined ? { licenceType: String(payload['licenceType']) } : {}),
+        ...(payload['licenceStatus'] !== undefined ? { licenceStatus: String(payload['licenceStatus']) } : {}),
+        ...(payload['currency'] !== undefined ? { currency: String(payload['currency']) } : {}),
+        ...(payload['effectiveFrom'] !== undefined ? { effectiveFrom: String(payload['effectiveFrom']) } : {}),
+        ...(payload['localPremiumCollection'] !== undefined ? { localPremiumCollection: Boolean(payload['localPremiumCollection']) } : {}),
+        ...(payload['investmentResidence'] !== undefined ? { investmentResidence: String(payload['investmentResidence']) } : {}),
+        ...(Array.isArray(payload['regulatoryRequirements']) ? { regulatoryRequirements: (payload['regulatoryRequirements'] as unknown[]).map(String) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ branch, providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/branch/remove': {
+      state.world.erp.providers.removeBranch(
+        String(payload['providerId'] ?? ''), String(payload['country'] ?? ''),
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/reinsurance': {
+      const arrangement = state.world.erp.providers.fileReinsurance({
+        providerId: String(payload['providerId'] ?? ''),
+        country: String(payload['country'] ?? ''),
+        reinsurer: String(payload['reinsurer'] ?? ''),
+        retention: String(payload['retention'] ?? ''),
+        limit: String(payload['limit'] ?? ''),
+        ...(payload['kind'] !== undefined ? { kind: String(payload['kind']) } : {}),
+        ...(payload['basis'] !== undefined ? { basis: String(payload['basis']) } : {}),
+        ...(payload['cessionBps'] !== undefined ? { cessionBps: Number(payload['cessionBps']) } : {}),
+        ...(payload['currency'] !== undefined ? { currency: String(payload['currency']) } : {}),
+        ...(payload['regulatorReference'] !== undefined ? { regulatorReference: String(payload['regulatorReference']) } : {}),
+        ...(payload['effectiveFrom'] !== undefined ? { effectiveFrom: String(payload['effectiveFrom']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ arrangement, providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/reinsurance/remove': {
+      state.world.erp.providers.removeReinsurance(
+        String(payload['arrangementId'] ?? ''),
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/product': {
+      const product = state.world.erp.providers.attachProviderProduct({
+        providerId: String(payload['providerId'] ?? ''),
+        country: String(payload['country'] ?? ''),
+        productId: String(payload['productId'] ?? ''),
+        ...(payload['localName'] !== undefined ? { localName: String(payload['localName']) } : {}),
+        ...(payload['currency'] !== undefined ? { currency: String(payload['currency']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ product, providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/product/remove': {
+      state.world.erp.providers.removeProviderProduct(
+        String(payload['providerId'] ?? ''), String(payload['country'] ?? ''), String(payload['productId'] ?? ''),
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/channel-country': {
+      const presence = state.world.erp.providers.upsertChannelCountry({
+        channelCode: String(payload['channelCode'] ?? ''),
+        country: String(payload['country'] ?? ''),
+        ...(payload['operatingName'] !== undefined ? { operatingName: String(payload['operatingName']) } : {}),
+        ...(payload['currency'] !== undefined ? { currency: String(payload['currency']) } : {}),
+        ...(payload['regulator'] !== undefined ? { regulator: String(payload['regulator']) } : {}),
+        ...(payload['licenceNumber'] !== undefined ? { licenceNumber: String(payload['licenceNumber']) } : {}),
+        ...(payload['licenceStatus'] !== undefined ? { licenceStatus: String(payload['licenceStatus']) } : {}),
+        ...(Array.isArray(payload['providerIds']) ? { providerIds: (payload['providerIds'] as unknown[]).map(String) } : {}),
+        ...(payload['premiumCollection'] !== undefined ? { premiumCollection: String(payload['premiumCollection']) } : {}),
+        ...(payload['investmentResidence'] !== undefined ? { investmentResidence: String(payload['investmentResidence']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ presence, providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/channel-country/remove': {
+      state.world.erp.providers.removeChannelCountry(
+        String(payload['channelCode'] ?? ''), String(payload['country'] ?? ''),
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/permission': {
+      const permission = state.world.erp.providers.setSellPermission({
+        scope: String(payload['scope'] ?? ''),
+        scopeId: String(payload['scopeId'] ?? ''),
+        conventional: Boolean(payload['conventional']),
+        takaful: Boolean(payload['takaful']),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ permission, providers: state.world.erp.providers.snapshot() });
+    }
+
+    case 'POST /master/providers/permission/remove': {
+      state.world.erp.providers.removeSellPermission(
+        String(payload['scope'] ?? ''), String(payload['scopeId'] ?? ''),
+        payload['at'] === undefined ? '' : String(payload['at']),
+        payload['by'] === undefined ? 'master-settings' : String(payload['by']),
+      );
+      return ok({ providers: state.world.erp.providers.snapshot() });
+    }
+
+    /** The probe a distribution manager uses before a sale: may this route sell this product here? */
+    case 'POST /master/providers/check': {
+      const decision = state.world.erp.providers.canSell({
+        providerId: String(payload['providerId'] ?? ''),
+        productId: String(payload['productId'] ?? ''),
+        channelCode: String(payload['channelCode'] ?? ''),
+        ...(payload['country'] !== undefined ? { country: String(payload['country']) } : {}),
+        ...(payload['subChannelCode'] !== undefined ? { subChannelCode: payload['subChannelCode'] === null ? null : String(payload['subChannelCode']) } : {}),
+        ...(payload['partnerId'] !== undefined ? { partnerId: payload['partnerId'] === null ? null : String(payload['partnerId']) } : {}),
+        ...(payload['action'] !== undefined ? { action: String(payload['action']) as never } : {}),
+      });
+      return ok(decision);
+    }
+
+    case 'POST /master/providers/sellable': {
+      return ok({
+        rows: state.world.erp.providers.sellableMatrix(String(payload['providerId'] ?? ''), String(payload['channelCode'] ?? '')),
+      });
+    }
+
+    case 'POST /master/providers/seed-example': {
+      return ok({
+        ...state.world.erp.seedDistributionExample(state.world, {
+          ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+          ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        }),
+        providers: state.world.erp.providers.snapshot(),
       });
     }
 
@@ -2804,6 +3009,101 @@ export async function dispatchApiRoute(
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return fail(400, { error: `"${to}" is not a deliverable email address` });
       const delivery = await state.mailer.sendTest(to, String(payload['subject'] ?? 'Central Insurance portal — delivery test'));
       return ok({ to, delivery });
+    }
+
+    /* ------------------------------------------- email accounts and event routing */
+
+    case 'GET /master/email':
+      return ok(state.world.emailConfig.snapshot());
+
+    case 'POST /master/email/accounts': {
+      const account = state.world.emailConfig.upsertAccount({
+        accountId: String(payload['accountId'] ?? ''),
+        address: String(payload['address'] ?? ''),
+        ...(payload['name'] !== undefined ? { name: String(payload['name']) } : {}),
+        ...(payload['fromName'] !== undefined ? { fromName: String(payload['fromName']) } : {}),
+        ...(payload['replyTo'] !== undefined ? { replyTo: String(payload['replyTo']) } : {}),
+        ...(payload['department'] !== undefined ? { department: String(payload['department']) } : {}),
+        ...(payload['kind'] !== undefined ? { kind: String(payload['kind']) } : {}),
+        ...(payload['entityId'] !== undefined ? { entityId: String(payload['entityId']) } : {}),
+        ...(payload['country'] !== undefined ? { country: String(payload['country']) } : {}),
+        ...(payload['dailyLimit'] !== undefined ? { dailyLimit: Number(payload['dailyLimit']) } : {}),
+        ...(Array.isArray(payload['credentialKeys']) ? { credentialKeys: (payload['credentialKeys'] as unknown[]).map(String) } : {}),
+        ...(payload['signature'] !== undefined ? { signature: String(payload['signature']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ account, email: state.world.emailConfig.snapshot() });
+    }
+
+    case 'POST /master/email/accounts/remove': {
+      state.world.emailConfig.removeAccount(String(payload['accountId'] ?? ''), {
+        ...(payload['reassignTo'] !== undefined ? { reassignTo: String(payload['reassignTo']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ email: state.world.emailConfig.snapshot() });
+    }
+
+    case 'POST /master/email/routes': {
+      const route = state.world.emailConfig.upsertRoute({
+        eventKey: String(payload['eventKey'] ?? ''),
+        ...(payload['fromAccountId'] !== undefined ? { fromAccountId: String(payload['fromAccountId']) } : {}),
+        ...(Array.isArray(payload['to']) ? { to: (payload['to'] as unknown[]).map(String) } : {}),
+        ...(Array.isArray(payload['cc']) ? { cc: (payload['cc'] as unknown[]).map(String) } : {}),
+        ...(Array.isArray(payload['bcc']) ? { bcc: (payload['bcc'] as unknown[]).map(String) } : {}),
+        ...(payload['subject'] !== undefined ? { subject: String(payload['subject']) } : {}),
+        ...(payload['body'] !== undefined ? { body: String(payload['body']) } : {}),
+        ...(Array.isArray(payload['attachments']) ? { attachments: (payload['attachments'] as unknown[]).map(String) } : {}),
+        ...(payload['slaHours'] !== undefined ? { slaHours: payload['slaHours'] === null ? null : Number(payload['slaHours']) } : {}),
+        ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
+        ...(payload['note'] !== undefined ? { note: String(payload['note']) } : {}),
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ route, email: state.world.emailConfig.snapshot() });
+    }
+
+    case 'POST /master/email/routes/reset': {
+      const route = state.world.emailConfig.resetRoute(String(payload['eventKey'] ?? ''), {
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ route, email: state.world.emailConfig.snapshot() });
+    }
+
+    /** What would leave the building for this event and this context — nothing is sent by a preview. */
+    case 'POST /master/email/preview': {
+      const resolved = state.world.emailConfig.preview({
+        eventKey: String(payload['eventKey'] ?? ''),
+        context: (payload['context'] && typeof payload['context'] === 'object' ? payload['context'] : {}) as Record<string, unknown>,
+        ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
+        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+      });
+      return ok({ resolution: resolved });
+    }
+
+    /** Send the resolved event through the attached transport, so a bad mailbox is found before go-live. */
+    case 'POST /master/email/test': {
+      const resolved = state.world.emailConfig.resolve({
+        eventKey: String(payload['eventKey'] ?? ''),
+        context: (payload['context'] && typeof payload['context'] === 'object' ? payload['context'] : {}) as Record<string, unknown>,
+      });
+      if (!resolved.ready) {
+        throw new EmailConfigError(resolved.blockers.join(' '));
+      }
+      const delivery = await state.mailer.send({
+        from: resolved.from,
+        to: resolved.to.join(', '),
+        ...(resolved.cc.length > 0 ? { cc: resolved.cc } : {}),
+        ...(resolved.bcc.length > 0 ? { bcc: resolved.bcc } : {}),
+        subject: resolved.subject,
+        text: resolved.body,
+        headers: { 'X-Email-Event': resolved.eventKey, 'X-Email-Account': resolved.account?.accountId ?? '' },
+      });
+      return ok({ resolution: resolved, delivery });
     }
 
     /* -------------------------------------- the filed illustration rates: product, channel, sub-channel */

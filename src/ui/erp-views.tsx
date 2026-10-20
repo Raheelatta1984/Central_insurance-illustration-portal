@@ -5,6 +5,7 @@ import type { ConsoleTab } from '../core/tour';
 import { api } from './api';
 import { GuideBanner, GuideHeading } from './guide';
 import { SectionGroup, fields } from './sections';
+import { ProviderMasterPanel, ProviderSellingPanel } from './provider-views';
 import { DEFAULT_PRODUCT_FORM, PRODUCT_PAGE_SIZE, ProductConfigGrid, type ProductForm } from './product-grid';
 export { PRODUCT_PAGE_SIZE };
 import { RatingTablesPanel } from './rating-views';
@@ -3224,6 +3225,41 @@ export function MasterSettingsErp({
             : data.erp.master.channels.blockers.slice(0, 4),
           warnings: data.erp.master.channels.warnings.slice(0, 4),
           children: brandSurface(combinedPartnerOmniLayer, <OmniChannelPanel data={data} busy={busy} onRun={runGrid} />),
+        },
+        {
+          id: 'providers',
+          title: 'Insurance providers, registered branches & country reinsurance',
+          subtitle: 'Who carries the risk, where they are licensed to write it, in which currency, and under which reinsurance arrangement per country',
+          informational: true,
+          badges: data.erp.master.providers.stats.providers === 0
+            ? <Pill tone="warn">no provider filed</Pill>
+            : <Pill tone={data.erp.master.providers.blockers.length === 0 ? 'ok' : 'bad'}>{data.erp.master.providers.stats.providers} provider(s) · {data.erp.master.providers.stats.branches} branch(es)</Pill>,
+          fields: fields(
+            ['Insurance providers', data.erp.master.providers.stats.providers],
+            ['Registered branches', `${data.erp.master.providers.stats.licensedBranches} licensed of ${data.erp.master.providers.stats.branches}`],
+            ['Country reinsurance arrangements', data.erp.master.providers.stats.arrangements],
+            ['Provider products filed', data.erp.master.providers.stats.providerProducts],
+            ['Countries covered', data.erp.master.providers.stats.countries],
+          ),
+          blockers: data.erp.master.providers.blockers.slice(0, 5),
+          children: <ProviderMasterPanel data={data} busy={busy} onRun={runGrid} />,
+        },
+        {
+          id: 'provider-selling',
+          title: 'Multi-country selling — currency and Conventional/Takaful permissions',
+          subtitle: 'The country presence of each channel, its own currency and appointed carriers, the two product-type checkboxes at channel, sub-channel and partner level, and a sellability probe',
+          informational: true,
+          badges: data.erp.master.providers.stats.channelCountries === 0
+            ? <Pill tone="warn">no country presence</Pill>
+            : <Pill tone="ok">{data.erp.master.providers.stats.enabledChannelCountries} country presence(s)</Pill>,
+          fields: fields(
+            ['Channel-country presences', data.erp.master.providers.stats.channelCountries],
+            ['Permission rows filed', data.erp.master.providers.stats.permissions],
+            ['Carriers allowed Conventional', data.erp.master.providers.stats.conventionalProviders],
+            ['Carriers allowed Takaful', data.erp.master.providers.stats.takafulProviders],
+          ),
+          warnings: data.erp.master.providers.warnings.slice(0, 4),
+          children: <ProviderSellingPanel data={data} busy={busy} onRun={runGrid} />,
         },
         {
           id: 'charges',

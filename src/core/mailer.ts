@@ -36,6 +36,12 @@ export interface MailAttachment {
 }
 
 export interface MailMessage {
+  /**
+   * The account this message is sent from. Left out, the mailer's own `MAIL_FROM` is used; an event
+   * route in `email-config.ts` supplies it so a policy schedule leaves from the issuance desk and a
+   * renewal request from retention, without one global sender for every letter.
+   */
+  readonly from?: string;
   readonly to: string;
   readonly subject: string;
   readonly text: string;
@@ -43,6 +49,8 @@ export interface MailMessage {
   readonly attachments?: readonly MailAttachment[];
   readonly replyTo?: string;
   readonly cc?: readonly string[];
+  /** Blind copy recipients. The header is written; a relay that strips it still has to deliver to them. */
+  readonly bcc?: readonly string[];
   /** Extra headers that must travel with the message (a consent reference, a case id). */
   readonly headers?: Readonly<Record<string, string>>;
 }
@@ -55,6 +63,8 @@ export interface MailDelivery {
   readonly transport: string;
   /** Our own identifier for the attempt, stable for the audit trail. */
   readonly messageId: string;
+  /** The account the message left from, when one was resolved. */
+  readonly from?: string;
   /** The provider's identifier once it has accepted the message (`null` until it has). */
   readonly providerMessageId: string | null;
   readonly to: string;
@@ -161,6 +171,7 @@ export function buildMime(message: MailMessage, options: MimeOptions): string {
     `From: ${from}`,
     `To: ${message.to}`,
     ...(message.cc && message.cc.length > 0 ? [`Cc: ${message.cc.join(', ')}`] : []),
+    ...(message.bcc && message.bcc.length > 0 ? [`Bcc: ${message.bcc.join(', ')}`] : []),
     `Subject: ${encodeHeader(message.subject)}`,
     `Date: ${rfc2822Date(at)}`,
     `Message-Id: ${messageId}`,
@@ -393,6 +404,12 @@ export interface MailStatus {
  */
 export class Mailer {
   private readonly deliveries: MailDelivery[] = [];
+  /**
+   * The tenant's event routing, if one is attached. It is what lets a quotation leave from the
+   * quotations desk when no global `MAIL_FROM` is configured; the mailer still refuses to invent an
+   * address when neither a message, a route nor the environment supplies one.
+   */
+  private eventFrom: (eventKey: string) => string | null = () => null;
 
   constructor(
     private readonly transport: MailTransport,
@@ -407,19 +424,31 @@ export class Mailer {
     return new Mailer(chosen, { from, fromName: read('MAIL_FROM_NAME') || undefined });
   }
 
-  get from(): string { return this.options.from; }
+  setEventFromResolver(resolver: ((eventKey: string) => string | null) | null): void {
+    this.eventFrom = resolver ?? (() => null);
+  }
+
+  /** The global address, or the event account that sends the quotation when no global one is filed. */
+  private resolveFrom(eventKey = 'quotation.issued'): string {
+    return (this.options.from.trim() || (this.eventFrom(eventKey) ?? '').trim());
+  }
+
+  get from(): string { return this.resolveFrom(); }
   get fromName(): string { return this.options.fromName ?? ''; }
   get transportName(): string { return this.transport.name; }
 
   /** Whether this mailer can actually deliver: the console says so before an operator promises a customer. */
   configured(): boolean {
-    return this.transport.describe().configured && this.options.from.trim() !== '';
+    return this.transport.describe().configured && this.resolveFrom() !== '';
   }
 
   async send(input: MailMessage): Promise<MailDelivery> {
     const at = this.clock();
     const messageId = `<${randomTokenHex(16)}@portal>`;
-    if (!this.options.from.trim()) {
+    // A message may carry its own sending account. The fallback is the mailer's configured address,
+    // and when neither exists this is a failure with a sentence — never a guessed envelope.
+    const from = (input.from?.trim() || this.resolveFrom()).trim();
+    if (!from) {
       const delivery: MailDelivery = {
         status: 'failed', transport: this.transport.name, messageId, providerMessageId: null,
         to: input.to, subject: input.subject, attachmentFileName: input.attachments?.[0]?.fileName ?? null,
@@ -429,10 +458,8 @@ export class Mailer {
       this.record(delivery);
       return delivery;
     }
-    const delivery = await this.transport.send(input, { from: this.options.from, messageId, at });
-    const named = this.options.fromName
-      ? { ...delivery, detail: delivery.detail }
-      : delivery;
+    const delivery = await this.transport.send(input, { from, messageId, at });
+    const named: MailDelivery = { ...delivery, from, detail: delivery.detail };
     this.record(named);
     return named;
   }
@@ -446,7 +473,7 @@ export class Mailer {
         'This is a delivery test from the Central Insurance illustration portal.',
         '',
         `Transport: ${this.transport.name}.`,
-        `Sending as: ${this.options.from}${this.options.fromName ? ` (${this.options.fromName})` : ''}.`,
+        `Sending as: ${this.resolveFrom()}${this.options.fromName ? ` (${this.options.fromName})` : ''}.`,
         '',
         'If you are reading this, the quotation emails will reach customers.',
       ].join('\n'),
@@ -461,11 +488,11 @@ export class Mailer {
     return {
       transport: description.name,
       kind: description.kind,
-      from: this.options.from,
+      from: this.resolveFrom(),
       fromName: this.options.fromName ?? '',
       configured: this.configured(),
-      reason: this.options.from.trim() === ''
-        ? 'Set MAIL_FROM to the address quotations are sent from.'
+      reason: this.resolveFrom() === ''
+        ? 'Set MAIL_FROM, or file an email account for the quotation event.'
         : description.reason,
       sent: this.deliveries.filter((d) => d.status === 'sent').length,
       failed: this.deliveries.filter((d) => d.status === 'failed').length,

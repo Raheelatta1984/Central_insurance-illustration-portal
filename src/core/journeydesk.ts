@@ -190,6 +190,11 @@ export class JourneyDesk {
    */
   attachMailer(mailer: Mailer | null): void { this.quotations.attachMailer(mailer); }
 
+  /** Attach the tenant's email routes, so each business event leaves from its own mailbox. */
+  attachEmailConfig(config: { fromAddressFor(eventKey: string): string | null } | null): void {
+    this.quotations.attachEmailRouting(config ? (eventKey) => config.fromAddressFor(eventKey) : null);
+  }
+
   /** How the quotation email would leave the building, for the console to show before it promises. */
   mailStatus(): ReturnType<QuotationBook['mailerStatus']> { return this.quotations.mailerStatus(); }
 

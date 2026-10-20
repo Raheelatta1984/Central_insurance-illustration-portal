@@ -73,6 +73,28 @@ The notes never override a rule: the gates and refusals run either way.
 
 See [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md).
 
+## Multi-country carriers and the letter's sender
+
+An insurance provider is filed as a carrier, not as a dropdown on a product: home country, home
+regulator, which books it may write, a registered branch in every country it sells in, a country
+reinsurance arrangement (retakaful for Takaful), and products filed in that country's own currency.
+A sale check refuses a route with no branch, a lapsed licence, no country reinsurance, a product in
+the wrong currency, or a book the route is not permitted to sell. Conventional and Takaful are two
+checkboxes at channel, sub-channel and partner level, and the effective permission is the narrowest
+of the three — so Marsh's call centre can sell both while its agency desk sells Conventional only.
+Premium is managed by the local branch and the investment is held in the country where the quotation
+was generated; the carrier's home country is carried for capital reporting. The worked example files
+three carriers across the UAE, the UK and Singapore in AED, GBP and SGD from one button.
+
+Email is its own tab and its own master: several sending accounts (Gmail API, SMTP, Microsoft Graph
+or SES), each with a departmental address and the *names* of the environment settings holding its
+credentials, and one route per business event — policy issuance from issuance, information packs from
+info, renewal requests from retention, alterations, claims and reinsurance from their own desks.
+Templates use a closed placeholder list, unknown tokens are refused at filing, a preview resolves the
+envelope and the letter without sending, and the delivery test reports the transport's real answer.
+
+See [`docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md`](docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md).
+
 ## Documents
 
 | Document | What it covers |
@@ -92,9 +114,10 @@ See [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md).
 | [`docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md`](docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md) | Batch processing (quotation/illustration/issuance + monthly-anniversary mortality, premium/commission accrual, clawback, fund charges, dividends) with event-based accounting setups and the lapse/withdrawal/surrender stop rule; What's New generated from commits; Snowflake/Excel/Access warehouse connections with breach agreement, fingerprint-only secrets and rotating one-way PII masking; the Application theme tab |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The live CI pipeline (typecheck → lint → tests with coverage → build → generated-artefact sync check → a small fleet pass). |
-| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 185 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
+| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 208 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
 | [`docs/14-REVIEW-REMEDIATION.md`](docs/14-REVIEW-REMEDIATION.md) | The 2026-10-20 external review: what was fixed, what was consciously deferred, and why. |
 | [`docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md`](docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md) | The quotation email that actually leaves the building (Gmail API OAuth2, honest failure, `npm run mail:smoke`), and the benefit illustration: three filed return scenarios, the customer's own benefit and payment terms, and the product / omni-channel / sub-channel cascade |
+| [`docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md`](docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md) | Insurance providers as multi-country carriers: registered branches per country, per-country reinsurance and retakaful, the country's own currency, local premium and origin-country investment, and Conventional/Takaful selling permissions narrowed at channel, sub-channel and partner — plus the separate Email configuration tab: departmental accounts, fourteen event routes, placeholders, preview and honest delivery |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
 
 ## Deployment

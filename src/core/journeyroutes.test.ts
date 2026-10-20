@@ -169,6 +169,9 @@ describe('POST /journey', () => {
         quotationId = String(result.body.detail.quotationId);
         expect(result.body.detail.pdf.opens).toBe(true);
         expect(result.body.detail.email.to).toBe('n*********i@example.ae');   // masked in the audit copy
+        // The quotation left from the quotations desk, not from one global address: the delivery
+        // record carries the event account filed in the Email configuration tab.
+        expect(state.mailer.history(5).find((d) => d.to === 'noura.zaabi@example.ae')?.from).toBe('quotations@central-insurance.example');
       }
       if (stageId === 'payment') paymentId = String(result.body.detail.paymentId);
       if (stageId === 'conversion') policyId = String(result.body.detail.policyId);
