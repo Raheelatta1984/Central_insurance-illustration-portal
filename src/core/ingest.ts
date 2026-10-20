@@ -116,6 +116,8 @@ export interface LoadRecord {
   readonly duplicatesSuppressed: number;
 }
 
+export class IngestError extends Error {}
+
 export class IngestionFabric {
   private readonly committedKeys = new Set<string>();
   private readonly loads = new Map<string, LoadRecord>();
@@ -140,7 +142,7 @@ export class IngestionFabric {
 
   commit(loadId: string, at: string): LoadRecord {
     const load = this.loads.get(loadId);
-    if (!load) throw new Error(`unknown load ${loadId}`);
+    if (!load) throw new IngestError(`unknown load ${loadId}`);
     if (load.committed) return load;   // idempotent commit
     let duplicates = 0;
     const committed: string[] = [];
@@ -168,7 +170,7 @@ export class IngestionFabric {
     supervisorNotes: string[];
   } {
     const load = this.load(loadId);
-    if (!load) throw new Error(`unknown load ${loadId}`);
+    if (!load) throw new IngestError(`unknown load ${loadId}`);
     const supervisorNotes = this.supervisor?.({ loadId, result: load.result }) ?? [];
     const anomalies: string[] = [];
     const dupes = load.result.quarantined.length;

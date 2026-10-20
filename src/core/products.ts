@@ -19,6 +19,7 @@
  * can only illustrate one product per line cannot show a customer the alternative the regulator
  * insists was presented.
  */
+export class ProductsError extends Error {}
 import type { ProductLine } from './underwriting.js';
 import { COUNTRIES } from './regional.js';
 
@@ -109,7 +110,7 @@ export const PRODUCT_LINES: readonly ProductLineDef[] = [
 
 export function lineDef(line: ProductLine): ProductLineDef {
   const found = PRODUCT_LINES.find((l) => l.id === line);
-  if (!found) throw new Error(`unknown product line "${line}" — ${PRODUCT_LINES.length} lines are catalogued`);
+  if (!found) throw new ProductsError(`unknown product line "${line}" — ${PRODUCT_LINES.length} lines are catalogued`);
   return found;
 }
 

@@ -2,17 +2,17 @@
 
 **An AI-native Insurance ERP** — term and whole-of-life, critical illness, income protection, endowment, mortgage, medical, motor, travel, home and contents, property, liability, engineering, marine cargo, hull and aviation, group benefits, unit-linked and **takaful** (96 filed varieties across 17 lines) — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **funds accounting, super funds, data warehouse with rotating PII masking, batch processing, What's New, and the live application theme engine**, **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (654 cases over 51 files) and building — and 1138 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 732 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **funds accounting, super funds, data warehouse with rotating PII masking, batch processing, What's New, and the live application theme engine**, **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (701 cases over 60 files) and building — and the fleet simulator (`tools/fleet.mjs`) marks 1138 backlog chunks done in `ledger/runs.jsonl` against *module-level* test evidence (a planning signal, not per-chunk proof of each titled capability) while the remaining 732 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + 654 tests + build + offline bundle sync
+npm run verify     # typecheck + lint + 701 tests with coverage + build + offline bundle sync
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data
+npm run docs:api   # regenerate docs/API-REFERENCE.md from the dispatcher (178 endpoints)
 
-# activate CI (needs a token with the `workflow` scope, or paste it in the GitHub UI):
-mkdir -p .github/workflows && cp docs/ci-workflow.yml .github/workflows/ci.yml
+# CI is live in .github/workflows/ci.yml (typecheck → lint → coverage → build → artefact sync → fleet).
 ```
 
 ## Why this exists
@@ -91,7 +91,9 @@ See [`docs/10-TENANT-MASTER-AND-GUIDE.md`](docs/10-TENANT-MASTER-AND-GUIDE.md).
 | [`docs/12-FUNDS-SUPER-WAREHOUSE-AND-BRANDING.md`](docs/12-FUNDS-SUPER-WAREHOUSE-AND-BRANDING.md) | Country-specific funds accounting, event-to-voucher mappings, super-fund member administration and charges, warehouse datasets/exports/connector recipes, theme scope and omni-channel sub-channels |
 | [`docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md`](docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md) | Batch processing (quotation/illustration/issuance + monthly-anniversary mortality, premium/commission accrual, clawback, fund charges, dividends) with event-based accounting setups and the lapse/withdrawal/surrender stop rule; What's New generated from commits; Snowflake/Excel/Access warehouse connections with breach agreement, fingerprint-only secrets and rotating one-way PII masking; the Application theme tab |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
-| [`docs/ci-workflow.yml`](docs/ci-workflow.yml) | The CI pipeline (typecheck → tests → build → a small fleet pass). GitHub refuses to accept a workflow file from a token without the `workflow` scope, so it lives here verbatim; to activate it, copy it to `.github/workflows/ci.yml` (one command, below) or paste it in the GitHub web UI. |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The live CI pipeline (typecheck → lint → tests with coverage → build → generated-artefact sync check → a small fleet pass). |
+| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 178 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
+| [`docs/14-REVIEW-REMEDIATION.md`](docs/14-REVIEW-REMEDIATION.md) | The 2026-10-20 external review: what was fixed, what was consciously deferred, and why. |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
 
 ## Deployment
@@ -145,7 +147,7 @@ refused rather than silently discarding value.
 
 ### B — the live API server → Render (not Vercel)
 
-`npm run build && npm start` runs one Node process serving both the SPA and the JSON API on a single port. It reads `PORT`, binds `0.0.0.0` and needs no secrets, so it is Render-ready as-is.
+`npm run build && npm start` runs one Node process serving both the SPA and the JSON API on a single port. It reads `PORT`/`HOST` and binds `0.0.0.0`. **Demo mode needs no secrets** — the API is then open and says so at boot and in `GET /api/health`. A real deployment sets `PORTAL_AUTH_TOKENS` (Bearer tokens mapped to named principals and roles, see `src/server/auth.ts`) and `PII_VAULT_SECRET` (from the KMS/secret store); with `NODE_ENV=production` the server *refuses to start* without both unless you also set `PORTAL_ALLOW_DEMO=1` to run the open demo on purpose.
 
 **Do not put this artifact on Vercel.** The server holds mutable state in a module-level `let state` — including the idempotency-key table and the append-only reporting store. Vercel's serverless model runs many short-lived instances, so a journey like `POST /claims/register` → `/claims/approve` → `/claims/settle` can land on three instances that never saw each other's writes, and settle returns `409` for an approval that does exist elsewhere. Reads still look perfect, because the demo world is deterministic — which is exactly what makes the failure quiet.
 
@@ -153,9 +155,9 @@ Render (or Railway, or Fly) gives the process the persistence its design assumes
 
 ### No database — Neon is not required
 
-There is no SQL, no ORM, no driver and no `DATABASE_URL` anywhere in the codebase. The only environment variables read are `PORT` and `HOST`, and nothing under `src/` writes to disk. The demo world is built in memory by `buildWorld()` and reproduced byte-identically on every boot — verified by the durability drill (`POST /api/state/drill`), which reseals the books, restores them into a fresh ledger and confirms `fingerprintStable: true` with every entity balanced.
+There is no SQL, no ORM, no driver and no `DATABASE_URL` anywhere in the codebase. The environment variables read are `PORT`, `HOST`, `NODE_ENV`, `PORTAL_AUTH_TOKENS` / `PORTAL_API_TOKEN`, `PORTAL_CORS_ORIGIN`, `PORTAL_ALLOW_DEMO` and `PII_VAULT_SECRET`, and nothing under `src/` writes to disk. The demo world is built in memory by `buildWorld()` and reproduced byte-identically on every boot — verified by the durability drill (`POST /api/state/drill`), which reseals the books, restores them into a fresh ledger and confirms `fingerprintStable: true` with every entity balanced.
 
-[`src/core/persistence.ts`](src/core/persistence.ts) is the seam where a database would go later, and it is deliberately not one yet: a canonical snapshot codec (bigint/Date/Map/Set-safe, FNV-1a fingerprinted, schema-versioned, with a migration planner) written so any future store — file, Postgres `jsonb`, an outbox — shares it. Add Neon when state must survive restarts or scale past one process, not before.
+[`src/core/persistence.ts`](src/core/persistence.ts) is the seam where a database would go later, and it is deliberately not one yet: a canonical snapshot codec (bigint/Date/Map/Set-safe, SHA-256 fingerprinted, schema-versioned, with a migration planner) written so any future store — file, Postgres `jsonb`, an outbox — shares it. Add Neon when state must survive restarts or scale past one process, not before.
 
 ## The build system in one paragraph
 

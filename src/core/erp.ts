@@ -97,7 +97,7 @@ export interface ProductRowInput {
 /** A decimal amount written with separators, as a grid cell or a CSV column holds it. */
 function numericAmount(value: unknown): number | null {
   if (value === undefined || value === null || String(value).trim() === '') return null;
-  const n = Number(String(value).replace(/[^0-9.\-]/g, ''));
+  const n = Number(String(value).replace(/[^0-9.-]/g, ''));
   return Number.isFinite(n) ? n : null;
 }
 

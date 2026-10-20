@@ -12,6 +12,7 @@
  * A section that is not 100% complete is refused here as well as in the console: the gate lives in
  * the core, so the API and the screen cannot disagree about what "done" means.
  */
+import { randomTokenHex } from './hash.js';
 import type { World } from './demo.js';
 import { Money, formatAmount, money, parseAmount } from './money.js';
 import { unitsToDecimal } from './units.js';
@@ -754,7 +755,7 @@ export class JourneyDesk {
             language: String(answers['emailLanguage'] ?? 'both') as 'en' | 'ar' | 'both',
             consentId: caze.artefacts.consentId,
             at, by,
-            buyLink: `https://portal.example/buy/${issued.record.quotationId}?token=${issued.record.quotationId}`,
+            buyLink: `https://portal.example/buy/${issued.record.quotationId}?token=${randomTokenHex(16)}`,
           });
           caze.artefacts = { ...caze.artefacts, emailMessageId: dispatch.messageId };
           email = {

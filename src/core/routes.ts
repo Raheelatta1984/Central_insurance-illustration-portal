@@ -41,22 +41,26 @@ import type { SuperFundId, SuperProductVariant } from './super-funds.js';
 import type { WarehouseDatasetId, WarehouseFormat } from './warehouse.js';
 import type { ThemeScope } from './theme.js';
 import { batchSubjectsFromWorld, type BatchEventType } from './batch.js';
+import { RequestValidationError, reqString, reqEnum, reqInt, optBool } from './validate.js';
 import type { WarehouseConnectionKind } from './warehouse.js';
 import type { CommitLike, WhatsNewEntry } from './whatsnew.js';
 
 export interface RuntimeState {
   world: World;
   version: number;
+  /** The runtime clock. Injectable so tests/drills are reproducible; defaults to wall time. */
+  now: () => string;
   store: ReportingStore;
   storeError?: string;
   keys: IdempotencyKeys;
   takafulApprovals: { actuary?: { recommended: boolean; by: string; at: string }; shariah?: { approved: boolean; by: string; at: string }; board?: { endorsed: boolean; by: string; at: string } };
 }
 
-export function createRuntimeState(version = 1): RuntimeState {
+export function createRuntimeState(version = 1, now: () => string = () => new Date().toISOString()): RuntimeState {
   return {
     world: buildWorld(),
     version,
+    now,
     store: new ReportingStore(),
     keys: new IdempotencyKeys(),
     takafulApprovals: {},
@@ -103,6 +107,18 @@ const JS_BUILTINS: ReadonlySet<unknown> = new Set([
   Error, TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError, AggregateError,
 ]);
 
+export { RequestValidationError };
+
+/**
+ * The HTTP status an error deserves: malformed requests 400, domain refusals (the named
+ * `*Error` classes the engines throw) 409, everything else a logged 500. Plain `Error`s and JS
+ * builtins are programmer errors, never client answers.
+ */
+export function httpStatusForError(err: unknown): 400 | 409 | 500 {
+  if (err instanceof RequestValidationError) return 400;
+  return isDomainRefusal(err) ? 409 : 500;
+}
+
 export function isDomainRefusal(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const ctor = err.constructor as { name?: string } | undefined;
@@ -122,7 +138,7 @@ export async function dispatchApiRoute(
 
   switch (`${method} ${path}`) {
     case 'GET /health':
-      return ok({ ok: true, version: state.version, asOf: state.world.asOf });
+      return ok({ ok: true, version: state.version, asOf: state.world.asOf, persistence: 'in-memory (demo world, rebuilt on boot)' });
 
     case 'GET /world':
       return ok(worldSnapshot(state.world));
@@ -132,7 +148,7 @@ export async function dispatchApiRoute(
       const policyId = String(payload['policyId'] ?? 'UL-000123');
       const amount = payload['amount'] !== undefined
         ? parseAmount(String(payload['amount']), 'AED')
-        : money(BigInt(Math.round(Number(payload['amountMinor'] ?? 200000))), 'AED');
+        : money(BigInt(reqInt(payload, 'amountMinor', { min: 0, fallback: 200000 })), 'AED');
       const preview = state.world.decider.previewSwitch({
         policyId,
         fromFundId: String(payload['fromFundId'] ?? 'FGLOBAL'),
@@ -148,7 +164,7 @@ export async function dispatchApiRoute(
       const policyId = String(payload['policyId'] ?? 'UL-000123');
       const amount = payload['amount'] !== undefined
         ? parseAmount(String(payload['amount']), 'AED')
-        : money(BigInt(Math.round(Number(payload['amountMinor'] ?? 150000))), 'AED');
+        : money(BigInt(reqInt(payload, 'amountMinor', { min: 0, fallback: 150000 })), 'AED');
       const preview = state.world.decider.previewWithdrawal({
         policyId,
         fundId: String(payload['fundId'] ?? 'FBAL'),
@@ -375,8 +391,8 @@ export async function dispatchApiRoute(
 
     case 'POST /parties/merge': {
       const merged = state.world.parties.merge(
-        String(payload['winnerId'] ?? ''),
-        String(payload['loserId'] ?? ''),
+        reqString(payload, 'winnerId'),
+        reqString(payload, 'loserId'),
         String(payload['at'] ?? `${state.world.asOf}T12:00:00+04:00`),
       );
       return ok({ merged });
@@ -384,13 +400,13 @@ export async function dispatchApiRoute(
 
     /* ------------------------------------------- AI runtime & governance */
     case 'POST /ai/approve': {
-      const id = String(payload['id'] ?? '');
+      const id = reqString(payload, 'id');
       const action = state.world.ai.approve(id, String(payload['by'] ?? 'raheel@operator'));
       return ok(action);
     }
 
     case 'POST /ai/execute': {
-      const id = String(payload['id'] ?? '');
+      const id = reqString(payload, 'id');
       const action = state.world.ai.execute(id);
       return ok(action);
     }
@@ -414,7 +430,7 @@ export async function dispatchApiRoute(
     case 'POST /ingest/submit': {
       const text = String(payload['text'] ?? '');
       const loadId = String(payload['loadId'] ?? `LOAD-${Date.now()}`);
-      state.world.ingest.submit({ loadId, source: 'console paste', submittedAt: new Date().toISOString(), text });
+      state.world.ingest.submit({ loadId, source: 'console paste', submittedAt: state.now(), text });
       const reconciliation = state.world.ingest.reconciliation(loadId);
       return ok({
         summary: reconciliation.summary,
@@ -427,7 +443,7 @@ export async function dispatchApiRoute(
 
     case 'POST /ingest/commit': {
       const loadId = String(payload['loadId'] ?? '');
-      const record = state.world.ingest.commit(loadId, new Date().toISOString());
+      const record = state.world.ingest.commit(loadId, state.now());
       return ok({ loadId, committed: record.committed, committedKeys: record.committedKeys.length, duplicates: record.duplicatesSuppressed });
     }
 
@@ -939,7 +955,7 @@ export async function dispatchApiRoute(
         kind: String(payload['kind'] ?? 'cash') as 'cash' | 'funds-withheld' | 'letter-of-credit' | 'bank-guarantee',
         amount: parseAmount(String(payload['amount'] ?? '10,000.00'), 'AED'),
         at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`),
-        reference: String(payload['reference'] ?? `SEC-${new Date().toISOString().slice(0, 10)}`),
+        reference: String(payload['reference'] ?? `SEC-${state.now().slice(0, 10)}`),
         by: String(payload['by'] ?? 'treasury'),
         ...(payload['treatyId'] ? { treatyId: String(payload['treatyId']) } : {}),
         ...(payload['expiresAt'] ? { expiresAt: String(payload['expiresAt']) } : {}),
@@ -1114,7 +1130,7 @@ export async function dispatchApiRoute(
     case 'POST /claims/triage': {
       const isTakaful = String(payload['book'] ?? 'conventional') === 'takaful';
       const engine = isTakaful ? state.world.takafulClaims : state.world.claims;
-      const claimId = String(payload['claimId'] ?? '');
+      const claimId = reqString(payload, 'claimId');
       const exclusions = Array.isArray(payload['exclusionsApplied'])
         ? (payload['exclusionsApplied'] as string[])
         : typeof payload['exclusionsApplied'] === 'string' && payload['exclusionsApplied'].trim()
@@ -1139,7 +1155,7 @@ export async function dispatchApiRoute(
     case 'POST /claims/reserve': {
       const isTakaful = String(payload['book'] ?? 'conventional') === 'takaful';
       const engine = isTakaful ? state.world.takafulClaims : state.world.claims;
-      const claimId = String(payload['claimId'] ?? '');
+      const claimId = reqString(payload, 'claimId');
       const amount = parseAmount(String(payload['amount'] ?? '1,500.00'), 'AED');
       const claim = engine.setReserve(claimId, {
         amount,
@@ -1158,14 +1174,14 @@ export async function dispatchApiRoute(
     case 'POST /claims/approve': {
       const isTakaful = String(payload['book'] ?? 'conventional') === 'takaful';
       const engine = isTakaful ? state.world.takafulClaims : state.world.claims;
-      const claimId = String(payload['claimId']);
+      const claimId = reqString(payload, 'claimId');
       const amount = parseAmount(String(payload['amount'] ?? '250.00'), 'AED');
       const claim = engine.approve(claimId, {
         amount,
         at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`),
         by: String(payload['by'] ?? 'console'),
         role: String(payload['role'] ?? 'claims-officer'),
-        isAi: payload['isAi'] === undefined ? undefined : Boolean(payload['isAi']),
+        isAi: optBool(payload, 'isAi'),
       });
       return ok({
         id: claim.id,
@@ -1177,7 +1193,7 @@ export async function dispatchApiRoute(
     case 'POST /claims/decline': {
       const isTakaful = String(payload['book'] ?? 'conventional') === 'takaful';
       const engine = isTakaful ? state.world.takafulClaims : state.world.claims;
-      const claimId = String(payload['claimId'] ?? '');
+      const claimId = reqString(payload, 'claimId');
       const claim = engine.decline(claimId, {
         at: String(payload['at'] ?? `${state.world.asOf}T10:30:00+04:00`),
         by: String(payload['by'] ?? 'claims-manager'),
@@ -1193,7 +1209,7 @@ export async function dispatchApiRoute(
     case 'POST /claims/settle': {
       const isTakaful = String(payload['book'] ?? 'conventional') === 'takaful';
       const engine = isTakaful ? state.world.takafulClaims : state.world.claims;
-      const claimId = String(payload['claimId']);
+      const claimId = reqString(payload, 'claimId');
       const approved = payload['amount']
         ? parseAmount(String(payload['amount']), 'AED')
         : engine.approvedAmount(claimId);
@@ -1215,7 +1231,7 @@ export async function dispatchApiRoute(
     case 'POST /claims/recover': {
       const isTakaful = String(payload['book'] ?? 'conventional') === 'takaful';
       const engine = isTakaful ? state.world.takafulClaims : state.world.claims;
-      const claimId = String(payload['claimId'] ?? '');
+      const claimId = reqString(payload, 'claimId');
       const recovery = engine.recover(claimId, {
         type: (String(payload['type'] ?? 'salvage') as RecoveryType),
         amount: parseAmount(String(payload['amount'] ?? '150.00'), 'AED'),
@@ -1234,7 +1250,7 @@ export async function dispatchApiRoute(
 
     /* ------------------------------------------- takaful operations */
     case 'POST /takaful/approve': {
-      const role = String(payload['role'] ?? 'actuary') as 'actuary' | 'shariah' | 'board';
+      const role = reqEnum(payload, 'role', ['actuary', 'shariah', 'board'] as const, 'actuary');
       const by = String(payload['by'] ?? 'human-signatory');
       const w = state.world;
       if (role === 'actuary') state.takafulApprovals.actuary = { recommended: true, by, at: w.asOf };
@@ -1817,7 +1833,7 @@ export async function dispatchApiRoute(
     /* ------------------------------------------- durability & reporting registers */
     case 'GET /state/registers': {
       const registers = exportReporting(state.world);
-      const sealed = sealReporting(registers, new Date().toISOString());
+      const sealed = sealReporting(registers, state.now());
       const chain = verifyOutbox(sealed.outbox);
       return ok({
         registers: {
@@ -2219,7 +2235,7 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /funds-accounting/rule/remove': {
-      const id = String(payload['id'] ?? '');
+      const id = reqString(payload, 'id');
       state.world.fundsAccounting.removeRule(id, String(payload['at'] ?? ''), String(payload['by'] ?? 'master-settings'));
       return ok({ rules: state.world.fundsAccounting.listRules() });
     }
@@ -2250,7 +2266,7 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /funds-accounting/mapping/remove': {
-      const id = String(payload['id'] ?? '');
+      const id = reqString(payload, 'id');
       state.world.fundsAccounting.removeMapping(id, String(payload['at'] ?? ''), String(payload['by'] ?? 'master-settings'));
       return ok({ mappings: state.world.fundsAccounting.snapshot().mappings });
     }
@@ -2778,7 +2794,7 @@ export async function dispatchApiRoute(
 
     case 'GET /state': {
       const state1 = exportLedger(state.world.ledger);
-      const snap = seal(state1, { schemaVersion: LEDGER_SCHEMA_VERSION, takenAt: new Date().toISOString() });
+      const snap = seal(state1, { schemaVersion: LEDGER_SCHEMA_VERSION, takenAt: state.now() });
       const text = snapshotText(snap);
       return ok({
         ledgerSchemaVersion: LEDGER_SCHEMA_VERSION,
@@ -2794,7 +2810,7 @@ export async function dispatchApiRoute(
     case 'POST /state/drill': {
       const before = exportLedger(state.world.ledger);
       const started = Date.now();
-      const snap = seal(before, { schemaVersion: LEDGER_SCHEMA_VERSION, takenAt: new Date().toISOString() });
+      const snap = seal(before, { schemaVersion: LEDGER_SCHEMA_VERSION, takenAt: state.now() });
       const text = snapshotText(snap);
       const parsed = JSON.parse(text);
       const restoredState = open(parsed, { expectSchema: LEDGER_SCHEMA_VERSION }) as typeof before;
@@ -2836,13 +2852,13 @@ export async function dispatchApiRoute(
       });
 
     case 'POST /reset': {
-      const next = createRuntimeState(state.version + 1);
-      state.world = next.world;
-      state.version = next.version;
-      state.store = next.store;
-      state.storeError = undefined;
-      state.keys = next.keys;
-      state.takafulApprovals = {};
+      // Replace the whole state in one assignment so a concurrent dispatch can never observe a
+      // mix of the old world and the new registers. (The HTTP layer gates this endpoint: demo
+      // mode or an admin principal only — see src/server/auth.ts.)
+      const next = createRuntimeState(state.version + 1, state.now);
+      // The idempotency register survives a reset on purpose: swapping it would discard the
+      // in-flight completion of *this* call, so a keyed retry of the reset would run it again.
+      Object.assign(state, next, { keys: state.keys, takafulApprovals: {}, storeError: undefined });
       if (onReset) onReset();
       return ok({ ok: true, version: state.version });
     }

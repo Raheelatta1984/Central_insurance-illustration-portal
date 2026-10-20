@@ -88,6 +88,9 @@ export function sum(items: Money[], currency: Currency): Money {
   return items.reduce((acc, m) => add(acc, m), zero(currency));
 }
 export function multiply(a: Money, factor: bigint | number, mode: RoundingMode = 'half-up'): Money {
+  if (typeof factor === 'number' && !Number.isInteger(factor)) {
+    throw new MoneyError(`multiply: factor ${factor} is not an integer — use applyBps/applyRatio so the rounding is explicit`);
+  }
   const f = typeof factor === 'bigint' ? factor : BigInt(factor);
   return { minor: a.minor * f, currency: a.currency };
 }
@@ -188,6 +191,7 @@ export function toDecimalString(a: Money): string {
   return `${neg ? '-' : ''}${v / unit}${scale > 0 ? '.' + (v % unit).toString().padStart(scale, '0') : ''}`;
 }
 
+/** @deprecated Display-only escape hatch. Floats lose exactness past 2^53 minor units; never feed the result back into money arithmetic. */
 export function toNumber(a: Money): number {
   return Number(toDecimalString(a));
 }

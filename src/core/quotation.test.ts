@@ -214,8 +214,8 @@ describe('sending and accepting a quotation', () => {
     expect(signed.daysRemaining).toBe(20);
     expect(signed.coolingOffEndsOn).toBe('2026-11-05');
     expect(signed.readyToBuyOnline).toBe(true);
-    expect(signed.buyToken).toHaveLength(16);
-    expect(signed.signatureReference).toHaveLength(16);
+    expect(signed.buyToken).toHaveLength(32);
+    expect(signed.signatureReference).toHaveLength(64);
     expect(book.get(issued.record.quotationId).status).toBe('finalised');
   });
 

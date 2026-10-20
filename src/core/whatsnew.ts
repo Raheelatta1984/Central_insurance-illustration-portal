@@ -157,6 +157,8 @@ export const WHATS_NEW_SEED: ReadonlyArray<WhatsNewEntry> = [
   },
 ];
 
+export class WhatsNewError extends Error {}
+
 export class WhatsNewRegistry {
   private entries: WhatsNewEntry[] = [...WHATS_NEW_SEED];
   private seq = WHATS_NEW_SEED.length;
@@ -166,8 +168,8 @@ export class WhatsNewRegistry {
   }
 
   file(entry: Omit<WhatsNewEntry, 'id'> & { id?: string }): WhatsNewEntry {
-    if (!entry.title?.trim()) throw new Error("What's New entry needs a title");
-    if (!entry.why?.trim() || !entry.what?.trim() || !entry.whatYouNeedToDo?.trim()) throw new Error("What's New entries must say why, what changed, and what the reader needs to do");
+    if (!entry.title?.trim()) throw new WhatsNewError("What's New entry needs a title");
+    if (!entry.why?.trim() || !entry.what?.trim() || !entry.whatYouNeedToDo?.trim()) throw new WhatsNewError("What's New entries must say why, what changed, and what the reader needs to do");
     const filed: WhatsNewEntry = { ...entry, id: entry.id ?? `WN-${String(++this.seq).padStart(4, '0')}` };
     this.entries = [filed, ...this.entries.filter((e) => e.id !== filed.id)];
     return filed;

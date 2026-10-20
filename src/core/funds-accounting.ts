@@ -551,9 +551,11 @@ export class FundsAccountingRegistry {
 
   // ---- Snapshots ----
 
-  bootstrapDefaults(): void {
+  bootstrapDefaults(at: string = '2026-10-05T00:00:00+04:00'): void {
     if (this.configs.size > 0) return;
-    const now = new Date().toISOString();
+    // Seeded at the world business date, not wall time: the demo world must rebuild
+    // byte-identically on every boot (its durability story depends on it).
+    const now = at;
     this.upsertConfig({ country: 'AE', standard: 'IFRS17', currency: 'AED', countryName: 'United Arab Emirates', fiscalYearEnd: '12-31', description: 'CBUAE — IFRS 17 with local regulatory overlay', at: now, by: 'seed' });
     this.upsertConfig({ country: 'SA', standard: 'SOCPA', currency: 'SAR', countryName: 'Saudi Arabia', fiscalYearEnd: '12-31', description: 'SOCPA / IFRS 17 — Saudi insurance accounting', at: now, by: 'seed' });
     this.upsertConfig({ country: 'MY', standard: 'BNM-MFRS17', currency: 'MYR', countryName: 'Malaysia', fiscalYearEnd: '12-31', description: 'BNM MFRS 17 — Malaysian Takaful & conventional', at: now, by: 'seed' });

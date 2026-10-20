@@ -1053,10 +1053,10 @@ function App() {
       <aside>
         <button type="button" className="navClose" aria-label="Close the menu" onClick={() => setNavOpen(false)}>×</button>
         <div className="brand"><span className="logo">{entityTheme?.images.logoDataUrl ? <img src={entityTheme.images.logoDataUrl} alt={`${entityTheme.ownerName} logo`} /> : '◈'}</span><div><b>Central Insurance ERP</b><small>{data?.tenant.name ?? 'connecting…'}</small></div></div>
-        <nav>
+        <nav aria-label="Console sections">
           {TABS.map((t) => (
-            <button key={t.id} className={t.id === tab ? 'active' : ''} onClick={() => { setTab(t.id); setNavOpen(false); }}>
-              <span className="icon">{t.icon}</span>{t.label}
+            <button key={t.id} type="button" className={t.id === tab ? 'active' : ''} aria-current={t.id === tab ? 'page' : undefined} onClick={() => { setTab(t.id); setNavOpen(false); }}>
+              <span className="icon" aria-hidden="true">{t.icon}</span>{t.label}
             </button>
           ))}
         </nav>
@@ -1089,7 +1089,7 @@ function App() {
             </div>
           </div>
         </header>
-        {error && <div className="errorBox">{error}</div>}
+        {error && <div className="errorBox" role="alert">{error}</div>}
         {data ? (
           <GuideProvider data={data} tab={tab} enabled={guideOn}>
             <div className={`scopedBrandSurface${scopedThemeLayers.length ? ' hasScopedBrand' : ''}`} style={scopedThemeCss as React.CSSProperties}>
@@ -1259,7 +1259,7 @@ function GroupFinance({ data }: { data: WorldSnapshot }) {
           <span className="muted small">Runs it again and posts nothing new — consolidation is idempotent by journal id.</span>
         </div>
         {note && <div className="code">{note}</div>}
-        {error && <div className="errorBox">{error}</div>}
+        {error && <div className="errorBox" role="alert">{error}</div>}
       </Card>
 
       <Card title="Consolidated trial balance" subtitle="Read back from the group ledger, mirrors and all" wide>
@@ -2441,7 +2441,7 @@ function Durability() {
         <div className="row">
           <button onClick={runDrill} disabled={busy}>{busy ? 'Running…' : 'Run durability drill'}</button>
         </div>
-        {error && <div className="errorBox">{error}</div>}
+        {error && <div className="errorBox" role="alert">{error}</div>}
         {drill && (
           <>
             <div className="stat"><span>Result</span><b>{drill.ok ? <Pill tone="ok">books restore exactly</Pill> : <Pill tone="bad">mismatch</Pill>}</b></div>

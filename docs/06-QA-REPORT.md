@@ -137,7 +137,7 @@ filed schedule, labelled as such, when a band is missing) and by the policy-char
 
 ## 2026-10-19 (PR #10 & PR #11) and 2026-10-20 (PR #12) — Funds accounting, Super funds, Data warehouse security, Batch processing, What's New & Live Application Theme
 
-`npm run verify` clean; **654 tests over 51 files**; `demo/offline.html` and `site/console.html` rebuilt across all 26 tabs.
+`npm run verify` clean (typecheck + lint + coverage + build); **701 tests over 60 files** (updated 2026-10-20, see `docs/14-REVIEW-REMEDIATION.md`); `demo/offline.html` and `site/console.html` rebuilt across all 26 tabs.
 
 | Area | Evidence |
 | --- | --- |

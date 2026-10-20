@@ -1,3 +1,4 @@
+import { sha256Hex } from './hash.js';
 import { describe, expect, it } from 'vitest';
 import { buildWorld } from './demo.js';
 import { DataWarehouse } from './warehouse.js';
@@ -45,11 +46,7 @@ describe('single read warehouse', () => {
       const result = await dispatchApiRoute(state, 'POST', '/warehouse/export', new URLSearchParams(), { datasetId: 'policy-fact', format });
       expect(result.status).toBe(200);
       const artifact = result.body as { content: string; bytes: number; fingerprint: string; rows: number; maskingMethod: string; maskedColumns: string[] };
-      let hash = 0xcbf29ce484222325n;
-      for (const byte of new TextEncoder().encode(artifact.content)) {
-        hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * 0x100000001b3n);
-      }
-      expect(artifact.fingerprint).toBe(hash.toString(16).padStart(16, '0'));
+      expect(artifact.fingerprint).toBe(sha256Hex(artifact.content));
       expect(artifact.bytes).toBe(new TextEncoder().encode(artifact.content).length);
       const [record] = state.world.warehouse.exportsSnapshot();
       expect(record).toMatchObject({ fingerprint: artifact.fingerprint, bytes: artifact.bytes, maskingMethod: artifact.maskingMethod });
