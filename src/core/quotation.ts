@@ -412,6 +412,8 @@ export class QuotationBook {
   private emailSeq = 0;
 
   private mailer: Mailer | null = null;
+  /** The email account an event sends from, supplied by the tenant's email configuration. */
+  private fromForEvent: (eventKey: string) => string | null = () => null;
 
   constructor(private readonly tenantName: string, private readonly clock: () => string = () => '2026-10-05T12:00:00+04:00') {}
 
@@ -421,6 +423,15 @@ export class QuotationBook {
    * with, and the book itself has to stay testable with no network anywhere near it.
    */
   attachMailer(mailer: Mailer | null): void { this.mailer = mailer; }
+
+  /**
+   * Attach the tenant's event routing, so a quotation leaves from the account filed for
+   * `quotation.issued` rather than from whichever address the process happens to hold. The book does
+   * not depend on the configuration module; it takes the one function it needs.
+   */
+  attachEmailRouting(fromForEvent: ((eventKey: string) => string | null) | null): void {
+    this.fromForEvent = fromForEvent ?? (() => null);
+  }
 
   /** The transport this book delivers through, for the console to show before anyone promises a customer. */
   mailerStatus(): { transport: string; configured: boolean; reason: string } | null {
@@ -567,7 +578,9 @@ export class QuotationBook {
   /** The message the transport sends: the dispatched body, with the document attached. */
   mailMessage(record: QuotationRecord, to: string, language: 'en' | 'ar' | 'both'): MailMessage {
     const email = record.email;
+    const from = this.fromForEvent('quotation.issued');
     return {
+      ...(from ? { from } : {}),
       to,
       subject: email?.subject ?? `Quotation ${record.quotationId} — ${record.productName}`,
       text: email?.body ?? `Your quotation ${record.quotationId} for ${record.productName} is attached.`,

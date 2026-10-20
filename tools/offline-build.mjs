@@ -36,6 +36,8 @@ if (existsSync(routesServerPath)) {
     '/erp/settings',
     '/tour',
     '/guide',
+    '/master/email',
+    '/master/providers',
   ];
   for (const p of freshPaths) {
     const res = await dispatchApiRoute(state, 'GET', p, new URLSearchParams(), {});

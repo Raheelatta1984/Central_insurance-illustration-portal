@@ -22,6 +22,7 @@ export const CONSOLE_TABS = [
   { id: 'overview', label: 'Overview', icon: '◈' },
   { id: 'journey', label: 'Customer journey', icon: '➤' },
   { id: 'master', label: 'Master settings & ERP', icon: '⚙' },
+  { id: 'email', label: 'Email configuration', icon: '✉' },
   { id: 'policyholder', label: 'Policyholder', icon: '◉' },
   { id: 'decisions', label: 'Decision theatre', icon: '⇄' },
   { id: 'cover', label: 'Cover control', icon: '⏻' },

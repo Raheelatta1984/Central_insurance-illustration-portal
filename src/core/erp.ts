@@ -30,10 +30,11 @@ import {
   EVIDENCE_PROFILES, EvidenceBandSpec, PRODUCT_CATALOGUE,
   ProductVariety, PolicyCategory, catalogueByLine, evidenceProfileFor, productVariety,
 } from './products.js';
-import { RegionalDesk, RegionalError, RegionalSnapshot, defaultRegional } from './regional.js';
+import { RegionalDesk, RegionalError, RegionalSnapshot, countryPack, defaultRegional } from './regional.js';
 import { RatePrice, RateRow, RateTables } from './rating.js';
 import { OmniChannelRegistry } from './channels.js';
 import { toDecimalString } from './money.js';
+import { DistributionGovernance, MARSH_EXAMPLE } from './providers.js';
 
 export class ErpError extends Error {}
 
@@ -211,6 +212,12 @@ export class ErpManager {
    */
   readonly rating: RateTables;
   readonly channels: OmniChannelRegistry;
+  /**
+   * Providers, their registered branches, their country reinsurance arrangements and the
+   * Conventional/Takaful permission on every selling scope. The registry answers who carries the
+   * risk and where it is licensed; `channels` answers who may sell it.
+   */
+  readonly providers: DistributionGovernance;
   /** Country, region, calendar, time zone, local currency and the foreign rate card. */
   private regional!: RegionalDesk;
   private readonly proposals = new Map<string, ErpProposalMeta>();
@@ -275,6 +282,21 @@ export class ErpManager {
         };
       },
       () => this.regional.current.localCurrency,
+    );
+    this.providers = new DistributionGovernance(
+      this.channels,
+      (productId) => {
+        const product = this.products.get(productId);
+        if (!product) return undefined;
+        return {
+          productId: product.productId, name: product.name, category: product.category,
+          currency: product.currency, secondaryName: product.secondaryName,
+        };
+      },
+      () => this.listProductMasters().map((p) => ({
+        productId: p.productId, name: p.name, category: p.category, currency: p.currency,
+      })),
+      () => `${w.asOf}T12:00:00+04:00`,
     );
     this.seedFromWorld(w);
   }
@@ -1815,6 +1837,238 @@ export class ErpManager {
   }
 
   /**
+   * The worked example from the brief: one broker channel, two sub-channels, three carriers, three
+   * countries, three currencies — and the agency desk narrowed to Conventional only.
+   *
+   * It is a button, not a boot-time seed, because the rest of this console is deliberately empty of
+   * commercial facts until somebody files them. Pressing it writes the whole pattern through the
+   * same public methods the screens use, so it cannot produce a state the UI could not have produced.
+   * Local product masters are copied into the country currency at the filed rate card; the copy is a
+   * filing with a trail, not a second tariff invented in code.
+   */
+  seedDistributionExample(w: World, options: { at?: string; by?: string } = {}): {
+    seeded: boolean; skipped: boolean; note: string;
+    created: {
+      providers: number; branches: number; arrangements: number; providerProducts: number;
+      channelCountries: number; permissions: number; localProducts: string[]; rateRows: number;
+    };
+  } {
+    const at = options.at ?? `${w.asOf}T12:00:00+04:00`;
+    const by = options.by ?? 'distribution-example';
+    if (this.providers.stats().providers > 0) {
+      return {
+        seeded: false, skipped: true,
+        note: 'Providers are already filed on this tenant; the example only seeds an empty provider register.',
+        created: { providers: 0, branches: 0, arrangements: 0, providerProducts: 0, channelCountries: 0, permissions: 0, localProducts: [], rateRows: 0 },
+      };
+    }
+
+    // The example quotes Singapore dollars as well as sterling. A rate that is already on the card is
+    // left exactly as it was: rebasing a filed rate because a demo wanted one would restate money.
+    if (!this.regional.current.foreignCurrencies.some((f) => f.code === 'SGD')) {
+      this.regional.setForeignCurrency({ code: 'SGD', rate: 2.95, asOf: '2026-09-30', kind: 'floating', by });
+      // One rate card, not a regional quote the ledger has never heard of: the same rational is
+      // registered with the ledger and the group rate table, exactly as the FX master does.
+      const quote = { from: 'SGD', to: this.regional.current.localCurrency, numerator: 295n, denominator: 100n, asOf: '2026-09-30' };
+      w.ledger.registerFx(quote);
+      w.groupRates.register(quote);
+      this.fxList.push(quote);
+    }
+
+    const localProducts: string[] = [];
+    let rateRows = 0;
+    for (const local of MARSH_EXAMPLE.localProducts) {
+      const copied = this.copyProductToCountry(w, local.sourceProductId, local.productId, local.country, local.name, { at, by });
+      localProducts.push(copied.productId);
+      rateRows += copied.rateRows;
+    }
+
+    for (const provider of MARSH_EXAMPLE.providers) {
+      this.providers.upsertProvider({ ...provider, enabled: true, at, by });
+    }
+    for (const branch of MARSH_EXAMPLE.branches) {
+      const pack = countryPack(branch.country);
+      this.providers.registerBranch({
+        ...branch,
+        name: `${this.providers.provider(branch.providerId)?.name ?? branch.providerId} — ${pack?.name ?? branch.country}`,
+        regulator: pack?.regulator,
+        currency: pack?.currency,
+        effectiveFrom: '2026-01-01',
+        localPremiumCollection: true,
+        investmentResidence: 'country-of-origin',
+        regulatoryRequirements: pack ? [
+          `${pack.name} regulator: ${pack.regulator}`,
+          `Premium and investment managed locally in ${pack.currency}`,
+          `Investment held in the country where the quotation is generated (${pack.code})`,
+        ] : [],
+        at, by,
+      });
+    }
+    for (const arrangement of MARSH_EXAMPLE.arrangements) {
+      const pack = countryPack(arrangement.country);
+      this.providers.fileReinsurance({
+        ...arrangement,
+        currency: pack?.currency,
+        effectiveFrom: '2026-01-01',
+        regulatorReference: arrangement.regulatorReference,
+        at, by,
+      });
+    }
+
+    this.channels.bootstrap(at, by);
+    this.channels.upsertChannel({
+      ...MARSH_EXAMPLE.channel,
+      integration: 'api',
+      enabled: true,
+      supports: { quote: true, bind: true, service: true, claim: false },
+      note: 'One broker channel; the call centre and the agency desk are sub-channels with different product permissions.',
+      at, by,
+    });
+    for (const sub of MARSH_EXAMPLE.subChannels) {
+      this.channels.upsertSubChannel({
+        ...sub,
+        parentChannelCode: MARSH_EXAMPLE.channel.code,
+        enabled: true,
+        supports: { quote: true, bind: true, service: true, claim: false },
+        at, by,
+      });
+    }
+    for (const partner of MARSH_EXAMPLE.partners) {
+      this.channels.upsertPartner({
+        ...partner,
+        channelCode: MARSH_EXAMPLE.channel.code,
+        secondaryName: partner.name,
+        enabled: true,
+        settlementDays: 30,
+        productIds: [],
+        commissionBps: [1500, 500, 250],
+        note: 'Country entity of the Marsh broker channel.',
+        at, by,
+      });
+    }
+
+    for (const product of MARSH_EXAMPLE.products) {
+      this.providers.attachProviderProduct({ ...product, enabled: true, at, by });
+    }
+    for (const presence of MARSH_EXAMPLE.channelCountries) {
+      const pack = countryPack(presence.country);
+      this.providers.upsertChannelCountry({
+        ...presence,
+        currency: pack?.currency,
+        licenceStatus: 'licensed',
+        premiumCollection: 'local-branch',
+        investmentResidence: 'country-of-origin',
+        enabled: true,
+        note: 'Premium managed locally; investment held in the country where the quotation is generated.',
+        at, by,
+      });
+    }
+    for (const permission of MARSH_EXAMPLE.permissions) {
+      this.providers.setSellPermission({ ...permission, at, by });
+    }
+
+    // Each country partner carries exactly the products filed for that country; a shelf is what the
+    // partner may quote, not a wish list.
+    for (const partner of MARSH_EXAMPLE.partners) {
+      const productIds = [...new Set(MARSH_EXAMPLE.products
+        .filter((p) => p.country === partner.country)
+        .map((p) => p.productId))];
+      this.channels.setPartnerProducts(partner.partnerId, productIds, at, by);
+    }
+
+    return {
+      seeded: true, skipped: false,
+      note: `${MARSH_EXAMPLE.description} Local products were copied into GBP and SGD at the filed rate card.`,
+      created: {
+        providers: MARSH_EXAMPLE.providers.length,
+        branches: MARSH_EXAMPLE.branches.length,
+        arrangements: MARSH_EXAMPLE.arrangements.length,
+        providerProducts: MARSH_EXAMPLE.products.length,
+        channelCountries: MARSH_EXAMPLE.channelCountries.length,
+        permissions: MARSH_EXAMPLE.permissions.length,
+        localProducts,
+        rateRows,
+      },
+    };
+  }
+
+  /**
+   * Copy a filed product into a country's currency, converting the tariff on the regional rate card.
+   * The copy is a local filing: its name says so, its rates are converted rationals, and its rate rows
+   * say which source row and which rate priced them. A product that is merely relabelled would quote
+   * dirhams in sterling, which is the mistake this exists to prevent.
+   */
+  private copyProductToCountry(
+    w: World,
+    sourceProductId: string,
+    productId: string,
+    country: string,
+    name: string,
+    options: { at: string; by: string },
+  ): { productId: string; rateRows: number } {
+    const source = this.products.get(sourceProductId.toUpperCase());
+    if (!source) throw new ErpError(`no product ${sourceProductId} to copy into ${country}.`);
+    const pack = countryPack(country);
+    if (!pack) throw new ErpError(`${country} is not a country pack on file.`);
+    const currency = pack.currency;
+    if (currency === source.currency) throw new ErpError(`${sourceProductId} is already in ${currency}; copy it only into a different country currency.`);
+    const convertMinor = (minor: bigint): bigint => this.regional.convert(money(minor, source.currency), currency).minor;
+    this.defineProductMaster(w, {
+      productId,
+      name,
+      secondaryName: '',
+      category: source.category,
+      line: source.line,
+      variety: source.variety,
+      blurb: `${source.blurb} This is the ${pack.name} local filing, converted from ${sourceProductId} at the filed ${source.currency}/${currency} rate.`,
+      currency,
+      minAge: source.rules.minAge,
+      maxAge: source.rules.maxAge,
+      referralMarginYears: source.rules.referralMarginYears,
+      maxBmi: source.rules.maxBmi,
+      incomeMultiple: source.rules.incomeMultiple,
+      baseRatePerThousand: toDecimalString(money(convertMinor(source.rules.baseRatePerThousandMinor), currency)),
+      automaticBindingLimit: toDecimalString(money(convertMinor(source.rules.automaticBindingLimitMinor), currency)),
+      facultativeThreshold: toDecimalString(money(convertMinor(source.rules.facultativeThresholdMinor), currency)),
+      aiStraightThroughLimit: toDecimalString(money(convertMinor(source.rules.aiStraightThroughMinor), currency)),
+      acceptedCountries: [...new Set([...source.rules.acceptedCountries, country])],
+      defaultFunds: [...source.defaultFunds],
+      by: options.by,
+    });
+    let rateRows = 0;
+    for (const row of this.rating.listFor({ productId: sourceProductId })) {
+      // Channel and partner overrides belong to the original shelf's agreements; a local filing starts
+      // with the base tariff and its own overrides are filed here.
+      if (row.channelCode || row.partnerId) continue;
+      const rate = this.regional.convert(parseAmount(row.ratePerThousand, row.currency), currency);
+      const sumFrom = this.regional.convert(parseAmount(row.sumFrom, row.currency), currency);
+      const sumTo = row.sumTo === null ? null : this.regional.convert(parseAmount(row.sumTo, row.currency), currency);
+      // A rate below the smallest unit of the target currency (0.00 in a 2-decimal currency) cannot
+      // be filed without inventing a price. The local tariff is left with a gap and says why, rather
+      // than carrying a zero that would quote the cover for nothing.
+      if (rate.minor === 0n) continue;
+      if (sumTo !== null && sumTo.minor <= sumFrom.minor) continue;
+      this.rating.upsert({
+        productId,
+        kind: row.kind,
+        gender: row.gender,
+        ageFrom: row.ageFrom,
+        ageTo: row.ageTo,
+        occupationClass: row.occupationClass,
+        sumFrom: toDecimalString(sumFrom),
+        sumTo: sumTo === null ? null : toDecimalString(sumTo),
+        ratePerThousand: toDecimalString(rate),
+        currency,
+        note: `${row.note ? `${row.note}. ` : ''}Converted from ${sourceProductId} at the ${source.currency}→${currency} rate on file.`,
+        at: options.at,
+        by: options.by,
+      });
+      rateRows += 1;
+    }
+    return { productId, rateRows };
+  }
+
+  /**
    * Save the product factory's grid in one call.
    *
    * A table of products is edited as a table, so it has to be saved as a table — and a table with one
@@ -1953,13 +2207,36 @@ export class ErpManager {
     sumAssured?: string;
     kind?: 'premium' | 'mortality';
     channelCode?: string | null;
+    subChannelCode?: string | null;
     partnerId?: string | null;
+    /** When a carrier is named, the price is only quoted if that carrier may sell the book there. */
+    providerId?: string | null;
+    country?: string | null;
   }): {
     price: RatePrice;
     partner: { partnerId: string; name: string; channelCode: string; commissionBps: readonly number[] } | null;
     basis: string;
+    sale: ReturnType<DistributionGovernance['canSell']> | null;
   } {
     const kind = input.kind ?? 'premium';
+    // The provider gate is deliberately optional: a price can be probed with no carrier (the tariff is
+    // a price, not a sale). Once a carrier, a channel and a country are named, the sale is checked by
+    // the same governance the selling screen uses, so a quote cannot route around the permission. The
+    // extra check is what makes the Conventional/Takaful checkbox a control rather than a label.
+    const sale = input.providerId
+      ? this.providers.canSell({
+        providerId: input.providerId,
+        productId: input.productId,
+        channelCode: input.channelCode ?? '',
+        ...(input.subChannelCode ? { subChannelCode: input.subChannelCode } : {}),
+        ...(input.partnerId ? { partnerId: input.partnerId } : {}),
+        ...(input.country ? { country: input.country } : {}),
+        asOf: w.asOf,
+      })
+      : null;
+    if (sale && !sale.allowed) {
+      throw new ErpError(`Sale refused: ${sale.reasons.join(' ')}`);
+    }
     const partnerId = (input.partnerId ?? '').trim().toUpperCase();
     const partner = partnerId ? this.channels.partner(partnerId) : null;
 
@@ -1976,7 +2253,7 @@ export class ErpManager {
     const base = throughPartner && throughPartner.priced ? throughPartner : lookup(false);
     if (!partnerId) {
       return {
-        price: base, partner: null,
+        price: base, partner: null, sale,
         basis: base.priced ? `${base.basis} — the base tariff, no partner terms applied` : base.basis,
       };
     }
@@ -2006,6 +2283,7 @@ export class ErpManager {
       price: { ...base, amount, basis },
       partner: { partnerId: partner.partnerId, name: partner.name, channelCode: partner.channelCode, commissionBps: terms.commissionBps },
       basis,
+      sale,
     };
   }
 
@@ -2544,6 +2822,8 @@ export class ErpManager {
         },
         /** The omni-channel: channels with their partners, and each partner's products and terms. */
         channels: this.channels.snapshot(),
+        /** Carriers, registered branches, country reinsurance and the Conventional/Takaful matrix. */
+        providers: this.providers.snapshot(),
         catalogueSize: PRODUCT_CATALOGUE.length,
         charges: {
           allocationChargeBps: charges.allocationChargeBps,
