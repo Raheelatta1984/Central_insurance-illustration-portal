@@ -33,6 +33,26 @@ describe('money — exact decimal arithmetic', () => {
     expect(sum(weights, 'AED').minor).toBe(9_999_999n);
   });
 
+  it('conserves money for tiny decimal weights and very large amounts', () => {
+    expect(allocate(money(100n, 'AED'), [0.0000006, 0.0000006]).map(p => p.minor)).toEqual([50n, 50n]);
+    for (const weights of [[1e-300, 2e-300], [0, 0.1, 0.2], [1e300, 1e-300], [0.0000001, 0.0000002]]) {
+      for (const amount of [0n, 1n, 100n, 10n ** 40n]) {
+        const parts = allocate(money(amount, 'AED'), weights);
+        expect(sum(parts, 'AED').minor).toBe(amount);
+        expect(parts.every(p => p.minor >= 0n)).toBe(true);
+        expect(allocate(money(-amount, 'AED'), weights).map(p => p.minor)).toEqual(parts.map(p => -p.minor));
+      }
+    }
+    expect(allocate(money(-10n, 'AED'), [1, 2]).map(p => p.minor)).toEqual([-3n, -7n]);
+  });
+
+  it('refuses invalid weights rather than losing money or accepting non-finite arithmetic', () => {
+    for (const weights of [[NaN], [Infinity], [-1, 2], [0, 0], []]) {
+      expect(() => allocate(money(100n, 'AED'), weights)).toThrow();
+    }
+    expect(allocate(zero('AED'), [])).toEqual([]);
+  });
+
   it('treats every percentage as basis points', () => {
     expect(applyBps(money(12345n, 'AED'), 500).minor).toBe(617n);    // 5% of 123.45 -> 6.17 (half-up)
     expect(applyBps(money(10_000n, 'AED'), 1).minor).toBe(1n);       // 0.01% of 100.00 = 0.01

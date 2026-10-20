@@ -114,25 +114,37 @@ export function applyRatio(a: Money, numerator: bigint, denominator: bigint, mod
  * Used for allocations, surplus distribution, commission splits — anywhere money divides.
  */
 export function allocate(a: Money, weights: number[]): Money[] {
-  if (weights.length === 0) return [];
-  if (weights.some((w) => w < 0)) throw new MoneyError('allocate: negative weight');
-  const total = weights.reduce((s, w) => s + w, 0);
-  if (total <= 0) throw new MoneyError('allocate: weights sum to zero');
-  const raw = weights.map((w) => (a.minor * BigInt(Math.round(w * 1e6))) / BigInt(Math.round(total * 1e6)));
-  const allocated = raw.reduce((s, r) => s + r, 0n);
-  let remainder = a.minor - allocated;
-  const order = raw
-    .map((r, i) => ({ i, frac: (a.minor * BigInt(Math.round(weights[i]! * 1e6))) % BigInt(Math.round(total * 1e6)) }))
-    .sort((x, y) => (y.frac === x.frac ? x.i - y.i : y.frac > x.frac ? 1 : -1));
-  const out = raw.slice();
-  const step = remainder < 0n ? -1n : 1n;
-  let k = 0;
-  while (remainder !== 0n && k < order.length * 2) {
-    const idx = order[k % order.length]!.i;
-    out[idx] = out[idx]! + step;
-    remainder -= step;
-    k++;
+  if (weights.length === 0) {
+    if (a.minor !== 0n) throw new MoneyError('allocate: nonzero amount needs weights');
+    return [];
   }
+  if (weights.some((w) => !Number.isFinite(w) || w < 0)) {
+    throw new MoneyError('allocate: weights must be finite and nonnegative');
+  }
+  // Interpret each number's decimal representation exactly, including scientific notation.
+  // The denominator MUST be the sum of these same integer weights, not a separately rounded total.
+  const decimals = weights.map((w) => {
+    const [mantissa = '0', exponent = '0'] = String(w).split('e');
+    const [whole = '0', fraction = ''] = mantissa.split('.');
+    return { digits: BigInt(whole + fraction), scale: fraction.length - Number(exponent) };
+  });
+  const scale = Math.max(...decimals.map((w) => w.scale));
+  const integers = decimals.map((w) => w.digits * 10n ** BigInt(scale - w.scale));
+  const total = integers.reduce((s, w) => s + w, 0n);
+  if (total === 0n) throw new MoneyError('allocate: weights sum to zero');
+  const magnitude = a.minor < 0n ? -a.minor : a.minor;
+  const raw = integers.map((w) => magnitude * w / total);
+  let remainder = magnitude - raw.reduce((s, r) => s + r, 0n);
+  const order = integers.map((w, i) => ({ i, frac: magnitude * w % total }))
+    .sort((x, y) => x.frac === y.frac ? x.i - y.i : x.frac > y.frac ? -1 : 1);
+  const out = raw.slice();
+  for (const { i } of order) {
+    if (remainder === 0n) break;
+    out[i] = out[i]! + 1n;
+    remainder--;
+  }
+  if (remainder !== 0n) throw new MoneyError('allocate: conservation invariant failed');
+  if (a.minor < 0n) for (let i = 0; i < out.length; i++) out[i] = -out[i]!;
   return out.map((m) => ({ minor: m, currency: a.currency }));
 }
 

@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-20T00:56:27.038Z",
+  "capturedAt": "2026-10-20T01:41:40.398Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -28988,7 +28988,7 @@
               "fiscalYearEnd": "12-31",
               "description": "CBUAE — IFRS 17 with local regulatory overlay",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29000,7 +29000,7 @@
               "fiscalYearEnd": "06-30",
               "description": "AASB 17 — Australian superannuation overlay",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29012,7 +29012,7 @@
               "fiscalYearEnd": "12-31",
               "description": "IFRS 17 — UK prudential reporting",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29024,7 +29024,7 @@
               "fiscalYearEnd": "12-31",
               "description": "BNM MFRS 17 — Malaysian Takaful & conventional",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29036,7 +29036,7 @@
               "fiscalYearEnd": "12-31",
               "description": "SOCPA / IFRS 17 — Saudi insurance accounting",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             }
           ],
@@ -29052,7 +29052,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded AE rule for FBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0001",
@@ -29065,7 +29065,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded AE rule for FGLOBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0004",
@@ -29078,7 +29078,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded AE rule for SUPER-BAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0005",
@@ -29091,7 +29091,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded AE rule for SUPER-GROWTH",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0003",
@@ -29104,7 +29104,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded AE rule for TKF-EQ",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0017",
@@ -29117,7 +29117,7 @@
               "revenueRecognition": "VARIABLE_FEE",
               "enabled": true,
               "note": "Auto-seeded AU rule for FBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0016",
@@ -29130,7 +29130,7 @@
               "revenueRecognition": "VARIABLE_FEE",
               "enabled": true,
               "note": "Auto-seeded AU rule for FGLOBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0019",
@@ -29143,7 +29143,7 @@
               "revenueRecognition": "VARIABLE_FEE",
               "enabled": true,
               "note": "Auto-seeded AU rule for SUPER-BAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0020",
@@ -29156,7 +29156,7 @@
               "revenueRecognition": "VARIABLE_FEE",
               "enabled": true,
               "note": "Auto-seeded AU rule for SUPER-GROWTH",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0018",
@@ -29169,7 +29169,7 @@
               "revenueRecognition": "VARIABLE_FEE",
               "enabled": true,
               "note": "Auto-seeded AU rule for TKF-EQ",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0022",
@@ -29182,7 +29182,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded GB rule for FBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0021",
@@ -29195,7 +29195,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded GB rule for FGLOBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0024",
@@ -29208,7 +29208,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded GB rule for SUPER-BAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0025",
@@ -29221,7 +29221,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded GB rule for SUPER-GROWTH",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0023",
@@ -29234,7 +29234,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded GB rule for TKF-EQ",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0012",
@@ -29247,7 +29247,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded MY rule for FBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0011",
@@ -29260,7 +29260,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded MY rule for FGLOBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0014",
@@ -29273,7 +29273,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded MY rule for SUPER-BAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0015",
@@ -29286,7 +29286,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded MY rule for SUPER-GROWTH",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0013",
@@ -29299,7 +29299,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded MY rule for TKF-EQ",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0007",
@@ -29312,7 +29312,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded SA rule for FBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0006",
@@ -29325,7 +29325,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded SA rule for FGLOBAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0009",
@@ -29338,7 +29338,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded SA rule for SUPER-BAL",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0010",
@@ -29351,7 +29351,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded SA rule for SUPER-GROWTH",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             },
             {
               "id": "FAR-0008",
@@ -29364,7 +29364,7 @@
               "revenueRecognition": "GENERAL_MEASUREMENT",
               "enabled": true,
               "note": "Auto-seeded SA rule for TKF-EQ",
-              "updatedAt": "2026-10-20T00:56:26.891Z"
+              "updatedAt": "2026-10-20T01:41:40.247Z"
             }
           ],
           "mappings": [
@@ -29385,7 +29385,7 @@
               "priority": 10,
               "descriptionTemplate": "Deposit received → accruals → {{policyId}} · {{productId}} premium allocation to {{fundId}} via {{partnerId}}",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29405,7 +29405,7 @@
               "priority": 10,
               "descriptionTemplate": "Premium adjustment → investment allocation → {{fundId}} units issued for {{policyId}} ({{partnerId}} / {{omniChannel}})",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29425,7 +29425,7 @@
               "priority": 10,
               "descriptionTemplate": "Investment gain → {{policyId}} · {{productId}} in {{fundId}} ({{omniChannel}} / {{subChannel}})",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29445,7 +29445,7 @@
               "priority": 10,
               "descriptionTemplate": "Monthly super processing charge → member {{policyId}} · {{productId}} · {{amount}}",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29465,7 +29465,7 @@
               "priority": 10,
               "descriptionTemplate": "Investment income credited by premium post-adjustment → {{policyId}} · {{period}} · {{amount}}",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29485,7 +29485,7 @@
               "priority": 10,
               "descriptionTemplate": "Investment loss allocated by premium post-adjustment → {{policyId}} · {{period}} · {{amount}}",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             },
             {
@@ -29505,7 +29505,7 @@
               "priority": 20,
               "descriptionTemplate": "Super contribution — {{event}} on {{policyId}} · member balance credited",
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.891Z",
+              "updatedAt": "2026-10-20T01:41:40.247Z",
               "updatedBy": "seed"
             }
           ],
@@ -29673,25 +29673,25 @@
               "detail": "VCH-0001001 · premium-received · Premium received — cash to premium suspense · policy UL-000123 · product PROD-UL"
             },
             {
-              "at": "2026-10-20T00:56:26.891Z",
+              "at": "2026-10-20T01:41:40.247Z",
               "by": "seed",
               "action": "mapping-created",
               "detail": "MAP-0007 · SUPER-BAL · SUPER-MEMBER-BALANCE:SUPER-BAL → SUPER-FUND-ASSET:SUPER-BAL"
             },
             {
-              "at": "2026-10-20T00:56:26.891Z",
+              "at": "2026-10-20T01:41:40.247Z",
               "by": "seed",
               "action": "mapping-created",
               "detail": "MAP-0006 · SUPER-BAL · SUPER-FUND-ASSET:SUPER-BAL → SUPER-MEMBER-BALANCE:SUPER-BAL"
             },
             {
-              "at": "2026-10-20T00:56:26.891Z",
+              "at": "2026-10-20T01:41:40.247Z",
               "by": "seed",
               "action": "mapping-created",
               "detail": "MAP-0005 · SUPER-BAL · SUPER-MEMBER-BALANCE:SUPER-BAL → SUPER-FEE-INCOME:SUPER-BAL"
             },
             {
-              "at": "2026-10-20T00:56:26.891Z",
+              "at": "2026-10-20T01:41:40.247Z",
               "by": "seed",
               "action": "mapping-created",
               "detail": "MAP-0004 · FGLOBAL · FUND-ASSETS:FGLOBAL → INVESTMENT-GAIN:FGLOBAL"
@@ -29783,7 +29783,7 @@
               "investmentFeeBpsAnnual": 85,
               "insurancePremiumPerMilleMonthly": 0.45,
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.894Z",
+              "updatedAt": "2026-10-20T01:41:40.253Z",
               "updatedBy": "seed"
             },
             {
@@ -29802,7 +29802,7 @@
               "monthlyAdminFeeMinor": "450",
               "investmentFeeBpsAnnual": 65,
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.894Z",
+              "updatedAt": "2026-10-20T01:41:40.253Z",
               "updatedBy": "seed"
             },
             {
@@ -29821,7 +29821,7 @@
               "monthlyAdminFeeMinor": "550",
               "investmentFeeBpsAnnual": 75,
               "enabled": true,
-              "updatedAt": "2026-10-20T00:56:26.894Z",
+              "updatedAt": "2026-10-20T01:41:40.253Z",
               "updatedBy": "seed"
             }
           ],
@@ -29892,19 +29892,19 @@
               "detail": "SUPER-000001 · PROD-SUPER-ACCUM · SUPER-BAL · 25,000.00 AUD"
             },
             {
-              "at": "2026-10-20T00:56:26.894Z",
+              "at": "2026-10-20T01:41:40.253Z",
               "by": "seed",
               "action": "super-product-created",
               "detail": "PROD-SUPER-TTR · Transition to Retirement — Flexible Growth · transition-to-retirement · AUD"
             },
             {
-              "at": "2026-10-20T00:56:26.894Z",
+              "at": "2026-10-20T01:41:40.253Z",
               "by": "seed",
               "action": "super-product-created",
               "detail": "PROD-SUPER-PENSION · Super Pension — Conservative Income · pension · AUD"
             },
             {
-              "at": "2026-10-20T00:56:26.894Z",
+              "at": "2026-10-20T01:41:40.253Z",
               "by": "seed",
               "action": "super-product-created",
               "detail": "PROD-SUPER-ACCUM · Super Accumulation — Balanced Growth · accumulation · AUD"
@@ -31836,7 +31836,7 @@
           "2026-10-02",
           "2026-10-05"
         ],
-        "generatedAt": "2026-10-20T00:56:27.017Z"
+        "generatedAt": "2026-10-20T01:41:40.376Z"
       }
     },
     "POST /api/ai/approve 87cf3980": {
@@ -46661,7 +46661,7 @@
             "fiscalYearEnd": "12-31",
             "description": "CBUAE — IFRS 17 with local regulatory overlay",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -46673,7 +46673,7 @@
             "fiscalYearEnd": "06-30",
             "description": "AASB 17 — Australian superannuation overlay",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -46685,7 +46685,7 @@
             "fiscalYearEnd": "12-31",
             "description": "IFRS 17 — UK prudential reporting",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -46697,7 +46697,7 @@
             "fiscalYearEnd": "12-31",
             "description": "BNM MFRS 17 — Malaysian Takaful & conventional",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -46709,7 +46709,7 @@
             "fiscalYearEnd": "12-31",
             "description": "SOCPA / IFRS 17 — Saudi insurance accounting",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           }
         ],
@@ -46725,7 +46725,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded AE rule for FBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0001",
@@ -46738,7 +46738,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded AE rule for FGLOBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0004",
@@ -46751,7 +46751,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded AE rule for SUPER-BAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0005",
@@ -46764,7 +46764,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded AE rule for SUPER-GROWTH",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0003",
@@ -46777,7 +46777,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded AE rule for TKF-EQ",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0017",
@@ -46790,7 +46790,7 @@
             "revenueRecognition": "VARIABLE_FEE",
             "enabled": true,
             "note": "Auto-seeded AU rule for FBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0016",
@@ -46803,7 +46803,7 @@
             "revenueRecognition": "VARIABLE_FEE",
             "enabled": true,
             "note": "Auto-seeded AU rule for FGLOBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0019",
@@ -46816,7 +46816,7 @@
             "revenueRecognition": "VARIABLE_FEE",
             "enabled": true,
             "note": "Auto-seeded AU rule for SUPER-BAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0020",
@@ -46829,7 +46829,7 @@
             "revenueRecognition": "VARIABLE_FEE",
             "enabled": true,
             "note": "Auto-seeded AU rule for SUPER-GROWTH",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0018",
@@ -46842,7 +46842,7 @@
             "revenueRecognition": "VARIABLE_FEE",
             "enabled": true,
             "note": "Auto-seeded AU rule for TKF-EQ",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0022",
@@ -46855,7 +46855,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded GB rule for FBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0021",
@@ -46868,7 +46868,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded GB rule for FGLOBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0024",
@@ -46881,7 +46881,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded GB rule for SUPER-BAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0025",
@@ -46894,7 +46894,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded GB rule for SUPER-GROWTH",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0023",
@@ -46907,7 +46907,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded GB rule for TKF-EQ",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0012",
@@ -46920,7 +46920,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded MY rule for FBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0011",
@@ -46933,7 +46933,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded MY rule for FGLOBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0014",
@@ -46946,7 +46946,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded MY rule for SUPER-BAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0015",
@@ -46959,7 +46959,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded MY rule for SUPER-GROWTH",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0013",
@@ -46972,7 +46972,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded MY rule for TKF-EQ",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0007",
@@ -46985,7 +46985,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded SA rule for FBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0006",
@@ -46998,7 +46998,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded SA rule for FGLOBAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0009",
@@ -47011,7 +47011,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded SA rule for SUPER-BAL",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0010",
@@ -47024,7 +47024,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded SA rule for SUPER-GROWTH",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           },
           {
             "id": "FAR-0008",
@@ -47037,7 +47037,7 @@
             "revenueRecognition": "GENERAL_MEASUREMENT",
             "enabled": true,
             "note": "Auto-seeded SA rule for TKF-EQ",
-            "updatedAt": "2026-10-20T00:56:26.891Z"
+            "updatedAt": "2026-10-20T01:41:40.247Z"
           }
         ],
         "mappings": [
@@ -47058,7 +47058,7 @@
             "priority": 10,
             "descriptionTemplate": "Deposit received → accruals → {{policyId}} · {{productId}} premium allocation to {{fundId}} via {{partnerId}}",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -47078,7 +47078,7 @@
             "priority": 10,
             "descriptionTemplate": "Premium adjustment → investment allocation → {{fundId}} units issued for {{policyId}} ({{partnerId}} / {{omniChannel}})",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -47098,7 +47098,7 @@
             "priority": 10,
             "descriptionTemplate": "Investment gain → {{policyId}} · {{productId}} in {{fundId}} ({{omniChannel}} / {{subChannel}})",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -47118,7 +47118,7 @@
             "priority": 10,
             "descriptionTemplate": "Monthly super processing charge → member {{policyId}} · {{productId}} · {{amount}}",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -47138,7 +47138,7 @@
             "priority": 10,
             "descriptionTemplate": "Investment income credited by premium post-adjustment → {{policyId}} · {{period}} · {{amount}}",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -47158,7 +47158,7 @@
             "priority": 10,
             "descriptionTemplate": "Investment loss allocated by premium post-adjustment → {{policyId}} · {{period}} · {{amount}}",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           },
           {
@@ -47178,7 +47178,7 @@
             "priority": 20,
             "descriptionTemplate": "Super contribution — {{event}} on {{policyId}} · member balance credited",
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.891Z",
+            "updatedAt": "2026-10-20T01:41:40.247Z",
             "updatedBy": "seed"
           }
         ],
@@ -47346,25 +47346,25 @@
             "detail": "VCH-0001001 · premium-received · Premium received — cash to premium suspense · policy UL-000123 · product PROD-UL"
           },
           {
-            "at": "2026-10-20T00:56:26.891Z",
+            "at": "2026-10-20T01:41:40.247Z",
             "by": "seed",
             "action": "mapping-created",
             "detail": "MAP-0007 · SUPER-BAL · SUPER-MEMBER-BALANCE:SUPER-BAL → SUPER-FUND-ASSET:SUPER-BAL"
           },
           {
-            "at": "2026-10-20T00:56:26.891Z",
+            "at": "2026-10-20T01:41:40.247Z",
             "by": "seed",
             "action": "mapping-created",
             "detail": "MAP-0006 · SUPER-BAL · SUPER-FUND-ASSET:SUPER-BAL → SUPER-MEMBER-BALANCE:SUPER-BAL"
           },
           {
-            "at": "2026-10-20T00:56:26.891Z",
+            "at": "2026-10-20T01:41:40.247Z",
             "by": "seed",
             "action": "mapping-created",
             "detail": "MAP-0005 · SUPER-BAL · SUPER-MEMBER-BALANCE:SUPER-BAL → SUPER-FEE-INCOME:SUPER-BAL"
           },
           {
-            "at": "2026-10-20T00:56:26.891Z",
+            "at": "2026-10-20T01:41:40.247Z",
             "by": "seed",
             "action": "mapping-created",
             "detail": "MAP-0004 · FGLOBAL · FUND-ASSETS:FGLOBAL → INVESTMENT-GAIN:FGLOBAL"
@@ -47466,7 +47466,7 @@
             "investmentFeeBpsAnnual": 85,
             "insurancePremiumPerMilleMonthly": 0.45,
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.894Z",
+            "updatedAt": "2026-10-20T01:41:40.253Z",
             "updatedBy": "seed"
           },
           {
@@ -47485,7 +47485,7 @@
             "monthlyAdminFeeMinor": "450",
             "investmentFeeBpsAnnual": 65,
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.894Z",
+            "updatedAt": "2026-10-20T01:41:40.253Z",
             "updatedBy": "seed"
           },
           {
@@ -47504,7 +47504,7 @@
             "monthlyAdminFeeMinor": "550",
             "investmentFeeBpsAnnual": 75,
             "enabled": true,
-            "updatedAt": "2026-10-20T00:56:26.894Z",
+            "updatedAt": "2026-10-20T01:41:40.253Z",
             "updatedBy": "seed"
           }
         ],
@@ -47575,19 +47575,19 @@
             "detail": "SUPER-000001 · PROD-SUPER-ACCUM · SUPER-BAL · 25,000.00 AUD"
           },
           {
-            "at": "2026-10-20T00:56:26.894Z",
+            "at": "2026-10-20T01:41:40.253Z",
             "by": "seed",
             "action": "super-product-created",
             "detail": "PROD-SUPER-TTR · Transition to Retirement — Flexible Growth · transition-to-retirement · AUD"
           },
           {
-            "at": "2026-10-20T00:56:26.894Z",
+            "at": "2026-10-20T01:41:40.253Z",
             "by": "seed",
             "action": "super-product-created",
             "detail": "PROD-SUPER-PENSION · Super Pension — Conservative Income · pension · AUD"
           },
           {
-            "at": "2026-10-20T00:56:26.894Z",
+            "at": "2026-10-20T01:41:40.253Z",
             "by": "seed",
             "action": "super-product-created",
             "detail": "PROD-SUPER-ACCUM · Super Accumulation — Balanced Growth · accumulation · AUD"

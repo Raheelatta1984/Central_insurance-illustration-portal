@@ -467,7 +467,7 @@ export class DataWarehouse {
     return { content, rows: rows.length, bytes: new TextEncoder().encode(content).length, fingerprint: contentFingerprint(content), masked: maskPii, ...(masked.method ? { maskingMethod: masked.method } : {}), maskedColumns: masked.maskedColumns };
   }
 
-  requestExport(w: World, datasetId: WarehouseDatasetId, format: WarehouseFormat = 'csv', by = 'data-analyst'): WarehouseExport {
+  requestExport(w: World, datasetId: WarehouseDatasetId, format: WarehouseFormat = 'csv', by = 'data-analyst'): WarehouseExport & { readonly content: string } {
     const id = `WHEX-${String(++this.seq).padStart(6, '0')}`;
     const output = this.exportContent(w, datasetId, format, { maskPii: true, transactionId: `export:${id}` });
     const record: WarehouseExport = {
@@ -478,7 +478,7 @@ export class DataWarehouse {
       masked: output.masked, ...(output.maskingMethod ? { maskingMethod: output.maskingMethod } : {}), maskedColumns: output.maskedColumns ?? [],
     };
     this.exports.push(record);
-    return record;
+    return { ...record, content: output.content };
   }
 
   exportsSnapshot(): ReadonlyArray<WarehouseExport> { return [...this.exports].slice(-20).reverse(); }
