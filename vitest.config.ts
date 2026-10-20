@@ -5,7 +5,7 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     environment: 'node',
     pool: 'threads',
-    poolOptions: { threads: { maxThreads: 2, minThreads: 1 } },
+    maxWorkers: 2,
     testTimeout: 20000,
     reporters: ['dot'],
     coverage: {

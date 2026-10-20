@@ -31,6 +31,8 @@ export default tseslint.config(
       '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
       'no-empty': ['warn', { allowEmptyCatch: false }],
+      'no-useless-assignment': 'warn',
+      'preserve-caught-error': 'warn',
     },
   },
 );

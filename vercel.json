@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "git": {
+    "deploymentEnabled": {
+      "dependabot/**": false
+    }
+  },
   "installCommand": "echo 'the demo needs no dependencies: every source file is committed'",
   "buildCommand": "node tools/demo-site.mjs",
   "outputDirectory": "site",
