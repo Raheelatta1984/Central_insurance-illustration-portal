@@ -22,9 +22,33 @@ export interface PdfLine {
   readonly indent?: number;
   readonly gapBefore?: number;
   readonly rule?: boolean;          // draw a hairline under the line
+  /** Set in Courier, so a table of figures lines up column by column. */
+  readonly mono?: boolean;
 }
 
-export interface PdfSection { readonly heading?: string; readonly lines: readonly PdfLine[] }
+/**
+ * A column of figures. Helvetica's advance varies per glyph, so a benefit illustration printed in it
+ * is a staircase; Courier's does not, so the same table comes out straight. Widths are characters.
+ */
+export interface PdfTableColumn {
+  readonly header: string;
+  readonly width: number;
+  readonly align?: 'left' | 'right';
+}
+
+export interface PdfTable {
+  readonly columns: readonly PdfTableColumn[];
+  readonly rows: ReadonlyArray<readonly string[]>;
+  readonly size?: number;
+  /** Printed under the table: what the figures assume. */
+  readonly note?: string;
+}
+
+export interface PdfSection {
+  readonly heading?: string;
+  readonly lines: readonly PdfLine[];
+  readonly table?: PdfTable;
+}
 
 export interface PdfDocument {
   readonly title: string;
@@ -80,7 +104,7 @@ function wrap(text: string, size: number, indent: number): string[] {
   return lines.length === 0 ? [''] : lines;
 }
 
-interface Placed { readonly text: string; readonly bold: boolean; readonly size: number; readonly x: number; readonly y: number; readonly rule: boolean }
+interface Placed { readonly text: string; readonly bold: boolean; readonly size: number; readonly x: number; readonly y: number; readonly rule: boolean; readonly mono: boolean }
 
 function layout(doc: PdfDocument): Placed[][] {
   const pages: Placed[][] = [];
@@ -94,32 +118,65 @@ function layout(doc: PdfDocument): Placed[][] {
   };
   const ensure = (needed: number) => { if (y - needed < BOTTOM_LIMIT) newPage(); };
 
+  const put = (text: string, options: { bold?: boolean; size?: number; indent?: number; rule?: boolean; mono?: boolean } = {}) => {
+    page.push({ text, bold: options.bold ?? false, size: options.size ?? 10, x: MARGIN + (options.indent ?? 0), y, rule: options.rule ?? false, mono: options.mono ?? false });
+  };
+
   if (doc.title) {
-    page.push({ text: doc.title, bold: true, size: 16, x: MARGIN, y, rule: false });
+    put(doc.title, { bold: true, size: 16 });
     y -= 22;
   }
   if (doc.subtitle) {
-    for (const line of wrap(doc.subtitle, 10, 0)) { page.push({ text: line, bold: false, size: 10, x: MARGIN, y, rule: false }); y -= LINE_HEIGHT; }
+    for (const line of wrap(doc.subtitle, 10, 0)) { put(line, { size: 10 }); y -= LINE_HEIGHT; }
     y -= 4;
-    page.push({ text: '', bold: false, size: 10, x: MARGIN, y, rule: true });
+    put('', { size: 10, rule: true });
     y -= 16;
   }
 
   for (const section of doc.sections) {
     if (section.heading) {
       ensure(34);
-      page.push({ text: section.heading, bold: true, size: 12, x: MARGIN, y, rule: false });
+      put(section.heading, { bold: true, size: 12 });
       y -= 18;
     }
     for (const line of section.lines) {
       const size = line.size ?? 10;
       const indent = line.indent ?? 0;
       if (line.gapBefore) { ensure(line.gapBefore); y -= line.gapBefore; }
-      const wrapped = wrap(line.text, size, indent);
+      // A monospaced line is already the width its author chose; wrapping it would break the columns.
+      const wrapped = line.mono ? [line.text] : wrap(line.text, size, indent);
       for (const [i, text] of wrapped.entries()) {
         ensure(LINE_HEIGHT + 2);
-        page.push({ text, bold: line.bold ?? false, size, x: MARGIN + indent, y, rule: Boolean(line.rule) && i === wrapped.length - 1 });
+        put(text, { bold: line.bold ?? false, size, indent, rule: Boolean(line.rule) && i === wrapped.length - 1, mono: line.mono });
         y -= size >= 12 ? LINE_HEIGHT + 3 : LINE_HEIGHT;
+      }
+    }
+    if (section.table) {
+      const size = section.table.size ?? 7.5;
+      const rowHeight = size + 2.5;
+      const rowText = (cells: readonly string[], header: boolean): string => section.table!.columns
+        .map((column, i) => fitCell(String(header ? column.header : cells[i] ?? ''), column.width, column.align))
+        .join(' ')
+        .replace(/\s+$/, '');
+      const headerText = rowText([], true);
+      ensure(rowHeight * 3);
+      put(headerText, { bold: true, size, mono: true, rule: true });
+      y -= rowHeight + 2;
+      for (const cells of section.table.rows) {
+        // A table that breaks across pages repeats its header, because a column of bare figures
+        // with no heading is a puzzle the customer did not ask for.
+        if (y - rowHeight < BOTTOM_LIMIT) {
+          newPage();
+          put(headerText, { bold: true, size, mono: true, rule: true });
+          y -= rowHeight + 2;
+        }
+        put(rowText(cells, false), { size, mono: true });
+        y -= rowHeight;
+      }
+      if (section.table.note) {
+        ensure(LINE_HEIGHT * 2);
+        y -= 4;
+        for (const line of wrap(section.table.note, 8, 0)) { put(line, { size: 8 }); y -= 12; }
       }
     }
     y -= 6;
@@ -128,10 +185,23 @@ function layout(doc: PdfDocument): Placed[][] {
   return pages.length === 0 ? [[]] : pages;
 }
 
+/** Courier's advance is exactly 0.6 em, which is why a table laid out in characters lands in columns. */
+function fitCell(text: string, width: number, align: 'left' | 'right' = 'left'): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length === width) return flat;
+  if (flat.length > width) {
+    // An over-long cell keeps its right-hand end: in a column of money the digits that matter are
+    // the ones on the right, and a truncated figure is worse than a marked one.
+    return flat.length <= 2 ? flat.slice(0, width) : `…${flat.slice(-(width - 1))}`;
+  }
+  return align === 'right' ? flat.padStart(width, ' ') : flat.padEnd(width, ' ');
+}
+
 function contentStream(lines: readonly Placed[], footer: string | undefined, pageNo: number, pageCount: number): string {
   const ops: string[] = [];
   for (const l of lines) {
-    ops.push('BT', `/${l.bold ? 'F2' : 'F1'} ${l.size} Tf`, `1 0 0 1 ${l.x} ${l.y.toFixed(2)} Tm`, `(${escapeText(l.text)}) Tj`, 'ET');
+    const font = l.mono ? (l.bold ? 'F4' : 'F3') : (l.bold ? 'F2' : 'F1');
+    ops.push('BT', `/${font} ${l.size} Tf`, `1 0 0 1 ${l.x} ${l.y.toFixed(2)} Tm`, `(${escapeText(l.text)}) Tj`, 'ET');
     if (l.rule) {
       ops.push('0.6 w', `${l.x} ${(l.y - 3).toFixed(2)} m`, `${PAGE_WIDTH - MARGIN} ${(l.y - 3).toFixed(2)} l`, 'S');
     }
@@ -164,8 +234,8 @@ export function renderPdf(doc: PdfDocument, fileName?: string): PdfFile {
   const objects: string[] = [];
   const objectIds: Record<string, number> = {};
 
-  // 1 catalog, 2 pages, 3 Helvetica, 4 Helvetica-Bold; then page objects and content streams.
-  const firstPageObject = 5;
+  // 1 catalog, 2 pages, 3 Helvetica, 4 Helvetica-Bold, 5 Courier, 6 Courier-Bold; then pages.
+  const firstPageObject = 7;
   pages.forEach((_, i) => {
     objectIds[`page${i}`] = firstPageObject + i * 2;
     objectIds[`content${i}`] = firstPageObject + i * 2 + 1;
@@ -176,10 +246,12 @@ export function renderPdf(doc: PdfDocument, fileName?: string): PdfFile {
   objects.push(`<< /Type /Pages /Count ${pages.length} /Kids [${pages.map((_, i) => `${objectIds[`page${i}`]} 0 R`).join(' ')}] >>`);
   objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
   objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>');
+  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>');
 
   pages.forEach((lines, i) => {
     const content = contentStream(lines, doc.footer, i + 1, pages.length);
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${objectIds[`content${i}`]} 0 R >>`);
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents ${objectIds[`content${i}`]} 0 R >>`);
     objects.push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
   });
 

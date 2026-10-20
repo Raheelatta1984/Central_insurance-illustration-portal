@@ -26,6 +26,25 @@ interface StageView {
   summary: Array<{ label: string; value: string; tone?: 'ok' | 'warn' | 'bad' | 'info' }>;
   artefacts: string[]; produces: string[]; fields: FieldView[]; answers: Record<string, unknown>;
 }
+interface IllustrationViewShape {
+  currency: string; headline: string; paymentTermsLabel: string; assumptions: string[];
+  scenarios: Array<{ label: string; rate: string; source: string }>;
+  milestoneHeader: string[];
+  milestones: Array<{ label: string; year: number; age: number; values: string[] }>;
+  yearlyHeader: string[]; yearly: string[][]; investmentLinked: boolean;
+}
+interface DeliveryView {
+  status: 'sent' | 'failed' | 'not-sent'; transport: string; messageId: string;
+  providerMessageId: string | null; to: string; at: string; error: string | null; detail: string;
+}
+interface QuotationView {
+  quotationId: string; version: number; status: string; totalPayable: string; expiresAt: string;
+  pdf: { fileName: string; bytes: number; pages: number; fingerprint: string; opens: boolean };
+  illustration: IllustrationViewShape | null;
+  email: { messageId: string; to: string; subject: string; dispatchedAt: string; delivery: DeliveryView | null } | null;
+  finalisation: { signedBy: string; signedAt: string; buyToken: string; coolingOffEndsOn: string } | null;
+  compliance: Array<{ label: string; passes: boolean; hard: boolean; detail: string }>; blockers: string[]; warnings: string[];
+}
 interface ProgressView {
   percent: number; completeStages: number; totalStages: number; nextRecommended: JourneyStageId | null;
   nextRecommendedTitle: string | null; headline: string; blockers: string[]; stages: StageView[];
@@ -51,7 +70,10 @@ interface JourneyView {
   manualCodes: { conditions: Array<{ code: string; label: string; bps: number }>; pursuits: Array<{ code: string; bps: number; exclusion?: string }>; familyHistory: Array<{ code: string; bps: number }> };
   engagements: Array<Record<string, unknown>>;
   reinsuranceAssists: Array<Record<string, unknown>>;
-  quotations: Array<{ quotationId: string; version: number; status: string; totalPayable: string; expiresAt: string; pdf: { fileName: string; bytes: number; pages: number; fingerprint: string; opens: boolean }; email: { messageId: string; to: string; subject: string; dispatchedAt: string } | null; finalisation: { signedBy: string; signedAt: string; buyToken: string; coolingOffEndsOn: string } | null; compliance: Array<{ label: string; passes: boolean; hard: boolean; detail: string }>; blockers: string[]; warnings: string[] }>;
+  channelOptions: Array<{ code: string; name: string }>;
+  subChannelOptions: Array<{ code: string; name: string; parentChannelCode: string }>;
+  mail: { transport: string; configured: boolean; reason: string } | null;
+  quotations: Array<QuotationView>;
   payments: Array<{ id: string; reference: string; method: string; amount: string; fee: string; net: string; status: string; settlesOn: string; proof: string[]; card: { brand: string; maskedPan: string; authentication: string; cvvStored: boolean } | null; bnpl: { provider: string; instalments: number; disclosure: string; schedule: Array<{ number: number; dueDate: string; amount: string; status: string }> } | null }>;
   cases: CaseView[];
 }
@@ -365,6 +387,7 @@ export function CustomerJourneyPanel({
             )}
             {error && <div className="errorBox small">{error}</div>}
             {progress.blockers.length > 0 && <MissingList blockers={progress.blockers} />}
+            <MailDesk onReload={onReload} />
           </div>
         }
       />
@@ -515,6 +538,27 @@ function specialEditor(fieldId: string, args: BuildArgs): React.ReactNode | null
         onAnswers={(v) => set({ answers: v })}
         onAgreed={(v) => set({ attestationAgreed: v })}
       />
+    );
+  }
+  // The two shelves a case may have been sold through. The options are the tenant's own channels,
+  // so they come from the snapshot rather than from the stage definition.
+  if (stage.id === 'coverage' && fieldId === 'channelCode') {
+    const codes = journey.channelOptions ?? [];
+    return (
+      <select value={String(value ?? '')} onChange={(e) => set({ channelCode: e.target.value, subChannelCode: '' })}>
+        <option value="">— the product master’s own rates —</option>
+        {codes.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}
+      </select>
+    );
+  }
+  if (stage.id === 'coverage' && fieldId === 'subChannelCode') {
+    const parent = String(draft['channelCode'] ?? '').trim();
+    const codes = (journey.subChannelOptions ?? []).filter((c) => parent === '' || c.parentChannelCode === parent);
+    return (
+      <select value={String(value ?? '')} onChange={(e) => set({ subChannelCode: e.target.value })} disabled={codes.length === 0}>
+        <option value="">— inherit from the omni-channel —</option>
+        {codes.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}
+      </select>
     );
   }
   if (stage.id === 'funds' && fieldId === 'weights') {
@@ -720,8 +764,10 @@ function stageExtras(args: BuildArgs): React.ReactNode {
         <div className="stat"><span>Total payable</span><b>{quotation.totalPayable}</b></div>
         <div className="stat"><span>Valid until</span><b>{quotation.expiresAt.slice(0, 10)} ({journey.quotationValidityDays} days)</b></div>
         <div className="stat"><span>PDF</span><b>{quotation.pdf.fileName} · {quotation.pdf.pages} page(s) · {(quotation.pdf.bytes / 1024).toFixed(1)} KB · fingerprint {quotation.pdf.fingerprint}{quotation.pdf.opens ? ' · opens ✓' : ' · DOES NOT OPEN'}</b></div>
-        {quotation.email && <div className="stat"><span>Emailed</span><b>{quotation.email.to} · {quotation.email.dispatchedAt} · {quotation.email.messageId}</b></div>}
+        {quotation.email && <DeliveryRow email={quotation.email} />}
         {quotation.finalisation && <div className="stat"><span>Signed</span><b>{quotation.finalisation.signedBy} on {quotation.finalisation.signedAt.slice(0, 10)} · cooling-off to {quotation.finalisation.coolingOffEndsOn} · token {quotation.finalisation.buyToken}</b></div>}
+        {quotation.illustration && <IllustrationPanel illustration={quotation.illustration} />}
+        <ResendQuotation quotationId={quotation.quotationId} to={quotation.email?.to} run={args.run} busy={args.busy} />
         <details>
           <summary className="muted small">Compliance checks ({quotation.compliance.filter((c) => c.passes).length}/{quotation.compliance.length} pass)</summary>
           <ul className="list small">
@@ -809,6 +855,161 @@ function stageExtras(args: BuildArgs): React.ReactNode {
 }
 
 function draftOf(args: BuildArgs): Record<string, unknown> { return args.draft; }
+
+/* ------------------------------------------------------------------ the illustration, and the email that carries it */
+
+/**
+ * The benefit illustration, as the customer will read it: the milestones they ask about by name,
+ * then every year behind them. The figures come from the engine already formatted — a screen never
+ * re-rounds a number the quotation document has printed.
+ */
+const IllustrationPanel: React.FC<{ illustration: IllustrationViewShape }> = ({ illustration }) => (
+  <div className="extra">
+    <GuideHeading title="Benefit illustration — what this policy is worth" />
+    <div className="stat"><span>Payment terms</span><b>{illustration.paymentTermsLabel}</b></div>
+    <div className="stat"><span>Assumed growth before charges</span><b>{illustration.scenarios.map((sc) => `${sc.label} ${sc.rate}`).join(' · ')}</b></div>
+    <div className="stat"><span>Where each rate comes from</span><b>{illustration.scenarios.map((sc) => sc.source).join(' · ')}</b></div>
+    <div className="stat"><span>Headline</span><b>{illustration.headline}</b></div>
+    <div className="tableWrap">
+      <table className="gridTable autoFit">
+        <thead><tr>{illustration.milestoneHeader.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+        <tbody>
+          {illustration.milestones.map((m) => (
+            <tr key={`${m.year}-${m.label}`}>
+              <td>{m.label}</td>
+              {m.values.map((v, i) => <td key={i}>{v}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <details>
+      <summary className="muted small">Every policy year ({illustration.yearly.length} rows)</summary>
+      <div className="tableWrap">
+        <table className="gridTable autoFit">
+          <thead><tr>{illustration.yearlyHeader.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {illustration.yearly.map((row) => (
+              <tr key={row[0]}>{row.map((cell, i) => <td key={i}>{cell}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    <ul className="list small muted">{illustration.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>
+  </div>
+);
+
+/** What actually happened to the message: sent, refused, or held because nothing is configured. */
+const DeliveryRow: React.FC<{ email: QuotationView['email'] }> = ({ email }) => {
+  if (!email) return null;
+  const delivery = email.delivery;
+  const tone = !delivery ? 'info' : delivery.status === 'sent' ? 'ok' : delivery.status === 'failed' ? 'bad' : 'warn';
+  return (
+    <div className="stat">
+      <span>Emailed</span>
+      <b>
+        {email.to} · {email.dispatchedAt} · {email.messageId}
+        {delivery && (
+          <>
+            {' · '}
+            <span className={`pill ${tone}`}>
+              {delivery.status === 'sent' ? `sent via ${delivery.transport}` : delivery.status === 'failed' ? 'delivery FAILED' : 'NOT delivered'}
+            </span>
+            {delivery.providerMessageId ? ` · ${delivery.providerMessageId}` : ''}
+          </>
+        )}
+      </b>
+      {delivery && <p className={`small ${tone === 'ok' ? 'okText' : tone === 'bad' ? 'bad' : 'warnText'}`}>{delivery.detail}</p>}
+    </div>
+  );
+};
+
+/** Re-send the same document. The attempt is recorded against the quotation, like the first one. */
+const ResendQuotation: React.FC<{
+  quotationId: string; to: string | undefined;
+  run: (fn: () => Promise<unknown>) => Promise<void>; busy: boolean;
+}> = ({ quotationId, to, run, busy }) => (
+  <div className="row">
+    <button
+      className="ghost"
+      disabled={busy}
+      onClick={() => void run(() => api('/journey/quotation/email', 'POST', { quotationId, ...(to && !to.includes('*') ? { to } : {}), by: 'console-operator' }))}
+    >
+      Email this quotation now
+    </button>
+    <span className="muted small">Sends through the transport shown in the mail desk below — the answer is recorded on the quotation.</span>
+  </div>
+);
+
+/**
+ * The mail desk: whether the quotation email will actually leave the building, and a button that
+ * proves it before a customer is promised anything.
+ */
+const MailDesk: React.FC<{ onReload: () => Promise<void> }> = ({ onReload }) => {
+  const [status, setStatus] = useState<{
+    transport: string; kind: string; from: string; configured: boolean; reason: string;
+    sent: number; failed: number; notSent: number; last: DeliveryView | null; env: Record<string, string>;
+  } | null>(null);
+  const [to, setTo] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<DeliveryView | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    api<{ transport: string; kind: string; from: string; configured: boolean; reason: string; sent: number; failed: number; notSent: number; last: DeliveryView | null; env: Record<string, string> }>('/mail/status')
+      .then(setStatus)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, []);
+
+  useEffect(load, [load]);
+
+  const sendTest = async () => {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await api<{ delivery: DeliveryView }>('/mail/test', 'POST', { to: to.trim(), by: 'console-operator' });
+      setResult(res.delivery);
+      load();
+      await onReload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!status) return null;
+  return (
+    <div className="extra">
+      <GuideHeading title="Mail delivery" />
+      <div className="stat">
+        <span>Transport</span>
+        <b>
+          {status.transport} · from {status.from || '—'}
+          {' '}
+          <span className={`pill ${status.configured ? 'ok' : 'warn'}`}>{status.configured ? 'live' : 'not delivering'}</span>
+        </b>
+        {!status.configured && <p className="small warnText">{status.reason}</p>}
+      </div>
+      <div className="stat"><span>Deliveries this session</span><b>{status.sent} sent · {status.notSent} held · {status.failed} failed</b></div>
+      <div className="stat">
+        <span>Settings present</span>
+        <b>{Object.entries(status.env).map(([k, v]) => `${k}: ${v}`).join(' · ')}</b>
+      </div>
+      {status.last && <div className="stat"><span>Last attempt</span><b>{status.last.status} · {status.last.detail}</b></div>}
+      <div className="row">
+        <label>Test address<input value={to} onChange={(e) => setTo(e.target.value)} placeholder="ops@example.com" /></label>
+        <button className="ghost" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to.trim())} onClick={() => void sendTest()}>
+          {busy ? 'Sending…' : 'Send a test email'}
+        </button>
+      </div>
+      {result && <div className={`small ${result.status === 'sent' ? 'okBox' : 'errorBox'}`}>{result.detail}</div>}
+      {error && <div className="errorBox small">{error}</div>}
+    </div>
+  );
+};
 
 /* ------------------------------------------------------------------ the two buttons that need the API */
 

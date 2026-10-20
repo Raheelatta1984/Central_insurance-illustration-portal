@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-20T02:23:09.094Z",
+  "capturedAt": "2026-10-20T09:39:37.096Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -19579,6 +19579,10 @@
               "partners": [],
               "offers": [],
               "productNames": [],
+              "illustrationRates": {
+                "rates": [],
+                "audit": []
+              },
               "configured": false,
               "channelCount": 0,
               "enabledChannelCount": 0,
@@ -19887,6 +19891,18 @@
               },
               "paymentFrequency": {
                 "mandatory": true,
+                "editable": true
+              },
+              "premiumPayingTermYears": {
+                "mandatory": false,
+                "editable": true
+              },
+              "channelCode": {
+                "mandatory": false,
+                "editable": true
+              },
+              "subChannelCode": {
+                "mandatory": false,
                 "editable": true
               },
               "annualIncome": {
@@ -20685,6 +20701,38 @@
                     "annual",
                     "single"
                   ]
+                },
+                {
+                  "id": "premiumPayingTermYears",
+                  "label": "Premium paying term (years)",
+                  "defaultLabel": "Premium paying term (years)",
+                  "renamed": false,
+                  "kind": "number",
+                  "mandatory": false,
+                  "editable": true,
+                  "hint": "how many years the customer pays for; blank = for the whole benefit term"
+                },
+                {
+                  "id": "channelCode",
+                  "label": "Sold through (omni-channel)",
+                  "defaultLabel": "Sold through (omni-channel)",
+                  "renamed": false,
+                  "kind": "select",
+                  "mandatory": false,
+                  "editable": true,
+                  "options": [],
+                  "hint": "blank = the product master’s own rates"
+                },
+                {
+                  "id": "subChannelCode",
+                  "label": "Sub-channel",
+                  "defaultLabel": "Sub-channel",
+                  "renamed": false,
+                  "kind": "select",
+                  "mandatory": false,
+                  "editable": true,
+                  "options": [],
+                  "hint": "blank = inherit from the omni-channel"
                 },
                 {
                   "id": "annualIncome",
@@ -24718,6 +24766,13 @@
           "reinsuranceAssists": [],
           "quotations": [],
           "payments": [],
+          "channelOptions": [],
+          "subChannelOptions": [],
+          "mail": {
+            "transport": "dry-run",
+            "configured": false,
+            "reason": "Set MAIL_FROM to the address quotations are sent from."
+          },
           "cases": [
             {
               "caseId": "JNY-000001",
@@ -25486,6 +25541,32 @@
                           "annual",
                           "single"
                         ]
+                      },
+                      {
+                        "id": "premiumPayingTermYears",
+                        "label": "Premium paying term (years)",
+                        "kind": "number",
+                        "mandatory": false,
+                        "editable": true,
+                        "hint": "how many years the customer pays for; blank = for the whole benefit term"
+                      },
+                      {
+                        "id": "channelCode",
+                        "label": "Sold through (omni-channel)",
+                        "kind": "select",
+                        "mandatory": false,
+                        "editable": true,
+                        "options": [],
+                        "hint": "blank = the product master’s own rates"
+                      },
+                      {
+                        "id": "subChannelCode",
+                        "label": "Sub-channel",
+                        "kind": "select",
+                        "mandatory": false,
+                        "editable": true,
+                        "options": [],
+                        "hint": "blank = inherit from the omni-channel"
                       },
                       {
                         "id": "annualIncome",

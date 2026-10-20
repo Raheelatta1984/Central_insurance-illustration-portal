@@ -27,6 +27,9 @@
  * schedules and the settlement lag are filed by the operator and audited.
  */
 import { applyBps, formatAmount, money, Money, parseAmount, toDecimalString } from './money.js';
+import {
+  IllustrationAssumptionTable, IllustrationRates, IllustrationScope, PartialRates, ResolvedRates,
+} from './illustration.js';
 
 export class ChannelError extends Error {}
 
@@ -178,6 +181,12 @@ export class OmniChannelRegistry {
   private readonly offers = new Map<string, PartnerProductOffer>();
   /** Product name aliases per channel: the secondary name a plan carries on that channel's shelf. */
   private readonly channelNames = new Map<string, string>();
+  /**
+   * The filed illustration rates. They live here because a rate is filed the same way a shelf name is:
+   * against a product, optionally narrowed to an omni-channel, optionally narrowed again to a
+   * sub-channel, with a blank falling back to the parent row.
+   */
+  private readonly illustration = new IllustrationAssumptionTable();
   private readonly trail: Array<{ at: string; by: string; action: string; detail: string }> = [];
 
   constructor(
@@ -290,6 +299,40 @@ export class OmniChannelRegistry {
     // is. Only a name filed against the product — for this shelf, this channel, or the master — is used.
     if (product?.secondaryName) return { name: product.secondaryName, source: 'the product master' };
     return { name: product?.name ?? wanted, source: 'the registered product name' };
+  }
+
+  /* ------------------------------------------------------------------ illustration rates */
+
+  /**
+   * The rates an illustration of this product is allowed to assume on this shelf: sub-channel, then
+   * omni-channel, then the product master, then the regulatory pack. A figure nobody filed is the
+   * pack's, and the answer says which layer each figure came from.
+   */
+  illustrationRatesFor(productId: string, scope: { channelCode?: string | null; subChannelCode?: string | null } = {}, packRates?: IllustrationRates): ResolvedRates {
+    return this.illustration.resolve({ productId, ...scope }, packRates);
+  }
+
+  listIllustrationRates() { return this.illustration.list(); }
+
+  illustrationRateAudit(limit = 12) { return this.illustration.audit(limit); }
+
+  /**
+   * File a rate row. Leaving a figure out means "inherit it from the parent"; leaving all three out
+   * removes the row. A sub-channel may only be filed under a channel that exists, and a product that
+   * is not in the factory cannot have rates filed against it.
+   */
+  setIllustrationRates(input: IllustrationScope & PartialRates & { note?: string; at?: string; by?: string }) {
+    const productId = (input.productId ?? '').trim().toUpperCase();
+    if (!this.resolveProduct(productId)) throw new ChannelError(`${productId} is not filed in the product factory`);
+    const channelCode = (input.channelCode ?? '').trim().toUpperCase();
+    if (channelCode && !this.channels.has(channelCode)) throw new ChannelError(`channel ${channelCode} is not filed on this tenant`);
+    const subChannelCode = (input.subChannelCode ?? '').trim().toUpperCase();
+    if (subChannelCode && !this.subChannels.has(subChannelCode)) throw new ChannelError(`sub-channel ${subChannelCode} is not filed on this tenant`);
+    return this.illustration.set({ ...input, productId, channelCode, subChannelCode });
+  }
+
+  clearIllustrationRates(input: IllustrationScope & { at?: string; by?: string }): boolean {
+    return this.illustration.clear(input);
   }
 
   /* ------------------------------------------------------------------ writing */
@@ -681,6 +724,7 @@ export class OmniChannelRegistry {
         const [channelCode, productId] = key.split('|') as [string, string];
         return { channelCode, productId, secondaryName };
       }),
+      illustrationRates: this.illustration.snapshot(),
       ...this.status(),
       unfiled,
       standardAvailable: STANDARD_OMNI_CHANNELS.length,

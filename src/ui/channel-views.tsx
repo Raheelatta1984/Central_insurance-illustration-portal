@@ -15,7 +15,7 @@
  * what that blocks, and offers one button that files the six standard omni-channel routes. After that every
  * figure on the screen is editable, every edit goes through the API, and every edit is audited.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { WorldSnapshot } from '../core/demo';
 import { api } from './api';
 import { GridBar, GridFrame, NumberCell, Pill, RowActions, SelectCell, StatPills, TextCell, useGrid } from './grid';
@@ -130,6 +130,154 @@ const SubChannelPanel: React.FC<{
 };
 
 export type OmniChannelData = WorldSnapshot['erp']['master']['channels'];
+
+/**
+ * The illustration rate table: the three growth rates a quotation may assume, filed per product and
+ * narrowed per omni-channel and per sub-channel. A figure left blank inherits from its parent, so
+ * "this shelf is priced more conservatively" is one row rather than a copy of the whole table.
+ */
+const IllustrationRatesPanel: React.FC<{
+  data: WorldSnapshot;
+  busy: boolean;
+  onRun: (label: string, fn: () => Promise<unknown>) => Promise<unknown>;
+}> = ({ data, busy, onRun }) => {
+  const channels = data.erp.master.channels;
+  const products = data.erp.master.products;
+  const [rows, setRows] = useState<Array<{
+    productId: string; channelCode: string | null; subChannelCode: string | null; level: string;
+    lowBps?: number; midBps?: number; highBps?: number; note: string; updatedAt: string; updatedBy: string;
+  }>>([]);
+  const [resolved, setResolved] = useState<Array<{ productId: string; name: string; category: string; default: { rates: { lowBps: number; midBps: number; highBps: number }; level: string; sources: Record<string, string> } }>>([]);
+  const [packRates, setPackRates] = useState<{ lowBps: number; midBps: number; highBps: number } | null>(null);
+  const [draft, setDraft] = useState({ productId: products[0]?.productId ?? '', channelCode: '', subChannelCode: '', low: '', mid: '', high: '', note: '' });
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    api<{
+      rates: Array<{ productId: string; channelCode: string | null; subChannelCode: string | null; level: string; lowBps?: number; midBps?: number; highBps?: number; note: string; updatedAt: string; updatedBy: string }>;
+      resolved: Array<{ productId: string; name: string; category: string; default: { rates: { lowBps: number; midBps: number; highBps: number }; level: string; sources: Record<string, string> } }>;
+      packRates: { lowBps: number; midBps: number; highBps: number };
+    }>('/master/illustration-rates')
+      .then((res) => { setRows(res.rates); setResolved(res.resolved); setPackRates(res.packRates); })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, []);
+
+  useEffect(load, [load]);
+
+  const pct = (bps?: number): string => (bps === undefined ? 'inherited' : `${(bps / 100).toFixed(2)}%`);
+  const toBps = (value: string): number | undefined => (value.trim() === '' ? undefined : Math.round(Number(value) * 100));
+  const subChannelsHere = channels.subChannels.filter((sc) => draft.channelCode === '' || sc.parentChannelCode === draft.channelCode);
+
+  const save = async () => {
+    setError(null);
+    await onRun(`illustration rates for ${draft.productId}${draft.channelCode ? ` on ${draft.channelCode}` : ''}`, () => api('/master/illustration-rates', 'POST', {
+      productId: draft.productId,
+      ...(draft.channelCode ? { channelCode: draft.channelCode } : {}),
+      ...(draft.subChannelCode ? { subChannelCode: draft.subChannelCode } : {}),
+      ...(toBps(draft.low) === undefined ? {} : { lowBps: toBps(draft.low) }),
+      ...(toBps(draft.mid) === undefined ? {} : { midBps: toBps(draft.mid) }),
+      ...(toBps(draft.high) === undefined ? {} : { highBps: toBps(draft.high) }),
+      note: draft.note, by: 'omni-channel-grid',
+    }));
+    load();
+  };
+
+  const remove = async (row: (typeof rows)[number]) => {
+    setError(null);
+    await onRun(`illustration rates removed for ${row.productId}`, () => api('/master/illustration-rates/remove', 'POST', {
+      productId: row.productId,
+      ...(row.channelCode ? { channelCode: row.channelCode } : {}),
+      ...(row.subChannelCode ? { subChannelCode: row.subChannelCode } : {}),
+      by: 'omni-channel-grid',
+    }));
+    load();
+  };
+
+  return (
+    <section className="subGrid subChannelPanel">
+      <h4>Illustration rates — what a quotation is allowed to assume</h4>
+      <p className="small muted">
+        Three scenarios a year: pessimistic, mid and optimistic. File them on a product, then narrow them for an omni-channel
+        and again for a sub-channel — a figure left blank falls back to its parent, and the pack in force is the last word
+        before the built-in floor. Every figure on a quotation says which row it came from.
+      </p>
+      {packRates && (
+        <p className="small muted">
+          Pack default: pessimistic {pct(packRates.lowBps)} · mid {pct(packRates.midBps)} · optimistic {pct(packRates.highBps)}.
+        </p>
+      )}
+
+      <div className="tableWrap">
+        <table className="gridTable autoFit">
+          <thead><tr><th>Scope</th><th>Level</th><th>Pessimistic</th><th>Mid</th><th>Optimistic</th><th>Filed</th><th>Row</th></tr></thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.productId}|${row.channelCode ?? ''}|${row.subChannelCode ?? ''}`}>
+                <td><b>{row.productId}</b>{row.channelCode ? ` · ${row.channelCode}` : ''}{row.subChannelCode ? ` / ${row.subChannelCode}` : ''}</td>
+                <td>{row.level}</td>
+                <td>{pct(row.lowBps)}</td><td>{pct(row.midBps)}</td><td>{pct(row.highBps)}</td>
+                <td className="small muted">{row.updatedAt.slice(0, 10)} by {row.updatedBy}</td>
+                <td><button className="ghost" disabled={busy} onClick={() => void remove(row)}>Remove</button></td>
+              </tr>
+            ))}
+            {rows.length === 0 && <tr><td colSpan={7} className="muted">Nothing filed yet — every product uses the pack’s rates.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <details>
+        <summary className="muted small">What each product resolves to today ({resolved.length} product(s))</summary>
+        <div className="tableWrap">
+          <table className="gridTable autoFit">
+            <thead><tr><th>Product</th><th>Book</th><th>Pessimistic</th><th>Mid</th><th>Optimistic</th><th>Narrowest row filed</th><th>Sources</th></tr></thead>
+            <tbody>
+              {resolved.map((r) => (
+                <tr key={r.productId}>
+                  <td><b>{r.productId}</b> {r.name}</td>
+                  <td>{r.category}</td>
+                  <td>{(r.default.rates.lowBps / 100).toFixed(2)}%</td>
+                  <td>{(r.default.rates.midBps / 100).toFixed(2)}%</td>
+                  <td>{(r.default.rates.highBps / 100).toFixed(2)}%</td>
+                  <td>{r.default.level}</td>
+                  <td className="small muted">{Object.values(r.default.sources).join(' · ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <div className="row">
+        <label>Product
+          <select value={draft.productId} onChange={(e) => setDraft({ ...draft, productId: e.target.value })}>
+            {products.map((p) => <option key={p.productId} value={p.productId}>{p.productId} · {p.name}</option>)}
+          </select>
+        </label>
+        <label>Omni-channel
+          <select value={draft.channelCode} onChange={(e) => setDraft({ ...draft, channelCode: e.target.value, subChannelCode: '' })}>
+            <option value="">— the product master —</option>
+            {channels.channels.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}
+          </select>
+        </label>
+        <label>Sub-channel
+          <select value={draft.subChannelCode} onChange={(e) => setDraft({ ...draft, subChannelCode: e.target.value })} disabled={subChannelsHere.length === 0}>
+            <option value="">— inherit from the channel —</option>
+            {subChannelsHere.map((sc) => <option key={sc.code} value={sc.code}>{sc.code} · {sc.name}</option>)}
+          </select>
+        </label>
+        <label>Pessimistic % a year<input value={draft.low} onChange={(e) => setDraft({ ...draft, low: e.target.value })} placeholder="inherit" /></label>
+        <label>Mid % a year<input value={draft.mid} onChange={(e) => setDraft({ ...draft, mid: e.target.value })} placeholder="inherit" /></label>
+        <label>Optimistic % a year<input value={draft.high} onChange={(e) => setDraft({ ...draft, high: e.target.value })} placeholder="inherit" /></label>
+        <label>Note<input value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} placeholder="why this shelf differs" /></label>
+      </div>
+      <div className="row">
+        <button type="button" disabled={busy} onClick={() => void save()}>⤓ File these rates</button>
+        <span className="muted small">Leaving all three blank removes the row, so the scope inherits again.</span>
+      </div>
+      {error && <div className="errorBox small">{error}</div>}
+    </section>
+  );
+};
 
 export const OmniChannelPanel: React.FC<{
   data: WorldSnapshot;
@@ -400,6 +548,8 @@ export const OmniChannelPanel: React.FC<{
       </div>
 
       <SubChannelPanel data={data} busy={busy} onRun={onRun} />
+
+      <IllustrationRatesPanel data={data} busy={busy} onRun={onRun} />
 
       <GridBar right={(
         <button type="button" disabled={busy || partnerGrid.dirtyCount === 0} onClick={() => void savePartners(partnerGrid.rows.filter((r) => r.dirty).map((r) => r.key))}>
