@@ -4,13 +4,13 @@
  *
  * Covers all 36 requested operational, governance, technical, finance, fund, agency, Marsh broker,
  * bancassurance, branch, bank, aggregator, direct-customer and referral-partner profiles — with
- * Administration holding permanent unrestricted superuser access across all 29 tabs, sections and
+ * Administration holding permanent unrestricted superuser access across all console tabs, sections and
  * sub-sections, explainable AI role recommendations with Segregation-of-Duties checks, dynamic
  * Entity × Channel × Sub-Channel supervision chains, and real-time DOA approval notifications.
  */
 import React, { useMemo, useState } from 'react';
 import type { WorldSnapshot } from '../core/demo';
-import type { AccessLevel, DoaActionKind, ProfileFamily } from '../core/rbac';
+import type { AccessLevel, DoaActionKind } from '../core/rbac';
 import type { ConsoleTab } from '../core/tour';
 import { CONSOLE_TABS } from '../core/tour';
 import { api } from './api';
@@ -18,7 +18,7 @@ import { SmartComboBox, SmartMultiComboBox } from './combobox';
 import { SectionGroup, fields } from './sections';
 
 type SecuritySnap = WorldSnapshot['security'];
-type ProfileRow = SecuritySnap['profiles'][number];
+type RoleRow = SecuritySnap['roles'][number];
 
 interface AiRecommendationView {
   profileId: string;
@@ -111,14 +111,14 @@ export const ProfileSelectionGate: React.FC<{
 }> = ({ security, tenantName, onSelectProfile, busy }) => {
   const [familyFilter, setFamilyFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [previewId, setPreviewId] = useState<string>(security.activeProfileId || 'administration');
+  const [previewId, setPreviewId] = useState<string>(security.activeRoleId || 'administration');
 
-  const adminProfile = security.profiles.find((p) => p.id === 'administration') ?? security.profiles[0]!;
-  const previewProfile = security.profiles.find((p) => p.id === previewId) ?? adminProfile;
+  const adminProfile = security.roles.find((p) => p.id === 'administration') ?? security.roles[0]!;
+  const previewProfile = security.roles.find((p) => p.id === previewId) ?? adminProfile;
 
   const filteredProfiles = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return security.profiles.filter((p) => {
+    return security.roles.filter((p) => {
       if (familyFilter !== 'all' && p.family !== familyFilter) return false;
       if (!q) return true;
       return (
@@ -130,7 +130,7 @@ export const ProfileSelectionGate: React.FC<{
         p.subChannelScope.toLowerCase().includes(q)
       );
     });
-  }, [security.profiles, familyFilter, search]);
+  }, [security.roles, familyFilter, search]);
 
   return (
     <div className="securityGateWrap" data-security-gate="open">
@@ -138,17 +138,23 @@ export const ProfileSelectionGate: React.FC<{
         <div>
           <div className="pills" style={{ marginBottom: 6 }}>
             <span className="pill ok">⚿ Enterprise Security &amp; DOA Governance Gate</span>
-            <span className="pill info">{security.profileCount} Configured Profiles</span>
+            <span className="pill info">{security.roleCount} Configured Roles</span>
+            <span className="pill info">{security.authorities.length} Authority Tiers</span>
             <span className="pill info">{security.supervisionMappings.length} Entity × Channel × Sub-Channel Chains</span>
             <span className="pill warn">
               {security.doaRequests.filter((r) => r.status === 'pending' || r.status === 'escalated').length} Live DOA Approvals Queued
             </span>
           </div>
-          <h1>Select Your Security Profile to Enter {tenantName}</h1>
+          <h1>Select Your Security Role to Enter {tenantName}</h1>
           <p className="muted" style={{ margin: '6px 0 0', maxWidth: 880 }}>
             Every session loads tailored <b>Tabs → Sections → Sub-Sections</b> recommended by the AI Access &amp; Segregation-of-Duties
             engine, enforces decimal Delegation-of-Authority (DOA) limits, and routes approvals to the mapped Supervisor &amp; Manager
             with instant notifications. Choose <b>Administration</b> for complete unrestricted full access across the entire ERP.
+          </p>
+          <p className="small muted" style={{ margin: '6px 0 0', maxWidth: 880 }}>
+            These records are <b>roles</b> (the policy office, the underwriter, the branch officer), not named user accounts.
+            Login credentials, individual user profiles and provisioning will be added in a later layer and will reference a role id.
+            Officer-tier roles can request a DOA limit increase; only supervisor- and manager-tier roles can approve or change one.
           </p>
         </div>
         <div className="securityAdminQuickBox">
@@ -160,10 +166,10 @@ export const ProfileSelectionGate: React.FC<{
             disabled={busy}
             onClick={() => void onSelectProfile('administration')}
           >
-            ⚿ Enter as Administration (Complete Full Access · All 29 Tabs)
+            ⚿ Enter as Administration (Complete Full Access · All {CONSOLE_TABS.length} Tabs)
           </button>
           <div className="small muted" style={{ marginTop: 6 }}>
-            Unrestricted R/W on all 29 tabs, sections, sub-sections, master settings &amp; DOA overrides
+            Unrestricted R/W on all {CONSOLE_TABS.length} tabs, sections, sub-sections, master settings &amp; DOA overrides
           </div>
         </div>
       </div>
@@ -177,10 +183,10 @@ export const ProfileSelectionGate: React.FC<{
               className={familyFilter === 'all' ? '' : 'ghost'}
               onClick={() => setFamilyFilter('all')}
             >
-              All Profiles ({security.profileCount})
+              All Roles ({security.roleCount})
             </button>
             {security.families.map((fam) => {
-              const count = security.profiles.filter((p) => p.family === fam.id).length;
+              const count = security.roles.filter((p) => p.family === fam.id).length;
               return (
                 <button
                   key={fam.id}
@@ -196,13 +202,13 @@ export const ProfileSelectionGate: React.FC<{
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search all 36 profiles (e.g. Marsh, Underwriter, Retention, Banca, Fund, Branch, Claim)…"
+            placeholder="Search all 36 roles (e.g. Marsh, Underwriter, Retention, Banca, Fund, Branch, Claim)…"
             style={{ minWidth: 320 }}
           />
         </div>
       </div>
 
-      {/* Main Split: 36 Profile Cards + Live AI Access & DOA Inspector */}
+      {/* Main Split: 36 Role Cards + Live AI Access & DOA Inspector */}
       <div className="securityGateGrid">
         <div className="securityCardsGrid">
           {filteredProfiles.map((p) => {
@@ -216,7 +222,10 @@ export const ProfileSelectionGate: React.FC<{
               >
                 <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
                   <div>
-                    <span className={`pill ${p.unrestricted ? 'ok' : 'info'}`}>{p.badge}</span>
+                    <span className={`pill ${p.unrestricted ? 'ok' : 'info'}`}>{p.badge}</span>{' '}
+                    <span className={`pill ${p.authorityLevel === 'officer' ? '' : p.authorityLevel === 'executive' ? 'ok' : 'warn'}`} style={{ fontSize: 10 }}>
+                      {p.authorityLabel}
+                    </span>
                   </div>
                   <div className="pills" style={{ gap: 4 }}>
                     {p.pendingApprovals > 0 && <span className="pill warn">{p.pendingApprovals} DOA</span>}
@@ -235,6 +244,7 @@ export const ProfileSelectionGate: React.FC<{
                   <button
                     type="button"
                     data-select-profile={p.id}
+                    data-select-role={p.id}
                     disabled={busy}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -253,6 +263,7 @@ export const ProfileSelectionGate: React.FC<{
         <aside className="securityPreviewPane card">
           <div className="pills">
             <span className={`pill ${previewProfile.unrestricted ? 'ok' : 'info'}`}>{previewProfile.badge}</span>
+            <span className={`pill ${previewProfile.authorityLevel === 'officer' ? '' : 'warn'}`}>{previewProfile.authorityLabel} · L{previewProfile.authorityRank}</span>
             <span className="pill ok">AI Confidence {previewProfile.aiConfidencePct}%</span>
             <span className="pill">PII: {previewProfile.piiAccess}</span>
           </div>
@@ -263,6 +274,7 @@ export const ProfileSelectionGate: React.FC<{
           <div className="stat"><span>Landing Screen</span><b>{tabTitleOf(previewProfile.defaultLandingTab)}</b></div>
           <div className="stat"><span>Entity × Channel × Sub</span><b>{previewProfile.entityScope} / {previewProfile.channelScope} / {previewProfile.subChannelScope}</b></div>
           <div className="stat"><span>DOA Authority Cap</span><b>{previewProfile.doaLimitLabel}</b></div>
+          <div className="stat"><span>DOA change authority</span><b>{previewProfile.canChangeDoa ? 'Yes — supervisor/manager' : 'No — request only'}</b></div>
           <div className="stat">
             <span>Supervisor → Escalation</span>
             <b>
@@ -326,7 +338,7 @@ export const HeaderSecurityStrip: React.FC<{
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const active = security.profiles.find((p) => p.id === security.activeProfileId) ?? security.profiles[0]!;
+  const active = security.roles.find((p) => p.id === security.activeRoleId) ?? security.roles[0]!;
   const myNotifications = security.notifications.filter(
     (n) => active.unrestricted || n.recipientProfileId === active.id,
   );
@@ -365,18 +377,18 @@ export const HeaderSecurityStrip: React.FC<{
   return (
     <div className="headerSecurityBar">
       <span className={`pill ${active.unrestricted ? 'ok' : 'info'}`} title={active.title}>
-        ⚿ <b>{active.name}</b> · DOA {active.doaLimitLabel}
+        ⚿ <b>{active.name}</b> · {active.authorityLabel} · DOA {active.doaLimitLabel}
       </span>
       <select
-        aria-label="Active security profile"
+        aria-label="Active security role"
         value={active.id}
         disabled={busy}
         onChange={(e) => void onSwitchProfile(e.target.value)}
         style={{ maxWidth: 225, padding: '3px 8px', fontSize: 12 }}
       >
-        {security.profiles.map((p) => (
+        {security.roles.map((p) => (
           <option key={p.id} value={p.id}>
-            {p.name} ({p.doaLimitLabel}){p.pendingApprovals > 0 ? ` · ${p.pendingApprovals} DOA` : ''}
+            {p.name} — {p.authorityLabel} ({p.doaLimitLabel}){p.pendingApprovals > 0 ? ` · ${p.pendingApprovals} DOA` : ''}
           </option>
         ))}
       </select>
@@ -387,7 +399,7 @@ export const HeaderSecurityStrip: React.FC<{
         onClick={onOpenGate}
         style={{ padding: '3px 9px', minHeight: 26, fontSize: 12 }}
       >
-        ⇄ Profile Gate ({security.profileCount})
+        ⇄ Role Gate ({security.roleCount})
       </button>
       <button
         type="button"
@@ -482,11 +494,15 @@ export const ProfileAccessGuardBanner: React.FC<{
   onReload: () => Promise<void>;
   onOpenAccessTab: () => void;
 }> = ({ security, tab, onReload, onOpenAccessTab }) => {
-  const active = security.profiles.find((p) => p.id === security.activeProfileId) ?? security.profiles[0]!;
+  const active = security.roles.find((p) => p.id === security.activeRoleId) ?? security.roles[0]!;
   const [reqAmount, setReqAmount] = useState('650,000.00');
   const [reqReason, setReqReason] = useState('Customer cover / settlement exceeds officer DOA cap');
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showIncrease, setShowIncrease] = useState(false);
+  const [increaseAmount, setIncreaseAmount] = useState('');
+  const [increaseReason, setIncreaseReason] = useState('Case volume and average case size now exceed the current DOA cap.');
+  const [increaseNotice, setIncreaseNotice] = useState<string | null>(null);
 
   if (active.unrestricted || tab === 'access-doa') return null;
 
@@ -502,7 +518,7 @@ export const ProfileAccessGuardBanner: React.FC<{
         notificationsSent: Array<{ recipientProfileId: string; title: string }>;
       }>('/security/doa/request', 'POST', {
         requesterProfileId: active.id,
-        actionKind: tab === 'claims' ? 'claim-approval' : tab === 'underwriting' ? 'underwriting-decision' : 'quote-high-sum-assured',
+        actionKind: tab === 'claims' ? 'claim-approval' : tab === 'underwriting' ? 'underwriting-approval' : 'quote-high-sum-assured',
         subjectRef: `${tab.toUpperCase()}-CASE`,
         tabId: tab,
         entityId: active.entityScope === '*' ? 'ALK-CONV' : active.entityScope,
@@ -522,10 +538,32 @@ export const ProfileAccessGuardBanner: React.FC<{
     }
   };
 
+  const submitIncrease = async () => {
+    setBusy(true);
+    setIncreaseNotice(null);
+    try {
+      const res = await api<{ requestId: string; currentLimitLabel: string; requestedLimitLabel: string }>('/security/doa/limit-request', 'POST', {
+        roleId: active.id,
+        requestedLimitAed: increaseAmount,
+        reason: increaseReason,
+        actorRoleId: active.id,
+      });
+      await onReload();
+      setIncreaseNotice(`${res.requestId} submitted: ${res.currentLimitLabel} → ${res.requestedLimitLabel}. A supervisor or manager must approve it before the cap moves.`);
+    } catch (e) {
+      setIncreaseNotice(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="scopedBrandBanner" style={{ marginBottom: 12 }}>
       <span className={`pill ${level === 'full' ? 'ok' : level === 'read' ? 'warn' : 'bad'}`}>
         {level === 'full' ? 'FULL R/W ACCESS' : level === 'read' ? 'READ-ONLY VIEW' : 'RESTRICTED'}
+      </span>
+      <span className={`pill ${active.authorityLevel === 'officer' ? 'warn' : 'ok'}`}>
+        {active.authorityLabel} · L{active.authorityRank}
       </span>
       <span className="small">
         Active role <b>{active.name}</b> ({active.entityScope}/{active.channelScope}/{active.subChannelScope}) · DOA cap{' '}
@@ -548,9 +586,35 @@ export const ProfileAccessGuardBanner: React.FC<{
           Raise DOA Approval →
         </button>
         <button type="button" className="ghost" onClick={onOpenAccessTab} style={{ padding: '4px 9px', fontSize: 12 }}>
-          RBAC &amp; DOA Matrix
+          Roles &amp; DOA Matrix
         </button>
+        {active.doaLimitMinor !== null && (
+          <button type="button" className="ghost" onClick={() => setShowIncrease((v) => !v)} style={{ padding: '4px 9px', fontSize: 12 }}>
+            {showIncrease ? '× Close limit request' : 'Request DOA limit increase'}
+          </button>
+        )}
       </div>
+      {showIncrease && active.doaLimitMinor !== null && (
+        <div className="row" style={{ width: '100%', gap: 6, marginTop: 6 }}>
+          <span className="pill info">Current cap {active.doaLimitLabel}</span>
+          <input
+            value={increaseAmount}
+            onChange={(e) => setIncreaseAmount(e.target.value)}
+            placeholder="Requested cap (AED)"
+            style={{ width: 150, padding: '3px 7px', fontSize: 12 }}
+          />
+          <input
+            value={increaseReason}
+            onChange={(e) => setIncreaseReason(e.target.value)}
+            placeholder="Reason for the increase"
+            style={{ flex: 1, minWidth: 220, padding: '3px 7px', fontSize: 12 }}
+          />
+          <button type="button" disabled={busy || !increaseAmount.trim()} onClick={() => void submitIncrease()} style={{ padding: '4px 10px', fontSize: 12 }}>
+            Submit limit-increase request →
+          </button>
+        </div>
+      )}
+      {increaseNotice && <div className="small okText" style={{ width: '100%' }}>{increaseNotice}</div>}
       {notice && <div className="small okText" style={{ width: '100%' }}>{notice}</div>}
     </div>
   );
@@ -566,7 +630,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
   onOpenGate: () => void;
 }> = ({ data, onReload, onSwitchProfile, onOpenGate }) => {
   const security = data.security;
-  const activeProfile = security.profiles.find((p) => p.id === security.activeProfileId) ?? security.profiles[0]!;
+  const activeProfile = security.roles.find((p) => p.id === security.activeRoleId) ?? security.roles[0]!;
 
   // Directory & clone state
   const [familyFilter, setFamilyFilter] = useState<string>('all');
@@ -609,24 +673,26 @@ export const RoleAccessAndDoaPanel: React.FC<{
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const inspectedProfile: ProfileRow =
-    security.profiles.find((p) => p.id === selectedProfileId) ?? security.profiles[1] ?? security.profiles[0]!;
+  const inspectedProfile: RoleRow =
+    security.roles.find((p) => p.id === selectedProfileId) ?? security.roles[1] ?? security.roles[0]!;
+  const canManageRoles = activeProfile.canManageRoleAccess;
+  const canEditInspected = canManageRoles && (activeProfile.unrestricted || activeProfile.authorityRank > inspectedProfile.authorityRank);
 
   const profileSuggestions = useMemo(
     () =>
-      security.profiles.map((p) => ({
+      security.roles.map((p) => ({
         value: p.id,
         label: `${p.name} (${p.id})`,
         category: p.doaLimitLabel,
         description: `${p.title} · ${p.entityScope}/${p.channelScope}/${p.subChannelScope}`,
-        badge: p.unrestricted ? 'Superuser' : 'Profile',
+        badge: p.unrestricted ? 'Superuser' : 'Role',
       })),
-    [security.profiles],
+    [security.roles],
   );
 
   const visibleProfiles = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return security.profiles.filter((p) => {
+    return security.roles.filter((p) => {
       if (familyFilter !== 'all' && p.family !== familyFilter) return false;
       if (!q) return true;
       return (
@@ -637,7 +703,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
         p.subChannelScope.toLowerCase().includes(q)
       );
     });
-  }, [security.profiles, familyFilter, search]);
+  }, [security.roles, familyFilter, search]);
 
   const runAction = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -674,18 +740,31 @@ export const RoleAccessAndDoaPanel: React.FC<{
       <div style={{ gridColumn: '1 / -1' }}>
         {notice && <div className="okBox small" style={{ marginBottom: 10 }}>{notice}</div>}
         {error && <div className="errorBox small" style={{ marginBottom: 10 }}>{error}</div>}
+        <div className="scopedBrandBanner" style={{ marginBottom: 10 }}>
+          <span className={`pill ${activeProfile.authorityLevel === 'officer' ? 'warn' : 'ok'}`}>
+            {activeProfile.authorityLabel} · L{activeProfile.authorityRank}
+          </span>
+          <span className="small">
+            Active role <b>{activeProfile.name}</b> · access changes: <b>{canManageRoles ? 'permitted' : 'not permitted'}</b> · DOA changes: <b>{activeProfile.canChangeDoa ? 'permitted within tier' : 'request only'}</b>
+          </span>
+          {!canManageRoles && (
+            <span className="pill warn" style={{ marginLeft: 'auto' }}>
+              Officer tier — use the DOA limit-increase request in the header banner
+            </span>
+          )}
+        </div>
         <SectionGroup
           title="Enterprise Security, AI Role Access Matrix & DOA Governance"
           gates={[
             /* -------------------- GATE 1: 36-PROFILE DIRECTORY & CLONER -------------------- */
             {
               id: 'profile-directory',
-              title: `Security profile directory & instant session switcher (${security.profileCount} profiles)`,
-              subtitle: 'Administration holds permanent complete access; switch into any of the 36 operational, technical, finance, fund, agency, Marsh, banca, branch, aggregator, direct or referral profiles or clone a custom variant',
+              title: `Security role directory & instant session switcher (${security.roleCount} roles)`,
+              subtitle: 'Administration holds permanent complete access; switch into any of the 36 operational, technical, finance, fund, agency, Marsh, banca, branch, aggregator, direct or referral roles, or clone a custom variant. Roles are templates; named user logins are a later layer.',
               fields: fields(
-                ['Active session profile', activeProfile.name],
-                ['Inspected profile', inspectedProfile.name],
-                ['Configured profiles', String(security.profileCount)],
+                ['Active session role', activeProfile.name],
+                ['Inspected role', inspectedProfile.name],
+                ['Configured roles', String(security.roleCount)],
                 ['Clone ID', cloneId],
                 ['Clone name', cloneName],
                 ['Clone DOA cap', cloneDoa],
@@ -695,7 +774,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
                     <div className="pills">
                       <button type="button" className={familyFilter === 'all' ? '' : 'ghost'} onClick={() => setFamilyFilter('all')}>
-                        All ({security.profileCount})
+                        All ({security.roleCount})
                       </button>
                       {security.families.map((fam) => (
                         <button
@@ -704,7 +783,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                           className={familyFilter === fam.id ? '' : 'ghost'}
                           onClick={() => setFamilyFilter(fam.id)}
                         >
-                          {fam.label} ({security.profiles.filter((p) => p.family === fam.id).length})
+                          {fam.label} ({security.roles.filter((p) => p.family === fam.id).length})
                         </button>
                       ))}
                     </div>
@@ -712,11 +791,11 @@ export const RoleAccessAndDoaPanel: React.FC<{
                       <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Filter 36 profiles by name, role, channel or sub-channel…"
+                        placeholder="Filter 36 roles by name, tier, channel or sub-channel…"
                         style={{ minWidth: 260 }}
                       />
                       <button type="button" className="ghost" onClick={onOpenGate}>
-                        Launch Pre-Load Profile Selector Gate
+                        Launch Pre-Load Role Selector Gate
                       </button>
                     </div>
                   </div>
@@ -725,7 +804,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                     <table>
                       <thead>
                         <tr>
-                          <th>Profile</th>
+                          <th>Role</th>
                           <th>Entity / Channel / Sub-Channel</th>
                           <th>Landing Screen</th>
                           <th>DOA Authority Cap</th>
@@ -787,18 +866,18 @@ export const RoleAccessAndDoaPanel: React.FC<{
                   </div>
 
                   <div className="subGrid">
-                    <h4>Clone or Create Custom Regional / Desk Profile</h4>
+                    <h4>Clone or create a custom regional / desk role</h4>
                     <div className="row" style={{ marginTop: 8 }}>
                       <label>
-                        Clone Base Profile
+                        Clone base role
                         <select value={selectedProfileId} onChange={(e) => setSelectedProfileId(e.target.value)}>
-                          {security.profiles.map((p) => (
+                          {security.roles.map((p) => (
                             <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
                           ))}
                         </select>
                       </label>
                       <label>
-                        New Profile ID
+                        New role ID
                         <input value={cloneId} onChange={(e) => setCloneId(e.target.value)} />
                       </label>
                       <label>
@@ -815,9 +894,9 @@ export const RoleAccessAndDoaPanel: React.FC<{
                       </label>
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || !canManageRoles}
                         onClick={() =>
-                          void runAction(`Cloned profile ${cloneName} (${cloneId})`, () =>
+                          void runAction(`Cloned role ${cloneName} (${cloneId})`, () =>
                             api('/security/profile', 'POST', {
                               id: cloneId,
                               name: cloneName,
@@ -829,7 +908,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                           )
                         }
                       >
-                        + Clone &amp; Save Profile
+                        + Clone &amp; Save Role
                       </button>
                     </div>
                   </div>
@@ -841,9 +920,9 @@ export const RoleAccessAndDoaPanel: React.FC<{
             {
               id: 'ai-advisor',
               title: 'AI optimal access recommender & Segregation-of-Duties (SoD) advisor',
-              subtitle: 'Scores all 29 tabs, sections and sub-sections per role, recommends DOA caps and reporting chains, flags toxic SoD pairs, and applies with one click',
+              subtitle: `Scores all ${CONSOLE_TABS.length} tabs, sections and sub-sections per role, recommends DOA caps and reporting chains, flags toxic SoD pairs, and applies with one click`,
               fields: fields(
-                ['Target profile', inspectedProfile.name],
+                ['Target role', inspectedProfile.name],
                 ['AI confidence', `${inspectedProfile.aiConfidencePct}%`],
                 ['Recommended DOA', inspectedProfile.doaLimitLabel],
                 ['Recommended landing tab', tabTitleOf(inspectedProfile.defaultLandingTab)],
@@ -852,9 +931,9 @@ export const RoleAccessAndDoaPanel: React.FC<{
                 <>
                   <div className="row">
                     <label>
-                      Target Security Profile
+                      Target security role
                       <select value={selectedProfileId} onChange={(e) => setSelectedProfileId(e.target.value)}>
-                        {security.profiles.map((p) => (
+                        {security.roles.map((p) => (
                           <option key={p.id} value={p.id}>{p.name} — {p.title}</option>
                         ))}
                       </select>
@@ -893,7 +972,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                       <button
                         type="button"
                         className="ghost"
-                        disabled={busy}
+                        disabled={busy || !canEditInspected}
                         onClick={() =>
                           void runAction(`Applied AI optimal permissions to ${inspectedProfile.name}`, async () => {
                             const res = await api<{ recommendation: AiRecommendationView }>('/security/ai/apply', 'POST', {
@@ -913,7 +992,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                     <div className="manualCard" style={{ marginTop: 12 }}>
                       <div className="pills">
                         <span className="pill ok">AI Confidence {aiResult.confidencePct}%</span>
-                        <span className="pill info">Profile: {aiResult.profileName}</span>
+                        <span className="pill info">Role: {aiResult.profileName}</span>
                         <span className="pill info">Recommended DOA: {aiResult.recommendedDoaLimit}</span>
                         <span className="pill info">Landing: {tabTitleOf(aiResult.recommendedLandingTab)}</span>
                         <span className="pill">
@@ -968,7 +1047,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
               title: `Granular 3-tier access matrix: Tab → Section → Sub-Section (${inspectedProfile.name})`,
               subtitle: 'Toggle Full Read/Write, Read-Only or Hidden on any tab, section or sub-section with instant persistence',
               fields: fields(
-                ['Editing profile', inspectedProfile.name],
+                ['Editing role', inspectedProfile.name],
                 ['Full tabs', String(inspectedProfile.fullTabs.length)],
                 ['Read-only tabs', String(inspectedProfile.readTabs.length)],
                 ['PII visibility', inspectedProfile.piiAccess],
@@ -977,16 +1056,23 @@ export const RoleAccessAndDoaPanel: React.FC<{
                 <>
                   <div className="row" style={{ marginBottom: 10 }}>
                     <label>
-                      Editing Security Profile
+                      Editing security role
                       <select value={inspectedProfile.id} onChange={(e) => setSelectedProfileId(e.target.value)}>
-                        {security.profiles.map((p) => (
+                        {security.roles.map((p) => (
                           <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
                         ))}
                       </select>
                     </label>
                     {inspectedProfile.unrestricted && (
                       <span className="pill ok">
-                        Administration holds permanent complete Full Access across all 29 tabs, sections and sub-sections
+                        Administration holds permanent complete Full Access across all {CONSOLE_TABS.length} tabs, sections and sub-sections
+                      </span>
+                    )}
+                    {!canEditInspected && (
+                      <span className="pill warn">
+                        {canManageRoles
+                          ? 'Read-only: this role is at or above your own authority tier.'
+                          : 'Read-only: officer-tier roles cannot change access. Use the DOA limit-increase request instead.'}
                       </span>
                     )}
                   </div>
@@ -1015,7 +1101,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                                     <button
                                       key={lvl}
                                       type="button"
-                                      disabled={busy || inspectedProfile.unrestricted}
+                                      disabled={busy || inspectedProfile.unrestricted || !canEditInspected}
                                       className={tLevel === lvl ? '' : 'ghost'}
                                       style={{ padding: '3px 8px', fontSize: 11 }}
                                       onClick={() => void setPermissionLevel('tab', cat.tabId, lvl)}
@@ -1039,7 +1125,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                                           <button
                                             key={lvl}
                                             type="button"
-                                            disabled={busy || inspectedProfile.unrestricted}
+                                            disabled={busy || inspectedProfile.unrestricted || !canEditInspected}
                                             className={sLevel === lvl ? '' : 'ghost'}
                                             style={{ padding: '2px 6px', minHeight: 22, fontSize: 10.5 }}
                                             onClick={() => void setPermissionLevel('section', sKey, lvl)}
@@ -1059,7 +1145,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                                               key={subKey}
                                               type="button"
                                               className="ghost"
-                                              disabled={busy || inspectedProfile.unrestricted}
+                                              disabled={busy || inspectedProfile.unrestricted || !canEditInspected}
                                               title={`Click to cycle sub-section "${sub.label}" (${subLevel} → ${nextLvl})`}
                                               style={{ padding: '2px 7px', minHeight: 22, fontSize: 10.5 }}
                                               onClick={() => void setPermissionLevel('subSection', subKey, nextLvl)}
@@ -1119,11 +1205,11 @@ export const RoleAccessAndDoaPanel: React.FC<{
                   </div>
                   <div className="row">
                     <label style={{ minWidth: 280 }}>
-                      Officer / Frontline Profiles Covered
+                      Officer / frontline roles covered
                       <SmartMultiComboBox values={mapOfficers} onChange={setMapOfficers} suggestions={profileSuggestions} />
                     </label>
                     <label>
-                      1st-Line Supervisor Profile
+                      1st-line supervisor role
                       <SmartComboBox value={mapSupervisor} onChange={setMapSupervisor} suggestions={profileSuggestions} style={{ width: 200 }} />
                     </label>
                     <label>
@@ -1131,7 +1217,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                       <input value={mapSupDoa} onChange={(e) => setMapSupDoa(e.target.value)} style={{ width: 130 }} />
                     </label>
                     <label>
-                      2nd-Line Manager Profile
+                      2nd-line manager role
                       <SmartComboBox value={mapManager} onChange={setMapManager} suggestions={profileSuggestions} style={{ width: 200 }} />
                     </label>
                     <label>
@@ -1144,7 +1230,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                     </label>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !canManageRoles}
                       onClick={() =>
                         void runAction(`Saved Entity × Channel × Sub-Channel rule (${mapEntity}/${mapChannel}/${mapSubChannel})`, () =>
                           api('/security/mapping', 'POST', {
@@ -1201,7 +1287,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                               <button
                                 type="button"
                                 className="ghost"
-                                disabled={busy}
+                                disabled={busy || !canManageRoles}
                                 onClick={() =>
                                   void runAction(`Removed mapping ${m.id}`, () =>
                                     api('/security/mapping/delete', 'POST', { id: m.id, by: activeProfile.id }),
@@ -1226,7 +1312,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
               title: `DOA authority simulator, approval queue & approver notifications (${security.doaRequests.length} requests · ${security.notifications.length} notifications)`,
               subtitle: 'Evaluate authority before execution, submit DOA approval requests with real-time approver notifications, and approve, escalate or reject with full four-eyes audit trail',
               fields: fields(
-                ['Requester profile', doaRequester],
+                ['Requester role', doaRequester],
                 ['Action kind', doaAction],
                 ['Entity / Channel / Sub', `${doaEntity} / ${doaChannel} / ${doaSubChannel}`],
                 ['Subject reference', doaSubject],
@@ -1237,9 +1323,9 @@ export const RoleAccessAndDoaPanel: React.FC<{
                 <>
                   <div className="row">
                     <label>
-                      Requester Profile
+                      Requester role
                       <select value={doaRequester} onChange={(e) => setDoaRequester(e.target.value)}>
-                        {security.profiles.map((p) => (
+                        {security.roles.map((p) => (
                           <option key={p.id} value={p.id}>{p.name} (DOA {p.doaLimitLabel})</option>
                         ))}
                       </select>
@@ -1459,7 +1545,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                         <thead>
                           <tr>
                             <th>Notification ID</th>
-                            <th>Recipient Profile</th>
+                            <th>Recipient role</th>
                             <th>Sender</th>
                             <th>Title &amp; Delivery Summary</th>
                             <th>Status</th>
@@ -1493,3 +1579,8 @@ export const RoleAccessAndDoaPanel: React.FC<{
     </div>
   );
 };
+
+
+/* Role-first component aliases. The old names remain so existing integrations and tests keep working. */
+export const RoleSelectionGate = ProfileSelectionGate;
+export const RoleAccessGuardBanner = ProfileAccessGuardBanner;

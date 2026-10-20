@@ -35,6 +35,7 @@ import {
   ProfileSelectionGate,
   RoleAccessAndDoaPanel,
 } from './rbac-views';
+import { RoleAccessMatrixPanel } from './role-matrix-views';
 
 type Tab = ConsoleTab;
 
@@ -112,7 +113,8 @@ function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab
         </div>
         {onNavigate && (
           <div className="row" style={{ marginTop: 8 }}>
-            <button onClick={() => onNavigate('access-doa')}>⚿ Role Access &amp; DOA ({data.security.profileCount} profiles)</button>
+            <button onClick={() => onNavigate('access-doa')}>⚿ Role Access &amp; DOA ({data.security.roleCount} roles)</button>
+            <button onClick={() => onNavigate('role-matrix')}>⑃ Role access matrix — tabs &amp; sections</button>
             <button onClick={() => onNavigate('journey')}>➤ Start a customer journey</button>
             <button onClick={() => onNavigate('parties')}>+ Create Customer</button>
             <button onClick={() => onNavigate('underwriting')}>+ Create Proposal &amp; Quote</button>
@@ -962,7 +964,9 @@ function App() {
   const [guideBusy, setGuideBusy] = useState(false);
   const [profileGateOpen, setProfileGateOpen] = useState<boolean>(() => {
     try {
-      return typeof window !== 'undefined' && window.sessionStorage?.getItem('portal.profileSelected') !== '1';
+      return typeof window !== 'undefined'
+        && window.sessionStorage?.getItem('portal.roleSelected') !== '1'
+        && window.sessionStorage?.getItem('portal.profileSelected') !== '1';
     } catch {
       return true;
     }
@@ -976,7 +980,9 @@ function App() {
     setError(null);
     try {
       try {
+        window.localStorage?.setItem('portal-active-role', profileId);
         window.localStorage?.setItem('portal-active-profile', profileId);
+        window.sessionStorage?.setItem('portal.roleSelected', '1');
         window.sessionStorage?.setItem('portal.profileSelected', '1');
       } catch { /* storage optional */ }
       const res = await api<{ profile: { defaultLandingTab: string }; world: WorldSnapshot }>(
@@ -1057,8 +1063,8 @@ function App() {
   }, [globalThemeCss]);
   const activeSecurityProfile = useMemo(
     () =>
-      data?.security.profiles.find((p) => p.id === data.security.activeProfileId)
-      ?? data?.security.profiles[0]
+      data?.security.roles.find((p) => p.id === data.security.activeRoleId)
+      ?? data?.security.roles[0]
       ?? null,
     [data],
   );
@@ -1077,6 +1083,13 @@ function App() {
           onReload={load}
           onSwitchProfile={switchProfile}
           onOpenGate={() => setProfileGateOpen(true)}
+        />
+      );
+      case 'role-matrix': return (
+        <RoleAccessMatrixPanel
+          data={data}
+          onReload={load}
+          onSwitchRole={switchProfile}
         />
       );
       case 'journey': return <CustomerJourneyPanel data={data} onReload={load} onNavigate={setTab} />;

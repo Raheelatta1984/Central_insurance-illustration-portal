@@ -28,9 +28,9 @@ describe('RBAC Pre-Load Gate, DOA Panel, Smart ComboBox & Auto-Pick UI Views', (
       }),
     );
     expect(html).toContain('Enterprise Security &amp; DOA Governance Gate');
-    expect(html).toContain('Select Your Security Profile to Enter');
+    expect(html).toContain('Select Your Security Role to Enter');
     expect(html).toContain('Enter as Administration');
-    expect(html).toContain('Search all 36 profiles');
+    expect(html).toContain('Search all 36 roles');
     expect(html).toContain('data-select-profile="administration"');
     expect(html).toContain('Marsh');
     expect(html).not.toContain('aria-expanded');
@@ -67,7 +67,7 @@ describe('RBAC Pre-Load Gate, DOA Panel, Smart ComboBox & Auto-Pick UI Views', (
         onReload: noop,
       }),
     );
-    expect(strip).toContain('Profile Gate');
+    expect(strip).toContain('Role Gate');
   });
 
   it('renders SmartComboBox, SmartMultiComboBox, Auto-Pick Proposal Banner, Master Age Rule Gate & Journey Auto-Pick', () => {
