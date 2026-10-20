@@ -20,6 +20,7 @@ export interface TourStep {
 export const CONSOLE_TABS = [
   { id: 'tour', label: 'Tour', icon: '◷' },
   { id: 'overview', label: 'Overview', icon: '◈' },
+  { id: 'access-doa', label: 'Access & DOA', icon: '⚿' },
   { id: 'journey', label: 'Customer journey', icon: '➤' },
   { id: 'master', label: 'Master settings & ERP', icon: '⚙' },
   { id: 'email', label: 'Email configuration', icon: '✉' },

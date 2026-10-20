@@ -35,6 +35,13 @@ import { RatePrice, RateRow, RateTables } from './rating.js';
 import { OmniChannelRegistry } from './channels.js';
 import { toDecimalString } from './money.js';
 import { DistributionGovernance, MARSH_EXAMPLE } from './providers.js';
+import {
+  type AgeBasis,
+  AgeCalculationRegistry,
+  DependentProductsRegistry,
+  buildSmartSuggestions,
+  resolveCustomerAutoPick,
+} from './autopick.js';
 
 export class ErpError extends Error {}
 
@@ -122,6 +129,9 @@ export interface ErpProposalMeta {
   readonly termYears: number;
   readonly beneficiary: { readonly name: string; readonly relationship: string; readonly sharePct: number };
   readonly targetFunds: readonly string[];
+  readonly dob?: string;
+  readonly ageBasis?: AgeBasis;
+  readonly dependentProducts?: readonly string[];
   readonly createdAt: string;
   convertedPolicyId?: string;
   convertedAt?: string;
@@ -252,6 +262,10 @@ export class ErpManager {
    * risk and where it is licensed; `channels` answers who may sell it.
    */
   readonly providers: DistributionGovernance;
+  /** Tenant-wide actuarial age basis (ANB / ANxB / ALB) and per-product overrides. */
+  readonly ageCalculation: AgeCalculationRegistry = new AgeCalculationRegistry();
+  /** Dependent riders and companion cover products automatically picked per base product. */
+  readonly dependentProducts: DependentProductsRegistry = new DependentProductsRegistry();
   /** Country, region, calendar, time zone, local currency and the foreign rate card. */
   private regional!: RegionalDesk;
   private readonly proposals = new Map<string, ErpProposalMeta>();
@@ -583,6 +597,16 @@ export class ErpManager {
     nameEn: string;
     nameAr?: string;
     dateOfBirth?: string;
+    sex?: 'male' | 'female';
+    smoker?: boolean;
+    heightCm?: number;
+    weightKg?: number;
+    occupationClass?: 1 | 2 | 3 | 4 | 5;
+    occupationTitle?: string;
+    annualIncome?: string;
+    beneficiaryName?: string;
+    beneficiaryRelationship?: string;
+    dependentProducts?: string[];
     idType?: IdType;
     idValue?: string;
     country?: string;
@@ -685,6 +709,16 @@ export class ErpManager {
       kind: probe.kind ?? 'person',
       names: probe.names ?? { en: nameEn },
       ...(probe.dateOfBirth ? { dateOfBirth: probe.dateOfBirth } : {}),
+      ...(input.sex ? { sex: input.sex } : {}),
+      ...(input.smoker !== undefined ? { smoker: Boolean(input.smoker) } : {}),
+      ...(input.heightCm !== undefined && Number(input.heightCm) > 0 ? { heightCm: Number(input.heightCm) } : {}),
+      ...(input.weightKg !== undefined && Number(input.weightKg) > 0 ? { weightKg: Number(input.weightKg) } : {}),
+      ...(input.occupationClass !== undefined ? { occupationClass: Number(input.occupationClass) as 1 | 2 | 3 | 4 | 5 } : {}),
+      ...(input.occupationTitle?.trim() ? { occupationTitle: input.occupationTitle.trim() } : {}),
+      ...(input.annualIncome?.trim() ? { annualIncome: input.annualIncome.trim() } : {}),
+      ...(input.beneficiaryName?.trim() ? { beneficiaryName: input.beneficiaryName.trim() } : {}),
+      ...(input.beneficiaryRelationship?.trim() ? { beneficiaryRelationship: input.beneficiaryRelationship.trim() } : {}),
+      ...(input.dependentProducts && input.dependentProducts.length > 0 ? { dependentProducts: [...input.dependentProducts] } : {}),
       ids,
       phones: probe.phones ?? [],
       emails: probe.emails ?? [],
@@ -707,6 +741,16 @@ export class ErpManager {
     nameEn?: string;
     nameAr?: string;
     dateOfBirth?: string;
+    sex?: 'male' | 'female';
+    smoker?: boolean;
+    heightCm?: number;
+    weightKg?: number;
+    occupationClass?: 1 | 2 | 3 | 4 | 5;
+    occupationTitle?: string;
+    annualIncome?: string;
+    beneficiaryName?: string;
+    beneficiaryRelationship?: string;
+    dependentProducts?: string[];
     phone?: string;
     email?: string;
     addressLine?: string;
@@ -747,6 +791,16 @@ export class ErpManager {
         ...(input.nameAr !== undefined ? (input.nameAr.trim() ? { ar: input.nameAr.trim() } : {}) : (existing.names.ar ? { ar: existing.names.ar } : {})),
       },
       ...(input.dateOfBirth?.trim() ? { dateOfBirth: input.dateOfBirth.trim() } : (existing.dateOfBirth ? { dateOfBirth: existing.dateOfBirth } : {})),
+      ...(input.sex ? { sex: input.sex } : (existing.sex ? { sex: existing.sex } : {})),
+      ...(input.smoker !== undefined ? { smoker: Boolean(input.smoker) } : (existing.smoker !== undefined ? { smoker: existing.smoker } : {})),
+      ...(input.heightCm !== undefined && Number(input.heightCm) > 0 ? { heightCm: Number(input.heightCm) } : (existing.heightCm ? { heightCm: existing.heightCm } : {})),
+      ...(input.weightKg !== undefined && Number(input.weightKg) > 0 ? { weightKg: Number(input.weightKg) } : (existing.weightKg ? { weightKg: existing.weightKg } : {})),
+      ...(input.occupationClass !== undefined ? { occupationClass: Number(input.occupationClass) as 1 | 2 | 3 | 4 | 5 } : (existing.occupationClass ? { occupationClass: existing.occupationClass } : {})),
+      ...(input.occupationTitle?.trim() ? { occupationTitle: input.occupationTitle.trim() } : (existing.occupationTitle ? { occupationTitle: existing.occupationTitle } : {})),
+      ...(input.annualIncome?.trim() ? { annualIncome: input.annualIncome.trim() } : (existing.annualIncome ? { annualIncome: existing.annualIncome } : {})),
+      ...(input.beneficiaryName?.trim() ? { beneficiaryName: input.beneficiaryName.trim() } : (existing.beneficiaryName ? { beneficiaryName: existing.beneficiaryName } : {})),
+      ...(input.beneficiaryRelationship?.trim() ? { beneficiaryRelationship: input.beneficiaryRelationship.trim() } : (existing.beneficiaryRelationship ? { beneficiaryRelationship: existing.beneficiaryRelationship } : {})),
+      ...(input.dependentProducts !== undefined ? { dependentProducts: [...input.dependentProducts] } : (existing.dependentProducts ? { dependentProducts: [...existing.dependentProducts] } : {})),
       ids,
       phones: input.phone?.trim() ? [input.phone.trim(), ...existing.phones.filter((p) => p !== input.phone!.trim())] : existing.phones,
       emails: input.email?.trim() ? [input.email.trim(), ...existing.emails.filter((e) => e !== input.email!.trim())] : existing.emails,
@@ -777,12 +831,14 @@ export class ErpManager {
     beneficiaryName?: string;
     beneficiaryRelationship?: string;
     targetFunds?: string[];
-    age: number;
+    dob?: string;
+    age?: number;
     sex?: 'male' | 'female';
     smoker?: boolean;
     heightCm?: number;
     weightKg?: number;
     occupationClass?: OccupationClass;
+    dependentProducts?: string[];
     pursuits?: string[];
     conditions?: string[];
     familyHistory?: string[];
@@ -797,28 +853,66 @@ export class ErpManager {
 
     // Ensure party exists (if not in PartyRegistry yet, create a placeholder party record)
     if (!w.parties.get(input.partyId)) {
-      this.createCustomer(w, { id: input.partyId, nameEn: `Customer ${input.partyId}` });
+      this.createCustomer(w, { id: input.partyId, nameEn: `Customer ${input.partyId}`, ...(input.dob ? { dateOfBirth: input.dob } : {}) });
     }
+
+    // Auto-pick previously provided fields from the customer record, prior proposals & journeys so
+    // nothing ever needs to be typed twice — while allowing any explicit field on `input` to override.
+    const autoPicked = resolveCustomerAutoPick(w, {
+      partyId: input.partyId,
+      productId: prod.productId,
+      dob: input.dob,
+    });
+    const effectiveDob = input.dob?.trim() || autoPicked.dob || undefined;
+    const computedAge = effectiveDob
+      ? (() => { try { return this.ageCalculation.calculate(effectiveDob, w.asOf, prod.productId); } catch { return null; } })()
+      : null;
+    const resolvedAge = input.age !== undefined && Number(input.age) > 0
+      ? Number(input.age)
+      : (computedAge?.effectiveAge ?? autoPicked.age ?? 35);
 
     const sumAssured = parseAmount(String(input.sumAssured), 'AED');
     const annualIncome = input.annualIncome !== undefined
       ? parseAmount(String(input.annualIncome), 'AED')
-      : money(360_000_00, 'AED');
+      : (autoPicked.annualIncome ? parseAmount(autoPicked.annualIncome, 'AED') : money(360_000_00, 'AED'));
+
+    const resolvedDependentProducts: string[] = input.dependentProducts && input.dependentProducts.length > 0
+      ? [...input.dependentProducts]
+      : [...autoPicked.autoPickedRiders];
 
     const profile: RiskProfile = {
       partyId: input.partyId,
-      age: Number(input.age ?? 35),
-      sex: input.sex ?? 'male',
-      smoker: Boolean(input.smoker ?? false),
-      heightCm: Number(input.heightCm ?? 175),
-      weightKg: Number(input.weightKg ?? 75),
-      occupationClass: (Number(input.occupationClass ?? 1) as OccupationClass),
+      age: resolvedAge,
+      sex: input.sex ?? autoPicked.sex ?? 'male',
+      smoker: input.smoker !== undefined ? Boolean(input.smoker) : Boolean(autoPicked.smoker ?? false),
+      heightCm: Number(input.heightCm ?? autoPicked.heightCm ?? 175),
+      weightKg: Number(input.weightKg ?? autoPicked.weightKg ?? 75),
+      occupationClass: (Number(input.occupationClass ?? autoPicked.occupationClass ?? 1) as OccupationClass),
       pursuits: (input.pursuits ?? []).filter(Boolean),
       conditions: (input.conditions ?? []).filter(Boolean),
       familyHistory: (input.familyHistory ?? []).filter(Boolean),
-      residenceCountry: (input.residenceCountry?.trim() || 'AE').toUpperCase(),
+      residenceCountry: (input.residenceCountry?.trim() || autoPicked.country || 'AE').toUpperCase(),
       annualIncome,
     };
+
+    // Remember newly entered physical, underwriting & dependent-product details back on the customer
+    // golden record so any future proposal, endorsement or journey auto-picks them with zero re-entry.
+    const partyOnFile = w.parties.get(input.partyId);
+    if (partyOnFile) {
+      w.parties.upsert({
+        ...partyOnFile,
+        ...(effectiveDob ? { dateOfBirth: effectiveDob } : {}),
+        sex: profile.sex,
+        smoker: profile.smoker,
+        heightCm: profile.heightCm,
+        weightKg: profile.weightKg,
+        occupationClass: profile.occupationClass,
+        annualIncome: toDecimalString(annualIncome),
+        ...(input.beneficiaryName?.trim() ? { beneficiaryName: input.beneficiaryName.trim() } : {}),
+        ...(input.beneficiaryRelationship?.trim() ? { beneficiaryRelationship: input.beneficiaryRelationship.trim() } : {}),
+        ...(resolvedDependentProducts.length > 0 ? { dependentProducts: resolvedDependentProducts } : {}),
+      });
+    }
 
     const at = input.at ?? `${w.asOf}T10:30:00+04:00`;
     const app = w.underwriting.register({
@@ -839,11 +933,14 @@ export class ErpManager {
       paymentFrequency: input.paymentFrequency ?? 'annual',
       termYears: Number(input.termYears ?? 20),
       beneficiary: {
-        name: input.beneficiaryName?.trim() || 'Legal Heirs / Estate',
-        relationship: input.beneficiaryRelationship?.trim() || 'family',
+        name: input.beneficiaryName?.trim() || autoPicked.beneficiaryName || 'Legal Heirs / Estate',
+        relationship: input.beneficiaryRelationship?.trim() || autoPicked.beneficiaryRelationship || 'family',
         sharePct: 100,
       },
       targetFunds: input.targetFunds && input.targetFunds.length > 0 ? input.targetFunds : prod.defaultFunds,
+      ...(effectiveDob ? { dob: effectiveDob } : {}),
+      ageBasis: computedAge?.basis ?? this.ageCalculation.basisForProduct(prod.productId),
+      dependentProducts: resolvedDependentProducts,
       createdAt: at,
     };
     this.proposals.set(app.id, meta);
@@ -855,6 +952,14 @@ export class ErpManager {
       productId: prod.productId,
       productName: prod.name,
       category: prod.category,
+      dob: effectiveDob ?? null,
+      age: profile.age,
+      ageBasis: meta.ageBasis ?? 'age-nearest',
+      heightCm: profile.heightCm,
+      weightKg: profile.weightKg,
+      smoker: profile.smoker,
+      sex: profile.sex,
+      dependentProducts: resolvedDependentProducts,
       sumAssured: formatAmount(sumAssured),
       standardPremium: formatAmount(assessment.standardPremium),
       loadedPremium: formatAmount(assessment.loadedPremium),
@@ -2789,6 +2894,14 @@ export class ErpManager {
         paymentFrequency: meta?.paymentFrequency ?? 'annual',
         termYears: meta?.termYears ?? 20,
         beneficiary: meta?.beneficiary ?? { name: 'Legal Heirs', relationship: 'family', sharePct: 100 },
+        dob: meta?.dob ?? party?.dateOfBirth ?? null,
+        age: a.profile.age,
+        ageBasis: meta?.ageBasis ?? this.ageCalculation.basisForProduct(a.productId),
+        heightCm: a.profile.heightCm,
+        weightKg: a.profile.weightKg,
+        smoker: a.profile.smoker,
+        sex: a.profile.sex,
+        dependentProducts: meta?.dependentProducts ?? this.dependentProducts.resolveForProduct(a.productId).rule.autoPickCodes,
         sumAssured: formatAmount(a.sumAssured),
         standardPremium: formatAmount(assessment.standardPremium),
         loadedPremium: formatAmount(assessment.loadedPremium),
@@ -2924,6 +3037,12 @@ export class ErpManager {
         channels: this.channels.snapshot(),
         /** Carriers, registered branches, country reinsurance and the Conventional/Takaful matrix. */
         providers: this.providers.snapshot(),
+        /** Actuarial DOB-to-Age rules (Nearest / Next / Last birthday) and per-product overrides. */
+        ageCalculation: this.ageCalculation.snapshot(),
+        /** Auto-picked dependent riders and linked cover products per base plan. */
+        dependentProducts: this.dependentProducts.snapshot(),
+        /** Rich smart-combobox suggestion catalogues across products, riders, build, relationships, etc. */
+        smartSuggestions: buildSmartSuggestions(w),
         catalogueSize: PRODUCT_CATALOGUE.length,
         charges: {
           allocationChargeBps: charges.allocationChargeBps,

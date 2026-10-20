@@ -42,6 +42,14 @@ administration, quotations, funds, reinsurance and master settings use the same 
 See [`docs/09-CUSTOMER-JOURNEY.md`](docs/09-CUSTOMER-JOURNEY.md) for the sequence, the gate contract, the
 alternatives considered and what is verified.
 
+## Pre-Load Security Gate, 36-Profile RBAC, DOA Notifications & Smart Auto-Pick
+
+- **Pre-Load Security & 36-Profile Selection Layer (`src/core/rbac.ts`, `src/ui/rbac-views.tsx`)**: Opened prior to entering the ERP workspace across all **36** enterprise profiles (`administration` with 100% unrestricted access across all 29 tabs, sections, sub-sections and unlimited DOA authority; plus `supervisor`, `configurator`, `underwriter-officer`, `underwriter-manager`, `retention-officer`, `retention-manager`, `endorsement-officer`, `endorsement-supervisor`, `claim-officer`, `claim-manager`, `settlement-officer`, `settlement-manager`, `reinsurance-officer`, `reinsurance-manager`, `bancassurance-operations-officer`, `fund-configuration`, `accountant`, `finance`, `cost-controller`, `fund-investment-officer`, `fund-investment-manager`, `agent-1`, `agent-2`, `agent-marsh`, `agent-supervisor`, `banca-officer-1`, `banca-officer-2`, `banca-supervisor`, `aggregator`, `direct-customer`, `referral-partner-1`, `referral-partner-2`, `bank-manager`, `branch-officer`, and `branch-manager`).
+- **AI Access & SoD Advisor + Dedicated Role Access & DOA Tab (`access-doa`)**: Recommends optimal 3-tier access (`Tab -> Section -> Sub-Section`), flags Segregation-of-Duties (SoD) conflicts, maps supervisor/manager chains by **Entity × Channel × Sub-Channel** (including Marsh Broker, Agency Desks, Bancassurance Desks, and Retail Bank Branches), and routes DOA approval requests with real-time approver notifications, self-approval blocks, escalations, and immutable audit trails.
+- **Zero-Duplicate Smart Auto-Pick, Editable `<SmartComboBox />` & Master Age Rules (`src/core/autopick.ts`, `src/ui/combobox.tsx`)**: Auto-picks previously entered `dob`, `age`, `heightCm`, `weightKg` (and live BMI), `sex`, `smoker`, `occupationClass`, `annualIncome`, `beneficiary`, and `dependentProducts` (linked riders/companion covers); upgrades fields including **Product Name**, **Product Description**, and **Dependent Products** to editable + AI-suggested ComboBoxes; and auto-calculates Insurance Age from Date of Birth via Master Setup **`Age Nearest (ANB)`**, **`Age Next (ANxB)`**, or **`Age Last (ALB)`**.
+
+See [`docs/17-RBAC-DOA-AUTOPICK-AND-SMART-COMBOBOX.md`](docs/17-RBAC-DOA-AUTOPICK-AND-SMART-COMBOBOX.md) for full architecture and API endpoints.
+
 ## Whose platform is this, and what does it sell?
 
 The **Master settings & ERP** tab is where a tenant says who it is, and every other screen reads that

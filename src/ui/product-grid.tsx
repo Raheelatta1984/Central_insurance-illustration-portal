@@ -24,6 +24,7 @@ import { api } from './api';
 import { downloadText, FileInput, GridBar, GridFrame, NumberCell, Pill, RowActions, SelectCell, StatPills, TextCell, useGrid } from './grid';
 import { PRODUCT_COLUMNS } from '../core/product-config.js';
 import { PRODUCT_CATEGORIES } from '../core/products.js';
+import { SmartComboBox } from './combobox';
 
 /**
  * The draft the section's gate reads. The field names are the ones the master-settings screen has always
@@ -471,8 +472,14 @@ export const ProductConfigGrid: React.FC<{
             <input value={copyDraft.newId} onChange={(e) => setCopyDraft((t) => ({ ...t, newId: e.target.value.toUpperCase() }))} placeholder={copyDraft.source ? copyIdFor(copyDraft.source, takenIds) : 'PROD-…-COPY'} style={{ width: 200 }} />
           </label>
           <label>
-            Its name (blank = the source's, with “(copy)” on the end)
-            <input value={copyDraft.newName} onChange={(e) => setCopyDraft((t) => ({ ...t, newName: e.target.value }))} placeholder="Optional" style={{ width: 240 }} />
+            Its name (Suggested + Editable · blank = source + “(copy)”)
+            <SmartComboBox
+              value={copyDraft.newName}
+              onChange={(v) => setCopyDraft((t) => ({ ...t, newName: v }))}
+              suggestions={data.erp.master.smartSuggestions.productNames}
+              placeholder="Optional or choose suggested name"
+              style={{ width: 255 }}
+            />
           </label>
           <label className="checkLabel">
             <input type="checkbox" checked={copyDraft.copyRates} onChange={(e) => setCopyDraft((t) => ({ ...t, copyRates: e.target.checked }))} />

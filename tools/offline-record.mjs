@@ -84,6 +84,10 @@ page.on('response', async (response) => {
 });
 
 await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+const gateEnter = page.locator('[data-select-profile="administration"]');
+if (await gateEnter.isVisible().catch(() => false)) {
+  await gateEnter.click();
+}
 await page.waitForSelector('nav button');
 await sleep(1200);
 

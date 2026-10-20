@@ -29,6 +29,12 @@ import { BatchPanel } from './batch-views';
 import { WhatsNewPanel } from './whatsnew-views';
 import { ApplicationThemePanel } from './theme-tab';
 import { EmailConfigurationPanel } from './email-views';
+import {
+  HeaderSecurityStrip,
+  ProfileAccessGuardBanner,
+  ProfileSelectionGate,
+  RoleAccessAndDoaPanel,
+} from './rbac-views';
 
 type Tab = ConsoleTab;
 
@@ -106,6 +112,7 @@ function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab
         </div>
         {onNavigate && (
           <div className="row" style={{ marginTop: 8 }}>
+            <button onClick={() => onNavigate('access-doa')}>⚿ Role Access &amp; DOA ({data.security.profileCount} profiles)</button>
             <button onClick={() => onNavigate('journey')}>➤ Start a customer journey</button>
             <button onClick={() => onNavigate('parties')}>+ Create Customer</button>
             <button onClick={() => onNavigate('underwriting')}>+ Create Proposal &amp; Quote</button>
@@ -953,8 +960,42 @@ function App() {
   const [guideOn, setGuideOn] = useState(true);
   const [guideSeeded, setGuideSeeded] = useState(false);
   const [guideBusy, setGuideBusy] = useState(false);
+  const [profileGateOpen, setProfileGateOpen] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && window.sessionStorage?.getItem('portal.profileSelected') !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const [profileBusy, setProfileBusy] = useState(false);
   const load = useCallback(async () => {
     try { setData(await api<WorldSnapshot>('/world')); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }, []);
+  const switchProfile = useCallback(async (profileId: string) => {
+    setProfileBusy(true);
+    setError(null);
+    try {
+      try {
+        window.localStorage?.setItem('portal-active-profile', profileId);
+        window.sessionStorage?.setItem('portal.profileSelected', '1');
+      } catch { /* storage optional */ }
+      const res = await api<{ profile: { defaultLandingTab: string }; world: WorldSnapshot }>(
+        '/security/session',
+        'POST',
+        { profileId, actor: profileId },
+      );
+      setData(res.world);
+      const nextLanding = (res.profile?.defaultLandingTab ?? 'overview') as Tab;
+      if (TABS.some((t) => t.id === nextLanding)) {
+        setTab(nextLanding);
+      }
+      setProfileGateOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setProfileGateOpen(false);
+    } finally {
+      setProfileBusy(false);
+    }
   }, []);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
@@ -1014,11 +1055,30 @@ function App() {
       previousGlobalThemeKeys.current = [];
     };
   }, [globalThemeCss]);
+  const activeSecurityProfile = useMemo(
+    () =>
+      data?.security.profiles.find((p) => p.id === data.security.activeProfileId)
+      ?? data?.security.profiles[0]
+      ?? null,
+    [data],
+  );
+  const visibleTabs = useMemo(() => {
+    if (!activeSecurityProfile || activeSecurityProfile.unrestricted) return TABS;
+    return TABS.filter((t) => t.id === 'tour' || (activeSecurityProfile.tabAccess[t.id] ?? 'none') !== 'none');
+  }, [activeSecurityProfile]);
   const body = useMemo(() => {
     if (!data) return null;
     switch (tab) {
       case 'tour': return <Tour />;
       case 'overview': return <Overview data={data} onNavigate={setTab} />;
+      case 'access-doa': return (
+        <RoleAccessAndDoaPanel
+          data={data}
+          onReload={load}
+          onSwitchProfile={switchProfile}
+          onOpenGate={() => setProfileGateOpen(true)}
+        />
+      );
       case 'journey': return <CustomerJourneyPanel data={data} onReload={load} onNavigate={setTab} />;
       case 'master': return <MasterSettingsErp data={data} onReload={load} onNavigate={setTab} />;
       case 'email': return <EmailConfigurationPanel data={data} onReload={load} />;
@@ -1048,6 +1108,16 @@ function App() {
       default: return null;
     }
   }, [data, tab, load]);
+  if (data && profileGateOpen) {
+    return (
+      <ProfileSelectionGate
+        security={data.security}
+        tenantName={data.tenant.name}
+        busy={profileBusy}
+        onSelectProfile={switchProfile}
+      />
+    );
+  }
   return (
     <div className={`app${navOpen ? ' navOpen' : ''}`}>
       {/* Below 980px the rail is a drawer: a 250px column of navigation is most of a phone's width, and
@@ -1057,11 +1127,16 @@ function App() {
         <button type="button" className="navClose" aria-label="Close the menu" onClick={() => setNavOpen(false)}>×</button>
         <div className="brand"><span className="logo">{entityTheme?.images.logoDataUrl ? <img src={entityTheme.images.logoDataUrl} alt={`${entityTheme.ownerName} logo`} /> : '◈'}</span><div><b>Central Insurance ERP</b><small>{data?.tenant.name ?? 'connecting…'}</small></div></div>
         <nav aria-label="Console sections">
-          {TABS.map((t) => (
-            <button key={t.id} type="button" className={t.id === tab ? 'active' : ''} aria-current={t.id === tab ? 'page' : undefined} onClick={() => { setTab(t.id); setNavOpen(false); }}>
-              <span className="icon" aria-hidden="true">{t.icon}</span>{t.label}
-            </button>
-          ))}
+          {visibleTabs.map((t) => {
+            const readOnly = activeSecurityProfile && !activeSecurityProfile.unrestricted && activeSecurityProfile.tabAccess[t.id] === 'read';
+            return (
+              <button key={t.id} type="button" className={t.id === tab ? 'active' : ''} aria-current={t.id === tab ? 'page' : undefined} onClick={() => { setTab(t.id); setNavOpen(false); }}>
+                <span className="icon" aria-hidden="true">{t.icon}</span>
+                <span style={{ flex: 1 }}>{t.label}</span>
+                {readOnly && <span className="pill" style={{ fontSize: 9.5, padding: '1px 5px' }}>RO</span>}
+              </button>
+            );
+          })}
         </nav>
         <footer>
           {entityTheme?.images.footerDataUrl && <img className="entityFooterImage" src={entityTheme.images.footerDataUrl} alt="Entity brand footer" />}
@@ -1077,7 +1152,18 @@ function App() {
             <p className="muted small">Unit-linked · takaful · group finance · micro-duration cover — all from one core, all auditable.</p>
           </div>
           <div className="topRight">
-            <GuideToggle enabled={guideOn} busy={guideBusy} onToggle={(next) => { void toggleGuide(next); }} />
+            <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 4 }}>
+              {data && (
+                <HeaderSecurityStrip
+                  security={data.security}
+                  onSwitchProfile={switchProfile}
+                  onOpenGate={() => setProfileGateOpen(true)}
+                  onOpenAccessTab={() => setTab('access-doa')}
+                  onReload={load}
+                />
+              )}
+              <GuideToggle enabled={guideOn} busy={guideBusy} onToggle={(next) => { void toggleGuide(next); }} />
+            </div>
             <div className="pills">
               <Pill tone="ok">books balanced</Pill>
               <Pill tone="info">as of {data?.asOf ?? '—'}</Pill>
@@ -1096,6 +1182,12 @@ function App() {
         {data ? (
           <GuideProvider data={data} tab={tab} enabled={guideOn}>
             <div className={`scopedBrandSurface${scopedThemeLayers.length ? ' hasScopedBrand' : ''}`} style={scopedThemeCss as React.CSSProperties}>
+              <ProfileAccessGuardBanner
+                security={data.security}
+                tab={tab}
+                onReload={load}
+                onOpenAccessTab={() => setTab('access-doa')}
+              />
               {scopedThemeLayers.length > 0 && (
                 <div className="scopedBrandBanner">
                   <span className="small muted">Scoped customer/partner brand active on this surface:</span>
@@ -2756,6 +2848,39 @@ span.gcell em { color:var(--muted); font-style:normal; font-size:11px; white-spa
 .fileInput { display:inline-flex; align-items:center; gap:6px; position:relative; }
 .fileHidden { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
 code, pre { overflow-wrap:anywhere; }
+
+/* Enterprise Pre-Load Security Gate, Smart ComboBox & DOA Notification Drawer */
+.securityGateWrap { min-height:100vh; padding:26px clamp(16px, 3vw, 44px) 60px; background:radial-gradient(circle at top right, rgba(62,166,255,.12), transparent 46%), var(--bg); }
+.securityGateHero { display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; padding:20px 24px; margin-bottom:16px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(135deg, var(--panel2), var(--panel)); box-shadow:0 16px 40px rgba(0,0,0,.34); }
+.securityAdminQuickBox { padding:14px 18px; border:1px solid rgba(47,191,113,.45); border-radius:12px; background:rgba(47,191,113,.08); max-width:440px; }
+.primaryHeroBtn { font-size:14px; font-weight:700; padding:11px 18px; border-radius:10px; box-shadow:0 6px 22px rgba(62,166,255,.28); }
+.securityGateGrid { display:grid; grid-template-columns:minmax(0, 1fr) 390px; gap:16px; align-items:flex-start; }
+.securityCardsGrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(275px, 1fr)); gap:11px; }
+.profileGateCard { display:flex; flex-direction:column; padding:13px 15px; border:1px solid var(--line); border-radius:12px; background:var(--panel); cursor:pointer; transition:border-color .14s ease, transform .14s ease, background .14s ease; }
+.profileGateCard:hover, .profileGateCard.is-selected { border-color:var(--accent); background:var(--panel2); transform:translateY(-1px); }
+.profileGateCard.is-admin { border-color:rgba(47,191,113,.55); box-shadow:inset 0 0 0 1px rgba(47,191,113,.22); }
+.securityPreviewPane { position:sticky; top:18px; max-height:calc(100vh - 36px); overflow:auto; }
+.headerSecurityBar { position:relative; display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.notifDrawer { position:absolute; right:0; top:calc(100% + 8px); z-index:60; width:min(540px, 92vw); max-height:74vh; overflow:auto; box-shadow:0 20px 52px rgba(0,0,0,.62); text-align:left; }
+.notifItem { padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:var(--panel2); margin-bottom:7px; }
+.notifItem.is-read { opacity:.76; background:var(--bg); }
+.smartCombo, .smartMultiCombo { position:relative; display:inline-flex; flex-direction:column; gap:5px; min-width:170px; }
+.smartComboField { display:inline-flex; align-items:stretch; width:100%; }
+.smartComboField input { flex:1 1 auto; min-width:0; border-top-right-radius:0; border-bottom-right-radius:0; }
+.smartComboTrigger { border-top-left-radius:0; border-bottom-left-radius:0; border-left:0; padding:0 9px; min-height:32px; background:var(--panel2); color:var(--muted); border:1px solid var(--line); }
+.smartComboMenu { position:absolute; left:0; right:0; top:calc(100% + 4px); min-width:290px; max-height:270px; overflow:auto; z-index:55; padding:6px; border:1px solid var(--accent); border-radius:10px; background:var(--panel); box-shadow:0 16px 38px rgba(0,0,0,.55); }
+.smartComboHint { font-size:10.5px; color:var(--muted); padding:3px 7px 6px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+.smartComboItem { padding:6px 8px; border-radius:7px; cursor:pointer; }
+.smartComboItem:hover, .smartComboItem.active { background:var(--panel2); }
+.smartComboRow { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }
+.smartComboBadges { display:inline-flex; gap:4px; flex-shrink:0; }
+.smartComboDesc { font-size:11px; color:var(--muted); margin-top:2px; }
+.smartComboEmpty { padding:8px; font-size:12px; color:var(--muted); }
+.smartMultiChips { display:flex; flex-wrap:wrap; gap:4px; }
+.smartMultiChip { display:inline-flex; align-items:center; gap:5px; }
+.smartChipRemove { background:transparent; border:0; color:inherit; padding:0 2px; min-height:auto; font-size:13px; cursor:pointer; }
+.autoPickBanner { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:9px 12px; margin-bottom:10px; border:1px solid rgba(47,191,113,.42); border-radius:10px; background:rgba(47,191,113,.08); }
+@media (max-width:1120px) { .securityGateGrid { grid-template-columns:minmax(0, 1fr); } .securityPreviewPane { position:static; max-height:none; } }
 
 @media (max-width:1280px) {
   /* A 13-inch MacBook has 1280 of usable width and a console that wants 1400: give the content the
