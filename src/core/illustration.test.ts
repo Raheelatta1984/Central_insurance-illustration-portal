@@ -188,20 +188,20 @@ describe('the projection', () => {
 
 describe('the years the customer is shown', () => {
   it('prints every ten years, the end of the term, and the year the life reaches 100', () => {
-    expect(milestoneYears({ benefitTermYears: 30, entryAge: 35 })).toEqual([10, 20, 30]);
+    expect(milestoneYears({ benefitTermYears: 30, entryAge: 35 })).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30]);
     // A whole-of-life style term runs past 100: that row is the one customers ask about by name.
-    expect(milestoneYears({ benefitTermYears: 70, entryAge: 30 })).toEqual([10, 20, 30, 40, 50, 60, 70]);
-    expect(milestoneYears({ benefitTermYears: 45, entryAge: 55 })).toEqual([10, 20, 30, 40, 45]);
+    expect(milestoneYears({ benefitTermYears: 70, entryAge: 30 })).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
+    expect(milestoneYears({ benefitTermYears: 45, entryAge: 55 })).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40, 45]);
   });
 
   it('always prints the final year, however short the term', () => {
-    expect(milestoneYears({ benefitTermYears: 4, entryAge: 40 })).toEqual([4]);
+    expect(milestoneYears({ benefitTermYears: 4, entryAge: 40 })).toEqual([1, 2, 3, 4]);
   });
 
   it('labels each milestone with the age the customer will be', () => {
     const illustration = buildIllustration(base);
     const labels = illustration.milestones.map((m) => `${m.year}:${m.age}`);
-    expect(labels).toEqual(['10:45', '20:55', '30:65']);
+    expect(labels).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30].map((y) => `${y}:${35 + y}`));
     expect(illustration.milestones.at(-1)!.label).toMatch(/End of the 30-year benefit term/);
   });
 

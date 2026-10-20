@@ -16,6 +16,7 @@ import { MissingList, SectionModel, SectionStack, SummaryRows } from './sections
 import { GuideHeading } from './guide';
 import { SmartComboBox, SmartMultiComboBox } from './combobox';
 import { tryCalculateActuarialAge } from '../core/autopick';
+import type { ThemeLayer } from '../core/theme';
 
 /* ------------------------------------------------------------------ the shape the API returns */
 
@@ -853,7 +854,13 @@ function stageExtras(args: BuildArgs): React.ReactNode {
         <div className="stat"><span>PDF</span><b>{quotation.pdf.fileName} · {quotation.pdf.pages} page(s) · {(quotation.pdf.bytes / 1024).toFixed(1)} KB · fingerprint {quotation.pdf.fingerprint}{quotation.pdf.opens ? ' · opens ✓' : ' · DOES NOT OPEN'}</b></div>
         {quotation.email && <DeliveryRow email={quotation.email} />}
         {quotation.finalisation && <div className="stat"><span>Signed</span><b>{quotation.finalisation.signedBy} on {quotation.finalisation.signedAt.slice(0, 10)} · cooling-off to {quotation.finalisation.coolingOffEndsOn} · token {quotation.finalisation.buyToken}</b></div>}
-        {quotation.illustration && <IllustrationPanel illustration={quotation.illustration} />}
+        {quotation.illustration && <BrandedIllustration
+          illustration={quotation.illustration}
+          product={journey.products.find((p) => p.productId === String(journey.cases.find((c) => c.caseId === args.caseId)?.progress.stages.find((s) => s.id === 'recommendation')?.answers['productId'] ?? args.draft['productId']))}
+          channel={String(journey.cases.find((c) => c.caseId === args.caseId)?.progress.stages.find((s) => s.id === 'coverage')?.answers['channelCode'] ?? '')}
+          subChannel={String(journey.cases.find((c) => c.caseId === args.caseId)?.progress.stages.find((s) => s.id === 'coverage')?.answers['subChannelCode'] ?? '')}
+          themes={(args.data as unknown as { themes?: { layers?: ThemeLayer[] } }).themes?.layers ?? []}
+        />}
         <ResendQuotation quotationId={quotation.quotationId} to={quotation.email?.to} run={args.run} busy={args.busy} />
         <details>
           <summary className="muted small">Compliance checks ({quotation.compliance.filter((c) => c.passes).length}/{quotation.compliance.length} pass)</summary>
@@ -944,6 +951,31 @@ function stageExtras(args: BuildArgs): React.ReactNode {
 function draftOf(args: BuildArgs): Record<string, unknown> { return args.draft; }
 
 /* ------------------------------------------------------------------ the illustration, and the email that carries it */
+
+/** A read-only look and feel for the actual rated quotation; no invented scenario values. */
+const BrandedIllustration: React.FC<{
+  illustration: IllustrationViewShape;
+  product?: JourneyView['products'][number];
+  channel: string;
+  subChannel: string;
+  themes: ThemeLayer[];
+}> = ({ illustration, product, channel, subChannel, themes }) => {
+  const entity = themes.find((t) => t.enabled && t.scope === 'entity' && t.ownerId === product?.entityId);
+  const omni = themes.find((t) => t.enabled && t.scope === 'omni-channel' && t.ownerId === channel);
+  const theme = omni ?? entity;
+  return <section style={{ background: theme?.palette.surface, color: theme?.palette.text,
+    border: `2px solid ${theme?.palette.primary ?? '#3ea6ff'}`, borderRadius: 12, padding: 18 }}>
+    <header style={{ borderBottom: `2px solid ${theme?.palette.primary ?? '#3ea6ff'}`, paddingBottom: 12 }}>
+      {theme?.images.logoDataUrl && <img src={theme.images.logoDataUrl} alt={`${theme.ownerName} logo`} style={{ maxWidth: 160, maxHeight: 64 }} />}
+      <h3>{theme?.ownerName ?? product?.entityId ?? 'Quotation'} · {product?.name ?? 'Benefit illustration'}</h3>
+      <p>{[channel, subChannel].filter(Boolean).join(' / ') || 'Direct'} · {illustration.currency} · Sample document preview</p>
+    </header>
+    <IllustrationPanel illustration={illustration} />
+    <footer style={{ borderTop: `1px solid ${theme?.palette.primary ?? '#3ea6ff'}`, paddingTop: 12 }}>
+      {theme?.ownerName ?? 'Quotation'} · Projected values are not guaranteed. Refer to the issued quotation for policy terms.
+    </footer>
+  </section>;
+};
 
 /**
  * The benefit illustration, as the customer will read it: the milestones they ask about by name,

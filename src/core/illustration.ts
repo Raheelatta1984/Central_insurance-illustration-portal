@@ -382,21 +382,16 @@ function surrenderChargeBps(charges: IllustrationCharges, policyYear: number): n
   return schedule[index] ?? 0;
 }
 
-/**
- * The years the headline table prints: every `step` years, the end of the benefit term, and the year
- * the life reaches `toAge` when the term runs past it — which is where "the 100-year illustration"
- * comes from. A term shorter than the step still prints its final year.
- */
+/** Customer-facing projection cadence: annual through ten, five-yearly thereafter, always ending at the selected horizon (at most 50). */
 export function milestoneYears(input: {
   benefitTermYears: number; entryAge: number; toAge?: number; step?: number;
 }): number[] {
-  const step = Math.max(1, Math.floor(input.step ?? 10));
-  const toAge = input.toAge ?? 100;
+  const end = Math.min(50, Math.max(0, Math.floor(input.benefitTermYears)));
+  if (!end) return [];
   const years = new Set<number>();
-  for (let y = step; y <= input.benefitTermYears; y += step) years.add(y);
-  const atToAge = toAge - Math.floor(input.entryAge);
-  if (atToAge > 0 && atToAge <= input.benefitTermYears) years.add(atToAge);
-  if (input.benefitTermYears > 0) years.add(input.benefitTermYears);
+  for (let year = 1; year <= Math.min(10, end); year++) years.add(year);
+  for (let year = 15; year <= end; year += 5) years.add(year);
+  years.add(end);
   return [...years].sort((a, b) => a - b);
 }
 
