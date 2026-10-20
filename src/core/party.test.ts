@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchParties, normaliseId, Party, PartyRegistry, scoreMatch } from './party.js';
+import { findExactDuplicate, goldenRecordOf, matchParties, normaliseId, Party, PartyRegistry, scoreMatch } from './party.js';
 
 const ahmed: Party = {
   id: 'PTY-1', kind: 'person', names: { en: 'Ahmed Al Mansoori', ar: 'أحمد المنصوري' }, dateOfBirth: '1985-04-12',
@@ -26,6 +26,41 @@ describe('party matching and consent', () => {
     expect(weak.reasons.join(' ')).toMatch(/full name matches/);
     expect(matchParties({ names: { en: 'Ahmed Al Mansoori' } }, [ahmed], 1000)).toHaveLength(0);
     expect(matchParties({ ids: duplicate.ids }, [ahmed], 1000)[0]!.partyId).toBe('PTY-1');
+  });
+
+  it('finds a certain duplicate by identity document, however the number is punctuated', () => {
+    // This is the lookup customer creation runs before generating a customer number: the same
+    // Emirates ID is the same customer even when everything else was re-typed differently.
+    const exact = findExactDuplicate(
+      { names: { en: 'A. Mansoori' }, ids: [{ type: 'emirates-id', value: '784 1985 1234567 1', country: 'AE', source: 'manual', confidence: 0.9 }] },
+      [ahmed],
+    );
+    expect(exact?.party.id).toBe('PTY-1');
+    expect(exact?.match.reasons.join(' ')).toMatch(/emirates-id number matches exactly/);
+
+    // A resemblance without the document — even name, date of birth, phone and email together —
+    // is only a possible duplicate for a human to resolve, never grounds to hand back PTY-1.
+    expect(findExactDuplicate(
+      { names: { en: 'Ahmed Al Mansoori' }, dateOfBirth: '1985-04-12', phones: ['+971501234567'], emails: ['ahmed@example.ae'] },
+      [ahmed],
+    )).toBeUndefined();
+    // The same number under a different document type is a different document.
+    expect(findExactDuplicate(
+      { ids: [{ type: 'passport', value: '784198512345671', country: 'AE', source: 'manual', confidence: 0.9 }] },
+      [ahmed],
+    )).toBeUndefined();
+  });
+
+  it('resolves a match against a merged-away record to the surviving golden record', () => {
+    const loser: Party = { ...duplicate, mergedInto: 'PTY-1' };
+    expect(goldenRecordOf(loser, [ahmed, loser]).id).toBe('PTY-1');
+    // Even when the merged-away record is the one matched first, the survivor is handed back.
+    expect(findExactDuplicate({ ids: duplicate.ids }, [loser, ahmed])?.party.id).toBe('PTY-1');
+    const registry = new PartyRegistry('t1');
+    registry.upsert(ahmed); registry.upsert(loser);
+    expect(registry.goldenRecord('PTY-2')?.id).toBe('PTY-1');
+    expect(registry.findByIdentityDocument(duplicate.ids)?.id).toBe('PTY-1');
+    expect(registry.findByIdentityDocument([{ type: 'passport', value: 'X1', country: 'AE', source: 'manual', confidence: 0.9 }])).toBeUndefined();
   });
 
   it('merges duplicates without losing the trail', () => {

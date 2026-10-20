@@ -22,7 +22,7 @@ import { TakafulProductConfig } from './takaful.js';
 import { DecisionOutcome, OccupationClass, ProductLine, ProductRules, RiskProfile } from './underwriting.js';
 import { Authority, ClaimCause, RecoveryType } from './claims.js';
 import { Basis, Treaty, TreatyKind } from './reinsurance.js';
-import { IdType, IdentityDocument, Party, matchParties } from './party.js';
+import { EXACT_IDENTITY_SCORE, IdType, IdentityDocument, MatchCandidate, Party, findExactDuplicate, matchParties, normaliseId } from './party.js';
 import { posting } from './ledger.js';
 import { Locale } from './labels.js';
 import { INSURANCE_PRODUCT_CATALOGUE } from './product-catalogue.js';
@@ -199,6 +199,40 @@ export interface PolicyAlteration {
   readonly at: string;
   readonly by: string;
   readonly reason: string;
+}
+
+export interface CreateCustomerResult {
+  /** The golden record for this customer: the one just created, or the existing one retrieved. */
+  readonly party: Party;
+  readonly consentId?: string;
+  /**
+   * Other records that resemble this customer and still need a human decision (merge, or record
+   * why they are two people). An existing record that was *retrieved* is not listed here — it is
+   * `party`, explained by `existingMatch` — because there is nothing left to resolve about it.
+   */
+  readonly duplicateMatches: MatchCandidate[];
+  /**
+   * `false` when no new customer was generated: the identity document (or the supplied customer
+   * number) was already on file, so the existing golden record was retrieved instead.
+   */
+  readonly created: boolean;
+  /** Why the existing record was retrieved, present exactly when `created` is `false`. */
+  readonly existingMatch?: MatchCandidate;
+}
+
+/**
+ * The next free customer number, taken from the highest `PTY-` number already issued rather
+ * than the record count: a customer filed under an explicit number by a partner system
+ * (PTY-9999) otherwise leaves `count + 1` to collide with a number already on file.
+ */
+function nextCustomerId(parties: readonly Party[]): string {
+  const used = new Set(parties.map((p) => p.id));
+  let next = parties.reduce((max, p) => {
+    const m = /^PTY-(\d+)$/.exec(p.id);
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0);
+  do { next += 1; } while (used.has(`PTY-${String(next).padStart(4, '0')}`));
+  return `PTY-${String(next).padStart(4, '0')}`;
 }
 
 export class ErpManager {
@@ -560,12 +594,9 @@ export class ErpManager {
     roles?: string[];
     grantConsentTo?: string;
     consentScopes?: string[];
-  }): { party: Party; consentId?: string; duplicateMatches: Array<{ partyId: string; score: number; reasons: string[] }> } {
+  }): CreateCustomerResult {
     const nameEn = input.nameEn.trim();
     if (!nameEn) throw new ErpError('customer English name is required');
-    const nextNum = w.parties.list().length + 1;
-    const id = input.id?.trim() || `PTY-${String(nextNum).padStart(4, '0')}`;
-    if (w.parties.get(id)) throw new ErpError(`customer ${id} already exists`);
 
     const country = (input.country?.trim() || 'AE').toUpperCase();
     const ids: IdentityDocument[] = [];
@@ -579,41 +610,96 @@ export class ErpManager {
       });
     }
 
-    const candidate: Party = {
-      id,
+    // The person being registered, before any customer number exists for them. Duplicate
+    // matching runs against this probe so that a customer who is already on file is found
+    // *before* a new PTY number is generated for them — the number is the last thing created,
+    // not the first.
+    const probe: Partial<Party> & { ids: IdentityDocument[] } = {
       kind: input.kind ?? 'person',
       names: { en: nameEn, ...(input.nameAr?.trim() ? { ar: input.nameAr.trim() } : {}) },
       ...(input.dateOfBirth?.trim() ? { dateOfBirth: input.dateOfBirth.trim() } : {}),
       ids,
       phones: input.phone?.trim() ? [input.phone.trim()] : [],
       emails: input.email?.trim() ? [input.email.trim()] : [],
-      addresses: input.addressLine?.trim()
-        ? [{ line: input.addressLine.trim(), ...(input.city?.trim() ? { city: input.city.trim() } : {}), country }]
-        : [{ line: 'Sheikh Zayed Road', city: input.city?.trim() || 'Dubai', country }],
-      roles: input.roles && input.roles.length > 0 ? input.roles : ['policyholder'],
     };
 
-    const duplicateMatches = matchParties(candidate, w.parties.list(), 120);
-    w.parties.upsert(candidate);
-    if (w.parties.holdingsOf(id).length === 0) w.parties.recordHoldings(id, []);
-
-    let consentId: string | undefined;
-    if (input.grantConsentTo?.trim()) {
-      const consent = w.parties.grantConsent({
-        partyId: id,
-        grantedTo: input.grantConsentTo.trim(),
+    // The initial consent that creation captures. On the retrieved path an unrevoked,
+    // unexpired consent to the same partner is handed back rather than re-granted, so
+    // re-submitting a customer does not pile up duplicate consents beside the duplicate
+    // customer it no longer creates.
+    const initialConsentId = (partyId: string, reuseExisting: boolean): string | undefined => {
+      const grantedTo = input.grantConsentTo?.trim();
+      if (!grantedTo) return undefined;
+      if (reuseExisting) {
+        const active = w.parties.consentsOf(partyId).find((c) =>
+          c.grantedTo === grantedTo && !c.revokedAt && (!c.expiresAt || c.expiresAt.slice(0, 10) >= w.asOf));
+        if (active) return active.id;
+      }
+      return w.parties.grantConsent({
+        partyId,
+        grantedTo,
         purpose: 'Centralized customer verification & policy servicing',
         scopes: input.consentScopes && input.consentScopes.length > 0
           ? input.consentScopes
           : ['customer.exists', 'customer.name', 'customer.contact', 'customer.holdings'],
         grantedAt: `${w.asOf}T10:00:00+04:00`,
         expiresAt: '2027-12-31T23:59:59+04:00',
-        evidence: `e-consent-${id}`,
-      });
-      consentId = consent.id;
+        evidence: `e-consent-${partyId}`,
+      }).id;
+    };
+
+    const onFile = w.parties.list();
+
+    // A certain duplicate — same identity document already on file, or the supplied customer
+    // number itself — is *retrieved*, never re-generated. The existing golden record is
+    // returned unchanged (fresh details belong in updateCustomer, where they are recorded as a
+    // change to a known customer, not smuggled in by a second creation). Other records that
+    // merely resemble this customer are still reported for a human to resolve.
+    const exact = findExactDuplicate(probe, onFile);
+    const suppliedId = input.id?.trim() || undefined;
+    const numbered = !exact && suppliedId ? w.parties.goldenRecord(suppliedId) : undefined;
+    const existing = exact?.party ?? numbered;
+    if (existing) {
+      const existingMatch: MatchCandidate = exact?.match ?? {
+        partyId: existing.id,
+        score: EXACT_IDENTITY_SCORE,
+        reasons: [`customer number ${suppliedId} is already on file`],
+      };
+      const consentId = initialConsentId(existing.id, true);
+      return {
+        party: existing,
+        ...(consentId ? { consentId } : {}),
+        duplicateMatches: matchParties(probe, onFile, 120).filter((m) => m.partyId !== existing.id),
+        created: false,
+        existingMatch,
+      };
     }
 
-    return { party: candidate, ...(consentId ? { consentId } : {}), duplicateMatches };
+    // Genuinely new: only now is a customer number generated. Possible duplicates (a shared
+    // name, date of birth, phone or email — never the same identity document) do not stop
+    // creation, because two different people can resemble each other; they are reported in
+    // `duplicateMatches` so the caller can merge or record why they are two people.
+    const id = suppliedId ?? nextCustomerId(onFile);
+    const candidate: Party = {
+      id,
+      kind: probe.kind ?? 'person',
+      names: probe.names ?? { en: nameEn },
+      ...(probe.dateOfBirth ? { dateOfBirth: probe.dateOfBirth } : {}),
+      ids,
+      phones: probe.phones ?? [],
+      emails: probe.emails ?? [],
+      addresses: input.addressLine?.trim()
+        ? [{ line: input.addressLine.trim(), ...(input.city?.trim() ? { city: input.city.trim() } : {}), country }]
+        : [{ line: 'Sheikh Zayed Road', city: input.city?.trim() || 'Dubai', country }],
+      roles: input.roles && input.roles.length > 0 ? input.roles : ['policyholder'],
+    };
+
+    const duplicateMatches = matchParties(candidate, onFile, 120);
+    w.parties.upsert(candidate);
+    if (w.parties.holdingsOf(id).length === 0) w.parties.recordHoldings(id, []);
+
+    const consentId = initialConsentId(id, false);
+    return { party: candidate, ...(consentId ? { consentId } : {}), duplicateMatches, created: true };
   }
 
   updateCustomer(w: World, input: {
@@ -636,7 +722,21 @@ export class ErpManager {
     if (input.idValue?.trim()) {
       const type = input.idType ?? 'emirates-id';
       const val = input.idValue.trim();
-      if (!ids.some((i) => i.type === type && i.value === val)) {
+      // An identity document identifies exactly one customer. Attaching a document another
+      // golden record already holds would manufacture the duplicate that createCustomer now
+      // refuses to generate, through the side door — so the refusal names the customer who
+      // owns it, for the operator to retrieve or merge instead.
+      const clash = findExactDuplicate(
+        { ids: [{ type, value: val, country: input.country ?? 'AE', source: 'manual', confidence: 0.95 }] },
+        w.parties.list().filter((p) => p.id !== existing.id && p.mergedInto !== existing.id),
+      );
+      if (clash) {
+        throw new ErpError(
+          `${type} ${val} already belongs to customer ${clash.party.id} (${clash.party.names.en}) — `
+          + `retrieve or merge that golden record instead of attaching its identity document to ${existing.id}`,
+        );
+      }
+      if (!ids.some((i) => i.type === type && normaliseId(i.value) === normaliseId(val))) {
         ids.push({ type, value: val, country: input.country ?? 'AE', source: 'manual', confidence: 0.95 });
       }
     }

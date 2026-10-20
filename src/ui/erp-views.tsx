@@ -108,14 +108,14 @@ export function CustomerManagementPanel({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const runAction = async (label: string, fn: () => Promise<unknown>) => {
+  const runAction = async (label: string | ((res: unknown) => string), fn: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       const res = await fn();
       await onReload();
-      setNotice(`${label}: ${JSON.stringify(res)}`);
+      setNotice(`${typeof label === 'function' ? label(res) : label}: ${JSON.stringify(res)}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -130,7 +130,7 @@ export function CustomerManagementPanel({
         {
           id: 'create',
           title: 'Create centralized customer (golden record)',
-          subtitle: 'Register a person or corporate entity with a verified identity document and their consent',
+          subtitle: 'Register a person or corporate entity with a verified identity document and their consent. If that identity document is already on file, the existing customer record is retrieved — a new customer number is never generated for a customer who already has one.',
           fields: fields(
             ['English name', nameEn],
             ['Arabic name', nameAr],
@@ -229,7 +229,12 @@ export function CustomerManagementPanel({
           <button
             disabled={busy}
             onClick={() =>
-              runAction('Customer created', () =>
+              runAction((res) => {
+                const result = res as { created?: boolean; party?: { id?: string } };
+                return result.created === false
+                  ? `Existing customer retrieved (${result.party?.id ?? 'already on file'}) — no new customer number generated`
+                  : 'Customer created';
+              }, () =>
                 api('/parties/create', 'POST', {
                   kind,
                   nameEn,

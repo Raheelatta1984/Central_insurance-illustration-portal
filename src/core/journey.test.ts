@@ -274,17 +274,48 @@ describe('the gates', () => {
     expect(result.reason).toMatch(/Waiver authorised by|Reason the loading was waived|named person authorises it/);
   });
 
-  it('stops at a possible duplicate until the operator records what it turned out to be', () => {
-    // Sara Khalifa already exists in the register; onboarding her again would create a second golden
-    // record for one human being, and every holding, consent and claim would split across the two.
+  it('retrieves the existing customer instead of generating a duplicate customer number', () => {
+    // Sara Khalifa already exists in the register as PTY-0002, under this exact Emirates ID.
+    // Onboarding her again must not mint a second golden record for one human being — every
+    // holding, consent and claim would split across the two customer numbers. The existing
+    // record is retrieved, the case carries her original number, and because the duplicate was
+    // resolved by retrieval there is nothing left for the profile stage to block on.
     const w = buildWorld();
+    const customersBefore = w.parties.list().length;
     const caze = w.journey.open(w, { customerName: 'Sara Khalifa' });
-    submit(w, caze.caseId, 'identity', {
+    const identity = submit(w, caze.caseId, 'identity', {
       kind: 'person', nameEn: 'Sara Khalifa', nameAr: 'سارة خليفة', dateOfBirth: '1990-11-02',
-      idType: 'emirates-id', idNumber: '784-1990-7654321-9', idSource: 'government-lookup',
+      idType: 'emirates-id', idNumber: '784199076543219', idSource: 'government-lookup',
       phone: '+971 55 987 6543', email: 'sara.khalifa@example.ae', addressLine: 'Al Maryah Island, Tower 4',
       city: 'Abu Dhabi', country: 'AE', consentTo: 'DXB-BROKER-01',
     });
+    expect(identity.accepted, identity.reason).toBe(true);
+    expect(w.journey.get(caze.caseId).artefacts.partyId).toBe('PTY-0002');
+    expect(identity.detail['partyId']).toBe('PTY-0002');
+    expect(identity.detail['created']).toBe(false);
+    expect(String(identity.detail['note'])).toMatch(/already on file as PTY-0002/);
+    expect(w.parties.list().length).toBe(customersBefore);
+
+    const profile = submit(w, caze.caseId, 'profile', answersFor('profile'));
+    expect(profile.accepted, profile.reason).toBe(true);
+    expect(stage(profile.progress, 'profile').summary.find((r) => r.label === 'Duplicate search')!.value).toMatch(/no possible duplicate/);
+  });
+
+  it('stops at a possible duplicate until the operator records what it turned out to be', () => {
+    // Same name, date of birth, phone and email as the Sara Khalifa in the register — but a
+    // *different* Emirates ID, so she may genuinely be a second person. That resemblance is not
+    // silently collapsed into PTY-0002 and not ignored either: a record is created, flagged,
+    // and the profile stage stops until a human says what the match turned out to be.
+    const w = buildWorld();
+    const caze = w.journey.open(w, { customerName: 'Sara Khalifa' });
+    const identity = submit(w, caze.caseId, 'identity', {
+      kind: 'person', nameEn: 'Sara Khalifa', nameAr: 'سارة خليفة', dateOfBirth: '1990-11-02',
+      idType: 'emirates-id', idNumber: '784-1990-1112223-4', idSource: 'government-lookup',
+      phone: '+971 55 987 6543', email: 'sara.khalifa@example.ae', addressLine: 'Al Maryah Island, Tower 4',
+      city: 'Abu Dhabi', country: 'AE', consentTo: 'DXB-BROKER-01',
+    });
+    expect(w.journey.get(caze.caseId).artefacts.partyId).not.toBe('PTY-0002');
+    expect(identity.detail['created']).toBe(true);
     const blocked = submit(w, caze.caseId, 'profile', answersFor('profile'));
     expect(blocked.accepted).toBe(false);
     expect(blocked.reason).toMatch(/possible duplicate\(s\) in the register/);
@@ -292,7 +323,7 @@ describe('the gates', () => {
 
     const resolved = submit(w, caze.caseId, 'profile', {
       ...answersFor('profile'), duplicateResolution: 'distinct-person',
-      duplicateNote: 'Second Sara Khalifa in the register: different Emirates ID and a different date of birth, confirmed on the phone with the customer.',
+      duplicateNote: 'Second Sara Khalifa in the register: different Emirates ID, confirmed on the phone with the customer.',
     });
     expect(resolved.accepted, resolved.reason).toBe(true);
     expect(stage(resolved.progress, 'profile').warnings.join(' ')).toMatch(/recorded as a different person/);

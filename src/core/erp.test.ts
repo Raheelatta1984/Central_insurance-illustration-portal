@@ -53,14 +53,57 @@ describe('End-to-End Insurance ERP Management Solution', () => {
     expect(updated.body.party.phones).toContain('+971 52 000 1111');
     expect(updated.body.party.emails).toContain('noura.vip@example.ae');
 
-    // 3. Create a duplicate customer and merge into PTY-0003
-    const dup = await call<{ party: { id: string } }>(state, 'POST', '/parties/create', {
+    // 2b. Creating the same customer again must not generate a second customer number: the same
+    // Emirates ID (re-keyed without dashes, with a different phone) retrieves the existing
+    // golden record untouched, hands back the consent already on file instead of re-granting
+    // it, and consumes no number — the customer after this is still PTY-0004, below.
+    const customersBefore = state.world.parties.list().length;
+    const again = await call<{
+      party: { id: string; phones: string[] };
+      consentId?: string;
+      created: boolean;
+      existingMatch?: { partyId: string; reasons: string[] };
+    }>(state, 'POST', '/parties/create', {
+      kind: 'person',
+      nameEn: 'Noura Al Maktoum',
+      dateOfBirth: '1991-05-14',
+      idType: 'emirates-id',
+      idValue: '784199188776653',
+      phone: '+971 50 000 0000',
+      grantConsentTo: 'DXB-BROKER-01',
+    });
+    expect(again.status).toBe(200);
+    expect(again.body.created).toBe(false);
+    expect(again.body.party.id).toBe('PTY-0003');
+    expect(again.body.existingMatch?.partyId).toBe('PTY-0003');
+    expect(again.body.existingMatch?.reasons.join(' ')).toMatch(/emirates-id number matches exactly/);
+    expect(again.body.party.phones).toContain('+971 52 000 1111');       // the updated record, as filed
+    expect(again.body.party.phones).not.toContain('+971 50 000 0000');  // not overwritten by the re-creation
+    expect(again.body.consentId).toBe(created.body.consentId);
+    expect(state.world.parties.list().length).toBe(customersBefore);
+
+    // 2c. Re-submitting under the existing customer number itself retrieves it too, rather
+    // than refusing or minting a replacement number.
+    const byNumber = await call<{ party: { id: string }; created: boolean }>(state, 'POST', '/parties/create', {
+      id: 'PTY-0003',
+      kind: 'person',
+      nameEn: 'Noura Al Maktoum',
+    });
+    expect(byNumber.status).toBe(200);
+    expect(byNumber.body.created).toBe(false);
+    expect(byNumber.body.party.id).toBe('PTY-0003');
+    expect(state.world.parties.list().length).toBe(customersBefore);
+
+    // 3. A *possible* duplicate — a similar name but a different identity document, so possibly
+    // a different person — is still created and flagged for a human, then merged into PTY-0003.
+    const dup = await call<{ party: { id: string }; created: boolean }>(state, 'POST', '/parties/create', {
       kind: 'person',
       nameEn: 'Noura Maktoum (Dup)',
       idType: 'passport',
       idValue: 'N9988776',
       phone: '+971 55 333 4444',
     });
+    expect(dup.body.created).toBe(true);
     expect(dup.body.party.id).toBe('PTY-0004');
 
     const merged = await call<{ merged: { id: string; ids: unknown[] } }>(state, 'POST', '/parties/merge', {
@@ -70,6 +113,53 @@ describe('End-to-End Insurance ERP Management Solution', () => {
     expect(merged.status).toBe(200);
     expect(merged.body.merged.id).toBe('PTY-0003');
     expect(merged.body.merged.ids.length).toBe(2);
+
+    // 4. After the merge, presenting the merged-away record's passport retrieves the surviving
+    // golden record — a merged number is never resurrected as a new customer.
+    const viaMerged = await call<{ party: { id: string }; created: boolean }>(state, 'POST', '/parties/create', {
+      kind: 'person',
+      nameEn: 'Noura Maktoum (Dup)',
+      idType: 'passport',
+      idValue: 'N9988776',
+    });
+    expect(viaMerged.body.created).toBe(false);
+    expect(viaMerged.body.party.id).toBe('PTY-0003');
+  });
+
+  it('never lets an update attach another customer’s identity document, and never re-issues a taken customer number', async () => {
+    const state = createRuntimeState();
+
+    // A partner system files a customer under its own explicit number.
+    const explicit = await call<{ party: { id: string }; created: boolean }>(state, 'POST', '/parties/create', {
+      id: 'PTY-9999',
+      kind: 'person',
+      nameEn: 'Omar Farouk',
+      idType: 'emirates-id',
+      idValue: '784-1980-5554443-2',
+    });
+    expect(explicit.body.created).toBe(true);
+    expect(explicit.body.party.id).toBe('PTY-9999');
+
+    // The next generated number follows the highest number issued, so it cannot collide with
+    // PTY-9999 the way a record-count-based sequence would once the register grew into it.
+    const generated = await call<{ party: { id: string }; created: boolean }>(state, 'POST', '/parties/create', {
+      kind: 'person',
+      nameEn: 'Laila Haddad',
+      idType: 'passport',
+      idValue: 'L1122334',
+    });
+    expect(generated.body.created).toBe(true);
+    expect(generated.body.party.id).toBe('PTY-10000');
+
+    // Updating Laila with Omar's Emirates ID would put one person's document on two golden
+    // records — the duplicate createCustomer refuses, through the side door. The refusal names
+    // the customer who owns the document so the operator can retrieve or merge that record.
+    await expect(call(state, 'POST', '/parties/update', {
+      partyId: 'PTY-10000',
+      idType: 'emirates-id',
+      idValue: '784198055544432',
+    })).rejects.toThrow(/already belongs to customer PTY-9999 \(Omar Farouk\)/);
+    expect(state.world.parties.get('PTY-10000')!.ids).toHaveLength(1);
   });
 
   it('creates proposals, takes underwriting decisions, converts proposals to policies, receives premiums, and executes financial & non-financial alterations', async () => {

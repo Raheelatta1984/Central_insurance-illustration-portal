@@ -545,9 +545,17 @@ export class JourneyDesk {
         });
         caze.artefacts = { ...caze.artefacts, partyId: created.party.id, ...(created.consentId ? { consentId: created.consentId } : {}) };
         caze.customerName = created.party.names.en;
+        // `duplicateMatches` excludes a retrieved record (that record *is* this journey's
+        // customer now), so an existing customer re-onboarded under their own identity
+        // document is not reported to the profile stage as an unresolved duplicate.
         caze.answers['profile'] = { ...caze.answers['profile'], __duplicateMatches: created.duplicateMatches.length };
         return {
           partyId: created.party.id, customer: created.party.names.en, consentId: created.consentId ?? null,
+          created: created.created,
+          ...(created.created ? {} : {
+            retrievedExisting: true,
+            note: `This customer is already on file as ${created.party.id}: the existing golden record was retrieved and no new customer number was generated (${created.existingMatch?.reasons.join('; ') ?? 'identity already on file'}).`,
+          }),
           duplicateMatches: created.duplicateMatches.map((m) => ({ partyId: m.partyId, score: m.score, reasons: m.reasons })),
         };
       }
