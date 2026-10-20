@@ -249,7 +249,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/reinsurance', 'GET /api/reinsurance/security', 'GET /api/extracts', 'POST /api/extracts/issue', 'POST /api/extracts/verify', 'POST /api/reinsurance/cede', 'POST /api/reinsurance/facultative', 'POST /api/reinsurance/recover', 'POST /api/reinsurance/event', 'POST /api/reinsurance/reinstate', 'POST /api/reinsurance/deposit', 'POST /api/reinsurance/deposit/settle', 'POST /api/reinsurance/settle', 'POST /api/reinsurance/security/hold', 'POST /api/reinsurance/security/call', 'POST /api/reinsurance/security/call/settle', 'POST /api/reinsurance/security/release', 'POST /api/reinsurance/security/interest'],
   },
   {
-    at: '00:43', minutes: 4, tab: 'funds-accounting', title: 'Configure fund accounting per country and watch the vouchers write themselves',
+    at: '00:43', minutes: 3, tab: 'funds-accounting', title: 'Configure fund accounting per country and watch the vouchers write themselves',
     why: 'Every fund posts differently per country standard — IFRS 17 in the UAE, SOCPA in Saudi Arabia, BNM MFRS 17 in Malaysia, AASB 17 for Australian super — and every policy event (deposit, accrual, premium adjustment, allocation, gain, loss, withdrawal, sum-assured reduction, sum-at-risk) posts a balanced double-entry voucher whose description names the policy, product, partner, omni-channel, sub-channel and fund. The dynamic mapping is the rule: product → fund → GL accounts with priority so a partner-specific row wins over a product-generic one.',
     doThis: [
       'Read the country configs: AE (IFRS17/CBUAE), SA (SOCPA), MY (BNM-MFRS17), AU (LOCAL-GAAP), GB (IFRS17) — each with currency and fiscal year end.',
@@ -266,7 +266,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/funds-accounting', 'POST /api/funds-accounting/country', 'POST /api/funds-accounting/mapping', 'POST /api/funds-accounting/event'],
   },
   {
-    at: '00:47', minutes: 4, tab: 'super-funds', title: 'Run a superannuation book: members, monthly charges and pro-rata income allocation',
+    at: '00:46', minutes: 3, tab: 'super-funds', title: 'Run a superannuation book: members, monthly charges and pro-rata income allocation',
     why: 'Alongside life, medical, group life, motor, hull, home-contents and travel sits the super funds book — a unit-linked accumulation product with monthly processing charges (admin + investment fee) and investment income allocation via premium post-adjustment. The member balance, the charge run and the allocation artefact are all auditable.',
     doThis: [
       'Read the super products: Accumulation (Balanced Growth), Pension (Conservative Income), TTR (Flexible Growth) — each with admin fee and investment-fee BPS.',
@@ -283,24 +283,66 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/super-funds', 'POST /api/super-funds/product', 'POST /api/super-funds/policy', 'POST /api/super-funds/charge', 'POST /api/super-funds/allocate'],
   },
   {
-    at: '00:51', minutes: 4, tab: 'warehouse', title: 'Query the single warehouse that feeds every BI tool',
-    why: 'Data analysts, engineers and scientists read from one place: nine materialised datasets (policy, premium, fund, claim, reinsurance, commission schedule, super, voucher and member-balance facts), each with grain, source, row count, columns, sample rows and lineage. Five native dashboards render in the console, and complete CSV/JSON exports can feed Power BI, Tableau, Qlik, Databricks or Data Fabric once deployment credentials are configured.',
+    at: '00:49', minutes: 3, tab: 'warehouse', title: 'Query the single warehouse, fingerprinted exports and governed Snowflake / Excel / Access connections',
+    why: 'Data analysts, engineers and scientists read from one place: nine materialised datasets (policy, premium, fund, claim, reinsurance, commission schedule, super, voucher and member-balance facts), each with grain, source, row count, columns, masked sample rows and lineage. Five native dashboards render in the console, and Snowflake, Microsoft Excel and Microsoft Access connections enforce a signed data-breach agreement, SHA-256 fingerprint-only secrets, and rotating one-way PII masking.',
     doThis: [
-      'Read the nine datasets: policy-fact, premium-fact, fund-fact, claim-fact, reinsurance-fact, commission-fact, super-fact, voucher-fact and member-balance-fact — each with columns, sample rows and lineage back to the ledger, NAV or registry it came from.',
+      'Read the nine datasets: policy-fact, premium-fact, fund-fact, claim-fact, reinsurance-fact, commission-fact, super-fact, voucher-fact and member-balance-fact — each with columns, masked sample rows and lineage back to the ledger, NAV or registry it came from.',
       'Open the dashboards: Premium & persistency (Power BI), Fund performance (Tableau), Claims & reinsurance (Qlik Sense), Finance & vouchers (Databricks/Data Fabric) and Distribution (QlikView) — with KPIs, filters and refresh cadence.',
-      'Pick a dataset (e.g. voucher-fact) and press “Export CSV” — a fingerprinted export appears with rows, bytes and owner.',
-      'Read the connector recipes: Power BI (XMLA/DirectQuery), Tableau (Hyper), QlikView/Qlik Sense, Databricks (Delta/Unity Catalog) and Data Fabric (OneLake shortcut) — each names its protocol and required auth; they remain unconfigured until the deployment supplies credentials.',
+      'Pick a dataset (e.g. voucher-fact) and press “Download complete CSV” — a fingerprinted export appears with rows, bytes and owner.',
+      'Open tab 5 (Connections — Snowflake / Excel / Access + PII masking): register a governed connection with the data-breach agreement, validate it and run a masked sync preview.',
     ],
     expect: [
-      'Every dataset states its grain, its source registry and its freshness date — the same asOf as the world the warehouse was cut from.',
-      'An unknown dataset id is refused with the name the caller sent.',
-      'Exports accumulate and are fingerprinted; the last 20 are on the screen.',
+      'Every dataset states its grain, its source registry and its freshness date — and PII columns are masked one-way with a method that rotates every transaction.',
+      'Registering a connection without accepting the current data-breach agreement or with a weak/placeholder secret is refused.',
+      'Secrets are stored only as SHA-256 fingerprints and rotating masked previews — the raw secret is never returned.',
       'The lineage summary says in one sentence why there is a single book: every BI artefact is a derivative of the same ledger.',
     ],
-    api: ['GET /api/warehouse', 'POST /api/warehouse/export'],
+    api: ['GET /api/warehouse', 'POST /api/warehouse/export', 'POST /api/warehouse/connections', 'POST /api/warehouse/connections/validate', 'POST /api/warehouse/connections/sync-preview'],
   },
   {
-    at: '00:55', minutes: 3, tab: 'durability', title: 'Prove the books, and the reporting registers, can be restored',
+    at: '00:52', minutes: 2, tab: 'batch', title: 'Run governed batch processing with event-based accounting and the terminal stop rule',
+    why: 'Quotation generation, illustration generation, policy issuance and monthly anniversary runs (mortality, premium accrual, commission accrual, clawback, fund management charges and dividend distribution) run as repeatable batches over the book — stopping automatically when a policy lapses, is fully withdrawn or is surrendered.',
+    doThis: [
+      'Read the nine filed batch event definitions: schedule, basis, rate in bps, debit account, credit account and applicable statuses.',
+      'Select an event (e.g. Monthly anniversary — mortality or Commission clawback) and press “▶ Run batch” for period 2026-10.',
+      'Inspect the latest run lines: active policies post balanced vouchers while lapsed/withdrawn/surrendered policies report skipped-terminal (and clawback targets leavers).',
+    ],
+    expect: [
+      'Terminal policies are never charged on anniversary runs and are explicitly reported as skipped-terminal.',
+      'Re-running the same event and period is idempotent: already-processed subjects report duplicate-skipped.',
+    ],
+    api: ['GET /api/batch', 'POST /api/batch/setup', 'POST /api/batch/run'],
+  },
+  {
+    at: '00:54', minutes: 2, tab: 'theme', title: 'Re-skin the entire ERP globally or scope a brand to a partner and omni-channel',
+    why: 'An insurer, a broker and a bank each carry their own visual identity. The entity theme applies globally across all 26 tabs; partner and omni-channel themes apply only to customer- and partner-facing surfaces (Partner settings, Customer journey, Underwriting/Quotation, Onboarding and Policyholder).',
+    doThis: [
+      'Click any one-click brand preset (e.g. Royal Takaful Emerald & Gold, Gulf Sovereign Gold & Navy, or Executive Daylight) or click “Apply / Set active” on ALK-TKF in the Filed theme layers table.',
+      'Upload a logo or press “✳ Generate AI-assisted theme” to derive a full 8-token WCAG-AA palette and watch the console shell, cards, tables and inputs re-skin immediately.',
+      'Switch to Partner or Omni-channel theme, apply a palette, and open Customer journey to see the scoped brand banner and surface tokens in place.',
+    ],
+    expect: [
+      'Entity themes update the global CSS variables on the root document immediately.',
+      'Partner and omni-channel themes apply to scoped customer/partner surfaces without overwriting the global entity theme on back-office tabs.',
+      'Every theme upload, preset application, activation and toggle is recorded on the theme audit trail and AI ledger.',
+    ],
+    api: ['GET /api/themes', 'POST /api/themes/upload', 'POST /api/themes/activate', 'POST /api/themes/toggle'],
+  },
+  {
+    at: '00:56', minutes: 1, tab: 'whats-new', title: 'Read the plain-language release log and draft an entry from a commit',
+    why: 'Shipped changes should not hide in git history: every feature, fix, security gate and data change is filed newest-first with Why, What changed and What you need to do.',
+    doThis: [
+      'Filter the feed by feature, security, data or fix and read the entries for PR #10, PR #11 and PR #12.',
+      'Enter a commit subject and two-paragraph body in the generator form and press “Generate & file entry”.',
+    ],
+    expect: [
+      'Each entry names its commit/PR source, risk level, target console tab and operator action.',
+      'Generating from a commit categorises the change and files it at the top of the feed.',
+    ],
+    api: ['GET /api/whats-new', 'POST /api/whats-new', 'POST /api/whats-new/from-commits'],
+  },
+  {
+    at: '00:57', minutes: 2, tab: 'durability', title: 'Prove the books, and the reporting registers, can be restored',
     why: 'A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text — and does the same for the reporting registers: the returns, rule decisions, letters and filings are sealed together, replayed into a fresh world and checked one by one, with a hash-chained outbox proving nothing was dropped between snapshots.',
     doThis: [
       'Read the snapshot summary: accounts, journals, size, fingerprint.',
@@ -316,11 +358,8 @@ export const TOUR: TourStep[] = [
     ],
     api: ['GET /api/state', 'POST /api/state/drill', 'GET /api/state/registers', 'POST /api/state/registers/drill'],
   },
-
-
-
   {
-    at: '00:58', minutes: 2, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
+    at: '00:59', minutes: 1, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',
     why: 'The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs, and the submission log with the supervisor’s references — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.',
     doThis: [
       'Onboarding: read the chip read, the government lookup and the OCR consensus, then find the field in the review queue.',

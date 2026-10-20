@@ -2,11 +2,11 @@
 
 **An AI-native Insurance ERP** — term and whole-of-life, critical illness, income protection, endowment, mortgage, medical, motor, travel, home and contents, property, liability, engineering, marine cargo, hull and aviation, group benefits, unit-linked and **takaful** (96 filed varieties across 17 lines) — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (637 cases over 50 files) and building — and 1129 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 741 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **funds accounting, super funds, data warehouse with rotating PII masking, batch processing, What's New, and the live application theme engine**, **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (654 cases over 51 files) and building — and 1138 backlog chunks are claimed as done with evidence in `ledger/runs.jsonl` while the remaining 732 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + 615 tests + build
+npm run verify     # typecheck + 654 tests + build + offline bundle sync
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data

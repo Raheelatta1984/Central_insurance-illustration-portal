@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "build:ui": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
-    "build": "npm run build:ui && npm run build:server",
+    "build": "npm run build:ui && npm run build:server && npm run demo:offline",
     "start": "node dist-server/server/main.js",
     "verify": "npm run typecheck && npm run test && npm run build",
     "fleet": "node tools/fleet.mjs --limit=5",

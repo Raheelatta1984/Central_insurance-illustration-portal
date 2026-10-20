@@ -117,6 +117,17 @@ export const SuperFundsPanel: React.FC<{ data: WorldSnapshot; onReload: () => Pr
         </section>
       )}
 
+      {(sf as unknown as { trail?: Array<{ at: string; by: string; action: string; detail: string }> }).trail && (sf as unknown as { trail: Array<{ at: string; by: string; action: string; detail: string }> }).trail.length > 0 && (
+        <section className="card" style={{ gridColumn: '1 / -1' }}>
+          <h4>Super funds audit trail</h4>
+          <div className="tableWrap"><table className="gridTable autoFit"><thead><tr><th>When</th><th>By</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+            {(sf as unknown as { trail: Array<{ at: string; by: string; action: string; detail: string }> }).trail.map((t, i) => (
+              <tr key={`${t.at}-${i}`}><td className="small">{t.at.slice(0, 19).replace('T', ' ')}</td><td>{t.by}</td><td><Pill tone="info">{t.action}</Pill></td><td className="small">{t.detail}</td></tr>
+            ))}
+          </tbody></table></div>
+        </section>
+      )}
+
       {notice && <div className="okBox small" style={{ gridColumn: '1 / -1' }}>{notice}</div>}
       {error && <div className="errorBox small" style={{ gridColumn: '1 / -1' }}>{error}</div>}
     </div>

@@ -132,3 +132,18 @@
 pass restates an existing book: `/quote` and `/premium/*` still answer exactly as they did, and the grid is
 reached by `POST /master/rates/price`, by a policy's monthly cost of insurance (which falls back to the
 filed schedule, labelled as such, when a band is missing) and by the policy-charge alteration.
+
+---
+
+## 2026-10-19 (PR #10 & PR #11) and 2026-10-20 (PR #12) — Funds accounting, Super funds, Data warehouse security, Batch processing, What's New & Live Application Theme
+
+`npm run verify` clean; **654 tests over 51 files**; `demo/offline.html` and `site/console.html` rebuilt across all 26 tabs.
+
+| Area | Evidence |
+| --- | --- |
+| Funds accounting (PR #10) | `src/core/funds-accounting.ts` + `src/core/funds-accounting.test.ts` (4) + `src/ui/funds-accounting-views.tsx`: country standards (IFRS 17, SOCPA, BNM MFRS 17, AASB 17), fund treatment rules, dimensional debit/credit mappings with priority resolution, balanced event vouchers posted to the ledger, and audit trail |
+| Super funds (PR #10) | `src/core/super-funds.ts` + `src/core/super-funds.test.ts` (4) + `src/ui/super-funds-views.tsx`: accumulation/pension/TTR products, member registers, monthly admin + pro-rated investment fee charges, and pro-rata investment income allocation via premium post-adjustment |
+| Data warehouse & PII security (PR #10 & PR #11) | `src/core/warehouse.ts` + `src/core/pii-masking.ts` + `src/core/warehouse.test.ts` (3) + `src/core/warehouse-security.test.ts` (9) + `src/ui/warehouse-views.tsx`: 9 lineage-bearing datasets, 5 native dashboards, fingerprinted CSV/JSON exports, governed Snowflake/Excel/Access connections requiring `DATA-BREACH-AGREEMENT-2026.1`, SHA-256 fingerprint-only secrets, 72-hour validation, and rotating one-way PII masking |
+| Batch processing & What's New (PR #11) | `src/core/batch.ts` + `src/core/batch.test.ts` (8) + `src/core/whatsnew.ts` + `src/ui/batch-views.tsx` + `src/ui/whatsnew-views.tsx`: 9 batch events with filed debit/credit setups, idempotent job+period+subject runs, `skipped-terminal` stop rule on lapsed/withdrawn/surrendered policies (with clawback targeting leavers), and commit-to-changelog generator |
+| Application theme & offline bundle sync (PR #10, PR #11 & PR #12) | `src/core/theme.ts` + `src/core/theme.test.ts` (4) + `src/ui/theme-tab.tsx` + `src/ui/theme-views.tsx` + `src/ui/main.tsx` + `demo/offline.html`: active-first theme priority (`POST /themes/activate`), 6 one-click brand presets (*Midnight Slate*, *Royal Takaful Emerald & Gold*, *Gulf Sovereign Gold & Navy*, *DIFC Executive Crimson*, *Arabian Sea Cyan & Violet*, *Executive Daylight*), full 8-token WCAG-AA AI palette derivation, CSS variable wiring across inputs/tables/grids/scoped surfaces, AI ledger + theme audit trail logging, and automatic `demo/offline.html` rebuild in `npm run build` |
+
