@@ -2400,8 +2400,7 @@ export async function dispatchApiRoute(
       const format = String(payload['format'] ?? 'csv') as WarehouseFormat;
       if (!['csv', 'json'].includes(format)) return fail(400, { error: 'this deployment supports CSV and JSON exports; Parquet requires the configured warehouse runtime' });
       const exported = state.world.warehouse.requestExport(state.world, datasetId, format, String(payload['by'] ?? 'data-analyst'));
-      const content = state.world.warehouse.exportContent(state.world, datasetId, format).content;
-      return ok({ ...exported, filename: `${datasetId}-${state.world.asOf}.${format}`, content });
+      return ok({ ...exported, filename: `${datasetId}-${state.world.asOf}.${format}` });
     }
 
     /* ------------------------------------------- entity, partner and omni-channel brand onboarding */

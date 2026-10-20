@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildWorld } from './demo.js';
 import { DataWarehouse } from './warehouse.js';
+import { createRuntimeState, dispatchApiRoute } from './routes.js';
 
 describe('single read warehouse', () => {
   it('materialises actual rows and preserves source lineage and grain', () => {
@@ -36,6 +37,30 @@ describe('single read warehouse', () => {
     const snapshot = warehouse.snapshot(world);
     expect(snapshot.connectors.every(c => c.status === 'ready-to-configure')).toBe(true);
     expect(snapshot.limitations).toContain('not authenticated');
+  });
+
+  it('returns exactly the masked artifact recorded in the export audit trail', async () => {
+    const state = createRuntimeState();
+    for (const format of ['json', 'csv', 'json']) {
+      const result = await dispatchApiRoute(state, 'POST', '/warehouse/export', new URLSearchParams(), { datasetId: 'policy-fact', format });
+      expect(result.status).toBe(200);
+      const artifact = result.body as { content: string; bytes: number; fingerprint: string; rows: number; maskingMethod: string; maskedColumns: string[] };
+      let hash = 0xcbf29ce484222325n;
+      for (const byte of new TextEncoder().encode(artifact.content)) {
+        hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * 0x100000001b3n);
+      }
+      expect(artifact.fingerprint).toBe(hash.toString(16).padStart(16, '0'));
+      expect(artifact.bytes).toBe(new TextEncoder().encode(artifact.content).length);
+      const [record] = state.world.warehouse.exportsSnapshot();
+      expect(record).toMatchObject({ fingerprint: artifact.fingerprint, bytes: artifact.bytes, maskingMethod: artifact.maskingMethod });
+      expect(record).not.toHaveProperty('content'); // audit history must not retain large downloads
+      if (format === 'json') {
+        const parsed = JSON.parse(artifact.content);
+        expect(parsed.rows).toHaveLength(artifact.rows);
+        expect(parsed.piiMasking.method).toBe(artifact.maskingMethod);
+        expect(parsed.piiMasking.maskedColumns).toEqual(artifact.maskedColumns);
+      }
+    }
   });
 
   it('refuses unknown datasets rather than returning a made-up empty export', () => {

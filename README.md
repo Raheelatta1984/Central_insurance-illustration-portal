@@ -124,6 +124,25 @@ One click and nothing else: no environment variables, no secrets, no database, n
 
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes the identical assembly to GitHub Pages, so the two hosts cannot disagree about what is online. Locally: `npm run demo:site`, then serve `site/`.
 
+### Live versus offline execution
+
+The normal UI sends requests only to `/api`. A network failure, non-JSON response, or
+invalid JSON is an error, **not** permission to execute against a second local world.
+If a mutation response is lost, its server outcome is unknown: reload/reconcile server
+state before retrying. The browser-local engine is enabled only by the explicit
+`window.__OFFLINE__` flag installed by the generated standalone demo; its changes are
+local to that page and are discarded on reload.
+
+Warehouse downloads are generated once per export. The returned fingerprint, byte
+count, masking method, and audit record describe the exact downloaded content; the
+audit history retains metadata, not a second copy of the download.
+
+Money allocations interpret the decimal representation of finite, nonnegative weights
+exactly (including scientific notation), conserve integer minor units, and break equal
+remainders by input order. Negative amounts mirror the corresponding positive split.
+A nonzero amount cannot be allocated to an empty list; all-zero or invalid weights are
+refused rather than silently discarding value.
+
 ### B — the live API server → Render (not Vercel)
 
 `npm run build && npm start` runs one Node process serving both the SPA and the JSON API on a single port. It reads `PORT`, binds `0.0.0.0` and needs no secrets, so it is Render-ready as-is.

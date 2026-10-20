@@ -1,51 +1,32 @@
 import { createRuntimeState, dispatchApiRoute, isDomainRefusal } from '../core/routes';
 
-const localState = createRuntimeState(1);
+// Never construct or mutate a second world in live mode. Offline mode is explicitly set by the demo.
+let localState: ReturnType<typeof createRuntimeState> | undefined;
 
 export async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {
   const win = window as unknown as { __OFFLINE__?: unknown };
   if (!win.__OFFLINE__) {
-    try {
-      const res = await fetch(`/api${path}`, {
-        method,
-        ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
-      });
-      const contentType = res.headers.get('content-type') ?? '';
-      if (contentType.includes('application/json')) {
-        if (!res.ok) {
-          let detail = '';
-          let isOfflineShim = false;
-          try {
-            const errBody = (await res.json()) as { error?: string; message?: string; offline?: boolean };
-            if (errBody?.offline) {
-              isOfflineShim = true;
-            } else {
-              const sentence = errBody?.error ?? errBody?.message;
-              if (sentence) detail = ` — ${sentence}`;
-            }
-          } catch {
-            /* ignore non-JSON body */
-          }
-          if (!isOfflineShim) {
-            const what = res.status < 500 ? `${path} refused (${res.status})` : `${path} failed: ${res.status}`;
-            throw new Error(`${what}${detail}`);
-          }
-        } else {
-          return (await res.json()) as T;
-        }
-      }
-    } catch (err) {
-      if (err instanceof Error && (err.message.includes('refused (') || err.message.includes('failed:'))) {
-        throw err;
-      }
+    const res = await fetch(`/api${path}`, {
+      method,
+      ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    });
+    if (!(res.headers.get('content-type') ?? '').includes('application/json')) {
+      throw new Error(`${path} returned a non-JSON response (${res.status}); live state was not changed locally`);
     }
+    const response = await res.json();
+    if (!res.ok) {
+      const detail = response?.error ?? response?.message;
+      const what = res.status < 500 ? `${path} refused (${res.status})` : `${path} failed: ${res.status}`;
+      throw new Error(`${what}${detail ? ` — ${detail}` : ''}`);
+    }
+    return response as T;
   }
 
   const [pathname, search = ''] = path.split('?');
   const payload = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
   try {
     const result = await dispatchApiRoute(
-      localState,
+      localState ??= createRuntimeState(1),
       method,
       pathname ?? path,
       new URLSearchParams(search),
