@@ -49,6 +49,7 @@ Stop-the-line: a failing valuation calculation, a double-charge in simulation, a
 - Every user-facing string comes from the label registry — **never** a literal in code.
 - Every date/time decision states the timezone and the calendar (dealing day, business day, valuation day).
 - Every list query is paginated; every external call is idempotent; every bulk operation is resumable.
+- Access control speaks in **roles**, never "profiles" or personas: a role is a permission template (tab → section → sub-section, plus a DOA cap and action grants) and carries no credentials. User accounts, logins and provisioning are a separate layer that references a role id. Authority is one of `officer | supervisor | manager | executive`; **DOA caps and role access change at supervisor or manager level only**, and an officer raises a tracked limit-increase request instead of editing a cap.
 - Tests state the *reason* the behaviour matters, not just the mechanic.
 
 ## 6. Ledger row (append-only)

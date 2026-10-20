@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BatchRegistry, type BatchSubject } from './batch.js';
 import { PiiMasker, sha256Hex } from './pii-masking.js';
-import { WhatsNewRegistry, generateFromCommits, categoriseCommit } from './whatsnew.js';
+import { WHATS_NEW_SEED, WhatsNewRegistry, generateFromCommits, categoriseCommit } from './whatsnew.js';
 
 const policy = (id: string, status: BatchSubject['status'], basisMinor = 1_000_000_00n): BatchSubject => ({
   id, kind: 'policy', status, productId: 'PROD-UL-GLOBAL', currency: 'AED', basisMinor, anniversaryDay: 5, fundId: 'FGLOBAL',
@@ -106,7 +106,10 @@ describe("what's new generation from commits", () => {
   it('refuses entries that do not say why, what and what to do', () => {
     const registry = new WhatsNewRegistry();
     expect(() => registry.file({ at: '2026-10-19', title: 'X', category: 'feature', source: 'test', why: '', what: 'w', whatYouNeedToDo: 'a', area: 'Overview', risk: 'low' })).toThrow(/why, what changed/);
-    expect(registry.snapshot().entries.length).toBeGreaterThan(5);
-    expect(registry.snapshot().entries[0]!.title).toContain('Batch processing');
+    // The seed is kept newest-first and in file order, so the newest filed entry leads the list.
+    const entries = registry.snapshot().entries;
+    expect(entries.length).toBeGreaterThan(5);
+    expect(entries[0]!.title).toBe(WHATS_NEW_SEED[0]!.title);
+    expect(entries.some((entry) => entry.title.includes('Batch processing'))).toBe(true);
   });
 });

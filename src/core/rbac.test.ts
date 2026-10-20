@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildWorld } from './demo.js';
+import { parseAmount } from './money.js';
 import { SecurityGovernanceError } from './rbac.js';
 import { createRuntimeState, dispatchApiRoute } from './routes.js';
 import { CONSOLE_TABS } from './tour.js';
@@ -204,5 +205,201 @@ describe('Enterprise Pre-Load Security, 36-Profile RBAC, AI Access Advisor & DOA
         (n) => n.recipientProfileId === 'underwriter-officer' && n.doaRequestId === reqId && n.kind === 'doa-approved',
       ),
     ).toBe(true);
+  });
+});
+
+describe('Role authority tiers, DOA change control and the role access tree', () => {
+  it('classifies every role into an authority tier and exposes role-first snapshot aliases', () => {
+    const w = buildWorld();
+    const snap = w.rbac.snapshot();
+
+    expect(snap.roleCount).toBe(36);
+    expect(snap.roles).toHaveLength(36);
+    expect(snap.roles).toEqual(snap.profiles);
+    expect(snap.activeRoleId).toBe(snap.activeProfileId);
+    expect(snap.authorities.map((a) => a.id)).toEqual(['officer', 'supervisor', 'manager', 'executive']);
+    expect(snap.roles.find((r) => r.id === 'claim-officer')?.authorityLevel).toBe('officer');
+    expect(snap.roles.find((r) => r.id === 'claim-manager')?.authorityLevel).toBe('manager');
+    expect(snap.roles.find((r) => r.id === 'agent-supervisor')?.authorityLevel).toBe('supervisor');
+    expect(snap.roles.find((r) => r.id === 'administration')?.authorityLevel).toBe('executive');
+    expect(snap.userProfileLayer.implemented).toBe(false);
+    expect(snap.catalogue.some((c) => c.tabId === 'role-matrix')).toBe(true);
+
+    // The visibility tree is a supervisor/manager tool: officer roles never receive the tab.
+    expect(w.rbac.canAccessTab('claim-officer', 'role-matrix')).toBe('none');
+    expect(w.rbac.canAccessTab('supervisor', 'role-matrix')).toBe('full');
+    expect(w.rbac.canAccessTab('claim-manager', 'role-matrix')).toBe('full');
+    expect(w.rbac.canAccessTab('administration', 'role-matrix')).toBe('full');
+  });
+
+  it('refuses an officer changing its own DOA cap and allows only a higher tier to change it', () => {
+    const w = buildWorld();
+
+    expect(() =>
+      w.rbac.changeRoleDoa({ roleId: 'claim-officer', doaLimitAed: '900,000.00', actorProfileId: 'claim-officer' }),
+    ).toThrow(/Officer-level role/);
+
+    // A supervisor cannot recapped itself or a manager; authority must move downward.
+    expect(() =>
+      w.rbac.changeRoleDoa({ roleId: 'supervisor', doaLimitAed: '9,000,000.00', actorProfileId: 'supervisor' }),
+    ).toThrow(/cannot change DOA authority/);
+    expect(() =>
+      w.rbac.changeRoleDoa({ roleId: 'claim-manager', doaLimitAed: '9,000,000.00', actorProfileId: 'supervisor' }),
+    ).toThrow(/cannot change DOA authority/);
+
+    // A manager may lift an officer's cap, within the manager's own cap.
+    const raised = w.rbac.changeRoleDoa({
+      roleId: 'claim-officer', doaLimitAed: '250,000.00', actorProfileId: 'claim-manager',
+    });
+    expect(raised.doaLimitMinor).toBe(parseAmount('250,000.00', 'AED').minor);
+
+    // But not above the manager's own cap of 500k.
+    expect(() =>
+      w.rbac.changeRoleDoa({ roleId: 'claim-officer', doaLimitAed: '750,000.00', actorProfileId: 'claim-manager' }),
+    ).toThrow(/cannot grant a DOA limit above its own cap/);
+
+    // Administration is the executive role and may set any finite cap.
+    const executive = w.rbac.changeRoleDoa({
+      roleId: 'claim-officer', doaLimitAed: '2,000,000.00', actorProfileId: 'administration',
+    });
+    expect(executive.doaLimitMinor).toBe(parseAmount('2,000,000.00', 'AED').minor);
+    expect(() =>
+      w.rbac.changeRoleDoa({ roleId: 'administration', doaLimitAed: '1,000.00', actorProfileId: 'administration' }),
+    ).toThrow(/cannot be re-capped/);
+  });
+
+  it('lets an officer request a limit increase, routes it to the mapped supervisor and applies the cap only on approval', () => {
+    const w = buildWorld();
+    const current = w.rbac.getRole('claim-officer').doaLimitMinor;
+    expect(current).toBe(parseAmount('50,000.00', 'AED').minor);
+
+    const submitted = w.rbac.submitDoaLimitIncreaseRequest({
+      roleId: 'claim-officer',
+      requestedLimitAed: '180,000.00',
+      reason: 'Hospital cases now routinely exceed the officer cap.',
+      actorProfileId: 'claim-officer',
+    });
+    expect(submitted.request.actionKind).toBe('doa-limit-increase');
+    expect(submitted.request.status).toBe('pending');
+    expect(submitted.request.assignedApproverProfileId).toBe('claim-manager');
+    expect(submitted.currentLimitLabel).toContain('50,000.00');
+    expect(submitted.requestedLimitLabel).toContain('180,000.00');
+    // The cap must not move on submission.
+    expect(w.rbac.getRole('claim-officer').doaLimitMinor).toBe(current);
+    expect(w.rbac.snapshot().notifications.some(
+      (n) => n.recipientProfileId === 'claim-manager' && n.doaRequestId === submitted.request.id,
+    )).toBe(true);
+    // No self-approval.
+    expect(() =>
+      w.rbac.decideDoaRequest({ requestId: submitted.request.id, actorProfileId: 'claim-officer', decision: 'approve' }),
+    ).toThrow(SecurityGovernanceError);
+
+    const approved = w.rbac.decideDoaRequest({
+      requestId: submitted.request.id,
+      actorProfileId: 'claim-manager',
+      decision: 'approve',
+      note: 'Case mix justifies the uplift.',
+    });
+    expect(approved.request.status).toBe('approved');
+    expect(approved.request.appliedDoaLimitLabel).toContain('180,000.00');
+    expect(w.rbac.getRole('claim-officer').doaLimitMinor).toBe(parseAmount('180,000.00', 'AED').minor);
+    expect(w.rbac.snapshot().accessAudit.some((a) => a.event === 'doa.limit-increase-applied')).toBe(true);
+
+    // A manager cannot approve an increase for another manager — only an executive tier can.
+    const managerRequest = w.rbac.submitDoaLimitIncreaseRequest({
+      roleId: 'claim-manager',
+      requestedLimitAed: '1,000,000.00',
+      reason: 'Portfolio growth.',
+      actorProfileId: 'claim-manager',
+    });
+    expect(() =>
+      w.rbac.decideDoaRequest({ requestId: managerRequest.request.id, actorProfileId: 'claim-manager', decision: 'approve' }),
+    ).toThrow(SecurityGovernanceError);
+  });
+
+  it('edits the tab → section → sub-section tree with inheritance and refuses officer or over-delegation', () => {
+    const w = buildWorld();
+
+    // Officer-tier actors cannot touch the tree at all.
+    expect(() =>
+      w.rbac.setRoleNodeAccess({
+        roleId: 'claim-officer', kind: 'tab', key: 'claims', level: 'none', actorProfileId: 'claim-officer',
+      }),
+    ).toThrow(/Officer-level role/);
+
+    // A supervisor holds claims read-only, so it cannot grant full claims to an officer.
+    expect(() =>
+      w.rbac.setRoleNodeAccess({
+        roleId: 'claim-officer', kind: 'tab', key: 'claims', level: 'full', actorProfileId: 'supervisor',
+      }),
+    ).toThrow(/cannot grant full/);
+
+    // A manager may hide the whole claims branch for the officer; children then inherit none.
+    const hidden = w.rbac.setRoleNodeAccess({
+      roleId: 'claim-officer', kind: 'tab', key: 'claims', level: 'none', actorProfileId: 'claim-manager',
+    });
+    expect(hidden.tabAccess.claims).toBe('none');
+    expect(w.rbac.canAccessSection('claim-officer', 'claims', 'adjudication-settlement')).toBe('none');
+    expect(w.rbac.canAccessSubSection('claim-officer', 'claims', 'adjudication-settlement', 'claim-approve')).toBe('none');
+
+    // One deliberate exception: make the approval section read-only; its sub-sections inherit read.
+    w.rbac.setRoleNodeAccess({
+      roleId: 'claim-officer', kind: 'section', key: 'claims:adjudication-settlement', level: 'read', actorProfileId: 'claim-manager',
+    });
+    expect(w.rbac.canAccessSection('claim-officer', 'claims', 'adjudication-settlement')).toBe('read');
+    expect(w.rbac.canAccessSubSection('claim-officer', 'claims', 'adjudication-settlement', 'claim-approve')).toBe('read');
+
+    // Reset the node to inherit and the section follows the hidden tab again.
+    w.rbac.setRoleNodeAccess({
+      roleId: 'claim-officer', kind: 'section', key: 'claims:adjudication-settlement', level: 'inherit', actorProfileId: 'claim-manager',
+    });
+    expect(w.rbac.getRole('claim-officer').sectionAccess['claims:adjudication-settlement']).toBeUndefined();
+    expect(w.rbac.canAccessSection('claim-officer', 'claims', 'adjudication-settlement')).toBe('none');
+
+    // Nobody can edit a role at or above their own tier.
+    expect(() =>
+      w.rbac.setRoleNodeAccess({
+        roleId: 'claim-manager', kind: 'tab', key: 'claims', level: 'read', actorProfileId: 'claim-manager',
+      }),
+    ).toThrow(/cannot change section visibility for this role/);
+  });
+
+  it('exposes the new role endpoints over HTTP and refuses officer attempts with a 4xx', async () => {
+    const state = createRuntimeState(1);
+
+    await expect(dispatchApiRoute(state, 'POST', '/security/role/access', new URLSearchParams(), {
+      roleId: 'claim-officer',
+      kind: 'tab',
+      key: 'claims',
+      level: 'none',
+      actorRoleId: 'claim-officer',
+    })).rejects.toThrow(/Officer-level role/);
+
+    const edited = await dispatchApiRoute(state, 'POST', '/security/role/access', new URLSearchParams(), {
+      roleId: 'claim-officer',
+      kind: 'section',
+      key: 'claims:adjudication-settlement',
+      level: 'read',
+      actorRoleId: 'claim-manager',
+    });
+    expect(edited.status).toBe(200);
+
+    const requested = await dispatchApiRoute(state, 'POST', '/security/doa/limit-request', new URLSearchParams(), {
+      roleId: 'claim-officer',
+      requestedLimitAed: '175,000.00',
+      reason: 'Raised through the API contract test.',
+      actorRoleId: 'claim-officer',
+    });
+    expect(requested.status).toBe(200);
+    const body = requested.body as { request: { id: string; assignedApproverProfileId: string } };
+    expect(body.request.assignedApproverProfileId).toBe('claim-manager');
+
+    const approved = await dispatchApiRoute(state, 'POST', '/security/doa/decide', new URLSearchParams(), {
+      requestId: body.request.id,
+      actorRoleId: 'claim-manager',
+      decision: 'approve',
+    });
+    expect(approved.status).toBe(200);
+    expect(state.world.rbac.getRole('claim-officer').doaLimitMinor).toBe(parseAmount('175,000.00', 'AED').minor);
   });
 });

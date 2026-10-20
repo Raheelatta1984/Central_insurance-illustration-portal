@@ -48,7 +48,7 @@ import { batchSubjectsFromWorld, type BatchEventType } from './batch.js';
 import { RequestValidationError, reqString, reqEnum, reqInt, optBool } from './validate.js';
 import type { WarehouseConnectionKind } from './warehouse.js';
 import type { CommitLike, WhatsNewEntry } from './whatsnew.js';
-import type { AccessLevel, DoaActionKind, ProfileFamily } from './rbac.js';
+import type { AccessLevel, DoaActionKind, RoleAuthorityLevel, RoleFamily } from './rbac.js';
 import {
   type AgeBasis,
   type HalfYearRule,
@@ -3377,45 +3377,52 @@ export async function dispatchApiRoute(
         reproduce: state.world.unitLinked.reproduce('UL-000123'),
       });
 
-    /* ---------- 36-profile pre-load security gate, AI RBAC, DOA approvals & smart auto-pick */
+    /* ---------- 36-role pre-load security gate, AI RBAC, DOA approvals & smart auto-pick */
     case 'GET /security/rbac':
+    case 'GET /security/roles':
       return ok(state.world.rbac.snapshot());
 
     case 'POST /security/session': {
-      const profile = state.world.rbac.selectActiveProfile(
-        String(payload['profileId'] ?? 'administration'),
+      const role = state.world.rbac.selectActiveRole(
+        String(payload['roleId'] ?? payload['profileId'] ?? 'administration'),
         payload['at'] ? String(payload['at']) : undefined,
       );
       return ok({
-        profile,
+        role,
+        profile: role,
         security: state.world.rbac.snapshot(),
         world: worldSnapshot(state.world),
       });
     }
 
-    case 'POST /security/profile': {
+    case 'POST /security/profile':
+    case 'POST /security/role': {
       const profile = state.world.rbac.upsertProfile({
         id: String(payload['id'] ?? payload['name'] ?? ''),
         ...(payload['name'] ? { name: String(payload['name']) } : {}),
         ...(payload['title'] ? { title: String(payload['title']) } : {}),
-        ...(payload['family'] ? { family: String(payload['family']) as ProfileFamily } : {}),
+        ...(payload['family'] ? { family: String(payload['family']) as RoleFamily } : {}),
         ...(payload['badge'] ? { badge: String(payload['badge']) } : {}),
         ...(payload['summary'] || payload['description'] ? { summary: String(payload['summary'] ?? payload['description']) } : {}),
         ...(payload['defaultLandingTab'] ? { defaultLandingTab: String(payload['defaultLandingTab']) } : {}),
         ...(payload['entityScope'] ? { entityScope: String(payload['entityScope']) } : {}),
         ...(payload['channelScope'] ? { channelScope: String(payload['channelScope']) } : {}),
         ...(payload['subChannelScope'] ? { subChannelScope: String(payload['subChannelScope']) } : {}),
+        ...(payload['authorityLevel'] ? { authorityLevel: String(payload['authorityLevel']) as RoleAuthorityLevel } : {}),
         ...(payload['doaLimitAed'] !== undefined || payload['doaLimit'] !== undefined
           ? { doaLimitAed: payload['doaLimitAed'] === null ? null : String(payload['doaLimitAed'] ?? payload['doaLimit']) }
           : {}),
         ...(payload['piiAccess'] === 'full' || payload['piiAccess'] === 'masked' || payload['piiAccess'] === 'own-only'
           ? { piiAccess: payload['piiAccess'] }
           : {}),
-        ...(payload['reportsToProfileId'] !== undefined || payload['supervisorProfileId'] !== undefined
-          ? { reportsToProfileId: String(payload['reportsToProfileId'] ?? payload['supervisorProfileId']) || null }
+        ...(payload['reportsToProfileId'] !== undefined || payload['reportsToRoleId'] !== undefined || payload['supervisorProfileId'] !== undefined
+          ? { reportsToProfileId: String(payload['reportsToProfileId'] ?? payload['reportsToRoleId'] ?? payload['supervisorProfileId']) || null }
           : {}),
-        ...(payload['escalationProfileId'] !== undefined || payload['managerProfileId'] !== undefined
-          ? { escalationProfileId: String(payload['escalationProfileId'] ?? payload['managerProfileId']) || null }
+        ...(payload['escalationProfileId'] !== undefined || payload['escalationRoleId'] !== undefined || payload['managerProfileId'] !== undefined
+          ? { escalationProfileId: String(payload['escalationProfileId'] ?? payload['escalationRoleId'] ?? payload['managerProfileId']) || null }
+          : {}),
+        ...(Array.isArray(payload['doaActions'])
+          ? { doaActions: payload['doaActions'].map(String) as DoaActionKind[] }
           : {}),
         ...(payload['tabAccess'] && typeof payload['tabAccess'] === 'object'
           ? { tabAccess: payload['tabAccess'] as Record<string, AccessLevel> }
@@ -3432,17 +3439,64 @@ export async function dispatchApiRoute(
           : payload['subSections'] && typeof payload['subSections'] === 'object'
             ? { subSectionAccess: payload['subSections'] as Record<string, AccessLevel> }
             : {}),
-        ...(payload['cloneFromProfileId'] || payload['cloneFrom']
-          ? { cloneFromProfileId: String(payload['cloneFromProfileId'] ?? payload['cloneFrom']) }
+        ...(payload['cloneFromProfileId'] || payload['cloneFromRoleId'] || payload['cloneFrom']
+          ? { cloneFromProfileId: String(payload['cloneFromProfileId'] ?? payload['cloneFromRoleId'] ?? payload['cloneFrom']) }
           : {}),
-        by: String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+        actorProfileId: String(payload['actorRoleId'] ?? payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+        by: String(payload['actorRoleId'] ?? payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
       });
-      return ok({ profile, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+      return ok({ role: profile, profile, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    /* ---------- Role access matrix: explicit tree edit, DOA cap change, limit-increase request ---------- */
+    case 'POST /security/role/access': {
+      const role = state.world.rbac.setRoleNodeAccess({
+        roleId: String(payload['roleId'] ?? payload['profileId'] ?? ''),
+        kind: String(payload['kind'] ?? 'tab') as 'tab' | 'section' | 'subSection',
+        key: String(payload['key'] ?? ''),
+        level: String(payload['level'] ?? 'inherit') as AccessLevel | 'inherit',
+        actorProfileId: String(payload['actorRoleId'] ?? payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+      });
+      return ok({ role, profile: role, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'POST /security/role/doa': {
+      const role = state.world.rbac.changeRoleDoa({
+        roleId: String(payload['roleId'] ?? payload['profileId'] ?? ''),
+        ...(payload['doaLimitAed'] !== undefined || payload['doaLimit'] !== undefined
+          ? { doaLimitAed: payload['doaLimitAed'] === null ? null : String(payload['doaLimitAed'] ?? payload['doaLimit']) }
+          : {}),
+        ...(Array.isArray(payload['doaActions'])
+          ? { doaActions: payload['doaActions'].map(String) as DoaActionKind[] }
+          : {}),
+        actorProfileId: String(payload['actorRoleId'] ?? payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id),
+      });
+      return ok({ role, profile: role, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    case 'POST /security/doa/limit-request': {
+      const result = state.world.rbac.submitDoaLimitIncreaseRequest({
+        roleId: String(payload['roleId'] ?? payload['profileId'] ?? ''),
+        requestedLimitAed: String(payload['requestedLimitAed'] ?? payload['requestedLimit'] ?? payload['amount'] ?? ''),
+        reason: String(payload['reason'] ?? 'Requested DOA limit increase'),
+        actorProfileId: String(payload['actorRoleId'] ?? payload['actor'] ?? payload['by'] ?? payload['roleId'] ?? payload['profileId'] ?? state.world.rbac.activeProfile().id),
+      });
+      return ok({
+        autoApproved: false,
+        requestId: result.request.id,
+        request: result.request,
+        status: result.request.status,
+        currentLimitLabel: result.currentLimitLabel,
+        requestedLimitLabel: result.requestedLimitLabel,
+        notificationsSent: result.notificationsSent,
+        security: state.world.rbac.snapshot(),
+        world: worldSnapshot(state.world),
+      });
     }
 
     case 'POST /security/ai/recommend': {
       const recommendation = state.world.rbac.recommendAccess({
-        ...(payload['profileId'] ? { profileId: String(payload['profileId']) } : {}),
+        ...(payload['roleId'] || payload['profileId'] ? { profileId: String(payload['roleId'] ?? payload['profileId']) } : {}),
         ...(payload['roleDescription'] ? { roleDescription: String(payload['roleDescription']) } : {}),
       });
       state.world.ai.propose({
@@ -3467,9 +3521,9 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /security/ai/apply': {
-      const profileId = String(payload['profileId'] ?? '');
-      const actor = String(payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id);
-      const applied = state.world.rbac.applyAiRecommendation(profileId, actor);
+      const profileId = String(payload['roleId'] ?? payload['profileId'] ?? '');
+      const actor = String(payload['actorRoleId'] ?? payload['actor'] ?? payload['by'] ?? state.world.rbac.activeProfile().id);
+      const applied = state.world.rbac.applyAiRecommendation(profileId, undefined, { by: actor });
       const action = state.world.ai.propose({
         agent: 'rbac-sod-advisor-v2',
         module: 'access-doa',
@@ -3523,7 +3577,7 @@ export async function dispatchApiRoute(
 
     case 'POST /security/doa/evaluate': {
       const evaluation = state.world.rbac.evaluateDoa({
-        requesterProfileId: String(payload['requesterProfileId'] ?? payload['profileId'] ?? state.world.rbac.activeProfile().id),
+        requesterProfileId: String(payload['requesterRoleId'] ?? payload['requesterProfileId'] ?? payload['roleId'] ?? payload['profileId'] ?? state.world.rbac.activeProfile().id),
         actionKind: (String(payload['actionKind'] ?? 'underwriting-decision') as DoaActionKind),
         amount: String(payload['amount'] ?? '0'),
         currency: String(payload['currency'] ?? 'AED'),
@@ -3537,7 +3591,7 @@ export async function dispatchApiRoute(
 
     case 'POST /security/doa/request': {
       const result = state.world.rbac.submitDoaRequest({
-        requesterProfileId: String(payload['requesterProfileId'] ?? state.world.rbac.activeProfile().id),
+        requesterProfileId: String(payload['requesterRoleId'] ?? payload['requesterProfileId'] ?? payload['roleId'] ?? state.world.rbac.activeProfile().id),
         actionKind: (String(payload['actionKind'] ?? 'underwriting-decision') as DoaActionKind),
         subjectRef: String(payload['subjectRef'] ?? 'REF-MANUAL'),
         tabId: String(payload['tabId'] ?? 'overview'),
@@ -3570,7 +3624,7 @@ export async function dispatchApiRoute(
             : 'approve';
       const result = state.world.rbac.decideDoaRequest({
         requestId: String(payload['requestId'] ?? ''),
-        actorProfileId: String(payload['actorProfileId'] ?? payload['decidedByProfileId'] ?? state.world.rbac.activeProfile().id),
+        actorProfileId: String(payload['actorRoleId'] ?? payload['actorProfileId'] ?? payload['decidedByRoleId'] ?? payload['decidedByProfileId'] ?? state.world.rbac.activeProfile().id),
         decision,
         ...(payload['note'] ? { note: String(payload['note']) } : {}),
       });
@@ -3585,7 +3639,7 @@ export async function dispatchApiRoute(
 
     case 'POST /security/notifications/read': {
       const marked = state.world.rbac.markNotificationsRead({
-        ...(payload['profileId'] ? { profileId: String(payload['profileId']) } : {}),
+        ...(payload['roleId'] || payload['profileId'] ? { profileId: String(payload['roleId'] ?? payload['profileId']) } : {}),
         ...(payload['notificationId'] ? { notificationId: String(payload['notificationId']) } : {}),
       });
       return ok({ marked, security: state.world.rbac.snapshot(), world: worldSnapshot(state.world) });

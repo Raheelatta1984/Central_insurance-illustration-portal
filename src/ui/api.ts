@@ -18,8 +18,12 @@ function authHeaders(win: { localStorage?: { getItem(key: string): string | null
     const headers: Record<string, string> = {};
     const token = win.localStorage?.getItem('portal-api-token');
     if (token) headers['authorization'] = `Bearer ${token}`;
-    const profileId = win.localStorage?.getItem('portal-active-profile');
-    if (profileId) headers['x-portal-profile'] = profileId;
+    const roleId = win.localStorage?.getItem('portal-active-role') ?? win.localStorage?.getItem('portal-active-profile');
+    if (roleId) {
+      headers['x-portal-role'] = roleId;
+      // Kept for servers/clients that still read the old header name.
+      headers['x-portal-profile'] = roleId;
+    }
     return headers;
   } catch {
     return {};

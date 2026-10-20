@@ -6,7 +6,7 @@
  * Principles (per AGENTS.md):
  *  - Every monetary DOA cap and request amount is decimal Money with explicit currency (never float).
  *  - Administration holds unrestricted complete access across every tab, section, sub-section and DOA gate.
- *  - Every profile switch, RBAC change, supervision mapping edit, AI recommendation apply, DOA request,
+ *  - Every role switch, RBAC change, supervision mapping edit, AI recommendation apply, DOA request,
  *    approval/rejection/escalation and notification read is recorded on an append-only audit log.
  */
 import { Money, compare, formatAmount, money, parseAmount } from './money.js';
@@ -14,7 +14,19 @@ import { CONSOLE_TABS } from './tour.js';
 
 export type AccessLevel = 'full' | 'read' | 'none';
 
-export type ProfileFamily =
+/**
+ * Authority tier of a security role. This governs who may *change* access and Delegation-of-Authority
+ * (DOA) limits — never whether the role can do its own operational job.
+ *
+ *  - officer     — frontline/desk role. Can raise a DOA limit-increase request, cannot approve one,
+ *                  cannot change any role's section visibility or DOA cap.
+ *  - supervisor  — first-line approver. May change officer-level roles only.
+ *  - manager     — second-line approver. May change officer- and supervisor-level roles.
+ *  - executive   — platform owner (Administration). May change everything; DOA is unlimited.
+ */
+export type RoleAuthorityLevel = 'officer' | 'supervisor' | 'manager' | 'executive';
+
+export type RoleFamily =
   | 'governance-config'
   | 'underwriting-policy'
   | 'claims-reinsurance'
@@ -35,7 +47,9 @@ export type DoaActionKind =
   | 'fund-nav-signoff'
   | 'accounting-voucher'
   | 'master-config-change'
-  | 'restricted-section-access';
+  | 'restricted-section-access'
+  /** An officer-level role asking its supervisor/manager to raise its own DOA cap. */
+  | 'doa-limit-increase';
 
 export interface SectionNode {
   readonly id: string;
@@ -49,21 +63,27 @@ export interface TabCatalogueEntry {
   readonly sections: readonly SectionNode[];
 }
 
-export interface SecurityProfile {
+export interface SecurityRole {
   readonly id: string;
   readonly name: string;
   readonly title: string;
-  readonly family: ProfileFamily;
+  readonly family: RoleFamily;
   readonly badge: string;
   readonly summary: string;
-  /** True only for full superuser profiles (e.g. Administration) that bypass all tab/DOA restrictions. */
+  /** True only for the executive superuser role (Administration) that bypasses all tab/DOA restrictions. */
   readonly unrestricted: boolean;
+  /** Operational rank used for DOA and access-change authority. */
+  readonly authorityLevel: RoleAuthorityLevel;
   readonly entityScope: string;       // e.g. '*', 'ALK-CONV', 'ALK-TKF', 'ALK-MY'
   readonly channelScope: string;      // e.g. '*', 'HEAD-OFFICE', 'AGENCY', 'BROKER-MARSH', 'BANCA', 'AGGREGATOR', 'DIRECT', 'REFERRAL'
   readonly subChannelScope: string;   // e.g. '*', 'AGENCY-DESK-1', 'MARSH-CALL-CENTRE', 'BANCA-PREMIER-1', 'BRANCH-RETAIL-01', ...
   readonly defaultLandingTab: string;
+  /** @deprecated use reportsToRoleId — kept for API compatibility. */
   readonly reportsToProfileId: string | null;
+  readonly reportsToRoleId: string | null;
+  /** @deprecated use escalationRoleId — kept for API compatibility. */
   readonly escalationProfileId: string | null;
+  readonly escalationRoleId: string | null;
   /** Decimal DOA limit for operational/monetary decisions in AED minor units (null = unlimited). */
   readonly doaLimitMinor: bigint | null;
   readonly currency: string;
@@ -77,6 +97,42 @@ export interface SecurityProfile {
   readonly subSectionAccess: Readonly<Record<string, AccessLevel>>;
   readonly aiConfidencePct: number;
   readonly aiRationale: string;
+}
+
+/** A role is not a user account. A future UserAccount/login layer will reference one role id. */
+export type SecurityProfile = SecurityRole;
+export type ProfileFamily = RoleFamily;
+
+export interface AuthorityTier {
+  readonly id: RoleAuthorityLevel;
+  readonly rank: number;
+  readonly label: string;
+  readonly description: string;
+  readonly canChangeDoa: boolean;
+  readonly canManageRoleAccess: boolean;
+}
+
+export const AUTHORITY_TIERS: readonly AuthorityTier[] = Object.freeze([
+  { id: 'officer', rank: 1, label: 'Officer', description: 'Operates within an assigned DOA cap; can request a limit increase but cannot change access or caps.', canChangeDoa: false, canManageRoleAccess: false },
+  { id: 'supervisor', rank: 2, label: 'Supervisor', description: 'First-line approver; may change officer-level DOA caps and section visibility.', canChangeDoa: true, canManageRoleAccess: true },
+  { id: 'manager', rank: 3, label: 'Manager', description: 'Second-line approver; may change officer- and supervisor-level DOA caps and section visibility.', canChangeDoa: true, canManageRoleAccess: true },
+  { id: 'executive', rank: 4, label: 'Executive', description: 'Platform owner with unrestricted access and unlimited DOA authority.', canChangeDoa: true, canManageRoleAccess: true },
+]);
+
+export function authorityTier(level: RoleAuthorityLevel): AuthorityTier {
+  return AUTHORITY_TIERS.find((t) => t.id === level) ?? AUTHORITY_TIERS[0]!;
+}
+
+export function authorityRank(level: RoleAuthorityLevel): number {
+  return authorityTier(level).rank;
+}
+
+export function canChangeDoa(role: Pick<SecurityRole, 'unrestricted' | 'authorityLevel'>): boolean {
+  return role.unrestricted || authorityTier(role.authorityLevel).canChangeDoa;
+}
+
+export function canManageRoleAccess(role: Pick<SecurityRole, 'unrestricted' | 'authorityLevel'>): boolean {
+  return role.unrestricted || authorityTier(role.authorityLevel).canManageRoleAccess;
 }
 
 export interface SupervisionMapping {
@@ -127,6 +183,8 @@ export interface DoaApprovalRequest {
   readonly matchedMappingId: string | null;
   readonly status: DoaRequestStatus;
   readonly reason: string;
+  /** Set when an approved `doa-limit-increase` request actually moved the role's cap. */
+  readonly appliedDoaLimitLabel?: string | null;
   readonly history: readonly DoaApprovalStep[];
 }
 
@@ -156,6 +214,9 @@ export interface SecurityAuditEntry {
 export interface AiAccessRecommendation {
   readonly profileId: string;
   readonly profileName: string;
+  /** Role-first aliases for the same recommendation. */
+  readonly roleId: string;
+  readonly roleName: string;
   readonly confidencePct: number;
   readonly recommendedLandingTab: string;
   readonly recommendedDoaLimit: string;
@@ -206,11 +267,21 @@ export const SECURITY_SURFACE_CATALOGUE: readonly TabCatalogueEntry[] = Object.f
     tabId: 'access-doa',
     label: 'Access & DOA',
     sections: [
-      { id: 'profile-directory', label: '36-Profile Security Directory', subSections: [{ id: 'profile-switcher', label: 'Session Switcher' }, { id: 'profile-clone', label: 'Profile Builder' }] },
+      { id: 'profile-directory', label: '36-Role Security Directory', subSections: [{ id: 'profile-switcher', label: 'Role Session Switcher' }, { id: 'profile-clone', label: 'Role Builder' }] },
       { id: 'ai-advisor', label: 'AI Access & SoD Advisor', subSections: [{ id: 'ai-scoring', label: 'Tab/Section AI Scoring' }, { id: 'sod-guard', label: 'Segregation of Duties Check' }] },
       { id: 'matrix-editor', label: 'Tab / Section / Sub-Section Matrix', subSections: [{ id: 'tab-grants', label: 'Tab Permissions' }, { id: 'section-grants', label: 'Section & Sub-Section Grants' }] },
       { id: 'supervision-map', label: 'Entity × Channel × Sub-Channel Mapping', subSections: [{ id: 'hierarchy-rules', label: 'Supervisor & Manager Chain' }, { id: 'channel-caps', label: 'Channel DOA Caps' }] },
       { id: 'doa-queue', label: 'DOA Approval Queue & Notifications', subSections: [{ id: 'doa-simulator', label: 'DOA Gate Simulator' }, { id: 'approver-inbox', label: 'Approver Decision Inbox' }] },
+    ],
+  },
+  {
+    tabId: 'role-matrix',
+    label: 'Role access matrix',
+    sections: [
+      { id: 'role-directory', label: 'Role Directory & Authority Tiers', subSections: [{ id: 'role-switcher', label: 'Role Session Switcher' }, { id: 'authority-tier', label: 'Officer / Supervisor / Manager Tiers' }] },
+      { id: 'access-tree', label: 'Tab → Section → Sub-Section Visibility Tree', subSections: [{ id: 'tab-visibility', label: 'Tab Visibility & Edit Rights' }, { id: 'section-visibility', label: 'Section Enable / Disable' }, { id: 'sub-section-visibility', label: 'Sub-Section Enable / Disable' }] },
+      { id: 'doa-limits', label: 'DOA Limit Governance & Increase Requests', subSections: [{ id: 'doa-limit-editor', label: 'Supervisor & Manager Limit Editor' }, { id: 'doa-increase-requests', label: 'Officer Limit-Increase Requests' }] },
+      { id: 'role-audit', label: 'Role, Access & DOA Change Audit Trail', subSections: [{ id: 'access-change-log', label: 'Access Change Log' }] },
     ],
   },
   {
@@ -419,7 +490,7 @@ interface ProfileSeedSpec {
   readonly id: string;
   readonly name: string;
   readonly title: string;
-  readonly family: ProfileFamily;
+  readonly family: RoleFamily;
   readonly badge: string;
   readonly summary: string;
   readonly unrestricted?: boolean;
@@ -429,6 +500,8 @@ interface ProfileSeedSpec {
   readonly defaultLandingTab: string;
   readonly reportsToProfileId: string | null;
   readonly escalationProfileId: string | null;
+  /** Optional explicit authority tier; otherwise derived from the role id. */
+  readonly authorityLevel?: RoleAuthorityLevel;
   readonly doaLimitAed: string | null; // null = Unlimited
   readonly doaActions: readonly DoaActionKind[];
   readonly piiAccess: 'full' | 'masked' | 'own-only';
@@ -441,9 +514,30 @@ interface ProfileSeedSpec {
   readonly aiRationale: string;
 }
 
+export const ROLE_MATRIX_TAB_ID = 'role-matrix';
+
 const ALL_TAB_IDS = CONSOLE_TABS.length > 0
-  ? Array.from(new Set([...CONSOLE_TABS.map((t) => t.id), 'access-doa']))
+  ? Array.from(new Set([...CONSOLE_TABS.map((t) => t.id), 'access-doa', ROLE_MATRIX_TAB_ID]))
   : SECURITY_SURFACE_CATALOGUE.map((c) => c.tabId);
+
+/** Roles that hold second-line manager authority (may change officer and supervisor roles). */
+const MANAGER_ROLE_IDS = new Set([
+  'underwriter-manager', 'retention-manager', 'claim-manager', 'settlement-manager',
+  'reinsurance-manager', 'fund-investment-manager', 'bank-manager', 'branch-manager', 'finance',
+]);
+
+/** Roles that hold first-line supervisor authority (may change officer roles only). */
+const SUPERVISOR_ROLE_IDS = new Set([
+  'supervisor', 'endorsement-supervisor', 'agent-supervisor', 'banca-supervisor',
+]);
+
+function authorityLevelForSeed(spec: ProfileSeedSpec): RoleAuthorityLevel {
+  if (spec.authorityLevel) return spec.authorityLevel;
+  if (spec.unrestricted) return 'executive';
+  if (MANAGER_ROLE_IDS.has(spec.id)) return 'manager';
+  if (SUPERVISOR_ROLE_IDS.has(spec.id)) return 'supervisor';
+  return 'officer';
+}
 
 function buildGranularMaps(spec: ProfileSeedSpec): {
   tabAccess: Record<string, AccessLevel>;
@@ -453,10 +547,14 @@ function buildGranularMaps(spec: ProfileSeedSpec): {
   const tabAccess: Record<string, AccessLevel> = {};
   const sectionAccess: Record<string, AccessLevel> = {};
   const subSectionAccess: Record<string, AccessLevel> = {};
+  const authority = authorityLevelForSeed(spec);
 
   for (const tabId of ALL_TAB_IDS) {
     if (spec.unrestricted) {
       tabAccess[tabId] = 'full';
+    } else if (tabId === ROLE_MATRIX_TAB_ID) {
+      // The section enable/disable tree is a governance tool: officer-level roles never see it.
+      tabAccess[tabId] = authority === 'officer' ? 'none' : 'full';
     } else if (spec.fullTabs.includes(tabId)) {
       tabAccess[tabId] = 'full';
     } else if ((spec.readTabs ?? []).includes(tabId)) {
@@ -466,26 +564,31 @@ function buildGranularMaps(spec: ProfileSeedSpec): {
     }
   }
 
+  // Only *explicit* section / sub-section grants are stored. Everything else inherits from its
+  // parent at read time, which is what makes the enable/disable tree explainable: a node marked
+  // "inherit" really has no override of its own, and moving the tab moves the whole branch.
   for (const entry of SECURITY_SURFACE_CATALOGUE) {
-    const baseLevel: AccessLevel = spec.unrestricted ? 'full' : (tabAccess[entry.tabId] ?? 'none');
     for (const sec of entry.sections) {
       const sKey = `${entry.tabId}:${sec.id}`;
-      const secLevel: AccessLevel = spec.unrestricted
-        ? 'full'
-        : (spec.sectionOverrides?.[sKey] ?? baseLevel);
-      sectionAccess[sKey] = secLevel;
+      if (spec.unrestricted) {
+        sectionAccess[sKey] = 'full';
+      } else if (spec.sectionOverrides?.[sKey] !== undefined) {
+        sectionAccess[sKey] = spec.sectionOverrides[sKey]!;
+      }
       for (const sub of sec.subSections) {
         const subKey = `${entry.tabId}:${sec.id}:${sub.id}`;
-        subSectionAccess[subKey] = spec.unrestricted
-          ? 'full'
-          : (spec.subSectionOverrides?.[subKey] ?? secLevel);
+        if (spec.unrestricted) {
+          subSectionAccess[subKey] = 'full';
+        } else if (spec.subSectionOverrides?.[subKey] !== undefined) {
+          subSectionAccess[subKey] = spec.subSectionOverrides[subKey]!;
+        }
       }
     }
   }
   return { tabAccess, sectionAccess, subSectionAccess };
 }
 
-/** Complete catalogue of all 36 enterprise profiles requested for the Insurance ERP. */
+/** Complete catalogue of all 36 enterprise roles requested for the Insurance ERP. Roles, not user logins. */
 const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
   // ======================== 1. GOVERNANCE & CONFIGURATION (3) ========================
   {
@@ -494,7 +597,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     title: 'Chief Platform & Security Administrator (Complete Access)',
     family: 'governance-config',
     badge: 'FULL UNRESTRICTED ACCESS',
-    summary: 'Complete unrestricted superuser access across all 29 tabs, all sections & sub-sections, Master Settings, RBAC & DOA governance, and unlimited override authority.',
+    summary: 'Complete unrestricted superuser access across every console tab, section and sub-section, Master Settings, RBAC & DOA governance, and unlimited override authority.',
     unrestricted: true,
     entityScope: '*',
     channelScope: '*',
@@ -602,7 +705,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
   },
   {
     id: 'retention-officer',
-    name: 'Retention Office',
+    name: 'Retention Officer',
     title: 'Policy Conservation & Renewal Retention Officer',
     family: 'underwriting-policy',
     badge: 'RETENTION OFFICER',
@@ -820,7 +923,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
   // ======================== 4. BANCASSURANCE OPS, FINANCE & FUNDS (7) ========================
   {
     id: 'bancassurance-operations-officer',
-    name: 'Bancassurance Operation Officer',
+    name: 'Bancassurance Operations Officer',
     title: 'Bancassurance Middle-Office & Bank Feed Operations Officer',
     family: 'finance-funds',
     badge: 'BANCA OPS OFFICER',
@@ -929,7 +1032,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
   },
   {
     id: 'fund-investment-officer',
-    name: 'Fund Investment Office',
+    name: 'Fund Investment Officer',
     title: 'Portfolio Valuation, NAV Pricing & Dealing Officer',
     family: 'finance-funds',
     badge: 'FUND INVESTMENT OFFICER',
@@ -1352,12 +1455,15 @@ export class SecurityGovernanceRegistry {
         badge: seed.badge,
         summary: seed.summary,
         unrestricted: Boolean(seed.unrestricted),
+        authorityLevel: authorityLevelForSeed(seed),
         entityScope: seed.entityScope,
         channelScope: seed.channelScope,
         subChannelScope: seed.subChannelScope,
         defaultLandingTab: seed.defaultLandingTab,
         reportsToProfileId: seed.reportsToProfileId,
+        reportsToRoleId: seed.reportsToProfileId,
         escalationProfileId: seed.escalationProfileId,
+        escalationRoleId: seed.escalationProfileId,
         doaLimitMinor: seed.doaLimitAed === null ? null : parseAmount(seed.doaLimitAed, 'AED').minor,
         currency: 'AED',
         doaActions: [...seed.doaActions],
@@ -1673,25 +1779,97 @@ export class SecurityGovernanceRegistry {
     return item;
   }
 
-  listProfiles(): SecurityProfile[] {
+  listProfiles(): SecurityRole[] {
     return [...this.profiles.values()];
   }
 
-  getProfile(profileId: string): SecurityProfile {
+  /** Roles are the unit of access; a future UserAccount/login layer will reference one role id. */
+  listRoles(): SecurityRole[] {
+    return this.listProfiles();
+  }
+
+  getProfile(profileId: string): SecurityRole {
     const p = this.profiles.get(profileId.trim());
-    if (!p) throw new SecurityGovernanceError(`unknown security profile "${profileId}"`);
+    if (!p) throw new SecurityGovernanceError(`unknown security role "${profileId}"`);
     return p;
   }
 
-  selectActiveProfile(profileId: string, at?: string): SecurityProfile {
-    const profile = this.getProfile(profileId);
-    this.activeProfileId = profile.id;
-    this.recordAudit(profile.id, 'session.profile-selected', `Entered ERP session as "${profile.name}" (${profile.title}) on landing tab "${profile.defaultLandingTab}".`, at);
-    return profile;
+  getRole(roleId: string): SecurityRole {
+    return this.getProfile(roleId);
   }
 
-  activeProfile(): SecurityProfile {
+  selectActiveProfile(profileId: string, at?: string): SecurityRole {
+    const role = this.getProfile(profileId);
+    this.activeProfileId = role.id;
+    this.recordAudit(role.id, 'session.role-selected', `Entered ERP session as role "${role.name}" (${role.title}, ${authorityTier(role.authorityLevel).label}) on landing tab "${role.defaultLandingTab}".`, at);
+    return role;
+  }
+
+  selectActiveRole(roleId: string, at?: string): SecurityRole {
+    return this.selectActiveProfile(roleId, at);
+  }
+
+  activeProfile(): SecurityRole {
     return this.getProfile(this.activeProfileId);
+  }
+
+  activeRole(): SecurityRole {
+    return this.activeProfile();
+  }
+
+  activeRoleId(): string {
+    return this.activeProfileId;
+  }
+
+  private resolveActor(actorId?: string): SecurityRole {
+    const id = (actorId ?? this.activeProfileId).trim();
+    const role = this.profiles.get(id);
+    if (role) return role;
+    // Internal automation is allowed to write through the security administrator, never silently
+    // through a made-up higher role supplied by a caller.
+    if (id === 'ai-rbac-advisor' || id === 'security-seed' || id === 'system') {
+      return this.getProfile('administration');
+    }
+    throw new SecurityGovernanceError(`unknown acting role "${actorId}"`);
+  }
+
+  private assertHigherAuthority(actor: SecurityRole, target: SecurityRole, verb: string): void {
+    if (actor.unrestricted) return;
+    if (authorityRank(actor.authorityLevel) <= authorityRank(target.authorityLevel)) {
+      throw new SecurityGovernanceError(
+        `Authority refusal: ${authorityTier(actor.authorityLevel).label} role "${actor.name}" cannot ${verb} ${authorityTier(target.authorityLevel).label} role "${target.name}". ` +
+        `Only a higher authority tier may do that.`,
+      );
+    }
+  }
+
+  private levelRank(level: AccessLevel): number {
+    return level === 'full' ? 3 : level === 'read' ? 2 : 1;
+  }
+
+  private assertGrantWithinActor(input: {
+    actor: SecurityRole;
+    actorLevel: AccessLevel;
+    requested: AccessLevel;
+    label: string;
+  }): void {
+    if (input.actor.unrestricted || input.requested === 'none') return;
+    if (this.levelRank(input.requested) > this.levelRank(input.actorLevel)) {
+      throw new SecurityGovernanceError(
+        `Authority refusal: ${input.actor.name} holds ${input.actorLevel} on ${input.label} and cannot grant ${input.requested}. ` +
+        `A role cannot delegate more access than it holds itself.`,
+      );
+    }
+  }
+
+  private assertCanManageAccess(actor: SecurityRole, target: SecurityRole, verb: string): void {
+    if (!canManageRoleAccess(actor)) {
+      throw new SecurityGovernanceError(
+        `Officer-level role "${actor.name}" cannot ${verb}. ` +
+        `Tab / section visibility and DOA limits are changed at supervisor or manager level only; officers raise a DOA limit-increase request instead.`,
+      );
+    }
+    this.assertHigherAuthority(actor, target, verb);
   }
 
   canAccessTab(profileId: string, tabId: string): AccessLevel {
@@ -1716,7 +1894,7 @@ export class SecurityGovernanceRegistry {
     id: string;
     name?: string;
     title?: string;
-    family?: ProfileFamily;
+    family?: RoleFamily;
     badge?: string;
     summary?: string;
     entityScope?: string;
@@ -1725,49 +1903,88 @@ export class SecurityGovernanceRegistry {
     defaultLandingTab?: string;
     reportsToProfileId?: string | null;
     escalationProfileId?: string | null;
+    authorityLevel?: RoleAuthorityLevel;
     doaLimitAed?: string | null;
+    doaActions?: readonly DoaActionKind[];
     piiAccess?: 'full' | 'masked' | 'own-only';
     tabAccess?: Record<string, AccessLevel>;
     sectionAccess?: Record<string, AccessLevel>;
     subSectionAccess?: Record<string, AccessLevel>;
     cloneFromProfileId?: string;
+    /** The role making the change. Without it `by` is used, then the active session role. */
+    actorProfileId?: string;
     by?: string;
     at?: string;
-  }): SecurityProfile {
+  }): SecurityRole {
     const cleanId = input.id.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-');
-    if (!cleanId) throw new SecurityGovernanceError('profile id is required');
+    if (!cleanId) throw new SecurityGovernanceError('role id is required');
 
     const existing = this.profiles.get(cleanId)
       ?? (input.cloneFromProfileId ? this.getProfile(input.cloneFromProfileId) : this.getProfile('agent-1'));
+    const isNew = !this.profiles.has(cleanId);
+    const actor = this.resolveActor(input.actorProfileId ?? input.by);
 
     if (cleanId === 'administration') {
       throw new SecurityGovernanceError('Administration holds permanent complete unrestricted access and cannot have permissions removed');
     }
 
+    // Changing a role is itself an authority act. Officers cannot change roles at all; a supervisor or
+    // manager may only change roles below their own tier.
+    this.assertCanManageAccess(actor, existing, isNew ? 'create or clone a role' : 'change this role');
+    if (input.authorityLevel && input.authorityLevel !== existing.authorityLevel && !actor.unrestricted) {
+      throw new SecurityGovernanceError('Only the executive Administration role may change a role authority tier');
+    }
+
     if (input.reportsToProfileId) this.getProfile(input.reportsToProfileId);
     if (input.escalationProfileId) this.getProfile(input.escalationProfileId);
 
+    // A tab change re-seats its whole branch: child overrides are cleared so they inherit the new tab
+    // level, unless the caller supplied an explicit child grant in the same request.
     const nextTabAccess: Record<string, AccessLevel> = { ...existing.tabAccess, ...(input.tabAccess ?? {}) };
     const nextSectionAccess: Record<string, AccessLevel> = { ...existing.sectionAccess, ...(input.sectionAccess ?? {}) };
     const nextSubAccess: Record<string, AccessLevel> = { ...existing.subSectionAccess, ...(input.subSectionAccess ?? {}) };
 
-    // Propagate tab updates down to child sections unless explicitly specified in input.sectionAccess
     if (input.tabAccess) {
       for (const [tabId, level] of Object.entries(input.tabAccess)) {
         const cat = SECURITY_SURFACE_CATALOGUE.find((c) => c.tabId === tabId);
+        this.assertGrantWithinActor({
+          actor,
+          actorLevel: this.canAccessTab(actor.id, tabId),
+          requested: level,
+          label: `tab "${tabId}"`,
+        });
         if (!cat) continue;
         for (const sec of cat.sections) {
           const sKey = `${tabId}:${sec.id}`;
-          if (!input.sectionAccess || !(sKey in input.sectionAccess)) {
-            nextSectionAccess[sKey] = level;
-          }
+          if (!input.sectionAccess || !(sKey in input.sectionAccess)) delete nextSectionAccess[sKey];
           for (const sub of sec.subSections) {
             const subKey = `${tabId}:${sec.id}:${sub.id}`;
-            if (!input.subSectionAccess || !(subKey in input.subSectionAccess)) {
-              nextSubAccess[subKey] = nextSectionAccess[sKey]!;
-            }
+            if (!input.subSectionAccess || !(subKey in input.subSectionAccess)) delete nextSubAccess[subKey];
           }
         }
+      }
+    }
+
+    if (input.sectionAccess && !actor.unrestricted) {
+      for (const [sKey, level] of Object.entries(input.sectionAccess)) {
+        const [tabId, sectionId] = sKey.split(':');
+        this.assertGrantWithinActor({
+          actor,
+          actorLevel: tabId && sectionId ? this.canAccessSection(actor.id, tabId, sectionId) : 'none',
+          requested: level,
+          label: `section "${sKey}"`,
+        });
+      }
+    }
+    if (input.subSectionAccess && !actor.unrestricted) {
+      for (const [subKey, level] of Object.entries(input.subSectionAccess)) {
+        const [tabId, sectionId, subId] = subKey.split(':');
+        this.assertGrantWithinActor({
+          actor,
+          actorLevel: tabId && sectionId && subId ? this.canAccessSubSection(actor.id, tabId, sectionId, subId) : 'none',
+          requested: level,
+          label: `sub-section "${subKey}"`,
+        });
       }
     }
 
@@ -1777,10 +1994,38 @@ export class SecurityGovernanceRegistry {
         ? null
         : parseAmount(String(input.doaLimitAed), 'AED').minor;
 
-    const updated: SecurityProfile = {
+    if (input.doaLimitAed !== undefined && !actor.unrestricted) {
+      if (!canChangeDoa(actor)) {
+        throw new SecurityGovernanceError(
+          `Officer-level role "${actor.name}" cannot change a DOA limit. ` +
+          'Ask your supervisor or manager to approve a limit-increase request instead.',
+        );
+      }
+      if (doaLimitMinor === null) {
+        throw new SecurityGovernanceError('Only the executive Administration role may set an unlimited DOA');
+      }
+      if (actor.doaLimitMinor !== null && doaLimitMinor > actor.doaLimitMinor) {
+        throw new SecurityGovernanceError(
+          `Authority refusal: ${actor.name} cannot grant a DOA limit above its own cap of ${formatAmount(money(actor.doaLimitMinor, actor.currency))}`,
+        );
+      }
+    }
+
+    if (input.doaActions && !actor.unrestricted) {
+      for (const action of input.doaActions) {
+        if (!actor.doaActions.includes(action)) {
+          throw new SecurityGovernanceError(
+            `Authority refusal: ${actor.name} cannot grant DOA action "${action}" that it does not hold itself`,
+          );
+        }
+      }
+    }
+
+    const updated: SecurityRole = {
       ...existing,
       id: cleanId,
       unrestricted: false,
+      authorityLevel: input.authorityLevel ?? existing.authorityLevel,
       name: input.name?.trim() || existing.name,
       title: input.title?.trim() || existing.title,
       family: input.family ?? existing.family,
@@ -1791,20 +2036,233 @@ export class SecurityGovernanceRegistry {
       subChannelScope: input.subChannelScope?.trim() || existing.subChannelScope,
       defaultLandingTab: input.defaultLandingTab?.trim() || existing.defaultLandingTab,
       reportsToProfileId: input.reportsToProfileId === undefined ? existing.reportsToProfileId : input.reportsToProfileId,
+      reportsToRoleId: input.reportsToProfileId === undefined ? existing.reportsToRoleId : input.reportsToProfileId,
       escalationProfileId: input.escalationProfileId === undefined ? existing.escalationProfileId : input.escalationProfileId,
+      escalationRoleId: input.escalationProfileId === undefined ? existing.escalationRoleId : input.escalationProfileId,
       doaLimitMinor,
+      doaActions: input.doaActions ? [...new Set(input.doaActions)] : existing.doaActions,
       piiAccess: input.piiAccess ?? existing.piiAccess,
       tabAccess: nextTabAccess,
       sectionAccess: nextSectionAccess,
       subSectionAccess: nextSubAccess,
     };
     this.profiles.set(cleanId, updated);
-    this.recordAudit(input.by?.trim() || 'administration', 'rbac.profile-upserted', `Updated profile "${updated.name}" (${updated.id}).`, input.at);
+    this.recordAudit(actor.id, 'rbac.role-upserted', `${isNew ? 'Created' : 'Updated'} role "${updated.name}" (${updated.id}) at ${authorityTier(updated.authorityLevel).label} tier.`, input.at);
+    return updated;
+  }
+
+  /** Role-first alias; the old name remains for API compatibility. */
+  upsertRole(input: Parameters<SecurityGovernanceRegistry['upsertProfile']>[0]): SecurityRole {
+    return this.upsertProfile(input);
+  }
+
+  /**
+   * Explicitly set one node of a role's Tab -> Section -> Sub-Section tree, or reset it to inherit.
+   *
+   * This is the write path behind the Role access matrix tab. It refuses officer-level actors, refuses
+   * changes to roles at or above the actor's own tier, refuses delegating more access than the actor
+   * holds, and cascades a parent change so a hidden section cannot leak a visible sub-section.
+   */
+  setRoleNodeAccess(input: {
+    roleId: string;
+    kind: 'tab' | 'section' | 'subSection';
+    key: string;
+    level: AccessLevel | 'inherit';
+    actorProfileId?: string;
+    by?: string;
+    at?: string;
+  }): SecurityRole {
+    const actor = this.resolveActor(input.actorProfileId ?? input.by);
+    const role = this.getRole(input.roleId);
+    if (role.id === 'administration') {
+      throw new SecurityGovernanceError('Administration is permanently unrestricted across every tab, section and sub-section');
+    }
+    this.assertCanManageAccess(actor, role, 'change section visibility for this role');
+
+    const tabAccess = { ...role.tabAccess };
+    const sectionAccess = { ...role.sectionAccess };
+    const subSectionAccess = { ...role.subSectionAccess };
+    const kindLabel = input.kind === 'subSection' ? 'sub-section' : input.kind;
+
+    if (input.kind === 'tab') {
+      const cat = SECURITY_SURFACE_CATALOGUE.find((c) => c.tabId === input.key);
+      if (!cat) throw new SecurityGovernanceError(`unknown tab "${input.key}"`);
+      if (input.level === 'inherit') throw new SecurityGovernanceError('A tab has no parent to inherit from; choose full, read or none');
+      this.assertGrantWithinActor({
+        actor,
+        actorLevel: this.canAccessTab(actor.id, input.key),
+        requested: input.level,
+        label: `tab "${input.key}"`,
+      });
+      tabAccess[input.key] = input.level;
+      // Cascading the branch keeps visibility explainable: hide the tab and nothing inside it leaks.
+      for (const sec of cat.sections) {
+        delete sectionAccess[`${input.key}:${sec.id}`];
+        for (const sub of sec.subSections) delete subSectionAccess[`${input.key}:${sec.id}:${sub.id}`];
+      }
+    } else if (input.kind === 'section') {
+      const [tabId, sectionId, ...rest] = input.key.split(':');
+      const cat = SECURITY_SURFACE_CATALOGUE.find((c) => c.tabId === tabId);
+      const sec = cat?.sections.find((x) => x.id === sectionId);
+      if (!cat || !sec || rest.length > 0) throw new SecurityGovernanceError(`unknown section "${input.key}"`);
+      if (input.level === 'inherit') {
+        delete sectionAccess[input.key];
+      } else {
+        this.assertGrantWithinActor({
+          actor,
+          actorLevel: this.canAccessSection(actor.id, tabId!, sectionId!),
+          requested: input.level,
+          label: `section "${input.key}"`,
+        });
+        sectionAccess[input.key] = input.level;
+      }
+      for (const sub of sec.subSections) delete subSectionAccess[`${input.key}:${sub.id}`];
+    } else {
+      const [tabId, sectionId, subId, ...rest] = input.key.split(':');
+      const cat = SECURITY_SURFACE_CATALOGUE.find((c) => c.tabId === tabId);
+      const sec = cat?.sections.find((x) => x.id === sectionId);
+      const sub = sec?.subSections.find((x) => x.id === subId);
+      if (!cat || !sec || !sub || rest.length > 0) throw new SecurityGovernanceError(`unknown sub-section "${input.key}"`);
+      if (input.level === 'inherit') {
+        delete subSectionAccess[input.key];
+      } else {
+        this.assertGrantWithinActor({
+          actor,
+          actorLevel: this.canAccessSubSection(actor.id, tabId!, sectionId!, subId!),
+          requested: input.level,
+          label: `sub-section "${input.key}"`,
+        });
+        subSectionAccess[input.key] = input.level;
+      }
+    }
+
+    const updated: SecurityRole = { ...role, tabAccess, sectionAccess, subSectionAccess };
+    this.profiles.set(role.id, updated);
+    this.recordAudit(
+      actor.id,
+      'rbac.access-node-changed',
+      `${kindLabel} "${input.key}" on role "${role.name}" set to ${input.level.toUpperCase()}.`,
+      input.at,
+    );
     return updated;
   }
 
   /**
-   * AI Role & Access Advisor: scores every Tab, Section and Sub-Section for a profile or custom role
+   * Change a role's DOA cap and/or the DOA action kinds it may exercise. Supervisor / manager only,
+   * and only downward in the authority hierarchy. An officer never reaches this path directly.
+   */
+  changeRoleDoa(input: {
+    roleId: string;
+    doaLimitAed?: string | null;
+    doaActions?: readonly DoaActionKind[];
+    actorProfileId?: string;
+    by?: string;
+    at?: string;
+  }): SecurityRole {
+    const actor = this.resolveActor(input.actorProfileId ?? input.by);
+    const role = this.getRole(input.roleId);
+    if (role.id === 'administration') {
+      throw new SecurityGovernanceError('Administration holds unlimited DOA authority and cannot be re-capped');
+    }
+    if (!canChangeDoa(actor)) {
+      throw new SecurityGovernanceError(
+        `Officer-level role "${actor.name}" cannot change DOA authority. Submit a DOA limit-increase request for supervisor or manager approval instead.`,
+      );
+    }
+    this.assertHigherAuthority(actor, role, 'change DOA authority for');
+
+    const doaLimitMinor = input.doaLimitAed === undefined
+      ? role.doaLimitMinor
+      : input.doaLimitAed === null || String(input.doaLimitAed).trim().toLowerCase() === 'unlimited' || String(input.doaLimitAed).trim() === ''
+        ? null
+        : parseAmount(String(input.doaLimitAed), 'AED').minor;
+
+    if (!actor.unrestricted) {
+      if (doaLimitMinor === null) throw new SecurityGovernanceError('Only Administration may grant an unlimited DOA');
+      if (actor.doaLimitMinor !== null && doaLimitMinor > actor.doaLimitMinor) {
+        throw new SecurityGovernanceError(
+          `Authority refusal: ${actor.name} cannot grant a DOA limit above its own cap of ${formatAmount(money(actor.doaLimitMinor, actor.currency))}`,
+        );
+      }
+      for (const action of input.doaActions ?? []) {
+        if (!actor.doaActions.includes(action)) {
+          throw new SecurityGovernanceError(`Authority refusal: ${actor.name} does not hold DOA action "${action}" and cannot grant it`);
+        }
+      }
+    }
+
+    const updated: SecurityRole = {
+      ...role,
+      doaLimitMinor,
+      doaActions: input.doaActions ? [...new Set(input.doaActions)] : role.doaActions,
+    };
+    this.profiles.set(role.id, updated);
+    this.recordAudit(
+      actor.id,
+      'rbac.doa-authority-changed',
+      `DOA authority for role "${role.name}" set to ${doaLimitMinor === null ? 'Unlimited' : formatAmount(money(doaLimitMinor, role.currency))}${input.doaActions ? ` with ${updated.doaActions.length} action kind(s)` : ''}.`,
+      input.at,
+    );
+    return updated;
+  }
+
+  /**
+   * An officer (or a higher role acting for them) asks for a DOA limit increase. The request is a
+   * normal tracked DOA request, routed through the mapped supervisor/manager chain; approving it is
+   * what applies the new cap. The requester cannot set the cap directly.
+   */
+  submitDoaLimitIncreaseRequest(input: {
+    roleId: string;
+    requestedLimitAed: string;
+    reason: string;
+    actorProfileId?: string;
+    at?: string;
+  }): {
+    request: DoaApprovalRequest;
+    notificationsSent: ApproverNotification[];
+    currentLimitLabel: string;
+    requestedLimitLabel: string;
+  } {
+    const actor = this.resolveActor(input.actorProfileId);
+    const role = this.getRole(input.roleId);
+    if (role.unrestricted || role.doaLimitMinor === null) {
+      throw new SecurityGovernanceError(`Role "${role.name}" already holds unlimited DOA authority`);
+    }
+    if (actor.id !== role.id) this.assertHigherAuthority(actor, role, 'request a DOA increase for');
+    if (!canChangeDoa(actor) && actor.id !== role.id) {
+      throw new SecurityGovernanceError(`Role "${actor.name}" cannot raise a DOA request for another role`);
+    }
+    const requestedMinor = parseAmount(input.requestedLimitAed, role.currency).minor;
+    if (requestedMinor <= role.doaLimitMinor) {
+      throw new SecurityGovernanceError(
+        `The requested limit ${formatAmount(money(requestedMinor, role.currency))} must be higher than the current cap ${formatAmount(money(role.doaLimitMinor, role.currency))}`,
+      );
+    }
+    const result = this.submitDoaRequest({
+      requesterProfileId: role.id,
+      actionKind: 'doa-limit-increase',
+      subjectRef: `DOA limit increase — ${role.name} (${formatAmount(money(role.doaLimitMinor, role.currency))} → ${formatAmount(money(requestedMinor, role.currency))})`,
+      tabId: ROLE_MATRIX_TAB_ID,
+      sectionId: 'doa-limits',
+      entityId: role.entityScope === '*' ? 'ALK-CONV' : role.entityScope,
+      channelCode: role.channelScope === '*' ? 'HEAD-OFFICE' : role.channelScope,
+      subChannelCode: role.subChannelScope === '*' ? 'HEAD-OFFICE' : role.subChannelScope,
+      amount: input.requestedLimitAed,
+      currency: role.currency,
+      reason: input.reason.trim() || 'Requested DOA limit increase for operational workload.',
+      at: input.at,
+    });
+    this.recordAudit(actor.id, 'doa.limit-increase-requested', `${result.request.id} requested by ${actor.name} for role "${role.name}": ${formatAmount(money(role.doaLimitMinor, role.currency))} → ${formatAmount(money(requestedMinor, role.currency))}.`, input.at);
+    return {
+      request: result.request,
+      notificationsSent: result.notificationsSent,
+      currentLimitLabel: formatAmount(money(role.doaLimitMinor, role.currency)),
+      requestedLimitLabel: formatAmount(money(requestedMinor, role.currency)),
+    };
+  }
+
+  /**
+   * AI Role & Access Advisor: scores every Tab, Section and Sub-Section for a role or custom role
    * description, proposes optimal DOA limits + supervisor chain, and flags Segregation-of-Duties risks.
    */
   recommendAccess(input: { profileId?: string; roleDescription?: string }): AiAccessRecommendation {
@@ -1868,6 +2326,8 @@ export class SecurityGovernanceRegistry {
     return {
       profileId: baseProfile.id,
       profileName: baseProfile.name,
+      roleId: baseProfile.id,
+      roleName: baseProfile.name,
       confidencePct: baseProfile.aiConfidencePct,
       recommendedLandingTab: baseProfile.defaultLandingTab,
       recommendedDoaLimit: limitLabel,
@@ -1975,9 +2435,24 @@ export class SecurityGovernanceRegistry {
     by?: string;
     at?: string;
   }): SupervisionMapping {
-    this.getProfile(input.supervisorProfileId);
-    this.getProfile(input.managerProfileId);
-    for (const o of input.officerProfileIds) this.getProfile(o);
+    const actor = this.resolveActor(input.by);
+    if (!canManageRoleAccess(actor)) {
+      throw new SecurityGovernanceError(
+        `Officer-level role "${actor.name}" cannot change supervision mappings; supervisor or manager authority is required`,
+      );
+    }
+    const supervisorRole = this.getProfile(input.supervisorProfileId);
+    const managerRole = this.getProfile(input.managerProfileId);
+    for (const o of input.officerProfileIds) {
+      const officerRole = this.getProfile(o);
+      if (!actor.unrestricted) this.assertHigherAuthority(actor, officerRole, 'map this role');
+    }
+    if (!actor.unrestricted && authorityRank(supervisorRole.authorityLevel) < authorityRank(actor.authorityLevel)) {
+      throw new SecurityGovernanceError(`A ${authorityTier(actor.authorityLevel).label} cannot appoint a lower-tier first-line supervisor`);
+    }
+    if (!actor.unrestricted && authorityRank(managerRole.authorityLevel) < authorityRank(actor.authorityLevel)) {
+      throw new SecurityGovernanceError(`A ${authorityTier(actor.authorityLevel).label} cannot appoint a lower-tier escalation manager`);
+    }
 
     const id = input.id?.trim() || `MAP-${String(++this.mapSeq).padStart(4, '0')}`;
     const record: SupervisionMapping = {
@@ -2003,9 +2478,13 @@ export class SecurityGovernanceRegistry {
   }
 
   deleteSupervisionMapping(id: string, by = 'administration', at?: string): void {
+    const actor = this.resolveActor(by);
+    if (!canManageRoleAccess(actor)) {
+      throw new SecurityGovernanceError(`Officer-level role "${actor.name}" cannot delete supervision mappings`);
+    }
     if (!this.mappings.has(id)) throw new SecurityGovernanceError(`unknown supervision mapping "${id}"`);
     this.mappings.delete(id);
-    this.recordAudit(by, 'rbac.mapping-deleted', `Deleted supervision mapping ${id}.`, at);
+    this.recordAudit(actor.id, 'rbac.mapping-deleted', `Deleted supervision mapping ${id}.`, at);
   }
 
   resolveSupervisorChain(input: {
@@ -2089,12 +2568,13 @@ export class SecurityGovernanceRegistry {
       };
     }
 
-    const tabAllowed = input.tabId ? this.canAccessTab(profile.id, input.tabId) !== 'none' : true;
+    const forceApproval = input.actionKind === 'doa-limit-increase';
+    const tabAllowed = forceApproval || (input.tabId ? this.canAccessTab(profile.id, input.tabId) !== 'none' : true);
     const actionAllowed = profile.doaActions.includes(input.actionKind);
     const limitMoney = money(profile.doaLimitMinor, profile.currency);
     const withinCap = compare(amount, limitMoney) <= 0;
 
-    if (tabAllowed && actionAllowed && withinCap) {
+    if (!forceApproval && tabAllowed && actionAllowed && withinCap) {
       return {
         authorizedWithinDoa: true,
         requiresApproval: false,
@@ -2109,11 +2589,13 @@ export class SecurityGovernanceRegistry {
       };
     }
 
-    const why = !tabAllowed
-      ? `Tab "${input.tabId}" is outside ${profile.name}'s standard access`
-      : !actionAllowed
-        ? `Action "${input.actionKind}" requires supervisor authority for ${profile.name}`
-        : `Amount ${formatAmount(amount)} exceeds ${profile.name}'s DOA limit of ${formatAmount(limitMoney)}`;
+    const why = forceApproval
+      ? `A DOA limit increase for ${profile.name} must be approved by a supervisor or manager — the requester cannot raise its own cap`
+      : !tabAllowed
+        ? `Tab "${input.tabId}" is outside ${profile.name}'s standard access`
+        : !actionAllowed
+          ? `Action "${input.actionKind}" requires supervisor authority for ${profile.name}`
+          : `Amount ${formatAmount(amount)} exceeds ${profile.name}'s DOA limit of ${formatAmount(limitMoney)}`;
 
     return {
       authorizedWithinDoa: false,
@@ -2308,11 +2790,25 @@ export class SecurityGovernanceRegistry {
     }
 
     const finalStatus: DoaRequestStatus = input.decision === 'approve' ? 'approved' : 'rejected';
-    const stepNote = input.note?.trim() || `${finalStatus === 'approved' ? 'Approved' : 'Rejected'} by ${actor.name}.`;
+    let appliedDoaLimitLabel: string | null = null;
+    if (finalStatus === 'approved' && existing.actionKind === 'doa-limit-increase') {
+      const target = this.getProfile(existing.requesterProfileId);
+      if (!actor.unrestricted && authorityRank(actor.authorityLevel) <= authorityRank(target.authorityLevel)) {
+        throw new SecurityGovernanceError(
+          `A DOA limit increase for ${authorityTier(target.authorityLevel).label} role "${target.name}" must be approved above that tier — ${actor.name} (${authorityTier(actor.authorityLevel).label}) cannot apply it`,
+        );
+      }
+      const recapped: SecurityRole = { ...target, doaLimitMinor: existing.amount.minor };
+      this.profiles.set(target.id, recapped);
+      appliedDoaLimitLabel = formatAmount(money(existing.amount.minor, target.currency));
+      this.recordAudit(actor.id, 'doa.limit-increase-applied', `${existing.id} applied: role "${target.name}" DOA cap is now ${appliedDoaLimitLabel}.`, at);
+    }
+    const stepNote = `${input.note?.trim() || `${finalStatus === 'approved' ? 'Approved' : 'Rejected'} by ${actor.name}.`}${appliedDoaLimitLabel ? ` New DOA cap applied: ${appliedDoaLimitLabel}.` : ''}`;
     const updated: DoaApprovalRequest = {
       ...existing,
       updatedAt: at,
       status: finalStatus,
+      ...(appliedDoaLimitLabel ? { appliedDoaLimitLabel } : {}),
       history: [...existing.history, { at, actorProfileId: actor.id, actorName: actor.name, decision: finalStatus, note: stepNote }],
     };
     this.doaRequests.set(updated.id, updated);
@@ -2371,12 +2867,19 @@ export class SecurityGovernanceRegistry {
         badge: p.badge,
         summary: p.summary,
         unrestricted: p.unrestricted,
+        authorityLevel: p.authorityLevel,
+        authorityLabel: authorityTier(p.authorityLevel).label,
+        authorityRank: authorityRank(p.authorityLevel),
+        canChangeDoa: canChangeDoa(p),
+        canManageRoleAccess: canManageRoleAccess(p),
         entityScope: p.entityScope,
         channelScope: p.channelScope,
         subChannelScope: p.subChannelScope,
         defaultLandingTab: p.defaultLandingTab,
         reportsToProfileId: p.reportsToProfileId,
+        reportsToRoleId: p.reportsToRoleId,
         escalationProfileId: p.escalationProfileId,
+        escalationRoleId: p.escalationRoleId,
         doaLimitLabel: p.doaLimitMinor === null ? 'Unlimited' : formatAmount(money(p.doaLimitMinor, p.currency)),
         doaLimitMinor: p.doaLimitMinor === null ? null : p.doaLimitMinor.toString(),
         currency: p.currency,
@@ -2388,6 +2891,9 @@ export class SecurityGovernanceRegistry {
         tabAccess: { ...p.tabAccess },
         sectionAccess: { ...p.sectionAccess },
         subSectionAccess: { ...p.subSectionAccess },
+        /** Explicit overrides only; a missing key means "inherit from the parent node". */
+        sectionOverrides: { ...p.sectionAccess },
+        subSectionOverrides: { ...p.subSectionAccess },
         aiConfidencePct: p.aiConfidencePct,
         aiRationale: p.aiRationale,
         unreadNotifications,
@@ -2396,9 +2902,23 @@ export class SecurityGovernanceRegistry {
     });
 
     return {
+      /** Roles are the access model; `profiles` / `profileCount` remain as compatibility aliases. */
+      activeRoleId: this.activeProfileId,
+      roleCount: profiles.length,
+      authorities: AUTHORITY_TIERS.map((t) => ({ ...t })),
+      userProfileLayer: {
+        implemented: false,
+        description: 'Roles are the access template, not user accounts. Login credentials, individual user profiles and provisioning will be added later and will reference a role id.',
+      },
+      accessAudit: this.audit
+        .filter((a) => a.event.startsWith('rbac.') || a.event.startsWith('doa.limit') || a.event.startsWith('session.role'))
+        .slice(-25)
+        .reverse()
+        .map((a) => ({ ...a })),
       activeProfileId: this.activeProfileId,
       profileCount: profiles.length,
       families: PROFILE_FAMILIES.map((f) => ({ ...f })),
+      roleFamilies: PROFILE_FAMILIES.map((f) => ({ ...f })),
       catalogue: SECURITY_SURFACE_CATALOGUE.map((c) => ({
         tabId: c.tabId,
         label: c.label,
@@ -2408,6 +2928,7 @@ export class SecurityGovernanceRegistry {
           subSections: s.subSections.map((sub) => ({ ...sub })),
         })),
       })),
+      roles: profiles,
       profiles,
       supervisionMappings: [...this.mappings.values()].map((m) => ({
         id: m.id,
@@ -2448,6 +2969,7 @@ export class SecurityGovernanceRegistry {
         matchedMappingId: r.matchedMappingId,
         status: r.status,
         reason: r.reason,
+        appliedDoaLimitLabel: r.appliedDoaLimitLabel ?? null,
         history: r.history.map((h) => ({ ...h })),
       })),
       notifications: [...this.notifications].reverse().map((n) => ({ ...n })),

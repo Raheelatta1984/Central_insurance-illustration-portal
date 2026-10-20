@@ -62,10 +62,16 @@ export const TAB_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze({
     watch: 'A figure that looks wrong here is wrong everywhere: it is the same snapshot every other screen reads.',
   },
   'access-doa': {
-    headline: 'Thirty-six profiles, three-tier RBAC, AI advisor and live DOA routing',
-    body: 'Every operator enters through the profile security layer — from Administration (complete unrestricted access) through technical desks (Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Finance, Cost Control, Fund Config & Investment) to Agency, Marsh Broker, Bancassurance, Branch, Aggregator, Direct Customer and Referral Partners. AI recommends optimal Tabs, Sections and Sub-Sections with Segregation-of-Duties checks, while Entity × Channel × Sub-Channel mappings route out-of-limit actions to the right supervisor with instant approver notifications.',
-    doThis: ['Switch between profiles or launch the Pre-Load Profile Gate to experience each persona\u2019s tailored workspace and landing screen.', 'Run the AI Access & SoD Advisor on any profile to inspect confidence scores, toxic-combination checks and one-click apply.', 'Test a DOA request above an officer\u2019s cap and watch the notification land in the mapped Supervisor / Manager inbox for approval or escalation.'],
-    watch: 'Administration holds permanent complete access and cannot lock itself out; no non-admin requester may self-approve their own DOA request.',
+    headline: 'Thirty-six roles, three-tier RBAC, AI advisor and live DOA routing',
+    body: 'Every operator enters through the role security layer — from Administration (complete unrestricted access) through technical desks (Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Finance, Cost Control, Fund Config & Investment) to Agency, Marsh Broker, Bancassurance, Branch, Aggregator, Direct Customer and Referral Partners. These are roles, not user accounts: a future login layer will provision named users against them. AI recommends optimal Tabs, Sections and Sub-Sections with Segregation-of-Duties checks, while Entity × Channel × Sub-Channel mappings route out-of-limit actions to the right supervisor with instant approver notifications.',
+    doThis: ['Switch between roles or launch the Pre-Load Role Gate to experience each role\u2019s tailored workspace and landing screen.', 'Run the AI Access & SoD Advisor on any role to inspect confidence scores, toxic-combination checks and one-click apply.', 'Test a DOA request above an officer\u2019s cap and watch the notification land in the mapped Supervisor / Manager inbox for approval or escalation.'],
+    watch: 'Administration holds permanent complete access and cannot lock itself out; no requester may self-approve their own DOA request. Only supervisor- or manager-tier roles may change a DOA limit — an officer can only raise a limit-increase request.',
+  },
+  'role-matrix': {
+    headline: 'Enable or disable any tab, section or sub-section — per role',
+    body: 'This is the role-driven tree the console enforces: select a role, then switch each Tab, Section and Sub-Section between Full (visible and editable), Read-only (visible, not editable) and Hidden (not rendered in that role\u2019s navigation). Children inherit from their parent until you override them, and changing a parent re-seats the whole branch so a hidden section can never leak a visible sub-section. These are roles — the policy office, the underwriter, the branch officer — not user logins. Named user accounts, credentials and login will reference a role id when the user-profile layer lands.',
+    doThis: ['Pick a role on the left and read its Officer / Supervisor / Manager tier: tier decides who may change access and DOA limits, not what the role sells or underwrites.', 'Toggle a tab to Hidden and watch its sections and sub-sections inherit the change; then grant one sub-section Read and see it appear as the only explicit exception.', 'Open the DOA limits section: supervisors and managers edit caps for lower-tier roles; officer-tier roles see a limit-increase request form instead of an editor.'],
+    watch: 'Officer-tier roles cannot change section visibility or DOA limits at all, and nobody can grant more access than they hold themselves. Approval of an officer\u2019s limit-increase request is what moves the cap; the requester never moves it directly.',
   },
   journey: {
     headline: 'The sale on rails: nineteen sections, one open — with zero duplicate entry',
@@ -308,7 +314,7 @@ export const SECTION_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze
     watch: 'Changing the age basis changes the rated age on new quotations from that moment forward; issued policies retain the age filed at underwriting.',
   },
   'access-doa:profile-directory': {
-    headline: 'Thirty-six security profiles across seven operational and channel families',
+    headline: 'Thirty-six security roles across seven operational and channel families',
     body: 'Every persona — Administration (complete unrestricted access), Supervisor, Configurator, Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Bancassurance Ops, Fund Config, Accountant, Finance, Cost Controller, Fund Investment, Agents 1/2/Marsh/Supervisor, Banca 1/2/Supervisor, Branch Officer/Manager, Bank Manager, Aggregator, Direct Customer and Referral Partners 1/2 — has its own least-privilege workspace and DOA cap.',
     doThis: ['Filter by family or search any profile, inspect its allowed tabs and DOA threshold, and click Switch Profile to enter that workspace immediately.', 'Clone any profile to create a regional or desk-specific variant without touching Administration.', 'Click Launch Pre-Load Profile Selector in the header whenever you want to return to the pre-load gate screen.'],
     watch: 'Administration holds permanent complete access to every tab, section, sub-section and approval gate so the platform can never lock itself out.',
@@ -330,6 +336,30 @@ export const SECTION_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze
     body: 'Map every combination of Legal Entity (ALK-CONV, ALK-TKF, ALK-MY), Distribution Channel (AGENCY, BROKER-MARSH, BANCA, AGGREGATOR, DIRECT, REFERRAL, HEAD-OFFICE) and Sub-Channel (AGENCY-DESK-1, MARSH-AGENCY, BANCA-PREMIER-1, BRANCH-RETAIL-01, technical desks) to its first-line Supervisor and second-line Manager with explicit DOA caps.',
     doThis: ['Inspect how Marsh broker cases route to Agent Supervisor → Underwriter Manager while retail branch cases route to Branch Manager → Bank Manager.', 'Add or update a mapping row for a specific Entity, Channel and Sub-Channel.', 'Verify the routing immediately in the DOA Simulator below.'],
     watch: 'Specific Entity + Channel + Sub-Channel matches take priority over wildcard (*) rules.',
+  },
+  'role-matrix:role-directory': {
+    headline: 'Roles, not user accounts — and the tier that governs them',
+    body: 'Every row here is a role template (policy office, underwriter, branch officer, fund investment manager) with an authority tier. Officer roles do the operational work; supervisor roles approve first line; manager roles approve second line; Administration is the executive owner. Named user profiles and login credentials will be created later and will point at one of these role ids.',
+    doThis: ['Filter by family or search to find the role you want to inspect.', 'Read the tier and DOA cap before changing anything: a higher-tier role cannot be edited by a lower one.', 'Switch the session into a role to see exactly which navigation items and sections it receives.'],
+    watch: 'A role is a permission template, never a person: switching role changes what the console shows, but it does not create an account, password or identity.',
+  },
+  'role-matrix:access-tree': {
+    headline: 'The Tab → Section → Sub-Section switchboard',
+    body: 'Each tab is a branch; its sections are nodes under it and each section has its own sub-sections. Full means visible and editable, Read means visible but locked, Hidden means the node is not shown at all. A node without an explicit override shows "inherit" and follows its parent. Changing a tab clears child overrides so the whole branch moves together; granting a child afterwards creates one deliberate exception.',
+    doThis: ['Choose the role first; the tree always edits that role, never the signed-in role by accident.', 'Use "Hidden" on a tab to remove it from the role\u2019s navigation entirely, then open a section and grant Read to keep one reporting view visible.', 'Watch the effective-level badge next to each node: it is what the engine will actually enforce, including inherited levels.'],
+    watch: 'Hiding a node is not the same as refusing an API call; the API still applies the same role checks, and an officer cannot edit this tree at all.',
+  },
+  'role-matrix:doa-limits': {
+    headline: 'DOA caps move at supervisor or manager level — officers request',
+    body: 'A DOA cap is a decimal money limit with a currency. Supervisor- and manager-tier roles may change caps for lower-tier roles, but never above their own cap; Administration may set any finite cap and holds unlimited authority itself. An officer-tier role cannot edit a cap or this tree — it raises a tracked limit-increase request, routed through the Entity × Channel × Sub-Channel supervisor chain, and the approving supervisor/manager is what applies the new cap.',
+    doThis: ['As a supervisor or manager, pick a lower-tier role, enter the new cap and save; read the refusal if it exceeds your own authority.', 'As an officer, use the request form: state the requested cap and the operational reason, then follow the tracked request in the approver inbox.', 'Approve a pending limit-increase request as the assigned supervisor and verify the role\u2019s cap, audit trail and requester notification all change together.'],
+    watch: 'Self-approval is refused, an approver above their own cap auto-escalates, and an officer can never grant itself a higher limit by calling the API directly.',
+  },
+  'role-matrix:role-audit': {
+    headline: 'Every access and DOA change leaves a name and a time',
+    body: 'Role creation, tab/section/sub-section overrides, DOA action grants, cap changes and approved limit-increase requests are filed on an append-only security audit trail with the acting role, the target role and the exact change.',
+    doThis: ['Filter the trail for a role before and after an edit to see the before/after state.', 'Cross-check a DOA limit-increase request against the approval history and the audit event that applied the new cap.', 'Export the trail with the tenant\u2019s audit evidence when a regulator asks who changed access.'],
+    watch: 'The trail records authority, not just intent: an officer\u2019s refused attempt to change a cap is itself evidence that the control held.',
   },
   'access-doa:doa-queue': {
     headline: 'Delegation of Authority (DOA) approvals and real-time approver notifications',
@@ -480,8 +510,13 @@ export function worldFacts(w: World): Record<string, string[]> {
     ],
     'access-doa': [
       ...shared,
-      `${w.rbac.listProfiles().length} security profiles configured across 7 operational & distribution families; active profile: ${w.rbac.activeProfile().name} (DOA cap ${w.rbac.snapshot().profiles.find((p) => p.id === w.rbac.activeProfile().id)?.doaLimitLabel ?? 'Unlimited'}).`,
+      `${w.rbac.listRoles().length} security roles configured across 7 role families; active role: ${w.rbac.activeRole().name} (${w.rbac.activeRole().authorityLevel} tier, DOA cap ${w.rbac.snapshot().roles.find((p) => p.id === w.rbac.activeRole().id)?.doaLimitLabel ?? 'Unlimited'}).`,
       `${w.rbac.snapshot().supervisionMappings.length} Entity × Channel × Sub-Channel supervision chains and ${w.rbac.snapshot().doaRequests.filter((r) => r.status === 'pending' || r.status === 'escalated').length} pending DOA approval(s) in queue.`,
+    ],
+    'role-matrix': [
+      ...shared,
+      `${w.rbac.listRoles().length} roles across 4 authority tiers (${w.rbac.snapshot().roles.filter((p) => p.authorityLevel === 'officer').length} officer, ${w.rbac.snapshot().roles.filter((p) => p.authorityLevel === 'supervisor').length} supervisor, ${w.rbac.snapshot().roles.filter((p) => p.authorityLevel === 'manager').length} manager, ${w.rbac.snapshot().roles.filter((p) => p.authorityLevel === 'executive').length} executive); active role: ${w.rbac.activeRole().name}.`,
+      `${w.rbac.snapshot().catalogue.length} tabs in the visibility tree; roles are templates, not user logins — user accounts and credentials will reference a role id later.`,
     ],
     journey: [
       ...shared,
