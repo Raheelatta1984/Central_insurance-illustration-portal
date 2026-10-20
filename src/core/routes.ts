@@ -2412,18 +2412,52 @@ export async function dispatchApiRoute(
       const scope = String(payload['scope'] ?? '') as ThemeScope;
       const palette = (payload['palette'] ?? {}) as Record<string, string>;
       const images = (payload['images'] ?? {}) as Record<string, string>;
+      const by = String(payload['by'] ?? 'brand-admin');
       const layer = state.world.themes.upsert({
         scope, ownerId: String(payload['ownerId'] ?? ''),
         ...(payload['ownerName'] !== undefined ? { ownerName: String(payload['ownerName']) } : {}),
         ...(payload['useAi'] !== undefined ? { useAi: Boolean(payload['useAi']) } : {}),
+        ...(payload['presetId'] !== undefined ? { presetId: String(payload['presetId']) } : {}),
         palette,
         images,
         ...(payload['enabled'] !== undefined ? { enabled: Boolean(payload['enabled']) } : {}),
         ...(payload['notes'] !== undefined ? { notes: String(payload['notes']) } : {}),
-        ...(payload['by'] !== undefined ? { by: String(payload['by']) } : {}),
+        by,
         ...(payload['at'] !== undefined ? { at: String(payload['at']) } : {}),
       });
-      return ok({ layer, effectiveCss: state.world.themes.effectiveCss({ scope, ownerId: layer.ownerId }) });
+      const proposed = state.world.ai.propose({
+        agent: layer.generatedBy === 'ai' ? 'agent/brand-palette-assistant' : 'agent/brand-console',
+        module: 'theme',
+        intent: layer.generatedBy === 'ai' ? 'generate-ai-theme-layer' : 'apply-theme-layer',
+        riskClass: 'low',
+        at: layer.generatedAt,
+        inputs: { scope: layer.scope, ownerId: layer.ownerId, by, useAi: layer.generatedBy === 'ai' },
+        output: { id: layer.id, primary: layer.palette.primary, background: layer.palette.background, applyScope: layer.applyScope },
+        dryRun: false,
+        costUsd: 0,
+      });
+      if (!proposed.requiresHuman) state.world.ai.execute(proposed.id);
+      return ok({ layer, snapshot: state.world.themes.snapshot(), effectiveCss: state.world.themes.effectiveCss({ scope, ownerId: layer.ownerId }) });
+    }
+
+    case 'POST /themes/activate': {
+      const scope = String(payload['scope'] ?? '') as ThemeScope;
+      const ownerId = String(payload['ownerId'] ?? '');
+      const by = String(payload['by'] ?? 'brand-admin');
+      const layer = state.world.themes.activate(scope, ownerId, by, payload['at'] ? String(payload['at']) : undefined);
+      const proposed = state.world.ai.propose({
+        agent: 'agent/brand-console',
+        module: 'theme',
+        intent: 'activate-theme-layer',
+        riskClass: 'low',
+        at: layer.generatedAt,
+        inputs: { scope: layer.scope, ownerId: layer.ownerId, by },
+        output: { id: layer.id, primary: layer.palette.primary, background: layer.palette.background },
+        dryRun: false,
+        costUsd: 0,
+      });
+      if (!proposed.requiresHuman) state.world.ai.execute(proposed.id);
+      return ok({ layer, snapshot: state.world.themes.snapshot(), effectiveCss: state.world.themes.effectiveCss({ scope, ownerId: layer.ownerId }) });
     }
 
     case 'POST /themes/preview': {
@@ -2435,7 +2469,20 @@ export async function dispatchApiRoute(
     case 'POST /themes/toggle': {
       const scope = String(payload['scope'] ?? '') as ThemeScope;
       const ownerId = String(payload['ownerId'] ?? '');
-      const layer = state.world.themes.setEnabled(scope, ownerId, Boolean(payload['enabled']), String(payload['by'] ?? 'brand-admin'));
+      const by = String(payload['by'] ?? 'brand-admin');
+      const layer = state.world.themes.setEnabled(scope, ownerId, Boolean(payload['enabled']), by);
+      const proposed = state.world.ai.propose({
+        agent: 'agent/brand-console',
+        module: 'theme',
+        intent: layer.enabled ? 'enable-theme-layer' : 'disable-theme-layer',
+        riskClass: 'low',
+        at: layer.generatedAt,
+        inputs: { scope: layer.scope, ownerId: layer.ownerId, enabled: layer.enabled, by },
+        output: { id: layer.id, enabled: layer.enabled },
+        dryRun: false,
+        costUsd: 0,
+      });
+      if (!proposed.requiresHuman) state.world.ai.execute(proposed.id);
       return ok({ layer, snapshot: state.world.themes.snapshot() });
     }
 

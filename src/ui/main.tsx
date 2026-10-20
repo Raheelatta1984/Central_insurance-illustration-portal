@@ -111,6 +111,12 @@ function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab
             <button onClick={() => onNavigate('policyholder')}>+ Convert Policy / Receive Premium / Alter</button>
             <button onClick={() => onNavigate('claims')}>+ Register &amp; Decide Claim</button>
             <button onClick={() => onNavigate('funds')}>+ Inject NAV / Create Fund</button>
+            <button onClick={() => onNavigate('funds-accounting')}>▦ Funds Accounting</button>
+            <button onClick={() => onNavigate('super-funds')}>⬢ Super Funds</button>
+            <button onClick={() => onNavigate('warehouse')}>⊞ Data Warehouse &amp; Security</button>
+            <button onClick={() => onNavigate('batch')}>▤ Batch Processing</button>
+            <button onClick={() => onNavigate('theme')}>◐ Application Theme</button>
+            <button onClick={() => onNavigate('whats-new')}>✦ What&apos;s New Log</button>
             <button onClick={() => onNavigate('reinsurance')}>+ Register Reinsurer / Treaty</button>
             <button className="ghost" onClick={() => onNavigate('master')}>⚙ Master Settings</button>
           </div>
@@ -827,11 +833,29 @@ function Regulatory({ data }: { data: WorldSnapshot }) {
 
 function AiLedger({ data }: { data: WorldSnapshot }) {
   const [actions, setActions] = useState(data.ai.actions);
+  useEffect(() => { setActions(data.ai.actions); }, [data.ai.actions]);
   const act = async (id: string, path: 'approve' | 'execute') => {
     await api(`/ai/${path}`, 'POST', { id });
     const w = await api<WorldSnapshot>('/world');
     setActions(w.ai.actions);
   };
+  const moduleAuditRows = useMemo(() => {
+    const rows: Array<{ at: string; module: string; by: string; action: string; detail: string }> = [];
+    for (const t of data.themes.trail ?? []) rows.push({ at: t.at, module: 'theme', by: t.by, action: t.action, detail: t.detail });
+    for (const t of (data.fundsAccounting as unknown as { trail?: Array<{ at: string; by: string; action: string; detail: string }> }).trail ?? []) {
+      rows.push({ at: t.at, module: 'funds-accounting', by: t.by, action: t.action, detail: t.detail });
+    }
+    for (const t of (data.superFunds as unknown as { trail?: Array<{ at: string; by: string; action: string; detail: string }> }).trail ?? []) {
+      rows.push({ at: t.at, module: 'super-funds', by: t.by, action: t.action, detail: t.detail });
+    }
+    for (const r of data.batch?.runs ?? []) {
+      rows.push({ at: r.at, module: 'batch', by: r.by, action: `batch-run:${r.eventType}`, detail: `${r.id} · period ${r.period} · ${r.posted} posted, ${r.skipped} skipped` });
+    }
+    for (const w of data.whatsNew?.entries ?? []) {
+      rows.push({ at: w.at, module: `whats-new (${w.area})`, by: w.source, action: w.category, detail: `${w.id}: ${w.title}` });
+    }
+    return rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 20);
+  }, [data]);
   return (
     <div className="grid">
       <Card title="Agent actions" subtitle={`${data.ai.awaiting} awaiting a human · total model cost ${data.ai.totalCost} USD`} wide>
@@ -846,6 +870,18 @@ function AiLedger({ data }: { data: WorldSnapshot }) {
               {a.status === 'awaiting-approval' && <button onClick={() => act(a.id, 'approve')}>Approve</button>}
               {a.status === 'approved' && <button onClick={() => act(a.id, 'execute')}>Execute</button>}
             </span>,
+          ])}
+        />
+      </Card>
+      <Card title="Platform module & release audit log" subtitle="Unified trail across Application theme, Batch processing, Data warehouse, Funds accounting, Super funds and What's New" wide>
+        <Table
+          head={['When', 'Module', 'Actor / Source', 'Action', 'Detail']}
+          rows={moduleAuditRows.map((r, i) => [
+            <span key={`at-${i}`} className="small">{r.at.slice(0, 19).replace('T', ' ')}</span>,
+            <Pill key={`m-${i}`} tone="info">{r.module}</Pill>,
+            <span key={`by-${i}`} className="small">{r.by}</span>,
+            <span key={`act-${i}`} className="small"><b>{r.action}</b></span>,
+            <span key={`det-${i}`} className="small">{r.detail}</span>,
           ])}
         />
       </Card>
@@ -938,19 +974,25 @@ function App() {
       setGuideBusy(false);
     }
   }, []);
-  const entityTheme = useMemo(() => data?.themes.layers.find(layer => layer.scope === 'entity' && layer.enabled), [data]);
+  const entityTheme = useMemo(() => (
+    data?.themes.entityThemes.find(layer => layer.enabled && layer.active)
+    ?? data?.themes.entityThemes.find(layer => layer.enabled)
+    ?? data?.themes.layers.find(layer => layer.scope === 'entity' && layer.enabled)
+  ), [data]);
   const scopedThemeLayers = useMemo(() => {
-    if (!data || !['journey', 'underwriting'].includes(tab)) return [];
+    if (!data || !['journey', 'underwriting', 'onboarding', 'policyholder'].includes(tab)) return [];
     const journeyCase = (data as unknown as { journey?: { cases?: Array<{ answers?: Record<string, Record<string, unknown>> }> } }).journey?.cases?.[0];
     const identity = journeyCase?.answers?.['identity'] ?? {};
     const profile = journeyCase?.answers?.['profile'] ?? {};
     const candidatePartner = String(identity['consentTo'] ?? '');
-    const partnerLayer = data.themes.partnerThemes.find(layer => layer.enabled && layer.ownerId === candidatePartner.toUpperCase())
+    const partnerLayer = data.themes.partnerThemes.find(layer => layer.enabled && layer.active)
+      ?? data.themes.partnerThemes.find(layer => layer.enabled && layer.ownerId === candidatePartner.toUpperCase())
       ?? data.themes.partnerThemes.find(layer => layer.enabled);
     const preferred = String(profile['preferedChannel'] ?? profile['preferredChannel'] ?? '');
     const chosenChannel = data.erp.master.channels.channels.find(channel =>
       channel.code === preferred.toUpperCase() || channel.kind === preferred.toLowerCase() || channel.integration === preferred.toLowerCase());
-    const channelLayer = data.themes.omniThemes.find(layer => layer.enabled && layer.ownerId === chosenChannel?.code)
+    const channelLayer = data.themes.omniThemes.find(layer => layer.enabled && layer.active)
+      ?? data.themes.omniThemes.find(layer => layer.enabled && layer.ownerId === chosenChannel?.code)
       ?? data.themes.omniThemes.find(layer => layer.enabled);
     return [channelLayer, partnerLayer].filter((layer): layer is NonNullable<typeof layer> => Boolean(layer));
   }, [data, tab]);
@@ -1036,6 +1078,13 @@ function App() {
             <div className="pills">
               <Pill tone="ok">books balanced</Pill>
               <Pill tone="info">as of {data?.asOf ?? '—'}</Pill>
+              {entityTheme && (
+                <button type="button" className="ghost" style={{ padding: '2px 8px', minHeight: 24, fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setTab('theme')} title="Open Application theme">
+                  <span className="colourDot" style={{ width: 10, height: 10, background: entityTheme.palette.primary }} />
+                  <span className="colourDot" style={{ width: 10, height: 10, background: entityTheme.palette.accent }} />
+                  <span>Theme: {entityTheme.ownerId}</span>
+                </button>
+              )}
               {data && <RegionalPills regional={data.erp.master.regional} />}
             </div>
           </div>
@@ -1044,6 +1093,19 @@ function App() {
         {data ? (
           <GuideProvider data={data} tab={tab} enabled={guideOn}>
             <div className={`scopedBrandSurface${scopedThemeLayers.length ? ' hasScopedBrand' : ''}`} style={scopedThemeCss as React.CSSProperties}>
+              {scopedThemeLayers.length > 0 && (
+                <div className="scopedBrandBanner">
+                  <span className="small muted">Scoped customer/partner brand active on this surface:</span>
+                  {scopedThemeLayers.map(layer => (
+                    <span key={layer.id} className="pill info" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <span className="colourDot" style={{ width: 10, height: 10, background: layer.palette.primary }} />
+                      <span className="colourDot" style={{ width: 10, height: 10, background: layer.palette.accent }} />
+                      <b>{layer.scope}: {layer.ownerId}</b> ({layer.ownerName})
+                    </span>
+                  ))}
+                  <button type="button" className="ghost" style={{ marginLeft: 'auto', padding: '2px 8px', minHeight: 24, fontSize: 11 }} onClick={() => setTab('theme')}>Configure theme</button>
+                </div>
+              )}
               {scopedHeaderImage && <img className="scopedBrandHeader" src={scopedHeaderImage} alt="Partner or channel header" />}
               <ScreenGuide />
               {body ?? <div className="loading">Loading the world…</div>}
@@ -2429,13 +2491,14 @@ aside {
   position:sticky; top:0; height:100vh; height:100dvh; overscroll-behavior:contain;
 }
 .brand { display:flex; gap:10px; align-items:center; }
-.brand .logo { width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(140deg,#3ea6ff,#2fbf71);color:#04121f;font-weight:700; overflow:hidden; }
+.brand .logo { width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(140deg,var(--brand-primary,var(--accent)),var(--brand-accent,var(--ok)));color:#04121f;font-weight:700; overflow:hidden; }
 .brand .logo img { width:100%; height:100%; object-fit:contain; background:#fff; border-radius:inherit; }
 .brand small { display:block; color:var(--muted); font-size:11px; }
 .entityFooterImage { display:block; width:100%; max-height:72px; object-fit:contain; border-radius:8px; margin:4px 0; }
 .top[style*="background-image"] { padding:16px; border:1px solid var(--line); border-radius:14px; background-repeat:no-repeat; }
 .scopedBrandSurface { min-width:0; }
-.scopedBrandSurface.hasScopedBrand { border-radius:14px; }
+.scopedBrandSurface.hasScopedBrand { background:var(--bg); color:var(--text); border:1px solid var(--line); padding:14px; border-radius:14px; box-shadow:inset 0 0 0 1px var(--brand-primary, var(--accent)); }
+.scopedBrandBanner { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 12px; margin-bottom:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
 .scopedBrandHeader, .scopedBrandFooter { display:block; width:100%; max-height:110px; object-fit:cover; border-radius:10px; margin:0 0 14px; }
 .scopedBrandFooter { margin:18px 0 0; max-height:80px; }
 nav { display:flex; flex-direction:column; gap:4px; overflow:auto; }
@@ -2478,8 +2541,8 @@ h3 { margin:0 0 2px; font-size:14px; }
 .tableWrap thead th { position:sticky; top:0; background:var(--panel); z-index:1; }
 table { width:100%; border-collapse:collapse; font-size:12.5px; }
 th { text-align:left; color:var(--muted); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
-td { padding:6px 8px; border-bottom:1px solid #182430; vertical-align:top; }
-tr:hover td { background:#141d27; }
+td { padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:hover td { background:var(--panel2); }
 button { background:var(--accent); color:#04121f; border:0; border-radius:8px; padding:7px 12px; min-height:34px; font-weight:600; cursor:pointer; font-size:12.5px; touch-action:manipulation; }
 button:hover { filter:brightness(1.08); }
 button:disabled { opacity:.5; cursor:default; }
@@ -2488,11 +2551,11 @@ button.ghost { background:transparent; color:var(--muted); border:1px solid var(
 label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
 /* 16px is the size Safari on an iPhone will not zoom into: below it, tapping a field blows the whole
    screen up and never puts it back. */
-input, select, textarea { background:#0d151d; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:7px 9px; font:inherit; max-width:100%; }
+input, select, textarea { background:var(--bg); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:7px 9px; font:inherit; max-width:100%; }
 textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
 .muted { color:var(--muted); } .small { font-size:12px; } .bad { color:var(--bad); } .warnText { color:var(--warn); }
 .list { margin:8px 0 0 18px; padding:0; } .list li { margin:3px 0; }
-.code { background:#0d151d; border:1px solid var(--line); border-radius:8px; padding:10px; font-size:12px; overflow:auto; }
+.code { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; font-size:12px; overflow:auto; }
 .loading { color:var(--muted); padding:40px; }
 .errorBox, .warnBox { border:1px solid #6b2020; background:#331414; color:#ffc9c9; padding:10px 12px; border-radius:10px; margin:10px 0; }
 .warnBox { border-color:#6b5312; background:#332709; color:#ffe4a3; }
@@ -2525,9 +2588,9 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .sectionState { display:flex; gap:9px; align-items:center; flex:0 0 auto; }
 .sectionPct { color:var(--muted); font-size:11.5px; min-width:34px; text-align:right; }
 .chev { width:16px; text-align:center; color:var(--muted); }
-.bar { display:block; width:88px; height:6px; border-radius:999px; background:#0d151d; border:1px solid var(--line); overflow:hidden; }
-.bar i { display:block; height:100%; background:linear-gradient(90deg,#3ea6ff,#2fbf71); }
-.bar.done i { background:#2fbf71; }
+.bar { display:block; width:88px; height:6px; border-radius:999px; background:var(--bg); border:1px solid var(--line); overflow:hidden; }
+.bar i { display:block; height:100%; background:linear-gradient(90deg,var(--brand-primary,var(--accent)),var(--brand-accent,var(--ok))); }
+.bar.done i { background:var(--brand-accent,var(--ok)); }
 .sectionBody { padding:4px 16px 16px 54px; border-top:1px dashed var(--line); }
 .sectionMeta { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
 .sectionFooter { margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -2542,17 +2605,17 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .field.wide { grid-column:1 / -1; }
 .field span { display:flex; gap:6px; align-items:baseline; flex-wrap:wrap; }
 .req { color:var(--warn); font-style:normal; }
-.attestation { color:var(--text); font-size:12px; background:#0d151d; border:1px solid var(--line); border-radius:8px; padding:7px 9px; }
+.attestation { color:var(--text); font-size:12px; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:7px 9px; }
 .chipset { display:flex; gap:8px; flex-wrap:wrap; }
-.chip { display:flex; gap:6px; align-items:center; border:1px solid var(--line); background:#0d151d; border-radius:999px; padding:5px 11px; font-size:12px; color:var(--text); cursor:pointer; }
+.chip { display:flex; gap:6px; align-items:center; border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:5px 11px; font-size:12px; color:var(--text); cursor:pointer; }
 .chip.on { border-color:#1f5f3f; background:#12301f; }
 .chip input { width:auto; }
 .chip.grow { flex:1 1 320px; border-radius:10px; align-items:flex-start; }
 .weights, .beneficiaries, .requirements, .riders { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
 .weightRow { display:flex; gap:6px; align-items:center; }
 .weightRow input { width:110px; }
-.requirement { border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#0d151d; }
-.rider { border:1px solid var(--line); border-radius:10px; padding:7px 10px; background:#0d151d; }
+.requirement { border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:var(--bg); }
+.rider { border:1px solid var(--line); border-radius:10px; padding:7px 10px; background:var(--bg); }
 .rider.on { border-color:#1f5f3f; background:#12301f; }
 .methods { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:8px; }
 .method { flex-direction:column; align-items:flex-start; gap:3px; border-radius:10px; }
@@ -2620,8 +2683,8 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .gridTable caption { caption-side:bottom; text-align:left; padding:7px 10px; color:var(--muted); font-size:11.5px; border-top:1px solid var(--line); background:var(--panel); }
 .gridTable th { position:sticky; top:0; z-index:2; background:var(--panel2); padding:7px 8px; font-size:11.5px; white-space:normal; overflow-wrap:anywhere; }
 .gridTable th .req { color:var(--warn); font-style:normal; margin-left:2px; }
-.gridTable td { padding:3px 5px; border-bottom:1px solid #182430; vertical-align:middle; min-width:0; overflow-wrap:anywhere; }
-.gridTable tbody tr:hover td { background:#141d27; }
+.gridTable td { padding:3px 5px; border-bottom:1px solid var(--line); vertical-align:middle; min-width:0; overflow-wrap:anywhere; }
+.gridTable tbody tr:hover td { background:var(--panel2); }
 .gridTable .colNum { width:38px; text-align:right; color:var(--muted); font-size:11px; white-space:nowrap; }
 .gridTable .colNote { min-width:0; }
 .gridTable .colActions { width:1%; white-space:nowrap; }
@@ -2634,17 +2697,17 @@ textarea { width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, monospac
 .gridRow.is-new > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .gridRow.is-error > td { background:#231316; }
 .gridRow.is-error > td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
-.gridRow.is-focused > td { background:#13212f; }
+.gridRow.is-focused > td { background:var(--panel2); }
 /* A cell is either a bare input/select or a span wrapping a number and its suffix; both have to read as
    one box, and the box is what carries the dirty and refused colours. */
-.gcell { min-width:0; max-width:100%; background:#0d151d; border:1px solid transparent; border-radius:6px; padding:4px 6px; color:var(--text); font:inherit; font-size:12px; }
+.gcell { min-width:0; max-width:100%; background:var(--bg); border:1px solid transparent; border-radius:6px; padding:4px 6px; color:var(--text); font:inherit; font-size:12px; }
 input.gcell, select.gcell { display:block; }
 span.gcell { display:inline-flex; align-items:center; gap:4px; }
 span.gcell input { background:transparent; border:0; border-radius:0; padding:0; color:inherit; font:inherit; font-size:12px; min-width:0; }
 span.gcell input:focus { outline:none; }
 span.gcell em { color:var(--muted); font-style:normal; font-size:11px; white-space:nowrap; }
 .gcell:hover { border-color:var(--line); }
-.gcell:focus, .gcell:focus-within { border-color:var(--accent); outline:none; background:#0b131b; }
+.gcell:focus, .gcell:focus-within { border-color:var(--accent); outline:none; background:var(--bg); }
 .gcell::placeholder { color:#5c7288; }
 .gcell.is-dirty { border-color:#6b5312; }
 .gcell.is-error { border-color:#6b2020; background:#2a1414; }

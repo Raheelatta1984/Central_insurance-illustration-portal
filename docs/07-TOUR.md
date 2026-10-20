@@ -1,6 +1,6 @@
 # 07 — The sixty-minute tour
 
-*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 14 steps, 60 minutes.*
+*Generated from `src/core/tour.ts` — the same data the console's Tour tab runs. 20 steps, 60 minutes.*
 
 > **Live app:** run `npm install && npm run build && npm start`, then open the console and start on the **Tour** tab. Every number you see is computed by an engine in `src/core`; nothing on the screen is seeded display text.
 
@@ -10,18 +10,24 @@
 | --- | --- | --- | --- |
 | 1 | 00:00 | Overview | Land on the whole book in one screen |
 | 2 | 00:04 | Customer journey | Walk a sale through nineteen closed sections |
-| 3 | 00:09 | Master settings & ERP | Set the tenant: country, calendar, money, fields and products |
-| 4 | 00:12 | Policyholder | Look through a unit-linked policy into real instruments |
-| 5 | 00:17 | Decision theatre | Price a switch and a withdrawal before anything moves |
-| 6 | 00:22 | Cover control | Pay for cover only while cover is on |
-| 7 | 00:26 | Funds & NAV | Run the NAV engine and see the rules behind a price |
-| 8 | 00:31 | Takaful | Run a takaful window that is structural, not cosmetic |
-| 9 | 00:36 | Group finance | Consolidate three entities, two currencies, one set of books |
-| 10 | 00:40 | Underwriting | Underwrite against a manual held as data |
-| 11 | 00:45 | Claims | Pay a claim through authority, not through a spreadsheet |
-| 12 | 00:50 | Reinsurance | Hand part of the risk to someone else, on the record |
-| 13 | 00:54 | Durability | Prove the books, and the reporting registers, can be restored |
-| 14 | 00:57 | Overview | The remainder of the hour: the fabric around the money |
+| 3 | 00:08 | Master settings & ERP | Set the tenant: country, calendar, money, fields and products |
+| 4 | 00:10 | Policyholder | Look through a unit-linked policy into real instruments |
+| 5 | 00:14 | Decision theatre | Price a switch and a withdrawal before anything moves |
+| 6 | 00:18 | Cover control | Pay for cover only while cover is on |
+| 7 | 00:21 | Funds & NAV | Run the NAV engine and see the rules behind a price |
+| 8 | 00:25 | Takaful | Run a takaful window that is structural, not cosmetic |
+| 9 | 00:29 | Group finance | Consolidate three entities, two currencies, one set of books |
+| 10 | 00:32 | Underwriting | Underwrite against a manual held as data |
+| 11 | 00:36 | Claims | Pay a claim through authority, not through a spreadsheet |
+| 12 | 00:40 | Reinsurance | Hand part of the risk to someone else, on the record |
+| 13 | 00:43 | Funds accounting | Configure fund accounting per country and watch the vouchers write themselves |
+| 14 | 00:46 | Super funds | Run a superannuation book: members, monthly charges and pro-rata income allocation |
+| 15 | 00:49 | Data warehouse | Query the single warehouse, fingerprinted exports and governed Snowflake / Excel / Access connections |
+| 16 | 00:52 | Batch processing | Run governed batch processing with event-based accounting and the terminal stop rule |
+| 17 | 00:54 | Application theme | Re-skin the entire ERP globally or scope a brand to a partner and omni-channel |
+| 18 | 00:56 | What's New | Read the plain-language release log and draft an entry from a commit |
+| 19 | 00:57 | Durability | Prove the books, and the reporting registers, can be restored |
+| 20 | 00:59 | Overview | The remainder of the hour: the fabric around the money |
 
 ## 1. 00:00 — Land on the whole book in one screen
 
@@ -46,7 +52,7 @@ Before touching anything: this is one tenant, two legal entities and a Malaysian
 
 ## 2. 00:04 — Walk a sale through nineteen closed sections
 
-**Tab:** Customer journey · **5 minutes**
+**Tab:** Customer journey · **4 minutes**
 
 This is the front door of the whole ERP: onboarding, needs analysis, recommendation, cover, loadings, riders, medical evidence, funds, beneficiaries, the underwriting decision, a quotation PDF emailed to the customer, six ways to pay, the binding route, conversion — and then allocation and investment progress. Every section starts closed, and the next one opens itself only when the one before it is 100% complete on its mandatory fields.
 
@@ -65,9 +71,9 @@ This is the front door of the whole ERP: onboarding, needs analysis, recommendat
 
 *Endpoints: GET /api/journey · POST /api/journey/save · POST /api/journey/submit · POST /api/journey/quotation/pdf*
 
-## 3. 00:09 — Set the tenant: country, calendar, money, fields and products
+## 3. 00:08 — Set the tenant: country, calendar, money, fields and products
 
-**Tab:** Master settings & ERP · **3 minutes**
+**Tab:** Master settings & ERP · **2 minutes**
 
 Everything the console shows is filed somewhere. This is the screen where a tenant says where it operates, what it calls a premium, which fields are mandatory and which products exist — and every other screen reads those answers instead of hardcoding them.
 
@@ -86,9 +92,9 @@ Everything the console shows is filed somewhere. This is the screen where a tena
 
 *Endpoints: GET /api/master/regional · POST /api/master/regional · POST /api/master/regional/currency · POST /api/journey/field-settings · POST /api/master/product*
 
-## 4. 00:12 — Look through a unit-linked policy into real instruments
+## 4. 00:10 — Look through a unit-linked policy into real instruments
 
-**Tab:** Policyholder · **5 minutes**
+**Tab:** Policyholder · **4 minutes**
 
 This is the claim that beats ILAS: not just fund accounting, but genuine look-through into the instruments the fund actually holds, with a price date on every exposure.
 
@@ -105,9 +111,9 @@ This is the claim that beats ILAS: not just fund accounting, but genuine look-th
 
 *Endpoints: GET /api/world · GET /api/units*
 
-## 5. 00:17 — Price a switch and a withdrawal before anything moves
+## 5. 00:14 — Price a switch and a withdrawal before anything moves
 
-**Tab:** Decision theatre · **5 minutes**
+**Tab:** Decision theatre · **4 minutes**
 
 A real decision theatre: units, price, valuation date, dealing rule, fees and lock-in blockers — all shown before the customer commits, with the illustration clearly labelled as an illustration.
 
@@ -125,9 +131,9 @@ A real decision theatre: units, price, valuation date, dealing rule, fees and lo
 
 *Endpoints: POST /api/preview/switch · POST /api/preview/withdrawal*
 
-## 6. 00:22 — Pay for cover only while cover is on
+## 6. 00:18 — Pay for cover only while cover is on
 
-**Tab:** Cover control · **4 minutes**
+**Tab:** Cover control · **3 minutes**
 
 Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restarts by itself, and a day is either paid or cover suspends — there is no halfway charge.
 
@@ -145,9 +151,9 @@ Daily, pay-as-you-go and start/stop cover as a billing primitive: nothing restar
 
 *Endpoints: POST /api/cover/start · POST /api/cover/stop · POST /api/cover/tick*
 
-## 7. 00:26 — Run the NAV engine and see the rules behind a price
+## 7. 00:21 — Run the NAV engine and see the rules behind a price
 
-**Tab:** Funds & NAV · **5 minutes**
+**Tab:** Funds & NAV · **4 minutes**
 
 Fund managers and auditors argue about valuation points. Here the cut-off, the business-day calendar, the floor price and its named residual are all visible, and reconciliation is an assertion, not a promise.
 
@@ -165,9 +171,9 @@ Fund managers and auditors argue about valuation points. Here the cut-off, the b
 
 *Endpoints: GET /api/world*
 
-## 8. 00:31 — Run a takaful window that is structural, not cosmetic
+## 8. 00:25 — Run a takaful window that is structural, not cosmetic
 
-**Tab:** Takaful · **5 minutes**
+**Tab:** Takaful · **4 minutes**
 
 Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the pool is short, and a surplus that cannot be distributed until the actuary, the Shariah Committee and the board have all signed — with the UAE rule that participants never receive surplus applied on top.
 
@@ -185,9 +191,9 @@ Three funds, a real wakalah fee, tabarru into the risk pool, qard hasan when the
 
 *Endpoints: POST /api/takaful/approve*
 
-## 9. 00:36 — Consolidate three entities, two currencies, one set of books
+## 9. 00:29 — Consolidate three entities, two currencies, one set of books
 
-**Tab:** Group finance · **4 minutes**
+**Tab:** Group finance · **3 minutes**
 
 The part most ERP demos fake: assets and liabilities at the closing rate, income and expenses at the average rate, equity at the rate on the day it moved, the gap shown as a translation reserve, intercompany eliminated, and a minority interest stated rather than absorbed.
 
@@ -205,9 +211,9 @@ The part most ERP demos fake: assets and liabilities at the closing rate, income
 
 *Endpoints: GET /api/group · POST /api/group/consolidate*
 
-## 10. 00:40 — Underwrite against a manual held as data
+## 10. 00:32 — Underwrite against a manual held as data
 
-**Tab:** Underwriting · **5 minutes**
+**Tab:** Underwriting · **4 minutes**
 
 Loadings are shown line by line with the reason and the evidence each one demands, referrals go to a named human, and anything above the automatic binding limit is flagged for the reinsurer before the policy is issued. An AI agent may accept or rate inside its own limit and may never decline.
 
@@ -225,9 +231,9 @@ Loadings are shown line by line with the reason and the evidence each one demand
 
 *Endpoints: GET /api/underwriting · POST /api/underwriting/decide*
 
-## 11. 00:45 — Pay a claim through authority, not through a spreadsheet
+## 11. 00:36 — Pay a claim through authority, not through a spreadsheet
 
-**Tab:** Claims · **5 minutes**
+**Tab:** Claims · **4 minutes**
 
 Triage decides straight-through, referral or decline; a reserve is a booked liability rather than a note; approval is checked against a real authority table; settlement releases the reserve and recoveries are posted as their own income. In the takaful window the same workflow draws on the participants risk fund.
 
@@ -245,9 +251,9 @@ Triage decides straight-through, referral or decline; a reserve is a booked liab
 
 *Endpoints: GET /api/claims · POST /api/claims/register · POST /api/claims/approve · POST /api/claims/settle*
 
-## 12. 00:50 — Hand part of the risk to someone else, on the record
+## 12. 00:40 — Hand part of the risk to someone else, on the record
 
-**Tab:** Reinsurance · **4 minutes**
+**Tab:** Reinsurance · **3 minutes**
 
 An insurer that keeps every risk whole is one bad quarter from ruin. This is the treaty register and the utilisation statement behind it: a quota share on the life case, a surplus treaty over a 200,000 retention, catastrophe cover, and a retakaful treaty for the takaful window — with the participant-money segregation rule enforced in code, the security behind every counterparty's promise measured against what it owes us, and the reporting extracts — the supervisory return, the actuary's exhibits and a bordereau per counterparty — built from the same register and refused issue when they do not tie to the books.
 
@@ -281,9 +287,132 @@ An insurer that keeps every risk whole is one bad quarter from ruin. This is the
 
 *Endpoints: GET /api/reinsurance · GET /api/reinsurance/security · GET /api/extracts · POST /api/extracts/issue · POST /api/extracts/verify · POST /api/reinsurance/cede · POST /api/reinsurance/facultative · POST /api/reinsurance/recover · POST /api/reinsurance/event · POST /api/reinsurance/reinstate · POST /api/reinsurance/deposit · POST /api/reinsurance/deposit/settle · POST /api/reinsurance/settle · POST /api/reinsurance/security/hold · POST /api/reinsurance/security/call · POST /api/reinsurance/security/call/settle · POST /api/reinsurance/security/release · POST /api/reinsurance/security/interest*
 
-## 13. 00:54 — Prove the books, and the reporting registers, can be restored
+## 13. 00:43 — Configure fund accounting per country and watch the vouchers write themselves
 
-**Tab:** Durability · **3 minutes**
+**Tab:** Funds accounting · **3 minutes**
+
+Every fund posts differently per country standard — IFRS 17 in the UAE, SOCPA in Saudi Arabia, BNM MFRS 17 in Malaysia, AASB 17 for Australian super — and every policy event (deposit, accrual, premium adjustment, allocation, gain, loss, withdrawal, sum-assured reduction, sum-at-risk) posts a balanced double-entry voucher whose description names the policy, product, partner, omni-channel, sub-channel and fund. The dynamic mapping is the rule: product → fund → GL accounts with priority so a partner-specific row wins over a product-generic one.
+
+**Do this**
+
+- Read the country configs: AE (IFRS17/CBUAE), SA (SOCPA), MY (BNM-MFRS17), AU (LOCAL-GAAP), GB (IFRS17) — each with currency and fiscal year end.
+- Open the fund config table: country × product line × fund × valuation method × revenue recognition, then the dynamic mappings — fund → debit/credit accounts keyed by product, sub-product, partner, channel, sub-channel and policy with a priority.
+- Use the event simulator: pick a policy, a product, a partner, a channel, a sub-channel, a fund and an event (e.g. premium-received → deposit-amount → accruals → premium adjustments → investment allocations → investment gain → partial withdrawal → reduced sum assured). Press Post — the voucher appears with the full description and the mapping it used.
+- Read the voucher list: each line carries the GL accounts, the amount, the mapping id and the note — and the ledger proof beside it stays balanced.
+
+**You should see**
+
+- A country config cannot be created with a non-ISO country or currency; the refusal says so.
+- A mapping that maps debit === credit is refused — a voucher must move money, not park it.
+- The voucher description always names the policy, product, partner, channel, sub-channel and fund — and which mapping was resolved — so an auditor never asks “why did this account move”.
+- All vouchers are balanced by construction and the total voucher count increments with each event.
+
+*Endpoints: GET /api/funds-accounting · POST /api/funds-accounting/country · POST /api/funds-accounting/mapping · POST /api/funds-accounting/event*
+
+## 14. 00:46 — Run a superannuation book: members, monthly charges and pro-rata income allocation
+
+**Tab:** Super funds · **3 minutes**
+
+Alongside life, medical, group life, motor, hull, home-contents and travel sits the super funds book — a unit-linked accumulation product with monthly processing charges (admin + investment fee) and investment income allocation via premium post-adjustment. The member balance, the charge run and the allocation artefact are all auditable.
+
+**Do this**
+
+- Read the super products: Accumulation (Balanced Growth), Pension (Conservative Income), TTR (Flexible Growth) — each with admin fee and investment-fee BPS.
+- Open the member register: two members seeded, each with fund, balance, contributions, charges and income.
+- Press “Run monthly charges”: the admin + pro-rated investment fee is deducted from each active member and the run appears in the history.
+- Enter a fund (SUPER-BAL), a period (2026-10) and an investment gain, press “Allocate income” — the gain is split pro-rata to balances and credited via premium post-adjustment.
+
+**You should see**
+
+- A super product with a member policy cannot be deleted — the refusal names the holders.
+- A contribution of zero or negative is refused.
+- A charge run on a book with no active members is refused.
+- Income allocation on a zero-balance book is refused, and the note carries the method: “premium post-adjustment”.
+
+*Endpoints: GET /api/super-funds · POST /api/super-funds/product · POST /api/super-funds/policy · POST /api/super-funds/charge · POST /api/super-funds/allocate*
+
+## 15. 00:49 — Query the single warehouse, fingerprinted exports and governed Snowflake / Excel / Access connections
+
+**Tab:** Data warehouse · **3 minutes**
+
+Data analysts, engineers and scientists read from one place: nine materialised datasets (policy, premium, fund, claim, reinsurance, commission schedule, super, voucher and member-balance facts), each with grain, source, row count, columns, masked sample rows and lineage. Five native dashboards render in the console, and Snowflake, Microsoft Excel and Microsoft Access connections enforce a signed data-breach agreement, SHA-256 fingerprint-only secrets, and rotating one-way PII masking.
+
+**Do this**
+
+- Read the nine datasets: policy-fact, premium-fact, fund-fact, claim-fact, reinsurance-fact, commission-fact, super-fact, voucher-fact and member-balance-fact — each with columns, masked sample rows and lineage back to the ledger, NAV or registry it came from.
+- Open the dashboards: Premium & persistency (Power BI), Fund performance (Tableau), Claims & reinsurance (Qlik Sense), Finance & vouchers (Databricks/Data Fabric) and Distribution (QlikView) — with KPIs, filters and refresh cadence.
+- Pick a dataset (e.g. voucher-fact) and press “Download complete CSV” — a fingerprinted export appears with rows, bytes and owner.
+- Open tab 5 (Connections — Snowflake / Excel / Access + PII masking): register a governed connection with the data-breach agreement, validate it and run a masked sync preview.
+
+**You should see**
+
+- Every dataset states its grain, its source registry and its freshness date — and PII columns are masked one-way with a method that rotates every transaction.
+- Registering a connection without accepting the current data-breach agreement or with a weak/placeholder secret is refused.
+- Secrets are stored only as SHA-256 fingerprints and rotating masked previews — the raw secret is never returned.
+- The lineage summary says in one sentence why there is a single book: every BI artefact is a derivative of the same ledger.
+
+*Endpoints: GET /api/warehouse · POST /api/warehouse/export · POST /api/warehouse/connections · POST /api/warehouse/connections/validate · POST /api/warehouse/connections/sync-preview*
+
+## 16. 00:52 — Run governed batch processing with event-based accounting and the terminal stop rule
+
+**Tab:** Batch processing · **2 minutes**
+
+Quotation generation, illustration generation, policy issuance and monthly anniversary runs (mortality, premium accrual, commission accrual, clawback, fund management charges and dividend distribution) run as repeatable batches over the book — stopping automatically when a policy lapses, is fully withdrawn or is surrendered.
+
+**Do this**
+
+- Read the nine filed batch event definitions: schedule, basis, rate in bps, debit account, credit account and applicable statuses.
+- Select an event (e.g. Monthly anniversary — mortality or Commission clawback) and press “▶ Run batch” for period 2026-10.
+- Inspect the latest run lines: active policies post balanced vouchers while lapsed/withdrawn/surrendered policies report skipped-terminal (and clawback targets leavers).
+
+**You should see**
+
+- Terminal policies are never charged on anniversary runs and are explicitly reported as skipped-terminal.
+- Re-running the same event and period is idempotent: already-processed subjects report duplicate-skipped.
+
+*Endpoints: GET /api/batch · POST /api/batch/setup · POST /api/batch/run*
+
+## 17. 00:54 — Re-skin the entire ERP globally or scope a brand to a partner and omni-channel
+
+**Tab:** Application theme · **2 minutes**
+
+An insurer, a broker and a bank each carry their own visual identity. The entity theme applies globally across all 26 tabs; partner and omni-channel themes apply only to customer- and partner-facing surfaces (Partner settings, Customer journey, Underwriting/Quotation, Onboarding and Policyholder).
+
+**Do this**
+
+- Click any one-click brand preset (e.g. Royal Takaful Emerald & Gold, Gulf Sovereign Gold & Navy, or Executive Daylight) or click “Apply / Set active” on ALK-TKF in the Filed theme layers table.
+- Upload a logo or press “✳ Generate AI-assisted theme” to derive a full 8-token WCAG-AA palette and watch the console shell, cards, tables and inputs re-skin immediately.
+- Switch to Partner or Omni-channel theme, apply a palette, and open Customer journey to see the scoped brand banner and surface tokens in place.
+
+**You should see**
+
+- Entity themes update the global CSS variables on the root document immediately.
+- Partner and omni-channel themes apply to scoped customer/partner surfaces without overwriting the global entity theme on back-office tabs.
+- Every theme upload, preset application, activation and toggle is recorded on the theme audit trail and AI ledger.
+
+*Endpoints: GET /api/themes · POST /api/themes/upload · POST /api/themes/activate · POST /api/themes/toggle*
+
+## 18. 00:56 — Read the plain-language release log and draft an entry from a commit
+
+**Tab:** What's New · **1 minutes**
+
+Shipped changes should not hide in git history: every feature, fix, security gate and data change is filed newest-first with Why, What changed and What you need to do.
+
+**Do this**
+
+- Filter the feed by feature, security, data or fix and read the entries for PR #10, PR #11 and PR #12.
+- Enter a commit subject and two-paragraph body in the generator form and press “Generate & file entry”.
+
+**You should see**
+
+- Each entry names its commit/PR source, risk level, target console tab and operator action.
+- Generating from a commit categorises the change and files it at the top of the feed.
+
+*Endpoints: GET /api/whats-new · POST /api/whats-new · POST /api/whats-new/from-commits*
+
+## 19. 00:57 — Prove the books, and the reporting registers, can be restored
+
+**Tab:** Durability · **2 minutes**
 
 A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text — and does the same for the reporting registers: the returns, rule decisions, letters and filings are sealed together, replayed into a fresh world and checked one by one, with a hash-chained outbox proving nothing was dropped between snapshots.
 
@@ -304,9 +433,9 @@ A demo that cannot survive a restart is not an ERP. This seals the books into a 
 
 *Endpoints: GET /api/state · POST /api/state/drill · GET /api/state/registers · POST /api/state/registers/drill*
 
-## 14. 00:57 — The remainder of the hour: the fabric around the money
+## 20. 00:59 — The remainder of the hour: the fabric around the money
 
-**Tab:** Overview · **3 minutes**
+**Tab:** Overview · **1 minutes**
 
 The modules an insurer actually runs on — onboarding, ingestion, consent, regulatory packs, the UAE reinsurance rule book, renaming and AI governance, the rule book with its three answers and the wording book that holds the mandated paragraphs, and the submission log with the supervisor’s references — each one wired to something you can press, and the rule book answers with the answer the desk actually gets: allowed, held for a named human, or refused.
 

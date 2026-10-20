@@ -11,11 +11,41 @@
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createRequire } from 'node:module';
 
 const ROOT = process.cwd();
 const dist = resolve(ROOT, 'dist/index.html');
 if (!existsSync(dist)) throw new Error('build the app first: npm run build');
-const record = JSON.parse(readFileSync(resolve(ROOT, 'demo/offline-responses.json'), 'utf8'));
+const responsesPath = resolve(ROOT, 'demo/offline-responses.json');
+const record = JSON.parse(readFileSync(responsesPath, 'utf8'));
+
+const routesServerPath = resolve(ROOT, 'dist-server/core/routes.js');
+if (existsSync(routesServerPath)) {
+  const require = createRequire(import.meta.url);
+  const { createRuntimeState, dispatchApiRoute } = require(routesServerPath);
+  const state = createRuntimeState(1);
+  const freshPaths = [
+    '/world',
+    '/themes',
+    '/batch',
+    '/whats-new',
+    '/warehouse',
+    '/funds-accounting',
+    '/super-funds',
+    '/erp/settings',
+    '/tour',
+    '/guide',
+  ];
+  for (const p of freshPaths) {
+    const res = await dispatchApiRoute(state, 'GET', p, new URLSearchParams(), {});
+    const serialized = JSON.parse(
+      JSON.stringify(res.body, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
+    );
+    record.responses[`GET /api${p}`] = { status: res.status, body: serialized };
+  }
+  record.capturedAt = new Date().toISOString();
+  writeFileSync(responsesPath, JSON.stringify(record, null, 2));
+}
 
 const html = readFileSync(dist, 'utf8');
 const m = html.match(/src="(\/assets\/[^"]+\.js)"/);
@@ -92,7 +122,7 @@ const shim = `
     var stamp = new Date(CAPTURED_AT).toUTCString();
     bar.innerHTML =
       '<strong style="color:#6ff0b0">Live In-Browser ERP Runtime</strong>' +
-      '<span>Full Insurance ERP engine running statefully in your browser (customers, proposals, policy conversion, premiums, financial &amp; non-financial alterations, claims, reinsurance, NAV injection &amp; master settings) — built ' + stamp + '.</span>';
+      '<span>Full Insurance ERP engine running statefully in your browser (customers, proposals, policy conversion, premiums, alterations, claims, reinsurance, NAV injection, master settings, funds accounting, super funds, data warehouse &amp; PII masking, batch processing, what&rsquo;s new &amp; application theme) — built ' + stamp + '.</span>';
     document.body.insertBefore(bar, document.body.firstChild);
     document.body.style.paddingTop = '38px';
   });

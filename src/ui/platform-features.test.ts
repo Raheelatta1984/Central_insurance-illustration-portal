@@ -57,6 +57,9 @@ describe('expanded operational tabs render from the live world', () => {
     const theme = renderToString(h(ApplicationThemePanel, { data, onReload: reload }));
     expect(theme).toContain('Application theme — brand the whole application');
     expect(theme).toContain('previously only reachable inside Master settings');
+    expect(theme).toContain('One-click brand presets');
+    expect(theme).toContain('Royal Takaful Emerald');
+    expect(theme).toContain('Theme audit trail');
 
     const whatsNew = renderToString(h(WhatsNewPanel, { data, onReload: reload }));
     expect(whatsNew).toContain("What&#x27;s New — every change, explained");

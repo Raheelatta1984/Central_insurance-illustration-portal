@@ -2833,8 +2833,11 @@ export function MasterSettingsErp({
   onReload: () => Promise<void>;
   onNavigate: (tab: ConsoleTab) => void;
 }) {
-  const partnerBrandLayer = data.themes.partnerThemes.find(layer => layer.enabled);
-  const omniBrandLayer = data.themes.omniThemes.find(layer => layer.enabled);
+  const partnerBrandLayer = data.themes.partnerThemes.find(layer => layer.enabled && layer.active) ?? data.themes.partnerThemes.find(layer => layer.enabled);
+  const omniBrandLayer = data.themes.omniThemes.find(layer => layer.enabled && layer.active) ?? data.themes.omniThemes.find(layer => layer.enabled);
+  const combinedPartnerOmniLayer = partnerBrandLayer && omniBrandLayer
+    ? { ...omniBrandLayer, ...partnerBrandLayer, cssVariables: { ...omniBrandLayer.cssVariables, ...partnerBrandLayer.cssVariables } }
+    : (partnerBrandLayer ?? omniBrandLayer);
   const brandSurface = (layer: WorldSnapshot['themes']['layers'][number] | undefined, children: React.ReactNode) => (
     <div className={layer ? 'scopedBrandSurface hasScopedBrand' : 'scopedBrandSurface'} style={layer?.cssVariables as React.CSSProperties | undefined}>
       {layer?.images.headerDataUrl && <img className="scopedBrandHeader" src={layer.images.headerDataUrl} alt={`${layer.ownerName} header`} />}
@@ -3220,7 +3223,7 @@ export function MasterSettingsErp({
             ? ['Omni-channel is not set up. Until a channel exists no partner can be filed, nothing can be put on a partner\u2019s shelf, and every product can only be sold direct.']
             : data.erp.master.channels.blockers.slice(0, 4),
           warnings: data.erp.master.channels.warnings.slice(0, 4),
-          children: brandSurface(omniBrandLayer, <OmniChannelPanel data={data} busy={busy} onRun={runGrid} />),
+          children: brandSurface(combinedPartnerOmniLayer, <OmniChannelPanel data={data} busy={busy} onRun={runGrid} />),
         },
         {
           id: 'charges',

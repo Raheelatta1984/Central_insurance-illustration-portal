@@ -25,6 +25,31 @@ describe('brand onboarding theme layers', () => {
     expect(themes.effectiveCss()).toEqual({});
   });
 
+  it('prioritises newly upserted or activated themes over alphabetical seed defaults and supports brand presets', () => {
+    const themes = new ThemeRegistry();
+    themes.bootstrapDefaults();
+    expect(themes.effectiveCss()['--accent']).toBe('#3ea6ff');
+
+    // Creating a new entity theme with an ownerId that sorts after ALK-CONV ('Z-ROYAL') must immediately become the active global theme
+    const zTheme = themes.upsert({
+      scope: 'entity',
+      ownerId: 'Z-ROYAL',
+      ownerName: 'Z Royal Takaful',
+      presetId: 'royal-takaful',
+      by: 'brand-admin',
+      at: '2026-10-20T09:00:00Z',
+    });
+    expect(zTheme.active).toBe(true);
+    expect(themes.effectiveCss()['--accent']).toBe('#10b981');
+    expect(themes.effectiveCss()['--bg']).toBe('#061512');
+    expect(themes.list('entity')[0]!.ownerId).toBe('Z-ROYAL');
+
+    // Explicitly activating ALK-CONV switches the active global theme back to ALK-CONV
+    themes.activate('entity', 'ALK-CONV', 'brand-admin', '2026-10-20T09:05:00Z');
+    expect(themes.effectiveCss()['--accent']).toBe('#3ea6ff');
+    expect(themes.list('entity')[0]!.ownerId).toBe('ALK-CONV');
+  });
+
   it('limits and validates image uploads before a theme is stored', () => {
     const themes = new ThemeRegistry();
     expect(() => themes.upsert({ scope: 'entity', ownerId: 'E1', images: { logoDataUrl: 'data:text/html;base64,PHNjcmlwdD4=' } })).toThrow(/must be a base64/);

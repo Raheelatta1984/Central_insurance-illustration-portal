@@ -37,6 +37,108 @@ export interface BrandPalette {
   readonly line: string;
 }
 
+export interface ThemePreset {
+  readonly id: string;
+  readonly label: string;
+  readonly summary: string;
+  readonly palette: BrandPalette;
+}
+
+export const DEFAULT_BRAND_PALETTE: BrandPalette = {
+  primary: '#3ea6ff',
+  secondary: '#182230',
+  accent: '#2fbf71',
+  background: '#0b0f14',
+  surface: '#131a22',
+  text: '#e8eef6',
+  muted: '#8ba0b6',
+  line: '#22303f',
+};
+
+export const THEME_PRESETS: readonly ThemePreset[] = [
+  {
+    id: 'midnight-slate',
+    label: 'Midnight Slate (Conventional ERP)',
+    summary: 'Deep slate command console with sky-blue primary actions and emerald confirmation accents.',
+    palette: DEFAULT_BRAND_PALETTE,
+  },
+  {
+    id: 'royal-takaful',
+    label: 'Royal Takaful Emerald & Gold',
+    summary: 'Deep emerald window surface with warm gold accents for Shariah-governed family & general takaful.',
+    palette: {
+      primary: '#10b981',
+      secondary: '#14352d',
+      accent: '#f59e0b',
+      background: '#061512',
+      surface: '#0d241f',
+      text: '#ecfdf5',
+      muted: '#86efac',
+      line: '#1f4d42',
+    },
+  },
+  {
+    id: 'gulf-sovereign',
+    label: 'Gulf Sovereign Gold & Navy',
+    summary: 'Private-banking navy shell with sovereign amber gold primary actions and azure highlights.',
+    palette: {
+      primary: '#f59e0b',
+      secondary: '#1a243d',
+      accent: '#38bdf8',
+      background: '#090d18',
+      surface: '#111829',
+      text: '#f8fafc',
+      muted: '#94a3b8',
+      line: '#29385c',
+    },
+  },
+  {
+    id: 'difc-crimson',
+    label: 'DIFC Executive Crimson',
+    summary: 'Warm burgundy-rose executive theme with gold accents for institutional & DIFC wholesale desks.',
+    palette: {
+      primary: '#f43f5e',
+      secondary: '#331620',
+      accent: '#fbbf24',
+      background: '#16080c',
+      surface: '#241017',
+      text: '#fff1f2',
+      muted: '#fda4af',
+      line: '#4c2231',
+    },
+  },
+  {
+    id: 'arabian-azure',
+    label: 'Arabian Sea Cyan & Violet',
+    summary: 'Oceanic cyan and violet digital-channel theme tailored for omni-channel and broker portals.',
+    palette: {
+      primary: '#06b6d4',
+      secondary: '#133044',
+      accent: '#a855f7',
+      background: '#06121a',
+      surface: '#0c202e',
+      text: '#ecfeff',
+      muted: '#7dd3fc',
+      line: '#1e4966',
+    },
+  },
+  {
+    id: 'executive-daylight',
+    label: 'Executive Daylight (Light Portal)',
+    summary: 'High-contrast daylight paper surface with cobalt primary actions and forest confirmation tones.',
+    palette: {
+      primary: '#0284c7',
+      secondary: '#e2e8f0',
+      accent: '#059669',
+      background: '#f1f5f9',
+      surface: '#ffffff',
+      text: '#0f172a',
+      muted: '#475569',
+      line: '#cbd5e1',
+    },
+  },
+] as const;
+
 export interface ThemeImages {
   readonly logoDataUrl?: string; // data:image/...; base64 preview
   readonly logoFileName?: string;
@@ -58,6 +160,7 @@ export interface ThemeLayer {
   readonly cssVariables: Record<string, string>; // --brand-primary, --brand-accent …
   readonly applyScope: ThemeApplyScope; // where the layer is rendered
   readonly enabled: boolean;
+  readonly active?: boolean;
   readonly generatedBy: 'manual' | 'ai';
   readonly generatedAt: string;
   readonly generatedByUser: string;
@@ -72,6 +175,7 @@ export interface ThemeUploadInput {
   readonly palette?: Partial<BrandPalette>;
   readonly images?: ThemeImages;
   readonly useAi?: boolean;
+  readonly presetId?: string;
   readonly enabled?: boolean;
   readonly notes?: string;
   readonly by?: string;
@@ -86,49 +190,64 @@ function sanitizeHex(value: string | undefined, fallback: string): string {
   if (!value) return fallback;
   const v = value.trim();
   if (HEX_RE.test(v)) return v.toLowerCase();
-  // named fallback — not exhaustive; unknown names fall to fallback
   const named: Record<string, string> = {
     blue: '#3ea6ff', green: '#2fbf71', amber: '#f0b429', red: '#ef5b5b', navy: '#182230', teal: '#1f7a6b',
   };
   return named[v.toLowerCase()] ?? fallback;
 }
 
-function paletteFromLogoAi(images: ThemeImages, ownerId: string): BrandPalette {
+export function hslToHex(hue: number, satPct: number, lightPct: number): string {
+  const h = ((hue % 360) + 360) % 360;
+  const s = Math.max(0, Math.min(100, satPct)) / 100;
+  const l = Math.max(0, Math.min(100, lightPct)) / 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  const to255 = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return `#${to255(r)}${to255(g)}${to255(b)}`;
+}
+
+export function brandSvgLogoDataUrl(label: string, primary: string, accent: string, bg = '#0b0f14'): string {
+  const initials = label
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0]!.toUpperCase())
+    .join('') || 'CI';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${primary}"/><stop offset="100%" stop-color="${accent}"/></linearGradient></defs><rect width="120" height="64" rx="12" fill="${bg}"/><circle cx="32" cy="32" r="18" fill="url(#g)"/><text x="32" y="37" text-anchor="middle" fill="#ffffff" font-family="Inter,system-ui,sans-serif" font-size="14" font-weight="800">${initials}</text><text x="60" y="29" fill="#ffffff" font-family="Inter,system-ui,sans-serif" font-size="10" font-weight="700">${label.replace(/[<>&"']/g, '').slice(0, 12)}</text><rect x="60" y="36" width="46" height="5" rx="2.5" fill="url(#g)"/></svg>`;
+  const base64 = typeof Buffer !== 'undefined'
+    ? Buffer.from(svg, 'utf8').toString('base64')
+    : btoa(svg);
+  return `data:image/svg+xml;base64,${base64}`;
+}
+
+export function paletteFromLogoAi(images: ThemeImages, ownerId: string): BrandPalette {
   // Stable local palette assistant. The browser upload flow extracts dominant pixels from the logo;
   // when the route is called directly without a palette, hash the image content (not its filename)
-  // so the fallback remains deterministic in Node and in the browser bundle.
-  const source = images.logoDataUrl ?? images.headerDataUrl ?? images.logoFileName ?? ownerId;
+  // so the fallback remains deterministic in Node and in the browser bundle and themes the full surface.
+  const source = `${images.logoDataUrl ?? ''}|${images.headerDataUrl ?? ''}|${images.logoFileName ?? ''}|${ownerId}`;
   const seed = source.slice(0, 120_000).split('').reduce((s, c) => (Math.imul(s, 31) + c.charCodeAt(0)) >>> 0, 7);
-  const hues = [seed % 360, (seed * 7) % 360, (seed * 13) % 360];
-  const toHex = (h: number) => {
-    // HSL → hex via simple approximation for demo purposes
-    const s = 0.72, l = h < 120 ? 0.52 : 0.48;
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-    let r = 0, g = 0, b = 0;
-    if (h < 60) { r = c; g = x; }
-    else if (h < 120) { r = x; g = c; }
-    else if (h < 180) { g = c; b = x; }
-    else if (h < 240) { g = x; b = c; }
-    else if (h < 300) { r = x; b = c; }
-    else { r = c; b = x; }
-    const to255 = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
-    return `#${to255(r)}${to255(g)}${to255(b)}`;
-  };
+  const h = seed % 360;
   return {
-    primary: toHex(hues[0]!),
-    secondary: toHex(hues[1]!),
-    accent: toHex(hues[2]!),
-    background: '#0b0f14',
-    surface: '#131a22',
-    text: '#e8eef6',
-    muted: '#8ba0b6',
-    line: '#22303f',
+    primary: hslToHex(h, 78, 56),
+    secondary: hslToHex((h + 18) % 360, 42, 19),
+    accent: hslToHex((h + 145) % 360, 68, 48),
+    background: hslToHex(h, 46, 8),
+    surface: hslToHex(h, 40, 13),
+    text: hslToHex(h, 35, 94),
+    muted: hslToHex(h, 24, 70),
+    line: hslToHex(h, 36, 25),
   };
 }
 
-function toCssVariables(palette: BrandPalette, scope: ThemeScope): Record<string, string> {
+export function toCssVariables(palette: BrandPalette, scope: ThemeScope): Record<string, string> {
   return {
     '--brand-primary': palette.primary,
     '--brand-secondary': palette.secondary,
@@ -138,8 +257,9 @@ function toCssVariables(palette: BrandPalette, scope: ThemeScope): Record<string
     '--brand-text': palette.text,
     '--brand-muted': palette.muted,
     '--brand-line': palette.line,
-    // Console aliases consumed by its existing shell and cards
+    // Console aliases consumed by its existing shell, cards, tables and inputs
     '--accent': palette.primary,
+    '--ok': palette.accent,
     '--bg': palette.background,
     '--panel': palette.surface,
     '--panel2': palette.secondary,
@@ -169,6 +289,7 @@ function buildPreviewHtml(layer: ThemeLayer): string {
 export class ThemeRegistry {
   private layers = new Map<string, ThemeLayer>(); // by id
   private byOwner = new Map<string, string>(); // ownerKey = scope:ownerId -> id
+  private activeByScope = new Map<ThemeScope, string>(); // scope -> active layer id
   private seq = 0;
   private readonly trail: Array<{ at: string; by: string; action: string; detail: string }> = [];
 
@@ -179,10 +300,46 @@ export class ThemeRegistry {
     if (this.trail.length > 300) this.trail.splice(0, this.trail.length - 300);
   }
 
+  private syncActiveFlags(scope: ThemeScope) {
+    const activeId = this.activeByScope.get(scope);
+    for (const [id, layer] of this.layers.entries()) {
+      if (layer.scope !== scope) continue;
+      const shouldBeActive = Boolean(activeId && id === activeId && layer.enabled);
+      if (Boolean(layer.active) !== shouldBeActive) {
+        this.layers.set(id, { ...layer, active: shouldBeActive });
+      }
+    }
+  }
+
+  private pickNextActive(scope: ThemeScope) {
+    const candidates = [...this.layers.values()]
+      .filter(l => l.scope === scope && l.enabled)
+      .sort((a, b) => b.generatedAt.localeCompare(a.generatedAt) || a.ownerId.localeCompare(b.ownerId));
+    if (candidates[0]) this.activeByScope.set(scope, candidates[0].id);
+    else this.activeByScope.delete(scope);
+    this.syncActiveFlags(scope);
+  }
+
   list(scope?: ThemeScope): ThemeLayer[] {
     const all = [...this.layers.values()];
-    if (!scope) return all.sort((a, b) => a.ownerId.localeCompare(b.ownerId));
-    return all.filter(l => l.scope === scope).sort((a, b) => a.ownerId.localeCompare(b.ownerId));
+    const filtered = scope ? all.filter(l => l.scope === scope) : all;
+    return filtered.sort((a, b) => {
+      if (scope) {
+        const aActive = Boolean(a.active && a.enabled);
+        const bActive = Boolean(b.active && b.enabled);
+        if (aActive !== bActive) return aActive ? -1 : 1;
+        if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+        const byTime = b.generatedAt.localeCompare(a.generatedAt);
+        if (byTime !== 0) return byTime;
+        return a.ownerId.localeCompare(b.ownerId);
+      }
+      if (a.scope !== b.scope) return a.scope.localeCompare(b.scope);
+      const aActive = Boolean(a.active && a.enabled);
+      const bActive = Boolean(b.active && b.enabled);
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+      return b.generatedAt.localeCompare(a.generatedAt) || a.ownerId.localeCompare(b.ownerId);
+    });
   }
 
   get(scope: ThemeScope, ownerId: string): ThemeLayer | undefined {
@@ -190,12 +347,21 @@ export class ThemeRegistry {
     return id ? this.layers.get(id) : undefined;
   }
 
+  activeLayer(scope: ThemeScope): ThemeLayer | undefined {
+    const activeId = this.activeByScope.get(scope);
+    if (activeId) {
+      const candidate = this.layers.get(activeId);
+      if (candidate && candidate.enabled) return candidate;
+    }
+    return this.list(scope).find(l => l.enabled);
+  }
+
   effectiveCss(owner?: { scope?: ThemeScope; ownerId?: string }): Record<string, string> {
     // Global entity layer is the base; partner/omni-channel layers are additive on scoped tabs
-    const entity = this.list('entity').find(l => l.enabled);
+    const entity = this.activeLayer('entity');
     const base = entity ? entity.cssVariables : {};
     if (!owner?.scope || owner.scope === 'entity' || !owner.ownerId) return base;
-    const scoped = this.get(owner.scope, owner.ownerId);
+    const scoped = this.get(owner.scope, owner.ownerId) ?? this.activeLayer(owner.scope);
     if (!scoped || !scoped.enabled) return base;
     // Merge: scoped layer wins for the surfaces it owns; global panel/text stay underneath
     return { ...base, ...scoped.cssVariables, '--theme-owner': `${scoped.scope}:${scoped.ownerId}` };
@@ -212,6 +378,7 @@ export class ThemeRegistry {
     const by = input.by ?? 'brand-admin';
 
     const existing = this.get(scope, ownerId);
+    const preset = input.presetId ? THEME_PRESETS.find(p => p.id === input.presetId) : undefined;
     const useAi = input.useAi === true;
     const images: ThemeImages = {
       logoDataUrl: input.images?.logoDataUrl ?? existing?.images.logoDataUrl,
@@ -234,7 +401,9 @@ export class ThemeRegistry {
     }
 
     let palette: BrandPalette;
-    if (useAi) {
+    if (preset) {
+      palette = { ...preset.palette };
+    } else if (useAi) {
       palette = paletteFromLogoAi(images, ownerId);
       // AI respects any explicit overrides the operator also sent
       if (input.palette) {
@@ -257,8 +426,14 @@ export class ThemeRegistry {
       };
     }
 
+    if (!images.logoDataUrl) {
+      (images as { logoDataUrl?: string; logoFileName?: string }).logoDataUrl = brandSvgLogoDataUrl(ownerName, palette.primary, palette.accent, palette.background);
+      if (!images.logoFileName) (images as { logoFileName?: string }).logoFileName = `${ownerId.toLowerCase()}-emblem.svg`;
+    }
+
     // Scoping rule: entity = global; partner/omni-channel = partner-surfaces only
     const applyScope: ThemeApplyScope = scope === 'entity' ? 'global' : 'partner-surfaces';
+    const enabled = input.enabled ?? existing?.enabled ?? true;
 
     const id = existing?.id ?? `THM-${String(++this.seq).padStart(5, '0')}`;
     const layer: ThemeLayer = {
@@ -270,28 +445,58 @@ export class ThemeRegistry {
       images,
       cssVariables: toCssVariables(palette, scope),
       applyScope,
-      enabled: input.enabled ?? existing?.enabled ?? true,
+      enabled,
+      active: enabled,
       generatedBy: useAi ? 'ai' : 'manual',
       generatedAt: at,
       generatedByUser: by,
       previewHtml: '', // filled below
-      notes: (input.notes ?? existing?.notes ?? '').trim(),
+      notes: (input.notes ?? (preset ? `${preset.label} — ${preset.summary}` : existing?.notes) ?? '').trim(),
     };
     (layer as { previewHtml: string }).previewHtml = buildPreviewHtml(layer);
 
     this.layers.set(id, layer);
     this.byOwner.set(this.ownerKey(scope, ownerId), id);
-    this.record(useAi ? 'theme-ai-generated' : 'theme-upserted', `${scope}:${ownerId} · ${ownerName} · ${palette.primary}`, at, by);
-    return layer;
+    if (enabled) {
+      this.activeByScope.set(scope, id);
+      this.syncActiveFlags(scope);
+    } else if (this.activeByScope.get(scope) === id) {
+      this.pickNextActive(scope);
+    } else {
+      this.syncActiveFlags(scope);
+    }
+    const actionLabel = preset ? 'theme-preset-applied' : useAi ? 'theme-ai-generated' : 'theme-upserted';
+    this.record(actionLabel, `${scope}:${ownerId} · ${ownerName} · primary ${palette.primary} / bg ${palette.background}`, at, by);
+    return this.layers.get(id)!;
+  }
+
+  activate(scope: ThemeScope, ownerId: string, by = 'brand-admin', at = new Date().toISOString()): ThemeLayer {
+    const layer = this.get(scope, ownerId);
+    if (!layer) throw new ThemeError(`no theme for ${scope}:${ownerId}`);
+    const next: ThemeLayer = { ...layer, enabled: true, active: true, generatedAt: at, generatedByUser: by };
+    this.layers.set(layer.id, next);
+    this.activeByScope.set(scope, layer.id);
+    this.syncActiveFlags(scope);
+    this.record('theme-activated', `${scope}:${layer.ownerId} · ${layer.ownerName} (${layer.palette.primary})`, at, by);
+    return this.layers.get(layer.id)!;
   }
 
   setEnabled(scope: ThemeScope, ownerId: string, enabled: boolean, by = 'brand-admin'): ThemeLayer {
     const layer = this.get(scope, ownerId);
     if (!layer) throw new ThemeError(`no theme for ${scope}:${ownerId}`);
-    const next: ThemeLayer = { ...layer, enabled, generatedAt: new Date().toISOString(), generatedByUser: by };
+    const at = new Date().toISOString();
+    const next: ThemeLayer = { ...layer, enabled, active: enabled, generatedAt: at, generatedByUser: by };
     this.layers.set(layer.id, next);
-    this.record(enabled ? 'theme-enabled' : 'theme-disabled', `${scope}:${ownerId}`, next.generatedAt, by);
-    return next;
+    if (enabled) {
+      this.activeByScope.set(scope, layer.id);
+      this.syncActiveFlags(scope);
+    } else if (this.activeByScope.get(scope) === layer.id) {
+      this.pickNextActive(scope);
+    } else {
+      this.syncActiveFlags(scope);
+    }
+    this.record(enabled ? 'theme-enabled' : 'theme-disabled', `${scope}:${layer.ownerId}`, at, by);
+    return this.layers.get(layer.id)!;
   }
 
   remove(scope: ThemeScope, ownerId: string, at = new Date().toISOString(), by = 'brand-admin'): void {
@@ -300,18 +505,84 @@ export class ThemeRegistry {
     if (!id) throw new ThemeError(`no theme for ${key}`);
     this.layers.delete(id);
     this.byOwner.delete(key);
+    if (this.activeByScope.get(scope) === id) {
+      this.pickNextActive(scope);
+    }
     this.record('theme-removed', key, at, by);
   }
 
   bootstrapDefaults(): void {
     if (this.layers.size > 0) return;
-    const now = new Date().toISOString();
-    this.upsert({ scope: 'entity', ownerId: 'ALK-CONV', ownerName: 'Al Khaleej Insurance (conventional)', useAi: true, images: { logoFileName: 'alkhaleej-logo.svg' }, palette: { primary: '#3ea6ff', accent: '#2fbf71' }, enabled: true, by: 'seed', at: now, notes: 'Global entity theme — applied to all console tabs.' });
-    this.upsert({ scope: 'partner', ownerId: 'DXB-BROKER-01', ownerName: 'DXB Broker House', useAi: true, images: { logoFileName: 'dxb-broker-logo.png' }, palette: { primary: '#8b5cf6', accent: '#f59e0b' }, enabled: true, by: 'seed', at: now, notes: 'Partner theme — master partner detail, customer onboarding journey & quotation only.' });
-    this.upsert({ scope: 'omni-channel', ownerId: 'BROKER', ownerName: 'Broker channel', useAi: true, images: { logoFileName: 'broker-channel-logo.png' }, palette: { primary: '#06b6d4', accent: '#ec4899' }, enabled: true, by: 'seed', at: now, notes: 'Omni-channel theme — same three partner surfaces, scoped to channel.' });
+    const baseAt = '2026-10-05T08:00:00+04:00';
+    this.upsert({
+      scope: 'entity',
+      ownerId: 'ALK-TKF',
+      ownerName: 'Al Khaleej Takaful Window',
+      useAi: false,
+      presetId: 'royal-takaful',
+      images: { logoFileName: 'alkhaleej-takaful-logo.svg' },
+      enabled: false,
+      by: 'seed',
+      at: '2026-10-05T07:55:00+04:00',
+      notes: 'Takaful window global entity theme (Royal Emerald & Gold) — activate to re-skin the console for the Shariah window.',
+    });
+    this.upsert({
+      scope: 'entity',
+      ownerId: 'ALK-CONV',
+      ownerName: 'Al Khaleej Insurance (conventional)',
+      useAi: true,
+      images: { logoFileName: 'alkhaleej-logo.svg' },
+      palette: { ...DEFAULT_BRAND_PALETTE },
+      enabled: true,
+      by: 'seed',
+      at: baseAt,
+      notes: 'Global entity theme — applied to all console tabs.',
+    });
+    this.upsert({
+      scope: 'partner',
+      ownerId: 'DXB-BROKER-01',
+      ownerName: 'DXB Broker House',
+      useAi: true,
+      images: { logoFileName: 'dxb-broker-logo.png' },
+      palette: {
+        primary: '#8b5cf6',
+        secondary: '#24183d',
+        accent: '#f59e0b',
+        background: '#110b1f',
+        surface: '#1a1230',
+        text: '#f3e8ff',
+        muted: '#c4b5fd',
+        line: '#36265c',
+      },
+      enabled: true,
+      by: 'seed',
+      at: baseAt,
+      notes: 'Partner theme — master partner detail, customer onboarding journey & quotation only.',
+    });
+    this.upsert({
+      scope: 'omni-channel',
+      ownerId: 'BROKER',
+      ownerName: 'Broker channel',
+      useAi: true,
+      images: { logoFileName: 'broker-channel-logo.png' },
+      palette: {
+        primary: '#06b6d4',
+        secondary: '#133044',
+        accent: '#ec4899',
+        background: '#06121a',
+        surface: '#0c202e',
+        text: '#ecfeff',
+        muted: '#7dd3fc',
+        line: '#1e4966',
+      },
+      enabled: true,
+      by: 'seed',
+      at: baseAt,
+      notes: 'Omni-channel theme — same three partner surfaces, scoped to channel.',
+    });
   }
 
-  audit(limit = 10) { return this.trail.slice(-limit).reverse(); }
+  audit(limit = 12) { return this.trail.slice(-limit).reverse(); }
 
   snapshot() {
     return {
@@ -319,9 +590,13 @@ export class ThemeRegistry {
       entityThemes: this.list('entity'),
       partnerThemes: this.list('partner'),
       omniThemes: this.list('omni-channel'),
+      activeEntityTheme: this.activeLayer('entity') ?? null,
+      activePartnerTheme: this.activeLayer('partner') ?? null,
+      activeOmniTheme: this.activeLayer('omni-channel') ?? null,
+      presets: THEME_PRESETS,
       globalCss: this.effectiveCss(),
       partnerSurfaces: ['Master settings → Partner detail', 'Customer onboarding journey', 'Quotation generation'],
-      trail: this.audit(8),
+      trail: this.audit(12),
     };
   }
 
