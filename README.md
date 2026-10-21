@@ -2,11 +2,11 @@
 
 **An AI-native Insurance ERP** — term and whole-of-life, critical illness, income protection, endowment, mortgage, medical, motor, travel, home and contents, property, liability, engineering, marine cargo, hull and aviation, group benefits, unit-linked and **takaful** (96 filed varieties across 17 lines) — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **funds accounting, super funds, data warehouse with rotating PII masking, batch processing, What's New, and the live application theme engine**, **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (828 cases over 70 files) and building — and the fleet simulator (`tools/fleet.mjs`) marks 1138 backlog chunks done in `ledger/runs.jsonl` against *module-level* test evidence (a planning signal, not per-chunk proof of each titled capability) while the remaining 732 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **funds accounting, super funds, data warehouse with rotating PII masking, batch processing, What's New, and the live application theme engine**, **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (941 cases over 75 files) and building — and the fleet simulator (`tools/fleet.mjs`) marks 1138 backlog chunks done in `ledger/runs.jsonl` against *module-level* test evidence (a planning signal, not per-chunk proof of each titled capability) while the remaining 732 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + lint + 828 tests with coverage + build + offline bundle sync
+npm run verify     # typecheck + lint + 941 tests with coverage + build + offline bundle sync
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data
@@ -124,10 +124,11 @@ See [`docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md`](docs/16-MULTI-COUNTRY-PROVI
 | [`docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md`](docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md) | Batch processing (quotation/illustration/issuance + monthly-anniversary mortality, premium/commission accrual, clawback, fund charges, dividends) with event-based accounting setups and the lapse/withdrawal/surrender stop rule; What's New generated from commits; Snowflake/Excel/Access warehouse connections with breach agreement, fingerprint-only secrets and rotating one-way PII masking; the Application theme tab |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The live CI pipeline (typecheck → lint → tests with coverage → build → generated-artefact sync check → a small fleet pass). |
-| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 208 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
+| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 231 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
 | [`docs/14-REVIEW-REMEDIATION.md`](docs/14-REVIEW-REMEDIATION.md) | The 2026-10-20 external review: what was fixed, what was consciously deferred, and why. |
 | [`docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md`](docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md) | The quotation email that actually leaves the building (Gmail API OAuth2, honest failure, `npm run mail:smoke`), and the benefit illustration: three filed return scenarios, the customer's own benefit and payment terms, and the product / omni-channel / sub-channel cascade |
 | [`docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md`](docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md) | Insurance providers as multi-country carriers: registered branches per country, per-country reinsurance and retakaful, the country's own currency, local premium and origin-country investment, and Conventional/Takaful selling permissions narrowed at channel, sub-channel and partner — plus the separate Email configuration tab: departmental accounts, fourteen event routes, placeholders, preview and honest delivery |
+| [`docs/18-DATA-PLANE.md`](docs/18-DATA-PLANE.md) | The data plane as code: PgBouncer (budget arithmetic, pool modes, Neon's own pooler, prepared statements, `SHOW POOLS` triage), read replicas with lag budgets and read-your-writes pinning, memcached policy and generation invalidation, logical image shards with a weighted-rendezvous machine map, and the 64-bit `next_id` (41 + 13 + 10 bits) |
 | [`backlog/SUMMARY.md`](backlog/SUMMARY.md) | Generated backlog counts, matrix arithmetic, per-module breakdown |
 
 ## Deployment
@@ -207,11 +208,34 @@ sent/failed/not-sent counts and which settings are present (never their values).
 composed, PDF attached, provider refusal recorded — against a stand-in for Google, with no mailbox
 involved. Full write-up: [`docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md`](docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md).
 
-### No database — Neon is not required
+### No database in the demo — and a data plane you can review before buying one
 
-There is no SQL, no ORM, no driver and no `DATABASE_URL` anywhere in the codebase. The environment variables read are `PORT`, `HOST`, `NODE_ENV`, `PORTAL_AUTH_TOKENS` / `PORTAL_API_TOKEN`, `PORTAL_CORS_ORIGIN`, `PORTAL_ALLOW_DEMO`, `PII_VAULT_SECRET` and the mail settings above, and nothing under `src/` writes to disk. The demo world is built in memory by `buildWorld()` and reproduced byte-identically on every boot — verified by the durability drill (`POST /api/state/drill`), which reseals the books, restores them into a fresh ledger and confirms `fingerprintStable: true` with every entity balanced.
+**The demo still has no SQL, no ORM and no driver.** The world is built in memory by `buildWorld()` and
+reproduced byte-identically on every boot — verified by the durability drill (`POST /api/state/drill`),
+which reseals the books, restores them into a fresh ledger and confirms `fingerprintStable: true` with
+every entity balanced. Nothing under `src/` writes to disk. [`src/core/persistence.ts`](src/core/persistence.ts)
+remains the canonical snapshot codec (bigint/Date/Map/Set-safe, SHA-256 fingerprinted, schema-versioned,
+with a migration planner) that a store will share.
 
-[`src/core/persistence.ts`](src/core/persistence.ts) is the seam where a database would go later, and it is deliberately not one yet: a canonical snapshot codec (bigint/Date/Map/Set-safe, SHA-256 fingerprinted, schema-versioned, with a migration planner) written so any future store — file, Postgres `jsonb`, an outbox — shares it. Add Neon when state must survive restarts or scale past one process, not before.
+What *is* now implemented is the **data plane as code** — the decisions a durable deployment has to make,
+computed from configuration, refused when they would not work, and pinned by tests, so the topology can
+be rehearsed before a database bill exists:
+
+| Module | Decision it enforces |
+| --- | --- |
+| [`src/core/pgbouncer.ts`](src/core/pgbouncer.ts) | `instances × default_pool_size + reserved ≤ max_connections`, or the plan is refused; transaction pooling is refused when the application needs session state; **Neon's `-pooler` host is PgBouncer**, so a second pooler in front of it is refused; a Neon URL without TLS is refused; `pgbouncer.ini` is rendered **without a password**; `SHOW POOLS` samples are read as sentences (`cl_waiting`, `sv_idle_in_transaction`) |
+| [`src/core/sqlclass.ts`](src/core/sqlclass.ts) | read / write / session / unknown — locks, sequences, `SELECT … INTO`, `SET`, `LISTEN`, advisory locks, unknown SQL and multi-statement strings go to the primary |
+| [`src/core/readplane.ts`](src/core/readplane.ts) | replicas only inside the lag budget and a closed breaker; reads inside a write transaction or from a session that just wrote are pinned to the primary; fallback is the primary, never a stale answer; memcached never stores money, PII or auth material, never caches a clock-dependent read, and invalidates by generation counter |
+| [`src/core/shardmap.ts`](src/core/shardmap.ts) | image blobs → a fixed logical shard (1–8,192) → a machine by weighted rendezvous hashing, with copies across zones, weights, drained machines, a rebalance plan that names every shard, and capacity counted per copy |
+| [`src/core/idgen.ts`](src/core/idgen.ts) | `next_id`: **41 bits of ms + 13 bits of shard reference + 10 bits of counter**, monotonic under a backwards clock, 1,024 ids/ms/shard, sorted by construction |
+| [`src/core/dataplane.ts`](src/core/dataplane.ts) | the only environment parser for all of the above, and the report behind `GET /api/infra/topology` and `POST /api/infra/ids` |
+
+`npm run infra:plan` prints that report (and `-- --check` exits non-zero on any refusal). `deploy/` holds a
+runnable reference: Postgres 16 primary, two streaming replicas, PgBouncer with the generated config, and
+memcached. The variables, the arithmetic, the operating runbook and the honest list of what is *not* wired
+yet (driver, migration runner, live lag monitor, memcached client, blob store, id backfill) are in
+[`docs/18-DATA-PLANE.md`](docs/18-DATA-PLANE.md). `DATABASE_URL` is read **only** by that planner today;
+it is not in the request path.
 
 ## The build system in one paragraph
 
@@ -255,6 +279,7 @@ node tools/generate-backlog.mjs --long-tail=99999999   # open the tap fully (lar
 | Console, Onboarding / Ingestion / Parties / Regulatory / AI / Books / Labels | Chip and OCR onboarding with a review queue, any-shape file ingestion with quarantine and reconciliation, consented cross-party lookup with an access log, pre-sale gates and a motor comparison matrix, the UAE reinsurance rule book — twelve rules held as data, each citing its instrument, its clause and its Arabic wording, with every placement decided allowed, held for a named human or refused and the decision kept as evidence — and the wording book, which drafts the letters (bordereau cover note, return cover letter, treaty note, policyholder note) with their mandated paragraphs held as data in English and Arabic, refuses to produce one that is missing a paragraph its template requires, and lets the takaful scope rename a field without touching a paragraph — and the submission log, which files the return through the CBUAE channel with its cover letter, refuses a return that has moved since it was issued, supersedes the filing when the return is corrected, and reports what is still awaiting the supervisor's reference — the agent action ledger with prohibited actions refused, the double-entry books with their balance proof, and per-scope renaming for the takaful window |
 | Console, Durability tab | Seals the books into a canonical, fingerprinted snapshot and runs a live restore drill — rebuild a fresh ledger from the text and prove the trial balances agree — and does the same for the reporting registers: returns, rule decisions, letters and filings are sealed into one versioned snapshot, replayed into a fresh world and checked record by record (a return must keep its fingerprint, a decision must follow again from its own facts, a letter must regenerate, a filing must carry the answer it got), with a hash-chained outbox proving nothing was dropped between snapshots — each record remembers how far the books had got when it was made, so the restore carries the books forward with the registers and re-proves a return against the books of its own moment — the registers' own actions travel with them, so a restart takes the cession, the catastrophe recovery and the settled deposit again through the registers that took them and the books come back journal for journal |
 | API | `GET /api/health`, `/world`, `/ledger/proof`, `/units`, `/state`, `/claims`, `/underwriting`, `/group`; `POST /api/state/drill`, `/group/consolidate`, `/underwriting/decide`, `/claims/register`, `/claims/approve`, `/claims/settle`, `/preview/switch`, `/preview/withdrawal`, `/cover/start`, `/cover/stop`, `/cover/tick`, `/pre-sale`, `/onboarding/ocr`, `/partner/lookup`, `/ai/approve`, `/ai/execute`, `/ingest/submit`, `/ingest/commit`, `/takaful/approve`, `/reset` |
+| API, data plane | `GET /api/infra/topology` reports the deployment this process's environment describes — pool mode and backend arithmetic, Neon's pooled versus direct host, replicas and their lag budget, the cache, the image shard map and the id layout — with every refusal as a sentence (`?ini=1` adds the generated `pgbouncer.ini`); `POST /api/infra/ids` mints 1–1,000 `next_id`s for one shard and shows their decoded 41/13/10-bit fields |
 
 ## Contributing / working here
 

@@ -26,3 +26,8 @@ demo/video/raw/
 # end of the file, so nothing above them can leave the directory silently unignored again.
 demo/screens/
 demo/video/
+
+# data-plane deployment artefacts: the pooler's credential file is written at container start-up from the
+# secret store, and a local compose environment is a machine's own business. Neither belongs in git.
+deploy/pgbouncer/userlist.txt
+deploy/local.env

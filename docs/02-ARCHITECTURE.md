@@ -237,3 +237,26 @@ not issued on money that has not cleared.
 settle → recover), policy administration (premium → financial alterations → non-financial alterations),
 quotations and conversions, funds, reinsurance and master settings all describe their sections as gates.
 See [`09-CUSTOMER-JOURNEY.md`](09-CUSTOMER-JOURNEY.md).
+
+## 16. The data plane (when durability arrives)
+
+The demo runs in memory, and that is a deliberate demo posture rather than a design claim. The layer that
+turns the same code into a durable deployment is written down as code, not prose:
+[`18-DATA-PLANE.md`](18-DATA-PLANE.md).
+
+- **PgBouncer** — the connection budget (`instances × default_pool_size + reserved ≤ max_connections`), the
+  pool mode (transaction unless session state is declared), Neon's own `-pooler` endpoint (no second pooler),
+  prepared statements, and a `pgbouncer.ini` that never contains a password.
+- **Read replicas** — SQL classification that sends locks, sequences, session state, unknown statements and
+  anything inside a write transaction to the primary; a lag budget and a breaker per replica; read-your-writes
+  pinning; fallback to the primary rather than a stale answer.
+- **memcached** — reference data only (never money, PII or auth), keys namespaced and generation-versioned,
+  single-flight loading, jittered TTLs, memcached's size limits enforced rather than hoped for.
+- **Images** — a fixed logical shard (1–8,192) per blob and a weighted-rendezvous machine map with copies
+  across zones, a named rebalance plan and per-copy capacity accounting.
+- **Ids** — `next_id` is 41 bits of millisecond clock + 13 bits of shard reference + 10 bits of counter, so it
+  sorts by construction and decodes to its issuer; the generator is monotonic under a backwards clock and
+  never wraps.
+
+`GET /api/infra/topology` reports the plan for the running process's environment, and
+`npm run infra:plan -- --check` is the deploy gate. `deploy/` holds a runnable reference topology.
