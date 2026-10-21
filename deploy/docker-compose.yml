@@ -1,0 +1,126 @@
+# A reference data plane for a *self-managed* Postgres.
+#
+# Neon already runs PgBouncer on its `-pooler` host, so with Neon you do not need this file — point
+# the application at the pooled host and the migrations at the direct host (see docs/18). This
+# compose is for the case Neon's docs describe less often: your own Postgres, your own pooler, your
+# own replicas and your own memcached, on one machine, so the topology can be rehearsed before it is
+# bought.
+#
+#   cp deploy/example.env deploy/local.env     # then edit it; local.env is git-ignored
+#   docker compose --env-file deploy/local.env -f deploy/docker-compose.yml up -d
+#   docker compose -f deploy/docker-compose.yml exec pgbouncer sh -c 'echo $DB_USER'
+#   psql "postgres://portal@localhost:6432/portal" -c 'SHOW POOLS;'   # through the pooler
+#   psql "postgres://portal@localhost:5432/portal" -c 'select now();' # direct, for migrations
+#
+# Topology:
+#   app ──6432──► pgbouncer ──► postgres-primary ──streaming──► replica-1, replica-2
+#                                  ▲
+#                                  └── direct 5432 is for migrations/DDL only
+#   app ──11211─► memcached (reference reads; never money, never PII)
+
+name: portal-data-plane
+
+x-postgres-env: &postgres-env
+  POSTGRES_DB: ${POSTGRES_DB:-portal}
+  POSTGRES_USER: ${POSTGRES_USER:-portal}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/local.env}
+  REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:?set REPLICATION_PASSWORD in deploy/local.env}
+
+services:
+  postgres-primary:
+    image: postgres:16
+    command:
+      - postgres
+      - -c
+      - max_connections=${DATABASE_MAX_CONNECTIONS:-200}
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - hot_standby=on
+    environment: *postgres-env
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-primary:/var/lib/postgresql/data
+      - ./postgres/init-primary.sh:/docker-entrypoint-initdb.d/10-replicator.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h 127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One base backup, then streaming replication. `-R` writes standby.signal and primary_conninfo,
+  # so the replica comes up as a hot standby without a hand-edited recovery.conf.
+  postgres-replica-1:
+    image: postgres:16
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      <<: *postgres-env
+      PGPASSWORD: ${REPLICATION_PASSWORD:?set REPLICATION_PASSWORD in deploy/local.env}
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        if [ ! -s "$$PGDATA/PG_VERSION" ]; then
+          until pg_isready -h postgres-primary -U replicator -d "$$POSTGRES_DB"; do
+            echo "waiting for the primary to accept replication logins…"
+            sleep 1
+          done
+          gosu postgres pg_basebackup -h postgres-primary -U replicator -D "$$PGDATA" -Fp -Xs -R -P
+        fi
+        exec docker-entrypoint.sh postgres -c hot_standby=on
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg-replica-1:/var/lib/postgresql/data
+
+  postgres-replica-2:
+    image: postgres:16
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      <<: *postgres-env
+      PGPASSWORD: ${REPLICATION_PASSWORD:?set REPLICATION_PASSWORD in deploy/local.env}
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        if [ ! -s "$$PGDATA/PG_VERSION" ]; then
+          until pg_isready -h postgres-primary -U replicator -d "$$POSTGRES_DB"; do
+            echo "waiting for the primary to accept replication logins…"
+            sleep 1
+          done
+          gosu postgres pg_basebackup -h postgres-primary -U replicator -D "$$PGDATA" -Fp -Xs -R -P
+        fi
+        exec docker-entrypoint.sh postgres -c hot_standby=on
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg-replica-2:/var/lib/postgresql/data
+
+  pgbouncer:
+    build: ./pgbouncer
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      DB_USER: ${POSTGRES_USER:-portal}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/local.env}
+    ports:
+      - "6432:6432"
+
+  memcached:
+    image: memcached:1.6-alpine
+    command: ["-m", "256", "-c", "1024", "-o", "modern"]
+    ports:
+      - "11211:11211"
+
+volumes:
+  pg-primary:
+  pg-replica-1:
+  pg-replica-2:

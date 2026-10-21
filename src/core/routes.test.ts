@@ -23,11 +23,35 @@ describe('api dispatcher', () => {
       '/health', '/world', '/group', '/underwriting', '/reinsurance', '/claims',
       '/master/channels', '/master/regional', '/themes', '/warehouse', '/batch',
       '/whats-new', '/idempotency', '/funds-accounting', '/super-funds', '/submissions',
+      '/infra/topology',
     ]) {
       const result = await dispatchApiRoute(state, 'GET', path, new URLSearchParams(), {});
       expect(result.handled, path).toBe(true);
       expect(result.status, path).toBe(200);
     }
+  });
+
+  it('describes the data plane without inventing a database, and mints a sortable 64-bit id', async () => {
+    const state = createRuntimeState(1, () => '2026-10-05T00:00:00.000Z', {
+      DATABASE_URL: 'postgresql://portal_user:secret@ep-cool-1234.eu-central-1.aws.neon.tech/portal?sslmode=require',
+      INSTANCE_COUNT: '2',
+      MEMCACHED_SERVERS: 'mc1:11211',
+    });
+    const topology = await dispatchApiRoute(state, 'GET', '/infra/topology', new URLSearchParams(), {});
+    expect(topology.status).toBe(200);
+    expect(topology.body).toMatchObject({ configured: true, mode: 'postgres' });
+    expect(JSON.stringify(topology.body)).not.toContain('secret');
+    expect((topology.body as any).pooling.instances).toBe(2);
+
+    const minted = await dispatchApiRoute(state, 'POST', '/infra/ids', new URLSearchParams(), { count: 2, shard: 9 });
+    expect(minted.status).toBe(200);
+    const ids = (minted.body as any).ids as Array<{ id: string; shard: number; counter: number }>;
+    expect(ids).toHaveLength(2);
+    expect(ids.map((row) => row.shard)).toEqual([9, 9]);
+    expect(ids.map((row) => row.counter)).toEqual([0, 1]);
+    // The boundary refuses a shard that does not fit the 13-bit field — it does not mask it.
+    await expect(dispatchApiRoute(state, 'POST', '/infra/ids', new URLSearchParams(), { count: 1, shard: 9_000 }))
+      .rejects.toThrow(RequestValidationError);
   });
 
   it('reports the honest deployment shape on /health', async () => {

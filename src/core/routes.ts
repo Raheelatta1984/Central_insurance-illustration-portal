@@ -55,6 +55,7 @@ import {
   calculateActuarialAge,
   resolveCustomerAutoPick,
 } from './autopick.js';
+import { dataPlaneReport, mintIds } from './dataplane.js';
 
 export interface RuntimeState {
   world: World;
@@ -170,6 +171,20 @@ export async function dispatchApiRoute(
   switch (`${method} ${path}`) {
     case 'GET /health':
       return ok({ ok: true, version: state.version, asOf: state.world.asOf, persistence: 'in-memory (demo world, rebuilt on boot)' });
+
+    /* ------------------------------- the data plane: pool, replicas, shards, ids */
+    // The report is computed from the environment this process was started with, so it describes
+    // the deployment that is actually running — including "there is no database yet", said plainly.
+    case 'GET /infra/topology':
+      return ok(dataPlaneReport(state.mailEnv, { includeIni: searchParams.get('ini') === '1' }));
+
+    // Mint ids for one logical shard. 1,024 ids/ms/shard means the counter field is a ceiling, not
+    // an expectation; the route refuses an out-of-range shard rather than masking it into one.
+    case 'POST /infra/ids': {
+      const count = reqInt(payload, 'count', { min: 1, max: 1_000, fallback: 1 });
+      const shard = reqInt(payload, 'shard', { min: 0, max: 8_191, fallback: 0 });
+      return ok(mintIds({ count, shard }));
+    }
 
     case 'GET /world':
       return ok(worldSnapshot(state.world));
