@@ -12,6 +12,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPortalServer, productionRefusals } from './main.js';
 import { loadAuthConfig } from './auth.js';
 import { createRuntimeState } from '../core/routes.js';
+import { RequestShield } from '../core/requestguard.js';
+import { API_ROUTE_KEYS } from '../core/route-catalogue.js';
 
 function listen(server: Server): Promise<string> {
   return new Promise((resolveListen) => {
@@ -114,6 +116,97 @@ describe('http server (auth enabled)', () => {
     expect(escalate.status).toBe(403);
     expect((await fetch(`${base}/api/reset`, { method: 'POST', headers, body: '{}' })).status).toBe(403);
     expect((await fetch(`${base}/api/master/authority`, { method: 'POST', headers, body: '{}' })).status).toBe(403);
+  });
+});
+
+describe('http server (request guard: Bloom filter + negative cache)', () => {
+  let server: Server;
+  let base: string;
+  beforeAll(async () => {
+    server = createPortalServer({ state: createRuntimeState(), dist, auth: loadAuthConfig({}), env: {}, log: () => {} });
+    base = await listen(server);
+  });
+  afterAll(() => new Promise<void>((done) => server.close(() => done())));
+
+  it('refuses an invented endpoint at the Bloom gate, then from the negative cache', async () => {
+    const first = await fetch(`${base}/api/definitely-not-an-endpoint`);
+    expect(first.status).toBe(404);
+    expect(first.headers.get('x-request-guard')).toBe('bloom-miss');
+    await expect(first.json()).resolves.toMatchObject({ error: 'no such endpoint' });
+    // The repeat never reaches the dispatcher: the remembered 404 answers it.
+    const second = await fetch(`${base}/api/definitely-not-an-endpoint`);
+    expect(second.status).toBe(404);
+    expect(second.headers.get('x-negative-cache')).toBe('hit');
+    await expect(second.json()).resolves.toMatchObject({ error: 'no such endpoint' });
+  });
+
+  it('refuses an invented POST without parsing or dispatching its body', async () => {
+    const res = await fetch(`${base}/api/wp-admin/setup`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ probe: true }),
+    });
+    expect(res.status).toBe(404);
+    expect(res.headers.get('x-request-guard')).toBe('bloom-miss');
+  });
+
+  it('still serves real endpoints, and a successful write clears remembered negatives', async () => {
+    expect((await fetch(`${base}/api/idempotency`)).status).toBe(200);
+    const reset = await fetch(`${base}/api/reset`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    expect(reset.status).toBe(200);
+    // The write may have created what the negative denied, so the next probe is gated fresh.
+    const again = await fetch(`${base}/api/definitely-not-an-endpoint`);
+    expect(again.status).toBe(404);
+    expect(again.headers.get('x-negative-cache')).toBeNull();
+    expect(again.headers.get('x-request-guard')).toBe('bloom-miss');
+  });
+
+  it('reports guard counters on the public health answer', async () => {
+    const body = (await (await fetch(`${base}/api/health`)).json()) as { requestGuard?: { bloom: { inserted: number } } };
+    expect(body.requestGuard?.bloom.inserted).toBe(API_ROUTE_KEYS.length);
+  });
+});
+
+describe('http server (request guard: rate limiting)', () => {
+  let server: Server;
+  let base: string;
+  beforeAll(async () => {
+    const guard = new RequestShield({
+      routes: API_ROUTE_KEYS, readCapacity: 2, readRefillPerSecond: 0.01, writeCapacity: 1, writeRefillPerSecond: 0.01,
+    });
+    server = createPortalServer({ state: createRuntimeState(), dist, auth: loadAuthConfig({}), env: {}, guard, log: () => {} });
+    base = await listen(server);
+  });
+  afterAll(() => new Promise<void>((done) => server.close(() => done())));
+
+  it('absorbs the burst, then answers 429 with Retry-After and the budget — while health stays exempt', async () => {
+    expect((await fetch(`${base}/api/idempotency`)).status).toBe(200);
+    expect((await fetch(`${base}/api/idempotency`)).status).toBe(200);
+    const refused = await fetch(`${base}/api/idempotency`);
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get('x-ratelimit-limit')).toBe('2');
+    expect(Number(refused.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
+    await expect(refused.json()).resolves.toMatchObject({ error: expect.stringContaining('rate limit') });
+    // A throttled process is still alive, and the load balancer must be able to learn that.
+    expect((await fetch(`${base}/api/health`)).status).toBe(200);
+  });
+});
+
+describe('http server (request guard behind auth)', () => {
+  let server: Server;
+  let base: string;
+  const auth = loadAuthConfig({ PORTAL_AUTH_TOKENS: 'admintoken=alice:admin' });
+  beforeAll(async () => {
+    server = createPortalServer({ state: createRuntimeState(), dist, auth, env: {}, log: () => {} });
+    base = await listen(server);
+  });
+  afterAll(() => new Promise<void>((done) => server.close(() => done())));
+
+  it('keeps 401 ahead of the route gate, so the guard is not a route oracle', async () => {
+    expect((await fetch(`${base}/api/definitely-not-an-endpoint`)).status).toBe(401);
+    const authed = await fetch(`${base}/api/definitely-not-an-endpoint`, { headers: { authorization: 'Bearer admintoken' } });
+    expect(authed.status).toBe(404);
+    expect(authed.headers.get('x-request-guard')).toBe('bloom-miss');
   });
 });
 

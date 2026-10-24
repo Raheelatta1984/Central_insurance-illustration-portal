@@ -14,6 +14,12 @@
  *    with the audit actor stamped from the principal; open **demo mode** otherwise, labelled
  *    in `/health`, and refused in production unless explicitly allowed;
  *  - idempotent retries (`Idempotency-Key`, implemented with the domain `IdempotencyKeys`);
+ *  - the request guard (`src/core/requestguard.ts`): per-client token-bucket rate limits (429
+ *    with `Retry-After`) applied before body parsing, a Bloom filter over the route catalogue
+ *    that refuses invented endpoints at the door, and a short-TTL negative cache for the 404s
+ *    that remain — so scanner probes, typo'd integrations and retry storms never reach the
+ *    dispatcher (or, in a durable deployment, the database). Successful writes clear the
+ *    negative cache; `GET /health` stays public, unrated, and reports the guard's counters;
  *  - static files confined to `dist/`, immutable caching for hashed assets, gzip for JSON/text.
  *
  * State is the in-memory demo world (`createRuntimeState`): rebuilt on boot, lost on restart.
@@ -32,6 +38,10 @@ import { assertPayloadObject, RequestValidationError } from '../core/validate.js
 import { randomTokenHex } from '../core/hash.js';
 import { usingDemoVaultSecret } from '../core/pii-masking.js';
 import { AuthConfig, authenticate, authorize, corsOriginFor, loadAuthConfig } from './auth.js';
+import {
+  RequestShield, loadRequestGuardConfig, rateLimitClientKey, requestShieldFromConfig,
+} from '../core/requestguard.js';
+import { API_ROUTE_KEYS } from '../core/route-catalogue.js';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -53,6 +63,12 @@ export interface PortalServerOptions {
   readonly auth?: AuthConfig;
   readonly env?: NodeJS.ProcessEnv;
   readonly log?: (line: string) => void;
+  /**
+   * An explicit request guard (tests, tuned deployments). When omitted, one is built from the
+   * `PORTAL_RATE_*` / `PORTAL_NEGATIVE_CACHE_*` environment, or disabled entirely with
+   * `PORTAL_REQUEST_GUARD=off`.
+   */
+  readonly guard?: RequestShield;
 }
 
 export function createPortalServer(options: PortalServerOptions = {}): Server {
@@ -63,6 +79,8 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
   const dist = resolve(options.dist ?? join(process.cwd(), 'dist'));
   const auth = options.auth ?? loadAuthConfig(env);
   const log = options.log ?? ((line: string) => console.error(line));
+  const guardConfig = loadRequestGuardConfig(env);
+  const guard: RequestShield | undefined = options.guard ?? requestShieldFromConfig(guardConfig, API_ROUTE_KEYS);
 
   /**
    * The key a mutating call arrived under, for the length of that call. Every route answers
@@ -161,9 +179,75 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
     });
   }
 
+  /** Early refusals never read the request body; drain it so the refusal can actually be sent. */
+  function discardBody(req: IncomingMessage): void {
+    req.resume();
+  }
+
   async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL, requestId: string): Promise<boolean> {
     const path = url.pathname.replace(/^\/api/, '');
     const method = req.method ?? 'GET';
+    // Authentication & authorisation (health stays public for load balancers).
+    const publicHealth = method === 'GET' && path === '/health';
+    // Authenticated early and cheaply: the principal names the rate-limit bucket, so a flood
+    // is counted against whoever is sending it before any body byte is parsed.
+    const principal = publicHealth ? undefined : authenticate(auth, req);
+
+    // 1) Rate limit — first, cheapest, and the only check an unauthenticated flood ever pays
+    // for. Health is exempt: a load balancer probing a throttled process must still learn
+    // whether it is alive.
+    if (guard && !publicHealth) {
+      const forwarded = req.headers['x-forwarded-for'];
+      const clientKey = rateLimitClientKey({
+        ...(principal ? { principal: principal.name } : {}),
+        ...(req.socket.remoteAddress ? { remoteAddress: req.socket.remoteAddress } : {}),
+        ...((Array.isArray(forwarded) ? forwarded[0] : forwarded) ? { forwardedFor: (Array.isArray(forwarded) ? forwarded[0] : forwarded)! } : {}),
+        trustProxy: guardConfig.trustProxy,
+      });
+      const decision = guard.checkRate(clientKey, method);
+      res.setHeader('x-ratelimit-limit', String(decision.limit));
+      res.setHeader('x-ratelimit-remaining', String(decision.remaining));
+      res.setHeader('x-ratelimit-reset', String(Math.ceil(decision.resetAfterMs / 1000)));
+      if (!decision.allowed) {
+        discardBody(req);
+        res.setHeader('retry-after', String(Math.max(1, Math.ceil(decision.retryAfterMs / 1000))));
+        res.setHeader('x-request-guard', 'rate-limited');
+        json(req, res, 429, {
+          error: `rate limit exceeded for this client (${decision.class} budget ${decision.limit}); retry after ${Math.max(1, Math.ceil(decision.retryAfterMs / 1000))}s`,
+          requestId,
+        }, requestId);
+        return true;
+      }
+    }
+
+    // 2) Authentication, then 3) the Bloom filter + negative cache. Auth still precedes the
+    // route gate, so an unauthenticated caller cannot use 404-vs-401 as a route oracle.
+    if (!publicHealth) {
+      if (!principal) {
+        json(req, res, 401, { error: 'authentication required (Authorization: Bearer …)', requestId }, requestId);
+        return true;
+      }
+      if (guard) {
+        const query = url.searchParams.toString();
+        const cached = guard.lookupNegative(method, path, query);
+        if (cached.hit) {
+          discardBody(req);
+          res.setHeader('x-negative-cache', 'hit');
+          const body = cached.body && typeof cached.body === 'object' ? cached.body as Record<string, unknown> : { error: 'no such endpoint' };
+          json(req, res, cached.status, { ...body, requestId }, requestId);
+          return true;
+        }
+        if (!guard.mightBeRoute(method, path)) {
+          // Provably not an endpoint: no body parse, no authorisation, no dispatcher, no store.
+          const body = { error: 'no such endpoint', path: url.pathname };
+          guard.rememberNegative(method, path, query, 404, body);
+          discardBody(req);
+          res.setHeader('x-request-guard', 'bloom-miss');
+          json(req, res, 404, { ...body, requestId }, requestId);
+          return true;
+        }
+      }
+    }
 
     let payload: Record<string, unknown> = {};
     if (method === 'POST') {
@@ -180,23 +264,14 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
       }
     }
 
-    // Authentication & authorisation (health stays public for load balancers).
-    const publicHealth = method === 'GET' && path === '/health';
-    if (!publicHealth) {
-      const principal = authenticate(auth, req);
-      if (!principal) {
-        json(req, res, 401, { error: 'authentication required (Authorization: Bearer …)', requestId }, requestId);
+    if (!publicHealth && principal && auth.enabled) {
+      const refusal = authorize(principal, method, path, payload);
+      if (refusal) {
+        json(req, res, 403, { error: refusal, requestId }, requestId);
         return true;
       }
-      if (auth.enabled) {
-        const refusal = authorize(principal, method, path, payload);
-        if (refusal) {
-          json(req, res, 403, { error: refusal, requestId }, requestId);
-          return true;
-        }
-        // The audit actor is who authenticated, never a string the caller chose.
-        if (method !== 'GET') payload = { ...payload, by: principal.name, __principal: principal.name };
-      }
+      // The audit actor is who authenticated, never a string the caller chose.
+      if (method !== 'GET') payload = { ...payload, by: principal.name, __principal: principal.name };
     }
 
     const keyHeader = req.headers['idempotency-key'];
@@ -257,8 +332,21 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
     method: string,
   ): Promise<boolean> {
     const result = await dispatchApiRoute(state, method, path, url.searchParams, payload);
-    if (!result.handled) return false;
-    json(req, res, result.status, result.body, requestId);
+    if (!result.handled) {
+      // A Bloom false positive, or a method the path does not take: remember the 404 so the
+      // repeat costs a map lookup instead of another dispatcher round-trip.
+      guard?.rememberNegative(method, path, url.searchParams.toString(), 404, { error: 'no such endpoint', path: url.pathname });
+      return false;
+    }
+    if (result.status >= 200 && result.status < 300) {
+      // A write may have created what a negative denies; a read retires only its own key.
+      guard?.noteSuccess(method, path, url.searchParams.toString());
+    }
+    let body = result.body;
+    if (guard && method === 'GET' && path === '/health' && body && typeof body === 'object') {
+      body = { ...(body as Record<string, unknown>), requestGuard: guard.stats() };
+    }
+    json(req, res, result.status, body, requestId);
     return true;
   }
 
@@ -326,6 +414,10 @@ if (isMain) {
     console.log(auth.enabled
       ? `Authentication: enabled (${auth.principals.size} principal(s)); actor identity is taken from the token.`
       : 'Authentication: DEMO MODE — the API is open. Set PORTAL_AUTH_TOKENS before exposing this beyond a demo.');
+    const guardConfig = loadRequestGuardConfig();
+    console.log(guardConfig.enabled
+      ? `Request guard: on — rate limits read ${guardConfig.readCapacity} burst/${guardConfig.readRefillPerSecond} per s, write ${guardConfig.writeCapacity} burst/${guardConfig.writeRefillPerSecond} per s per client; Bloom filter over ${API_ROUTE_KEYS.length} routes; negative cache ${guardConfig.negativeMaxEntries} entries × ${guardConfig.negativeTtlMs} ms. Tune with PORTAL_RATE_*/PORTAL_NEGATIVE_CACHE_*, disable with PORTAL_REQUEST_GUARD=off.`
+      : 'Request guard: OFF (PORTAL_REQUEST_GUARD=off) — no rate limiting, Bloom gate or negative caching.');
     if (usingDemoVaultSecret()) console.log('PII masking: demo vault secret (set PII_VAULT_SECRET in a real deployment).');
     const mail = state.mailer.status(process.env);
     console.log(mail.configured
