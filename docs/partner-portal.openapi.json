@@ -1,0 +1,1980 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Central Insurance partner workspace prototype",
+    "version": "0.1.0",
+    "description": "In-memory prototype. No external funds are sent, claims settled or policies endorsed. The existing quote engine records underwriting before partner approval; see docs/20-PARTNER-PORTAL.md."
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/partner-portal/access": {
+      "get": {
+        "summary": "List the authenticated principal’s permitted partner routes",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Access"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/workspace": {
+      "get": {
+        "summary": "Get paginated partner records and all-scope summaries",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "partnerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subChannelCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/partner-portal/journey": {
+      "get": {
+        "summary": "Get scoped customer journey sections",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journey"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "caseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/partner-portal/demo/setup": {
+      "post": {
+        "summary": "Create sample partners in an empty unauthenticated demo",
+        "description": "Demo mode only; no real policies or payments are seeded.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/partner-portal/journey/open": {
+      "post": {
+        "summary": "Start an attributed customer journey",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyRef"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Scope"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "customerName": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "customerName"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/journey/attach": {
+      "post": {
+        "summary": "Attribute an existing journey",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyRef"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Scope"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "caseId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "caseId"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/journey/stage": {
+      "post": {
+        "summary": "Save or submit a scoped journey section",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "caseId": {
+                    "type": "string"
+                  },
+                  "stageId": {
+                    "type": "string",
+                    "enum": [
+                      "identity",
+                      "profile",
+                      "needs",
+                      "recommendation",
+                      "coverage",
+                      "loadings",
+                      "riders",
+                      "medical",
+                      "funds",
+                      "beneficiaries",
+                      "uw-review",
+                      "quotation",
+                      "finalisation"
+                    ]
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "save",
+                      "submit"
+                    ]
+                  },
+                  "answers": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "caseId",
+                  "stageId",
+                  "action",
+                  "answers"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/applications/submit": {
+      "post": {
+        "summary": "Submit a signed application for partner review",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "caseId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "caseId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/applications/review": {
+      "post": {
+        "summary": "Approve, return or reject as one eligible reviewer",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "supervisor",
+                      "manager",
+                      "senior-manager"
+                    ]
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "returned",
+                      "rejected"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "id",
+                  "role",
+                  "outcome",
+                  "note"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/underwriting/review": {
+      "post": {
+        "summary": "Record an independent insurer review for a manual route",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "id",
+                  "note"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/commission/accrue": {
+      "post": {
+        "summary": "Record an insurer-entered accrual reference",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commission"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Scope"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "policyId": {
+                        "type": "string"
+                      },
+                      "period": {
+                        "type": "string",
+                        "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+                      },
+                      "sourceRef": {
+                        "type": "string"
+                      },
+                      "premium": {
+                        "$ref": "#/components/schemas/MoneyAmount"
+                      },
+                      "policyYear": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      }
+                    },
+                    "required": [
+                      "policyId",
+                      "period",
+                      "sourceRef",
+                      "premium",
+                      "policyYear"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/commission/statement": {
+      "post": {
+        "summary": "Record an insurer statement",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commission"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "reference": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "$ref": "#/components/schemas/MoneyAmount"
+                  }
+                },
+                "required": [
+                  "id",
+                  "reference",
+                  "amount"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/commission/review": {
+      "post": {
+        "summary": "Approve a matching statement or dispute it",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commission"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "supervisor",
+                      "manager",
+                      "senior-manager"
+                    ]
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "disputed"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "id",
+                  "role",
+                  "outcome",
+                  "note"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/commission/disbursement": {
+      "post": {
+        "summary": "Record an external disbursement reference",
+        "description": "No money is transferred by this endpoint.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commission"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "reference": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "$ref": "#/components/schemas/MoneyAmount"
+                  }
+                },
+                "required": [
+                  "id",
+                  "reference",
+                  "amount"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/requests/open": {
+      "post": {
+        "summary": "Open a policy, endorsement, claim, commission or report conversation",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Scope"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "policy-information",
+                          "financial-endorsement",
+                          "non-financial-endorsement",
+                          "claim",
+                          "claim-settlement",
+                          "commission-query",
+                          "reporting-request"
+                        ]
+                      },
+                      "policyId": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "subject": {
+                        "type": "string",
+                        "minLength": 4,
+                        "maxLength": 2000
+                      },
+                      "message": {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "subject",
+                      "message"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/partner-portal/requests/reply": {
+      "post": {
+        "summary": "Reply to or close a service conversation",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authority or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Domain rule refused the action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 2000
+                  },
+                  "close": {
+                    "type": "boolean"
+                  },
+                  "from": {
+                    "type": "string",
+                    "enum": [
+                      "partner",
+                      "insurer"
+                    ],
+                    "description": "Simulation only; authenticated sender is derived from the bearer role."
+                  }
+                },
+                "required": [
+                  "id",
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Scope": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string"
+          },
+          "channelCode": {
+            "type": "string"
+          },
+          "subChannelCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "partnerId"
+        ]
+      },
+      "MoneyAmount": {
+        "type": "string",
+        "description": "Non-negative decimal in the partner currency; precision must not exceed that currency’s minor-unit scale."
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "items"
+        ]
+      },
+      "Access": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "demo": {
+            "type": "boolean"
+          },
+          "internal": {
+            "type": "boolean"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "partners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "partnerId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "channelCode": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "allSubchannels": {
+                  "type": "boolean"
+                },
+                "subChannels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "code",
+                      "name"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "partnerId",
+                "name",
+                "channelCode",
+                "country",
+                "currency",
+                "allSubchannels",
+                "subChannels"
+              ]
+            }
+          }
+        },
+        "required": [
+          "actor",
+          "demo",
+          "internal",
+          "roles",
+          "partners"
+        ]
+      },
+      "JourneyRef": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          }
+        },
+        "required": [
+          "caseId",
+          "scope"
+        ]
+      },
+      "Journey": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "artefacts": {
+            "type": "object"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "nextRecommended": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "caseId",
+          "customerName",
+          "scope",
+          "artefacts",
+          "stages",
+          "nextRecommended"
+        ]
+      },
+      "Application": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "caseId": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "quotationId": {
+            "type": "string"
+          },
+          "quotationVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "submittedBy": {
+            "type": "string"
+          },
+          "submittedAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "returned",
+              "rejected"
+            ]
+          },
+          "review": {
+            "type": "object",
+            "nullable": true
+          },
+          "route": {
+            "type": "object",
+            "nullable": true
+          },
+          "underwritingReview": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "caseId",
+          "scope",
+          "applicationId",
+          "quotationId",
+          "quotationVersion",
+          "fingerprint",
+          "submittedBy",
+          "submittedAt",
+          "status",
+          "review",
+          "route",
+          "underwritingReview"
+        ]
+      },
+      "Commission": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "policyId": {
+            "type": "string"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "sourceRef": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "premiumMinor": {
+            "type": "string"
+          },
+          "expectedMinor": {
+            "type": "string"
+          },
+          "bps": {
+            "type": "number"
+          },
+          "basis": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "statements": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "awaiting-statement",
+              "awaiting-review",
+              "disputed",
+              "approved"
+            ]
+          },
+          "review": {
+            "type": "object",
+            "nullable": true
+          },
+          "disbursements": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "policyId",
+          "productId",
+          "period",
+          "sourceRef",
+          "currency",
+          "premiumMinor",
+          "expectedMinor",
+          "bps",
+          "basis",
+          "createdBy",
+          "createdAt",
+          "statements",
+          "status",
+          "review",
+          "disbursements"
+        ]
+      },
+      "ServiceRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "policy-information",
+              "financial-endorsement",
+              "non-financial-endorsement",
+              "claim",
+              "claim-settlement",
+              "commission-query",
+              "reporting-request"
+            ]
+          },
+          "policyId": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string"
+          },
+          "openedBy": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in-review",
+              "closed"
+            ]
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "by": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string",
+                  "enum": [
+                    "partner",
+                    "insurer"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "by",
+                "at",
+                "from",
+                "text"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "kind",
+          "policyId",
+          "subject",
+          "openedBy",
+          "openedAt",
+          "status",
+          "messages"
+        ]
+      },
+      "Workspace": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "journeys": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "issuedPolicies": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "submittedApplications": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pendingApplications": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "approvedApplications": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "awaitingCommission": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "openRequests": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "closedRequests": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "requestsByType": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "count"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "journeys",
+              "issuedPolicies",
+              "submittedApplications",
+              "pendingApplications",
+              "approvedApplications",
+              "awaitingCommission",
+              "openRequests",
+              "closedRequests",
+              "requestsByType"
+            ]
+          },
+          "cases": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "applications": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "commissions": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "requests": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "audit": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string"
+                },
+                "accrued": {
+                  "type": "string"
+                },
+                "stated": {
+                  "type": "string"
+                },
+                "approved": {
+                  "type": "string"
+                },
+                "disbursed": {
+                  "type": "string"
+                },
+                "outstanding": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "currency",
+                "accrued",
+                "stated",
+                "approved",
+                "disbursed",
+                "outstanding"
+              ]
+            }
+          },
+          "limitation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "partnerId",
+          "summary",
+          "cases",
+          "applications",
+          "commissions",
+          "requests",
+          "audit",
+          "reports",
+          "limitation"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    }
+  }
+}

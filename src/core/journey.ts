@@ -42,6 +42,7 @@ import { LoadingBreakdown, MedicalRequirementSet, RiderPricing, RiderSelection, 
 import { DecisionOutcome, OccupationClass, ProductRules } from './underwriting.js';
 import { PaymentMethod, Reconciliation } from './payments.js';
 import { RoutingDecision, RoutingLimits, UnderwritingQueue } from './uwroute.js';
+import type { PartnerScope } from './partner-portal.js';
 
 export class JourneyError extends Error {}
 
@@ -425,6 +426,8 @@ export interface JourneyCase {
   readonly caseId: string;
   readonly openedAt: string;
   readonly openedBy: string;
+  /** Distribution attribution is set before routing and cannot be silently changed. */
+  distribution?: PartnerScope;
   /** Mutable: the golden record names the journey, and the name arrives in the first section. */
   customerName: string;
   readonly currency: string;
@@ -475,6 +478,8 @@ export interface JourneyContext {
   readonly application?: { readonly sumAssured: Money; readonly standardPremium: Money; readonly loadedPremium: Money; readonly extraMortalityBps: number; readonly outcome: DecisionOutcome; readonly referrals: readonly string[]; readonly exclusions: readonly string[]; readonly evidence: readonly string[]; readonly decidedBy: string; readonly decidedByAi: boolean } | null;
   readonly decision?: { readonly outcome: DecisionOutcome; readonly decidedBy: string; readonly decidedByAi: boolean; readonly extraMortalityBps: number; readonly loadedPremium: Money } | null;
   readonly routing?: RoutingDecision | null;
+  readonly partnerRoutingBlocker?: string | null;
+  readonly partnerConversionBlocker?: string | null;
   readonly payment?: Reconciliation | null;
   readonly quotation?: { readonly quotationId: string; readonly version: number; readonly status: string; readonly totalPayable: Money; readonly expiresAt: string; readonly dispatched: boolean; readonly finalised: boolean; readonly blockers: readonly string[] } | null;
   readonly policy?: { readonly policyId: string; readonly status: string; readonly contributionsToDate: Money; readonly commencement: string; readonly currentValue: Money; readonly holdings: ReadonlyArray<{ fundId: string; fundName: string; units: string; price: string; value: Money; priceAsOf: string }>; readonly targetWeights: ReadonlyArray<{ fundId: string; weightBps: number }> } | null;
@@ -1051,6 +1056,9 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
     const recon = ctx.payment;
     const due = ctx.quotation?.totalPayable ?? money(0n, ctx.currency);
     const captured = Boolean(recon && recon.payments.length > 0);
+    // Do not collect a partner customer's payment while the signed application is awaiting
+    // approval. Direct (unattributed) journeys have no partner blocker and are unchanged.
+    if (!captured && ctx.partnerRoutingBlocker) blockers.push(ctx.partnerRoutingBlocker);
     if (due.minor === 0n) {
       blockers.push('There is no amount due yet — the quotation has to be issued first');
     } else if (!captured) {
@@ -1094,6 +1102,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
     const gaps = fieldGaps(stageSpec('routing'), computed, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
+    if (ctx.partnerRoutingBlocker) blockers.push(ctx.partnerRoutingBlocker);
     if (!routing) blockers.push('The route has not been decided yet — submit this section to route the case');
     if (routing) {
       if (a['reinsuranceAnswer'] === 'decline') blockers.push('The reinsurer declined the risk: it cannot be bound on this treaty');
@@ -1123,6 +1132,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
       ], artefacts: ['Policy number', 'First premium receipt and journal', 'Units allocated at the dealing valuation'] };
     }
     const decision = ctx.decision ?? ctx.application;
+    if (ctx.partnerConversionBlocker) blockers.push(ctx.partnerConversionBlocker);
     if (!decision) blockers.push('There is no underwriting decision to convert');
     else if (decision.outcome === 'declined' || decision.outcome === 'postponed') blockers.push(`The decision is "${decision.outcome}": the proposal cannot become a policy`);
     else if (decision.outcome === 'referred') blockers.push('The case is still referred; a decision under authority is needed before conversion');

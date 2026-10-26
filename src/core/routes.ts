@@ -34,7 +34,7 @@ import { IdType, IdentityDocument } from './party.js';
 import { FinancialAlterationKind, NonFinancialAlterationKind, PaymentFrequency, PolicyCategory, PolicyStatus } from './erp.js';
 import { Locale } from './labels.js';
 import { RiskClass } from './ai.js';
-import { productCatalogue, serialiseJourneyProgress } from './journeydesk.js';
+import { JourneyDeskError, productCatalogue, serialiseJourneyProgress } from './journeydesk.js';
 import { Mailer } from './mailer.js';
 import { EmailConfigError } from './email-config.js';
 import { buildIllustration, illustrationView } from './illustration.js';
@@ -56,6 +56,8 @@ import {
   resolveCustomerAutoPick,
 } from './autopick.js';
 import { dataPlaneReport, mintIds } from './dataplane.js';
+import { PartnerAccessError, PartnerPortalError, SERVICE_KINDS } from './partner-portal.js';
+import type { PartnerScope, PartnerReviewer } from './partner-portal.js';
 
 export interface RuntimeState {
   world: World;
@@ -146,8 +148,9 @@ export { RequestValidationError };
  * `*Error` classes the engines throw) 409, everything else a logged 500. Plain `Error`s and JS
  * builtins are programmer errors, never client answers.
  */
-export function httpStatusForError(err: unknown): 400 | 409 | 500 {
+export function httpStatusForError(err: unknown): 400 | 403 | 409 | 500 {
   if (err instanceof RequestValidationError) return 400;
+  if (err instanceof PartnerAccessError) return 403;
   return isDomainRefusal(err) ? 409 : 500;
 }
 
@@ -155,6 +158,62 @@ export function isDomainRefusal(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const ctor = err.constructor as { name?: string } | undefined;
   return typeof ctor === 'function' && !JS_BUILTINS.has(ctor) && /Error$/.test(ctor.name ?? '');
+}
+
+interface PortalPrincipal { name: string; roles: readonly string[]; demo: boolean }
+function portalPrincipal(payload: Record<string, unknown>): PortalPrincipal {
+  // The server overwrites __partnerAuth; absence is the intentionally open offline runtime.
+  const raw = payload['__partnerAuth'] as PortalPrincipal | undefined;
+  return raw ?? { name: String(payload['by'] ?? 'demo-operator'), roles: ['admin'], demo: true };
+}
+function partnerScoped(p: PortalPrincipal): boolean { return p.roles.some((r) => r.toLowerCase().startsWith('partner:')); }
+function isInternal(p: PortalPrincipal, roles: readonly string[]): boolean {
+  return p.demo || (!partnerScoped(p) && p.roles.some((r) => ['admin', 'administration', ...roles].includes(r)));
+}
+function canAccessScope(p: PortalPrincipal, scope: PartnerScope): boolean {
+  if (p.demo || isInternal(p, ['partner-insurer', 'partner-underwriter', 'partner-finance'])) return true;
+  const partnerClaims = p.roles.filter((r) => r.toLowerCase().startsWith('partner:')).map((r) => r.slice(8).toUpperCase());
+  const subClaims = p.roles.filter((r) => r.toLowerCase().startsWith('subchannel:')).map((r) => r.slice(11).toUpperCase());
+  return partnerClaims.includes(scope.partnerId) && (subClaims.length === 0 || (scope.subChannelCode !== null && subClaims.includes(scope.subChannelCode)));
+}
+function requireScope(p: PortalPrincipal, scope: PartnerScope): void {
+  if (!canAccessScope(p, scope)) throw new PartnerAccessError('partner or sub-channel access denied');
+}
+/** Do not reveal whether a guessed case or record exists outside the caller's scope. */
+function scopedRecord<T extends { scope: PartnerScope }>(p: PortalPrincipal, find: () => T): T {
+  let record: T;
+  try { record = find(); }
+  catch (error) { if (error instanceof PartnerPortalError) throw new PartnerAccessError('record not found or access denied'); throw error; }
+  if (!canAccessScope(p, record.scope)) throw new PartnerAccessError('record not found or access denied');
+  return record;
+}
+function portalJourney(state: RuntimeState, p: PortalPrincipal, id: string) {
+  let c;
+  try { c = state.world.journey.get(id); }
+  catch (error) { if (error instanceof JourneyDeskError) throw new PartnerAccessError('journey not found or access denied'); throw error; }
+  if (!c.distribution || !canAccessScope(p, c.distribution)) throw new PartnerAccessError('journey not found or access denied');
+  return c;
+}
+function requirePartnerAction(p: PortalPrincipal): void {
+  if (p.demo || isInternal(p, ['partner-insurer', 'partner-underwriter']) || (partnerScoped(p) && p.roles.some((r) => ['partner-agent', 'partner-supervisor', 'partner-manager', 'partner-senior-manager'].includes(r)))) return;
+  throw new PartnerAccessError('this action requires a partner operator role');
+}
+function requireReviewer(p: PortalPrincipal, role: PartnerReviewer): void {
+  if (p.demo || (partnerScoped(p) && p.roles.includes(`partner-${role}`))) return;
+  throw new PartnerAccessError('the authenticated partner principal must hold the requested reviewer role');
+}
+function requireInternal(p: PortalPrincipal, roles: readonly string[]): void {
+  if (!isInternal(p, roles)) throw new PartnerAccessError('this operation requires an insurer authority role');
+}
+function portalActor(p: PortalPrincipal, payload: Record<string, unknown>): string {
+  return p.demo ? String(payload['by'] ?? p.name).trim() || 'demo-operator' : p.name;
+}
+function portalScope(state: RuntimeState, payload: Record<string, unknown>, quote = false): PartnerScope {
+  return state.world.partnerPortal.scope(state.world, {
+    partnerId: reqString(payload, 'partnerId'),
+    ...(payload['channelCode'] ? { channelCode: reqString(payload, 'channelCode') } : {}),
+    ...(payload['subChannelCode'] ? { subChannelCode: reqString(payload, 'subChannelCode') } : {}),
+  }, quote);
 }
 
 export async function dispatchApiRoute(
@@ -2905,6 +2964,153 @@ export async function dispatchApiRoute(
     case 'POST /extracts/verify': {
       const id = String(payload['extractId'] ?? extractSnapshot(state.world).conventional.id);
       return ok(state.world.extracts.verify(id));
+    }
+
+    /* ------------------------------------------- scoped partner workspace */
+    case 'POST /partner-portal/demo/setup': {
+      const principal = portalPrincipal(payload);
+      if (!principal.demo) throw new PartnerAccessError('sample data can only be filed in open demo mode');
+      const channels = state.world.erp.channels;
+      if (channels.listChannels().length || channels.listPartners().length) throw new PartnerAccessError('sample setup only runs on an empty channel register');
+      const at = state.now(); const by = 'sample-workspace';
+      channels.bootstrap(at, by);
+      channels.upsertPartner({ partnerId: 'DEMO-BROKER', name: 'Harbour Brokers', channelCode: 'BROKER', country: 'AE', currency: 'AED', productIds: ['PROD-UL-GLOBAL', 'PROD-LIFE-TERM'], commissionBps: [1500, 500], by, at });
+      channels.upsertPartner({ partnerId: 'DEMO-BANK', name: 'Cedar Bank', channelCode: 'BANCASSURANCE', country: 'AE', currency: 'AED', productIds: ['PROD-LIFE-TERM'], commissionBps: [1200, 400], by, at });
+      channels.upsertSubChannel({ code: 'DEMO-BROKER-DESK', name: 'Harbour advisory desk', parentChannelCode: 'BROKER', partnerId: 'DEMO-BROKER', channelType: 'agency-post', by, at });
+      channels.upsertSubChannel({ code: 'DEMO-BANK-BRANCH', name: 'Cedar branch', parentChannelCode: 'BANCASSURANCE', partnerId: 'DEMO-BANK', channelType: 'bancassurance-counter', by, at });
+      state.world.partnerPortal.openRequest(state.world, { scope: { partnerId: 'DEMO-BROKER', channelCode: 'BROKER', subChannelCode: 'DEMO-BROKER-DESK' }, kind: 'reporting-request', subject: 'Monthly distribution report', message: 'Please share the current monthly distribution report.', by: 'sample-agent', at });
+      return ok({ created: true });
+    }
+    case 'GET /partner-portal/access': {
+      const principal = portalPrincipal(payload);
+      const partners = state.world.erp.channels.listPartners().filter((partner) => {
+        const subclaims = principal.roles.filter((r) => r.toLowerCase().startsWith('subchannel:'));
+        const base = { partnerId: partner.partnerId, channelCode: partner.channelCode, subChannelCode: null };
+        return canAccessScope(principal, base) || (subclaims.length > 0 && state.world.erp.channels.listSubChannels(partner.channelCode).some((sub) => sub.enabled && (!sub.partnerId || sub.partnerId === partner.partnerId) && canAccessScope(principal, { ...base, subChannelCode: sub.code })));
+      }).filter((partner) => partner.enabled && state.world.erp.channels.channel(partner.channelCode)?.enabled);
+      return ok({
+        actor: principal.demo ? 'Demo mode: simulated identities' : principal.name,
+        demo: principal.demo, internal: isInternal(principal, ['partner-insurer', 'partner-underwriter', 'partner-finance']),
+        roles: principal.roles.filter((r) => !r.startsWith('partner:') && !r.startsWith('subchannel:')),
+        partners: partners.map((p) => ({ partnerId: p.partnerId, name: p.name, channelCode: p.channelCode, country: p.country, currency: p.currency,
+          allSubchannels: canAccessScope(principal, { partnerId: p.partnerId, channelCode: p.channelCode, subChannelCode: null }),
+          subChannels: state.world.erp.channels.listSubChannels(p.channelCode).filter((s) => s.enabled && (!s.partnerId || s.partnerId === p.partnerId) && canAccessScope(principal, { partnerId: p.partnerId, channelCode: p.channelCode, subChannelCode: s.code })).map((s) => ({ code: s.code, name: s.name })) })),
+      });
+    }
+    case 'GET /partner-portal/workspace': {
+      const principal = portalPrincipal(payload);
+      const partnerId = (searchParams.get('partnerId') ?? '').trim().toUpperCase();
+      if (!partnerId) throw new RequestValidationError('partnerId is required');
+      const partner = state.world.erp.channels.partner(partnerId);
+      if (!partner || !partner.enabled) throw new PartnerAccessError('partner access denied');
+      const base = { partnerId, channelCode: partner.channelCode, subChannelCode: null };
+      const allowedSub = state.world.erp.channels.listSubChannels(partner.channelCode).some((s) => s.enabled && (!s.partnerId || s.partnerId === partnerId) && canAccessScope(principal, { ...base, subChannelCode: s.code }));
+      if (!canAccessScope(principal, base) && !allowedSub) throw new PartnerAccessError('partner access denied');
+      const subChannelCode = (searchParams.get('subChannelCode') ?? '').trim().toUpperCase();
+      if (subChannelCode) {
+        const selected = state.world.partnerPortal.scope(state.world, { partnerId, subChannelCode });
+        requireScope(principal, selected);
+      }
+      const paging = { offset: searchParams.get('offset') ?? '0', limit: searchParams.get('limit') ?? '50' };
+      const offset = reqInt(paging, 'offset', { min: 0, max: 1000000 });
+      const limit = reqInt(paging, 'limit', { min: 1, max: 100 });
+      return ok(state.world.partnerPortal.workspace(state.world, partnerId, (scope) => canAccessScope(principal, scope) && (!subChannelCode || scope.subChannelCode === subChannelCode), offset, limit));
+    }
+    case 'GET /partner-portal/journey': {
+      const principal = portalPrincipal(payload);
+      const c = portalJourney(state, principal, searchParams.get('caseId') ?? '');
+      const progress = state.world.journey.progress(state.world, c.caseId);
+      const allowedStages = new Set(['identity', 'profile', 'needs', 'recommendation', 'coverage', 'loadings', 'riders', 'medical', 'funds', 'beneficiaries', 'uw-review', 'quotation', 'finalisation']);
+      return ok({ caseId: c.caseId, customerName: c.customerName, scope: c.distribution,
+        artefacts: { applicationId: c.artefacts.applicationId ?? null, quotationId: c.artefacts.quotationId ?? null, policyId: c.artefacts.policyId ?? null },
+        stages: progress.stages.filter((s) => allowedStages.has(s.id)).map((s) => ({ id: s.id, title: s.title, status: s.status, complete: s.complete, missing: s.missing, blockers: s.blockers,
+          fields: s.fields.filter((f) => f.editable && f.kind !== 'readonly').map((f) => ({ id: f.id, label: f.label, kind: f.kind, mandatory: f.mandatory, options: f.options ?? [], hint: f.hint ?? '' })),
+          answers: Object.fromEntries(Object.entries(c.answers[s.id]).filter(([k]) => !k.startsWith('__'))) })), nextRecommended: progress.nextRecommended });
+    }
+    case 'POST /partner-portal/journey/open': {
+      const principal = portalPrincipal(payload); requirePartnerAction(principal);
+      const scope = portalScope(state, payload, true); requireScope(principal, scope);
+      const partner = state.world.erp.channels.partner(scope.partnerId)!;
+      const by = portalActor(principal, payload); const at = state.now();
+      const c = state.world.journey.open(state.world, { customerName: reqString(payload, 'customerName'), country: partner.country, currency: partner.currency, by, at });
+      state.world.partnerPortal.attach(state.world, { caseId: c.caseId, scope, by, at });
+      return ok({ caseId: c.caseId, scope });
+    }
+    case 'POST /partner-portal/journey/attach': {
+      const principal = portalPrincipal(payload); requirePartnerAction(principal);
+      const scope = portalScope(state, payload, true); requireScope(principal, scope);
+      const c = state.world.journey.get(reqString(payload, 'caseId'));
+      if (partnerScoped(principal) && c.openedBy !== principal.name) throw new PartnerAccessError('only the journey creator or insurer may attribute this journey');
+      state.world.partnerPortal.attach(state.world, { caseId: c.caseId, scope, by: portalActor(principal, payload), at: state.now() });
+      return ok({ caseId: c.caseId, scope });
+    }
+    case 'POST /partner-portal/journey/stage': {
+      const principal = portalPrincipal(payload); requirePartnerAction(principal);
+      const c = portalJourney(state, principal, reqString(payload, 'caseId'));
+      const stage = reqEnum(payload, 'stageId', ['identity', 'profile', 'needs', 'recommendation', 'coverage', 'loadings', 'riders', 'medical', 'funds', 'beneficiaries', 'uw-review', 'quotation', 'finalisation'] as const);
+      if (stage === 'uw-review') requireInternal(principal, ['partner-underwriter']);
+      const raw = payload['answers'];
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new RequestValidationError('answers must be a JSON object');
+      const args = { caseId: c.caseId, stageId: stage, answers: raw as Record<string, unknown>, by: portalActor(principal, payload), at: state.now() };
+      const action = reqEnum(payload, 'action', ['save', 'submit'] as const);
+      if (action === 'save') { state.world.journey.save(state.world, args); return ok({ saved: true, caseId: c.caseId, stageId: stage }); }
+      const result = state.world.journey.submit(state.world, args);
+      return ok({ caseId: c.caseId, stageId: stage, accepted: result.accepted, reason: result.reason, artefacts: result.artefacts });
+    }
+    case 'POST /partner-portal/applications/submit': {
+      const principal = portalPrincipal(payload); requirePartnerAction(principal);
+      const c = portalJourney(state, principal, reqString(payload, 'caseId'));
+      return ok(state.world.partnerPortal.submit(state.world, { caseId: c.caseId, by: portalActor(principal, payload), at: state.now() }));
+    }
+    case 'POST /partner-portal/applications/review': {
+      const principal = portalPrincipal(payload);
+      const id = reqString(payload, 'id'); const row = scopedRecord(principal, () => state.world.partnerPortal.application(id));
+      const role = reqEnum(payload, 'role', ['supervisor', 'manager', 'senior-manager'] as const); requireReviewer(principal, role);
+      const outcome = reqEnum(payload, 'outcome', ['approved', 'returned', 'rejected'] as const);
+      const by = portalActor(principal, payload); const note = reqString(payload, 'note');
+      if (row.status === 'approved' && outcome === 'returned') {
+        if (row.submittedBy === by) throw new PartnerAccessError('the submitter cannot return their own approved application');
+        return ok(state.world.partnerPortal.returnApproved(state.world, { id, by, note, at: state.now() }));
+      }
+      return ok(state.world.partnerPortal.decide(state.world, { id, by, role, outcome, note, at: state.now() }));
+    }
+    case 'POST /partner-portal/underwriting/review': {
+      const principal = portalPrincipal(payload); requireInternal(principal, ['partner-underwriter']);
+      const id = reqString(payload, 'id'); const row = scopedRecord(principal, () => state.world.partnerPortal.application(id));
+      return ok(state.world.partnerPortal.underwritingReview(state.world, { id, by: portalActor(principal, payload), note: reqString(payload, 'note'), at: state.now() }));
+    }
+    case 'POST /partner-portal/commission/accrue': {
+      const principal = portalPrincipal(payload); requireInternal(principal, ['partner-finance']);
+      const scope = portalScope(state, payload); requireScope(principal, scope);
+      return ok(state.world.partnerPortal.accrue(state.world, { scope, policyId: reqString(payload, 'policyId'), period: reqString(payload, 'period'), sourceRef: reqString(payload, 'sourceRef'), premium: reqString(payload, 'premium'), policyYear: reqInt(payload, 'policyYear', { min: 1, max: 100 }), by: portalActor(principal, payload), at: state.now() }));
+    }
+    case 'POST /partner-portal/commission/statement': {
+      const principal = portalPrincipal(payload); requireInternal(principal, ['partner-finance']);
+      const id = reqString(payload, 'id'); const row = scopedRecord(principal, () => state.world.partnerPortal.commission(id));
+      return ok(state.world.partnerPortal.statement({ id, reference: reqString(payload, 'reference'), amount: reqString(payload, 'amount'), by: portalActor(principal, payload), at: state.now() }));
+    }
+    case 'POST /partner-portal/commission/review': {
+      const principal = portalPrincipal(payload);
+      const id = reqString(payload, 'id'); const row = scopedRecord(principal, () => state.world.partnerPortal.commission(id));
+      const role = reqEnum(payload, 'role', ['supervisor', 'manager', 'senior-manager'] as const); requireReviewer(principal, role);
+      return ok(state.world.partnerPortal.reviewCommission({ id, outcome: reqEnum(payload, 'outcome', ['approved', 'disputed'] as const), note: reqString(payload, 'note'), by: portalActor(principal, payload), at: state.now() }));
+    }
+    case 'POST /partner-portal/commission/disbursement': {
+      const principal = portalPrincipal(payload); requireInternal(principal, ['partner-finance']);
+      const id = reqString(payload, 'id'); const row = scopedRecord(principal, () => state.world.partnerPortal.commission(id));
+      return ok(state.world.partnerPortal.disbursement({ id, reference: reqString(payload, 'reference'), amount: reqString(payload, 'amount'), by: portalActor(principal, payload), at: state.now() }));
+    }
+    case 'POST /partner-portal/requests/open': {
+      const principal = portalPrincipal(payload); requirePartnerAction(principal);
+      const scope = portalScope(state, payload); requireScope(principal, scope);
+      return ok(state.world.partnerPortal.openRequest(state.world, { scope, kind: reqEnum(payload, 'kind', SERVICE_KINDS), ...(payload['policyId'] ? { policyId: reqString(payload, 'policyId') } : {}), subject: reqString(payload, 'subject'), message: reqString(payload, 'message'), by: portalActor(principal, payload), at: state.now() }));
+    }
+    case 'POST /partner-portal/requests/reply': {
+      const principal = portalPrincipal(payload);
+      const id = reqString(payload, 'id'); const row = scopedRecord(principal, () => state.world.partnerPortal.request(id));
+      const from = principal.demo ? reqEnum(payload, 'from', ['partner', 'insurer'] as const, 'partner') : partnerScoped(principal) ? 'partner' : 'insurer';
+      if (from === 'partner') requirePartnerAction(principal); else requireInternal(principal, ['partner-insurer']);
+      return ok(state.world.partnerPortal.reply({ id, from, by: portalActor(principal, payload), at: state.now(), message: reqString(payload, 'message'), close: optBool(payload, 'close') ?? false }));
     }
 
     /* ------------------------------------------- the guided customer lifecycle journey

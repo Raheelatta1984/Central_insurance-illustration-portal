@@ -415,6 +415,8 @@ export class JourneyDesk {
         extraMortalityBps: decision.extraMortalityBps, loadedPremium: decision.loadedPremium,
       } : null,
       routing,
+      partnerRoutingBlocker: w.partnerPortal?.gate(w, caze, routing) ?? null,
+      partnerConversionBlocker: w.partnerPortal?.gate(w, caze, routing, true) ?? null,
       payment,
       quotation: quotationRecord ? {
         quotationId: quotationRecord.quotationId,
@@ -445,6 +447,7 @@ export class JourneyDesk {
 
   save(w: World, input: { caseId: string; stageId: JourneyStageId; answers: Answers; by?: string; at?: string }): JourneyProgress {
     const caze = this.get(input.caseId);
+    w.partnerPortal?.assertEditable(caze, input.stageId);
     const at = input.at ?? `${w.asOf}T10:00:00+04:00`;
     this.assertEditable(input.stageId, input.answers, caze.answers[input.stageId]);
     caze.answers[input.stageId] = { ...caze.answers[input.stageId], ...input.answers };
@@ -461,6 +464,7 @@ export class JourneyDesk {
   submit(w: World, input: { caseId: string; stageId: JourneyStageId; answers?: Answers; by?: string; at?: string }): SubmitResult {
     const caze = this.get(input.caseId);
     const stageId = input.stageId;
+    w.partnerPortal?.assertEditable(caze, stageId);
     const at = input.at ?? `${w.asOf}T11:00:00+04:00`;
     const by = input.by?.trim() || 'operator';
     if (input.answers) {
@@ -944,6 +948,7 @@ export class JourneyDesk {
           : null;
         const converted = w.erp.convertProposalToPolicy(w, {
           applicationId: caze.artefacts.applicationId,
+          partnerJourneyCaseId: caze.distribution ? caze.caseId : undefined,
           paymentFrequency: String(caze.answers['coverage']?.['paymentFrequency'] ?? 'annual') as 'annual',
           beneficiaryName: primary?.name ?? caze.customerName,
           beneficiaryRelationship: primary?.relationship ?? 'family',
@@ -1303,7 +1308,7 @@ export class JourneyDesk {
         });
         return {
           caseId: c.caseId, customerName: c.customerName, status: c.status, openedAt: c.openedAt,
-          openedBy: c.openedBy, country: c.country, currency: c.currency,
+          openedBy: c.openedBy, country: c.country, currency: c.currency, distribution: c.distribution ?? null,
           artefacts: { ...c.artefacts },
           autoPick,
           log: [...c.log].reverse().map((l) => ({ ...l })),

@@ -1011,6 +1011,8 @@ export class ErpManager {
 
   convertProposalToPolicy(w: World, input: {
     applicationId: string;
+    /** Internal journey-only marker; the HTTP conversion endpoint never accepts it. */
+    partnerJourneyCaseId?: string;
     policyId?: string;
     paymentFrequency?: PaymentFrequency;
     beneficiaryName?: string;
@@ -1022,6 +1024,14 @@ export class ErpManager {
     at?: string;
   }): { policy: ErpPolicy; initialReceipt?: PremiumReceipt } {
     const app = w.underwriting.application(input.applicationId);
+    const partnerCase = w.journey?.list().find((c) => c.artefacts.applicationId === app.id && c.distribution);
+    if (partnerCase) {
+      if (input.partnerJourneyCaseId !== partnerCase.caseId) throw new ErpError('partner applications must be converted through their approved customer journey');
+      const route = w.journey.context(w, partnerCase).routing;
+      const blocker = w.partnerPortal.gate(w, partnerCase, route, true);
+      if (blocker) throw new ErpError(blocker);
+      if (!partnerCase.artefacts.routeId || !w.journey.context(w, partnerCase).payment?.clearsDue) throw new ErpError('partner conversion requires recorded underwriting routing and cleared payment');
+    }
     let decision = app.decision;
     if (!decision || decision.outcome === 'referred') {
       // If a human converts a referred proposal directly, decide it as senior-underwriter first

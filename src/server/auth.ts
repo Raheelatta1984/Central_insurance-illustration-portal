@@ -99,6 +99,22 @@ export function authorize(
   path: string,
   payload: Record<string, unknown>,
 ): string | null {
+  // Partner accounts never inherit the unscoped console's broad reads or writes. Their
+  // usable surface is the scoped portal, whose dispatcher checks partner/sub-channel claims.
+  const partnerScoped = principal.roles.some((role) => role.toLowerCase().startsWith('partner:'));
+  const partnerOperator = principal.roles.some((role) => ['partner-agent', 'partner-supervisor', 'partner-manager', 'partner-senior-manager', 'partner-viewer'].includes(role));
+  if (partnerOperator && !partnerScoped && path !== '/health') return 'partner roles require a partner:<ID> scope claim';
+  if (partnerScoped && path !== '/health' && !path.startsWith('/partner-portal/')) {
+    return 'partner principals may only use the scoped partner portal';
+  }
+  if (path.startsWith('/partner-portal/')) {
+    const internal = ['admin', 'administration', 'partner-insurer', 'partner-underwriter', 'partner-finance'];
+    const partnerRoles = ['partner-agent', 'partner-supervisor', 'partner-manager', 'partner-senior-manager', 'partner-viewer'];
+    if (partnerScoped ? !principal.roles.some((role) => partnerRoles.includes(role)) : !principal.roles.some((role) => internal.includes(role))) {
+      return 'partner portal requires an explicitly scoped partner role or an insurer portal role';
+    }
+    return null; // operation-specific authority and record scope are checked by the dispatcher
+  }
   if (method === 'GET' || method === 'OPTIONS') return null;
   if (path === '/reset' && !principal.roles.includes('admin') && !principal.roles.includes('administration')) {
     return 'resetting the world requires an admin principal';

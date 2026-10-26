@@ -273,6 +273,9 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
       // The audit actor is who authenticated, never a string the caller chose.
       if (method !== 'GET') payload = { ...payload, by: principal.name, __principal: principal.name };
     }
+    // The partner dispatcher consumes this server-stamped context even for GET. Never trust
+    // a same-named body field. Open demo mode permits simulated names and clearly says so.
+    if (principal) payload = { ...payload, __partnerAuth: { name: principal.name, roles: principal.roles, demo: !auth.enabled } };
 
     const keyHeader = req.headers['idempotency-key'];
     const key = Array.isArray(keyHeader) ? keyHeader[0] : keyHeader;

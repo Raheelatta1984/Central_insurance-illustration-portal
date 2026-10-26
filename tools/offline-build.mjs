@@ -94,6 +94,10 @@ if (!m) throw new Error('no bundle found in dist/index.html');
 const bundlePath = resolve(ROOT, 'dist', m[1].replace(/^\//, ''));
 const bundle = readFileSync(bundlePath, 'utf8');
 const bundleSafe = bundle.replace(/<\/script/gi, '<\\/script');
+// Vite extracts imported CSS. The offline file must carry it, not refer to a server-only /assets URL.
+const cssPaths = [...html.matchAll(/href="(\/assets\/[^"]+\.css)"/g)].map((match) => match[1]);
+const cssSafe = cssPaths.map((path) => readFileSync(resolve(ROOT, 'dist', path.replace(/^\//, '')), 'utf8'))
+  .join('\n').replace(/<\/style/gi, '<\\/style');
 
 const captured = new Set(Object.keys(record.responses));
 const shim = `
@@ -190,6 +194,7 @@ const out = `<!doctype html>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Central Insurance ERP — offline replay</title>
+    <style>${cssSafe}</style>
     <script>${shim}</script>
     <script type="module">${bundleSafe}</script>
   </head>

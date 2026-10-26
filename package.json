@@ -26,6 +26,7 @@
     "test:coverage": "vitest run --coverage",
     "docs:api": "node tools/api-doc.mjs",
     "test:e2e": "node tools/e2e-smoke.mjs",
+    "test:e2e:partner": "node tools/partner-portal-e2e.mjs",
     "smoke": "vitest run src/server/main.test.ts src/ui/api.test.ts --reporter=dot",
     "mail:smoke": "node tools/mail-smoke.mjs",
     "infra:plan": "node tools/dataplane.mjs",
