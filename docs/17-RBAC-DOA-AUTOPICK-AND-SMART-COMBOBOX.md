@@ -1,4 +1,4 @@
-# 17 · Pre-Load Security Gate, 36-Role RBAC, Role Authority Tiers, DOA Approval Engine, Smart Auto-Pick & Actuarial Age Rules
+# 17 · Pre-Load Security Gate, 39-Role RBAC, Role Authority Tiers, DOA Approval Engine, Smart Auto-Pick & Actuarial Age Rules
 
 This document describes the enterprise security governance layer, Delegation of Authority (DOA) approval & notification engine, zero-duplicate Smart Auto-Pick memory, reusable AI-assisted `<SmartComboBox />` controls, and configurable Master Settings DOB-to-Insurance-Age engine built into `Central_insurance-illustration-portal`.
 
@@ -6,15 +6,15 @@ This document describes the enterprise security governance layer, Delegation of 
 
 ---
 
-## 1. Pre-Load Security & 36-Role Workspace Gate
+## 1. Pre-Load Security & 39-Role Workspace Gate
 
-Prior to opening the ERP console, operators land on **`<ProfileSelectionGate />`** (`src/ui/rbac-views.tsx`, exported too as `<RoleSelectionGate />`), backed by `SecurityGovernanceRegistry` (`src/core/rbac.ts`). The gate lists all 36 roles with their authority tier, searchable and filterable by family, and offers access guard banners (`<ProfileAccessGuardBanner />` / `<RoleAccessGuardBanner />`) when the active role is missing a tab.
+Prior to opening the ERP console, operators land on **`<ProfileSelectionGate />`** (`src/ui/rbac-views.tsx`, exported too as `<RoleSelectionGate />`), backed by `SecurityGovernanceRegistry` (`src/core/rbac.ts`). The gate lists all 39 roles with their authority tier, searchable and filterable by family, and offers access guard banners (`<ProfileAccessGuardBanner />` / `<RoleAccessGuardBanner />`) when the active role is missing a tab.
 
-### Supported Enterprise Roles (All 36 Built-In)
+### Supported Enterprise Roles (All 39 Built-In)
 
-1. **`administration`** — **Executive** · **Unrestricted Complete Access** across **all 31 tabs** (the **only** role granted the `Access & DOA` and `Role access matrix` governance tabs), **every section**, **every sub-section**, full unmasked PII, and unlimited DOA override authority (`doaLimitMinor = null`).
+1. **`administration`** — **Executive** · **Unrestricted Complete Access** across **all 34 tabs** (the **only** role granted the `Access & DOA` and `Role access matrix` governance tabs), **every section**, **every sub-section**, full unmasked PII, and unlimited DOA override authority (`doaLimitMinor = null`).
 2. **`supervisor`** — **Supervisor** · Operations Desk Supervisor.
-3. **`configurator`** — **Officer** · Product, Tariff & Master Data Configurator.
+3. **`configurator`** — **Officer** · Configuration Analyst (Product, Rating, Distribution & Platform Configuration).
 4. **`underwriter-officer`** — **Officer** · Life, Medical & General Risk Underwriter Officer.
 5. **`underwriter-manager`** — **Manager** · Head of Underwriting & Facultative Referrals.
 6. **`retention-officer`** — **Officer** · Policy Conservation & Retention Officer.
@@ -48,8 +48,11 @@ Prior to opening the ERP console, operators land on **`<ProfileSelectionGate />`
 34. **`bank-manager`** — **Manager** · Partner Bank Regional / Head Manager.
 35. **`branch-officer`** — **Officer** · Retail Bank Branch Frontline Officer.
 36. **`branch-manager`** — **Manager** · Retail Bank Branch Manager.
+37. **`omni-channel-coordinator`** — **Supervisor** · Per-Channel Distribution Configuration Coordinator; clone with one `channelScope` per real channel.
+38. **`partner-coordinator`** — **Supervisor** · Per-Partner Distribution Configuration Coordinator; clone with one `partnerScope` per real partner.
+39. **`sub-channel-coordinator`** — **Supervisor** · Per-Sub-Channel Partner Distribution Configuration Coordinator; clone with `subChannelScope` and `partnerScope`.
 
-Tier counts are derived from the seed ids, not hand-maintained: **22 officer · 4 supervisor · 9 manager · 1 executive** (`worldSnapshot().security.authorities`).
+Tier counts are derived from the seed ids, not hand-maintained: **22 officer · 7 supervisor · 9 manager · 1 executive** (`worldSnapshot().security.authorities`).
 
 ---
 
@@ -57,7 +60,7 @@ Tier counts are derived from the seed ids, not hand-maintained: **22 officer · 
 
 Permissions resolve deterministically across three levels (`'full' | 'read' | 'none'`):
 
-1. **Tab Level** (`tabAccess[tabId]`) across all **31** console tabs (`TABS`, matching `CONSOLE_TABS`). `access-doa` (**Access & DOA**) and `role-matrix` (**Role access matrix**) are restricted strictly to **`administration`** (`ADMIN_ONLY_TAB_IDS`) and deleted from all 35 non-administrator profiles.
+1. **Tab Level** (`tabAccess[tabId]`) across all **34** console tabs (`TABS`, matching `CONSOLE_TABS`). `access-doa` (**Access & DOA**) and `role-matrix` (**Role access matrix**) are restricted strictly to **`administration`** (`ADMIN_ONLY_TAB_IDS`) and deleted from all 38 non-administrator roles.
 2. **Section Level** (`sectionAccess['tabId:sectionId']`).
 3. **Sub-Section Level** (`subSectionAccess['tabId:sectionId:subSectionId']`).
 
@@ -104,14 +107,14 @@ The rules the engine actually enforces:
 
 A dedicated console tab, **`role-matrix`** ("Role Access Matrix"), placed directly after `access-doa`, gives each role its own hierarchical enable/disable surface:
 
-- **Role directory** (`role-directory`): all 36 roles with tier, family, Entity × Channel × Sub-Channel scope, DOA cap, full/read tab counts, landing tab, *Inspect tree* and *Switch session* actions, family filters and search.
-- **Visibility tree** (`access-tree`): every tab expands into its sections and sub-sections (`SECURITY_SURFACE_CATALOGUE`, 30 tabs). Each node is set to **Full — visible & editable**, **Read-only — visible, locked**, **Hidden — not in navigation**, or **inherit** from its parent. Nodes carry their *effective* level so inherited values are visible, not guessed. This is the mechanism that decides, for example, which tabs and sections a banker sees on the policyholder tab.
+- **Role directory** (`role-directory`): all 39 roles with tier, family, Entity × Channel × Sub-Channel × Partner scope, DOA cap, full/read tab counts, landing tab, *Inspect tree* and *Switch session* actions, family filters and search.
+- **Visibility tree** (`access-tree`): every tab expands into its sections and sub-sections (`SECURITY_SURFACE_CATALOGUE`, 34 tabs). Each node is set to **Full — visible & editable**, **Read-only — visible, locked**, **Hidden — not in navigation**, or **inherit** from its parent. Nodes carry their *effective* level so inherited values are visible, not guessed. This is the mechanism that decides, for example, which tabs and sections a banker sees on the policyholder tab.
 - **DOA limits & limit-increase requests** (`doa-limits`): cap editor for supervisor/manager actors, plus the officer "Request a DOA limit increase" form and the approver path that applies it.
 - **Access & DOA change audit trail** (`role-audit`): every role creation, node override, DOA action grant, cap change and applied limit increase.
 
 Storage is override-only: `tabAccess` holds a level for every tab, while `sectionAccess` / `subSectionAccess` only hold **explicit** overrides. A missing key means *inherit*, which is what makes the tree explainable: moving a tab moves the whole branch unless a child was deliberately pinned. `'inherit'` is accepted by `setRoleNodeAccess` and clears the override; `'full'` / `'read'` / `'none'` cascade down the branch.
 
-Enforcement is server-side in the registry, not just hidden in the UI: **both `access-doa` and `role-matrix` are restricted strictly to `administration`** (`ADMIN_ONLY_TAB_IDS`), deleted from all 35 non-administrator profiles, blocked from being granted to non-administrator roles via `setRoleNodeAccess` or `upsertProfile`, and every mutation re-checks the actor's tier, rank and DOA cap before writing.
+Enforcement is server-side in the registry, not just hidden in the UI: **both `access-doa` and `role-matrix` are restricted strictly to `administration`** (`ADMIN_ONLY_TAB_IDS`), deleted from all 38 non-administrator roles, blocked from being granted to non-administrator roles via `setRoleNodeAccess` or `upsertProfile`, and every mutation re-checks the actor's tier, rank and DOA cap before writing.
 
 ---
 
@@ -151,3 +154,34 @@ Supports both **Global Tenant Default** and **Per-Product Overrides**, updating 
 | `GET /security/notifications` | Approver inbox / requester notifications (`NTF-*`) |
 
 `SecurityGovernanceError` is a domain error raised by the registry; the console surfaces its message directly in the access guard banners and the role matrix panels.
+
+---
+
+## 9. Distribution configuration tabs and scoped coordinator templates
+
+Three top-level tabs were added after Master settings:
+
+| Tab id | Scope | Full-access roles |
+| --- | --- | --- |
+| `distribution-channels` | `omni-channel` | `administration`, `configurator` (Configuration Analyst), `omni-channel-coordinator` |
+| `distribution-partners` | `partner` | `administration`, `configurator`, `partner-coordinator` |
+| `distribution-subchannels` | `sub-channel-partner` | `administration`, `configurator`, `sub-channel-coordinator` |
+
+`DISTRIBUTION_CONFIG_TAB_ID_SET` marks these tabs as restricted. `buildGranularMaps`,
+`canAccessTab`, `canAccessSection`, `canAccessSubSection`, `setRoleNodeAccess`, `upsertProfile` and
+`applyAiRecommendation` all agree: an unrelated operational role gets `none`, and a grant to that
+role is refused. Each coordinator also gets `read` on the other two configuration tabs so it can see
+the parent and child terms it is narrowing.
+
+Coordinator templates belong to the `distribution-config` family and carry `channelScope`,
+`subChannelScope` and `partnerScope`. The Role Builder and `POST /security/profile` accept those
+three scope strings, so Administration can clone one role per real channel, partner or
+sub-channel partner. The templates are supervisor-tier: **22 officer · 7 supervisor · 9 manager · 1
+executive** across the 39-role catalogue.
+
+The configuration registry and API are documented in
+[`docs/27-DISTRIBUTION-CONFIGURATION-AND-COORDINATOR-ROLES.md`](27-DISTRIBUTION-CONFIGURATION-AND-COORDINATOR-ROLES.md).
+`POST /distribution/config` checks the active role for `full` access on the relevant tab at the
+dispatcher, and `src/server/auth.ts` checks the token principal's configured role names. Both
+layers are needed: the console role gate controls navigation, while the token role controls an
+authenticated API call.

@@ -2,8 +2,8 @@
  * Enterprise Pre-Load Profile Security Gate, Dedicated Role-Based Access & DOA Governance Tab,
  * Active Header Security Strip, Notification Bell Drawer, and Screen Access Guard Banner.
  *
- * Covers all 36 requested operational, governance, technical, finance, fund, agency, Marsh broker,
- * bancassurance, branch, bank, aggregator, direct-customer and referral-partner profiles — with
+ * Covers every built-in operational, governance, configuration, coordination, technical, finance, fund,
+ * agency, Marsh broker, bancassurance, branch, bank, aggregator, direct-customer and referral role — with
  * Administration holding permanent unrestricted superuser access across all console tabs, sections and
  * sub-sections, explainable AI role recommendations with Segregation-of-Duties checks, dynamic
  * Entity × Channel × Sub-Channel supervision chains, and real-time DOA approval notifications.
@@ -127,7 +127,8 @@ export const ProfileSelectionGate: React.FC<{
         p.title.toLowerCase().includes(q) ||
         p.badge.toLowerCase().includes(q) ||
         p.channelScope.toLowerCase().includes(q) ||
-        p.subChannelScope.toLowerCase().includes(q)
+        p.subChannelScope.toLowerCase().includes(q) ||
+        (p.partnerScope ?? '*').toLowerCase().includes(q)
       );
     });
   }, [security.roles, familyFilter, search]);
@@ -202,13 +203,13 @@ export const ProfileSelectionGate: React.FC<{
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search all 36 roles (e.g. Marsh, Underwriter, Retention, Banca, Fund, Branch, Claim)…"
+            placeholder={`Search all ${security.roleCount} roles (e.g. Configuration Analyst, Coordinator, Marsh, Banca, Fund, Claim)…`}
             style={{ minWidth: 320 }}
           />
         </div>
       </div>
 
-      {/* Main Split: 36 Role Cards + Live AI Access & DOA Inspector */}
+      {/* Main Split: Role Cards + Live AI Access & DOA Inspector */}
       <div className="securityGateGrid">
         <div className="securityCardsGrid">
           {filteredProfiles.map((p) => {
@@ -638,6 +639,9 @@ export const RoleAccessAndDoaPanel: React.FC<{
   const [cloneId, setCloneId] = useState('agent-vip-desk');
   const [cloneName, setCloneName] = useState('VIP Wealth Advisor');
   const [cloneTitle, setCloneTitle] = useState('Private Client Wealth & Takaful Advisor');
+  const [cloneChannelScope, setCloneChannelScope] = useState('AGENCY');
+  const [cloneSubChannelScope, setCloneSubChannelScope] = useState('AGENCY-DESK-1');
+  const [clonePartnerScope, setClonePartnerScope] = useState('*');
   const [cloneDoa, setCloneDoa] = useState('750,000.00');
 
   // AI Advisor state
@@ -755,11 +759,11 @@ export const RoleAccessAndDoaPanel: React.FC<{
         <SectionGroup
           title="Enterprise Security, AI Role Access Matrix & DOA Governance"
           gates={[
-            /* -------------------- GATE 1: 36-PROFILE DIRECTORY & CLONER -------------------- */
+            /* -------------------- GATE 1: ROLE DIRECTORY & CLONER -------------------- */
             {
               id: 'profile-directory',
               title: `Security role directory & instant session switcher (${security.roleCount} roles)`,
-              subtitle: 'Administration holds permanent complete access; switch into any of the 36 operational, technical, finance, fund, agency, Marsh, banca, branch, aggregator, direct or referral roles, or clone a custom variant. Roles are templates; named user logins are a later layer.',
+              subtitle: `Administration holds permanent complete access; switch into any of the ${security.roleCount} operational, configuration, coordination, finance, fund, agency, Marsh, banca, branch, aggregator, direct or referral roles, or clone a custom variant with channel, sub-channel and partner scopes. Roles are templates; named user logins are a later layer.`,
               fields: fields(
                 ['Active session role', activeProfile.name],
                 ['Inspected role', inspectedProfile.name],
@@ -790,7 +794,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                       <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Filter 36 roles by name, tier, channel or sub-channel…"
+                        placeholder={`Filter ${security.roleCount} roles by name, tier, channel, sub-channel or partner…`}
                         style={{ minWidth: 260 }}
                       />
                       <button type="button" className="ghost" onClick={onOpenGate}>
@@ -804,7 +808,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                       <thead>
                         <tr>
                           <th>Role</th>
-                          <th>Entity / Channel / Sub-Channel</th>
+                          <th>Entity / Channel / Sub-Channel / Partner</th>
                           <th>Landing Screen</th>
                           <th>DOA Authority Cap</th>
                           <th>Supervisor → Manager Chain</th>
@@ -821,7 +825,7 @@ export const RoleAccessAndDoaPanel: React.FC<{
                               <div className="small muted">{p.title}</div>
                             </td>
                             <td className="small">
-                              <b>{p.entityScope}</b> / {p.channelScope} / {p.subChannelScope}
+                              <b>{p.entityScope}</b> / {p.channelScope} / {p.subChannelScope} / {p.partnerScope ?? '*'}
                             </td>
                             <td className="small">{tabTitleOf(p.defaultLandingTab)}</td>
                             <td>
@@ -888,6 +892,18 @@ export const RoleAccessAndDoaPanel: React.FC<{
                         <input value={cloneTitle} onChange={(e) => setCloneTitle(e.target.value)} style={{ minWidth: 230 }} />
                       </label>
                       <label>
+                        Channel scope
+                        <input value={cloneChannelScope} onChange={(e) => setCloneChannelScope(e.target.value)} aria-label="Channel scope" />
+                      </label>
+                      <label>
+                        Sub-channel scope
+                        <input value={cloneSubChannelScope} onChange={(e) => setCloneSubChannelScope(e.target.value)} aria-label="Sub-channel scope" />
+                      </label>
+                      <label>
+                        Partner scope
+                        <input value={clonePartnerScope} onChange={(e) => setClonePartnerScope(e.target.value)} aria-label="Partner scope" />
+                      </label>
+                      <label>
                         DOA Limit (AED)
                         <input value={cloneDoa} onChange={(e) => setCloneDoa(e.target.value)} style={{ width: 135 }} />
                       </label>
@@ -901,6 +917,9 @@ export const RoleAccessAndDoaPanel: React.FC<{
                               name: cloneName,
                               title: cloneTitle,
                               cloneFromProfileId: selectedProfileId,
+                              channelScope: cloneChannelScope,
+                              subChannelScope: cloneSubChannelScope,
+                              partnerScope: clonePartnerScope,
                               doaLimitAed: cloneDoa,
                               by: activeProfile.id,
                             }),

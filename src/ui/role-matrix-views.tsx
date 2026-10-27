@@ -3,7 +3,7 @@
  *
  * Two ideas drive this screen:
  *
- *  1. **A role is not a user account.** The 36 seeded records are roles: the policy office, the
+ *  1. **A role is not a user account.** The seeded records are roles: the policy office, the
  *     underwriter, the branch officer, the claims manager. Named users, passwords and login will be
  *     provisioned against a role id when the user-profile layer lands; no credentials live here.
  *
@@ -228,7 +228,7 @@ export const RoleAccessMatrixPanel: React.FC<{
             <tr>
               <th>Role</th>
               <th>Authority tier</th>
-              <th>Entity / Channel / Sub-channel</th>
+              <th>Entity / Channel / Sub-channel / Partner</th>
               <th>DOA cap</th>
               <th>Tabs (Full · Read)</th>
               <th>Landing screen</th>
@@ -243,7 +243,7 @@ export const RoleAccessMatrixPanel: React.FC<{
                   <div className="small muted">{role.title}</div>
                 </td>
                 <td><TierPill level={role.authorityLevel} rank={role.authorityRank} /></td>
-                <td className="small">{role.entityScope} / {role.channelScope} / {role.subChannelScope}</td>
+                <td className="small">{role.entityScope} / {role.channelScope} / {role.subChannelScope} / {role.partnerScope ?? '*'}</td>
                 <td><span className={`pill ${role.unrestricted ? 'ok' : 'info'}`}>{role.doaLimitLabel}</span></td>
                 <td className="small"><b>{role.fullTabs.length}</b> · <b>{role.readTabs.length}</b></td>
                 <td className="small">{role.defaultLandingTab}</td>

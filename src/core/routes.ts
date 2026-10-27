@@ -45,10 +45,17 @@ import type { SuperFundId, SuperProductVariant } from './super-funds.js';
 import type { WarehouseDatasetId, WarehouseFormat } from './warehouse.js';
 import type { ThemeScope } from './theme.js';
 import { batchSubjectsFromWorld, type BatchEventType } from './batch.js';
-import { RequestValidationError, reqString, reqEnum, reqInt, optBool } from './validate.js';
+import { RequestValidationError, reqString, reqEnum, reqInt, reqBool, optBool, optString, assertPayloadObject } from './validate.js';
 import type { WarehouseConnectionKind } from './warehouse.js';
 import type { CommitLike, WhatsNewEntry } from './whatsnew.js';
 import type { AccessLevel, DoaActionKind, RoleAuthorityLevel, RoleFamily } from './rbac.js';
+import { SecurityGovernanceError } from './rbac.js';
+import {
+  CLAWBACK_BASES, CLAWBACK_TRIGGERS, DISBURSEMENT_FREQUENCIES, DISBURSEMENT_PAYOUT_TRIGGERS,
+  DISTRIBUTION_SCOPE_KINDS, type DistributionConfigurationInput, type DistributionReferenceIndex,
+  type DistributionScopeKind,
+} from './distribution-configuration.js';
+import { DISTRIBUTION_CONFIG_TAB_IDS } from './tour.js';
 import {
   type AgeBasis,
   type HalfYearRule,
@@ -217,6 +224,87 @@ function portalScope(state: RuntimeState, payload: Record<string, unknown>, quot
   }, quote);
 }
 
+/* ------------------------------- distribution configuration: three scoped tabs */
+
+function reqStringArray(payload: Record<string, unknown>, key: string): string[] {
+  const value = payload[key];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new RequestValidationError(`${key} is required and must be an array of strings`);
+  }
+  return (value as string[]).map((item) => item.trim()).filter(Boolean);
+}
+
+function reqBpsArray(payload: Record<string, unknown>, key: string): number[] {
+  const value = payload[key];
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new RequestValidationError(`${key} is required and must be a non-empty array of whole basis points`);
+  }
+  return value.map((item) => reqInt({ [key]: item } as Record<string, unknown>, key, { min: -10000, max: 10000 }));
+}
+
+function distributionReferences(state: RuntimeState): DistributionReferenceIndex {
+  return {
+    channels: state.world.erp.channels.listChannels().map((c) => ({ code: c.code, commissionCapBps: c.commissionCapBps })),
+    partners: state.world.erp.channels.listPartners().map((p) => ({ partnerId: p.partnerId, channelCode: p.channelCode })),
+    subChannels: state.world.erp.channels.listSubChannels().map((s) => ({
+      code: s.code,
+      parentChannelCode: s.parentChannelCode,
+      ...(s.partnerId ? { partnerId: s.partnerId } : {}),
+      ...(s.commissionOverrideBps !== undefined ? { commissionOverrideBps: s.commissionOverrideBps } : {}),
+    })),
+    products: state.world.erp.listProductMasters().map((p) => ({
+      productId: p.productId,
+      line: String(p.line),
+      variety: p.variety,
+    })),
+  };
+}
+
+function requireDistributionWrite(state: RuntimeState, scope: DistributionScopeKind): void {
+  const role = state.world.rbac.activeRole();
+  const tabId = DISTRIBUTION_CONFIG_TAB_IDS[scope];
+  if (role.unrestricted || state.world.rbac.canAccessTab(role.id, tabId) === 'full') return;
+  throw new SecurityGovernanceError(`Active role "${role.name}" does not have write access to ${tabId}`);
+}
+
+function distributionInput(payload: Record<string, unknown>): DistributionConfigurationInput {
+  const scope = reqEnum(payload, 'scope', DISTRIBUTION_SCOPE_KINDS);
+  const disbursementRaw = payload['disbursement'];
+  const clawbackRaw = payload['clawback'];
+  assertPayloadObject(disbursementRaw);
+  assertPayloadObject(clawbackRaw);
+  const partnerId = optString(payload, 'partnerId') ?? '';
+  const subChannelCode = optString(payload, 'subChannelCode') ?? '';
+  return {
+    scope,
+    channelCode: reqString(payload, 'channelCode'),
+    ...(partnerId ? { partnerId } : {}),
+    ...(subChannelCode ? { subChannelCode } : {}),
+    productType: reqString(payload, 'productType'),
+    productId: reqString(payload, 'productId'),
+    subProducts: reqStringArray(payload, 'subProducts'),
+    enabled: reqBool(payload, 'enabled', true),
+    commissionBps: reqBpsArray(payload, 'commissionBps'),
+    premiumUpliftBps: reqInt(payload, 'premiumUpliftBps', { min: -10000, max: 10000 }),
+    mortalityUpliftBps: reqInt(payload, 'mortalityUpliftBps', { min: -10000, max: 10000, fallback: 0 }),
+    disbursement: {
+      frequency: reqEnum(disbursementRaw, 'frequency', DISBURSEMENT_FREQUENCIES),
+      payoutTrigger: reqEnum(disbursementRaw, 'payoutTrigger', DISBURSEMENT_PAYOUT_TRIGGERS),
+      settlementDays: reqInt(disbursementRaw, 'settlementDays', { min: 0, max: 365 }),
+      holdbackBps: reqInt(disbursementRaw, 'holdbackBps', { min: 0, max: 10000 }),
+      note: optString(disbursementRaw, 'note') ?? '',
+    },
+    clawback: {
+      trigger: reqEnum(clawbackRaw, 'trigger', CLAWBACK_TRIGGERS),
+      basis: reqEnum(clawbackRaw, 'basis', CLAWBACK_BASES),
+      recoveryBps: reqBpsArray(clawbackRaw, 'recoveryBps'),
+      note: optString(clawbackRaw, 'note') ?? '',
+    },
+    note: optString(payload, 'note') ?? '',
+    by: optString(payload, 'by') ?? 'distribution-configuration',
+  };
+}
+
 export async function dispatchApiRoute(
   state: RuntimeState,
   method: string,
@@ -243,7 +331,11 @@ export async function dispatchApiRoute(
     case 'POST /infra/ids': {
       const count = reqInt(payload, 'count', { min: 1, max: 1_000, fallback: 1 });
       const shard = reqInt(payload, 'shard', { min: 0, max: 8_191, fallback: 0 });
-      return ok(mintIds({ count, shard }));
+      // One request is one issuing millisecond. Sampling the runtime clock once keeps a batch's
+      // counter sequence reproducible under coverage instrumentation and across injected clocks.
+      const issuedAtMs = Date.parse(state.now());
+      const clock = Number.isFinite(issuedAtMs) ? () => issuedAtMs : () => Date.now();
+      return ok(mintIds({ count, shard, now: clock }));
     }
 
     case 'GET /world':
@@ -1721,6 +1813,39 @@ export async function dispatchApiRoute(
       });
     }
 
+    /* ------------------------------- dedicated distribution configuration tabs */
+
+    case 'GET /distribution/config':
+      return ok(state.world.distributionConfig.snapshot());
+
+    case 'POST /distribution/config': {
+      const scope = reqEnum(payload, 'scope', DISTRIBUTION_SCOPE_KINDS);
+      requireDistributionWrite(state, scope);
+      const input = distributionInput(payload);
+      const row = state.world.distributionConfig.upsert({
+        ...input,
+        at: optString(payload, 'at') ?? state.now(),
+      }, distributionReferences(state));
+      return ok({ configuration: row, ...state.world.distributionConfig.snapshot() });
+    }
+
+    case 'POST /distribution/config/remove': {
+      const scope = reqEnum(payload, 'scope', DISTRIBUTION_SCOPE_KINDS);
+      requireDistributionWrite(state, scope);
+      const partnerId = optString(payload, 'partnerId') ?? '';
+      const subChannelCode = optString(payload, 'subChannelCode') ?? '';
+      state.world.distributionConfig.remove({
+        scope,
+        channelCode: reqString(payload, 'channelCode'),
+        ...(partnerId ? { partnerId } : {}),
+        ...(subChannelCode ? { subChannelCode } : {}),
+        productId: reqString(payload, 'productId'),
+        at: optString(payload, 'at') ?? state.now(),
+        by: optString(payload, 'by') ?? 'distribution-configuration',
+      });
+      return ok(state.world.distributionConfig.snapshot());
+    }
+
     /* ------------------------------------------- the omni-channel: channels, partners, terms */
     case 'GET /master/channels':
       return ok(state.world.erp.channels.snapshot());
@@ -1863,12 +1988,13 @@ export async function dispatchApiRoute(
       const partnerId = String(payload['partnerId'] ?? '');
       const currency = String(payload['currency'] ?? state.world.erp.listProductMasters().find((p) => p.productId === productId.trim().toUpperCase())?.currency ?? state.world.erp.regionalSnapshot().localCurrency);
       const premium = parseAmount(String(payload['premium'] ?? '0.00'), currency);
+      const subChannelCode = optString(payload, 'subChannelCode') ?? null;
       const commission = state.world.erp.channels.commissionFor({
-        partnerId, productId, premium,
+        partnerId, productId, premium, subChannelCode,
         ...(payload['policyYear'] !== undefined ? { policyYear: Number(payload['policyYear']) } : {}),
       });
       const clawback = state.world.erp.channels.clawbackFor({
-        partnerId, productId, commission: commission.commission,
+        partnerId, productId, commission: commission.commission, subChannelCode,
         periodsSinceInception: Number(payload['periodsSinceInception'] ?? 0),
       });
       return ok({
@@ -3634,7 +3760,7 @@ export async function dispatchApiRoute(
         reproduce: state.world.unitLinked.reproduce('UL-000123'),
       });
 
-    /* ---------- 36-role pre-load security gate, AI RBAC, DOA approvals & smart auto-pick */
+    /* ---------- role-based pre-load security gate, AI RBAC, DOA approvals & smart auto-pick */
     case 'GET /security/rbac':
     case 'GET /security/roles':
       return ok(state.world.rbac.snapshot());
@@ -3665,6 +3791,7 @@ export async function dispatchApiRoute(
         ...(payload['entityScope'] ? { entityScope: String(payload['entityScope']) } : {}),
         ...(payload['channelScope'] ? { channelScope: String(payload['channelScope']) } : {}),
         ...(payload['subChannelScope'] ? { subChannelScope: String(payload['subChannelScope']) } : {}),
+        ...(payload['partnerScope'] ? { partnerScope: String(payload['partnerScope']) } : {}),
         ...(payload['authorityLevel'] ? { authorityLevel: String(payload['authorityLevel']) as RoleAuthorityLevel } : {}),
         ...(payload['doaLimitAed'] !== undefined || payload['doaLimit'] !== undefined
           ? { doaLimitAed: payload['doaLimitAed'] === null ? null : String(payload['doaLimitAed'] ?? payload['doaLimit']) }

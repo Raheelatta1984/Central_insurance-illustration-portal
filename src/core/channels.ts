@@ -84,6 +84,26 @@ export interface ClawbackPlan {
   readonly note: string;
 }
 
+/**
+ * The distribution-configuration layer can supersede an offer or a partner default. The ERP wires a
+ * resolver into this registry; the registry itself owns neither product taxonomy nor role scoping.
+ */
+export interface DistributionTermsOverride {
+  readonly commissionBps: readonly number[];
+  readonly clawback: ClawbackPlan;
+  readonly premiumUpliftBps: number;
+  readonly mortalityUpliftBps: number;
+  readonly ratePerThousand: string | null;
+  readonly source: string;
+}
+
+export type DistributionTermsResolver = (scope: {
+  readonly channelCode: string;
+  readonly partnerId: string;
+  readonly subChannelCode: string | null;
+  readonly productId: string;
+}) => DistributionTermsOverride | undefined;
+
 export interface ChannelPartner {
   readonly partnerId: string;
   readonly name: string;
@@ -188,11 +208,17 @@ export class OmniChannelRegistry {
    */
   private readonly illustration = new IllustrationAssumptionTable();
   private readonly trail: Array<{ at: string; by: string; action: string; detail: string }> = [];
+  private distributionTerms: DistributionTermsResolver | undefined;
 
   constructor(
     private readonly resolveProduct: ChannelProductResolver,
     private readonly defaultCurrency: () => string,
   ) {}
+
+  /** Attach the most-specific distribution configuration resolver once, at world construction. */
+  setDistributionTermsResolver(resolver: DistributionTermsResolver): void {
+    this.distributionTerms = resolver;
+  }
 
   /* ------------------------------------------------------------------ reading */
 
@@ -572,27 +598,39 @@ export class OmniChannelRegistry {
     this.record('offer-removed', key.replace('|', ' × '), at, by);
   }
 
-  /** The terms that apply to a partner selling one product: the offer where it speaks, the partner elsewhere. */
-  termsFor(partnerId: string, productId: string): {
+  /**
+   * The terms that apply to a partner selling one product: the offer where it speaks, the partner
+   * elsewhere, then the most specific filed distribution configuration. A sub-channel can be supplied
+   * by a scoped price or commission call; without one the channel/partner configuration still applies.
+   */
+  termsFor(partnerId: string, productId: string, scope: { subChannelCode?: string | null } = {}): {
     commissionBps: readonly number[]; clawback: ClawbackPlan; premiumUpliftBps: number; mortalityUpliftBps: number;
     ratePerThousand: string | null; source: string;
   } {
     const partner = this.partners.get(partnerId.trim().toUpperCase());
     if (!partner) throw new ChannelError(`no partner ${partnerId}`);
-    const offer = this.offer(partner.partnerId, productId);
+    const wantedProduct = productId.trim().toUpperCase();
+    const configured = this.distributionTerms?.({
+      channelCode: partner.channelCode,
+      partnerId: partner.partnerId,
+      subChannelCode: scope.subChannelCode?.trim().toUpperCase() || null,
+      productId: wantedProduct,
+    });
+    if (configured) return { ...configured };
+    const offer = this.offer(partner.partnerId, wantedProduct);
     return {
       commissionBps: offer?.commissionBps ?? partner.commissionBps,
       clawback: offer?.clawback ?? partner.clawback,
       premiumUpliftBps: offer?.premiumUpliftBps ?? 0,
       mortalityUpliftBps: offer?.mortalityUpliftBps ?? 0,
       ratePerThousand: offer?.ratePerThousand ?? null,
-      source: offer ? `the ${partner.partnerId} × ${productId.toUpperCase()} offer` : `the ${partner.partnerId} partner defaults`,
+      source: offer ? `the ${partner.partnerId} × ${wantedProduct} offer` : `the ${partner.partnerId} partner defaults`,
     };
   }
 
   /** Commission on a premium, by policy year: the schedule's last figure repeats for later years. */
-  commissionFor(input: { partnerId: string; productId: string; premium: Money; policyYear?: number }): CommissionOutcome {
-    const terms = this.termsFor(input.partnerId, input.productId);
+  commissionFor(input: { partnerId: string; productId: string; premium: Money; policyYear?: number; subChannelCode?: string | null }): CommissionOutcome {
+    const terms = this.termsFor(input.partnerId, input.productId, { subChannelCode: input.subChannelCode });
     const year = Math.max(1, Math.trunc(input.policyYear ?? 1));
     const schedule = terms.commissionBps.length > 0 ? terms.commissionBps : [0];
     const bps = schedule[year - 1] ?? schedule[schedule.length - 1] ?? 0;
@@ -608,8 +646,8 @@ export class OmniChannelRegistry {
    * What comes back when a policy cancels or lapses inside the clawback window. The recovery is a share
    * of the commission that was paid, applied to that same money, so it can never over-recover.
    */
-  clawbackFor(input: { partnerId: string; productId: string; commission: Money; periodsSinceInception: number }): ClawbackOutcome {
-    const terms = this.termsFor(input.partnerId, input.productId);
+  clawbackFor(input: { partnerId: string; productId: string; commission: Money; periodsSinceInception: number; subChannelCode?: string | null }): ClawbackOutcome {
+    const terms = this.termsFor(input.partnerId, input.productId, { subChannelCode: input.subChannelCode });
     const plan = terms.clawback;
     const period = Math.max(0, Math.trunc(input.periodsSinceInception));
     const recoveryBps = period >= 1 && period <= plan.recoveryBps.length ? plan.recoveryBps[period - 1] ?? 0 : 0;

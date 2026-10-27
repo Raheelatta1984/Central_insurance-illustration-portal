@@ -409,7 +409,7 @@ export class PartnerPortal {
     if (!Number.isInteger(input.policyYear) || input.policyYear < 1 || input.policyYear > 100) throw new PartnerPortalError('policy year must be between 1 and 100');
     const premiumMinor = amount(input.premium, partner.currency);
     if (premiumMinor <= 0n) throw new PartnerPortalError('premium basis must be positive');
-    const expected = w.erp.channels.commissionFor({ partnerId: partner.partnerId, productId: app.productId, premium: money(premiumMinor, partner.currency), policyYear: input.policyYear });
+    const expected = w.erp.channels.commissionFor({ partnerId: partner.partnerId, productId: app.productId, premium: money(premiumMinor, partner.currency), policyYear: input.policyYear, subChannelCode: scope.subChannelCode });
     const row: CommissionEntry = {
       id: this.id('COM'), scope, policyId: c.artefacts.policyId!, productId: app.productId, period: period(input.period), sourceRef: ref,
       currency: partner.currency, premiumMinor: String(premiumMinor), expectedMinor: String(expected.commission.minor), bps: expected.bps, basis: expected.basis,

@@ -16,6 +16,18 @@ export interface TourStep {
   readonly api?: readonly string[];
 }
 
+/**
+ * The three distribution-configuration screens. They are top-level tabs because each is governed by
+ * a different role and scope, not because the master-settings section was too small.
+ */
+export const DISTRIBUTION_CONFIG_TAB_IDS = {
+  'omni-channel': 'distribution-channels',
+  partner: 'distribution-partners',
+  'sub-channel-partner': 'distribution-subchannels',
+} as const;
+export type DistributionScopeKind = keyof typeof DISTRIBUTION_CONFIG_TAB_IDS;
+export type DistributionConfigTabId = (typeof DISTRIBUTION_CONFIG_TAB_IDS)[DistributionScopeKind];
+
 /** The console's tabs, in order. The console renders this list; the tour refers to its ids. */
 export const CONSOLE_TABS = [
   { id: 'tour', label: 'Tour', icon: '◷' },
@@ -24,6 +36,9 @@ export const CONSOLE_TABS = [
   { id: 'role-matrix', label: 'Role access matrix', icon: '⑃' },
   { id: 'journey', label: 'Customer journey', icon: '➤' },
   { id: 'master', label: 'Master settings & ERP', icon: '⚙' },
+  { id: DISTRIBUTION_CONFIG_TAB_IDS['omni-channel'], label: 'Omni-channel configuration', icon: '⇄' },
+  { id: DISTRIBUTION_CONFIG_TAB_IDS.partner, label: 'Partner configuration', icon: '♧' },
+  { id: DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner'], label: 'Sub-channel partners', icon: '⑂' },
   { id: 'email', label: 'Email configuration', icon: '✉' },
   { id: 'policyholder', label: 'Policyholder', icon: '◉' },
   { id: 'decisions', label: 'Decision theatre', icon: '⇄' },

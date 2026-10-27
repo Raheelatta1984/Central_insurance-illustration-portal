@@ -14,6 +14,7 @@
 export const API_ROUTE_KEYS: readonly string[] = [
   'GET /batch',
   'GET /claims',
+  'GET /distribution/config',
   'GET /extracts',
   'GET /funds-accounting',
   'GET /funds-accounting/vouchers',
@@ -80,6 +81,8 @@ export const API_ROUTE_KEYS: readonly string[] = [
   'POST /cover/tick',
   'POST /cover/usage',
   'POST /cover/wallet/topup',
+  'POST /distribution/config',
+  'POST /distribution/config/remove',
   'POST /extracts/issue',
   'POST /extracts/verify',
   'POST /funds-accounting/country',

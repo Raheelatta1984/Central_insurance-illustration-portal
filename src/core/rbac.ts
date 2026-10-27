@@ -10,7 +10,7 @@
  *    approval/rejection/escalation and notification read is recorded on an append-only audit log.
  */
 import { Money, compare, formatAmount, money, parseAmount } from './money.js';
-import { CONSOLE_TABS } from './tour.js';
+import { CONSOLE_TABS, DISTRIBUTION_CONFIG_TAB_IDS } from './tour.js';
 
 export type AccessLevel = 'full' | 'read' | 'none';
 
@@ -28,6 +28,7 @@ export type RoleAuthorityLevel = 'officer' | 'supervisor' | 'manager' | 'executi
 
 export type RoleFamily =
   | 'governance-config'
+  | 'distribution-config'
   | 'underwriting-policy'
   | 'claims-reinsurance'
   | 'finance-funds'
@@ -77,6 +78,8 @@ export interface SecurityRole {
   readonly entityScope: string;       // e.g. '*', 'ALK-CONV', 'ALK-TKF', 'ALK-MY'
   readonly channelScope: string;      // e.g. '*', 'HEAD-OFFICE', 'AGENCY', 'BROKER-MARSH', 'BANCA', 'AGGREGATOR', 'DIRECT', 'REFERRAL'
   readonly subChannelScope: string;   // e.g. '*', 'AGENCY-DESK-1', 'MARSH-CALL-CENTRE', 'BANCA-PREMIER-1', 'BRANCH-RETAIL-01', ...
+  /** Optional named partner a coordinator role is scoped to; `*` means every partner. */
+  readonly partnerScope?: string;
   readonly defaultLandingTab: string;
   /** @deprecated use reportsToRoleId — kept for API compatibility. */
   readonly reportsToProfileId: string | null;
@@ -244,7 +247,8 @@ export interface AiAccessRecommendation {
 export class SecurityGovernanceError extends Error {}
 
 export const PROFILE_FAMILIES: ReadonlyArray<{ id: ProfileFamily; label: string; description: string }> = Object.freeze([
-  { id: 'governance-config', label: 'Governance & Configuration', description: 'Administration (complete unrestricted access), cross-desk Supervisor and Master Configurator' },
+  { id: 'governance-config', label: 'Governance & Configuration', description: 'Administration (complete unrestricted access), cross-desk Supervisor and Configuration Analyst' },
+  { id: 'distribution-config', label: 'Omni-Channel Coordination', description: 'Channel, partner and sub-channel-partner coordinator role templates; clone and scope them per route' },
   { id: 'underwriting-policy', label: 'Underwriting, Retention & Endorsements', description: 'Underwriting, Retention/Conservation and Policy Alteration/Endorsement officers & managers' },
   { id: 'claims-reinsurance', label: 'Claims, Settlement & Reinsurance', description: 'Claims adjudication, payout settlement release and Treaty/Facultative Reinsurance desks' },
   { id: 'finance-funds', label: 'Finance, Accounting, Cost & Funds', description: 'Bancassurance Ops, Fund Configuration, Accountant, Finance, Cost Controller & Fund Investment' },
@@ -267,7 +271,7 @@ export const SECURITY_SURFACE_CATALOGUE: readonly TabCatalogueEntry[] = Object.f
     tabId: 'access-doa',
     label: 'Access & DOA',
     sections: [
-      { id: 'profile-directory', label: '36-Role Security Directory', subSections: [{ id: 'profile-switcher', label: 'Role Session Switcher' }, { id: 'profile-clone', label: 'Role Builder' }] },
+      { id: 'profile-directory', label: 'Security Role Directory', subSections: [{ id: 'profile-switcher', label: 'Role Session Switcher' }, { id: 'profile-clone', label: 'Role Builder' }] },
       { id: 'ai-advisor', label: 'AI Access & SoD Advisor', subSections: [{ id: 'ai-scoring', label: 'Tab/Section AI Scoring' }, { id: 'sod-guard', label: 'Segregation of Duties Check' }] },
       { id: 'matrix-editor', label: 'Tab / Section / Sub-Section Matrix', subSections: [{ id: 'tab-grants', label: 'Tab Permissions' }, { id: 'section-grants', label: 'Section & Sub-Section Grants' }] },
       { id: 'supervision-map', label: 'Entity × Channel × Sub-Channel Mapping', subSections: [{ id: 'hierarchy-rules', label: 'Supervisor & Manager Chain' }, { id: 'channel-caps', label: 'Channel DOA Caps' }] },
@@ -303,6 +307,36 @@ export const SECURITY_SURFACE_CATALOGUE: readonly TabCatalogueEntry[] = Object.f
       { id: 'product-factory', label: 'Product Factory & Tariff Rating Engine', subSections: [{ id: 'product-grid', label: 'Editable Product Grid & Copy' }, { id: 'rating-tables', label: 'Age/Sex/Class Tariff Tables' }] },
       { id: 'omni-providers', label: 'Omni-Channel, Sub-Channels & Multi-Country Providers', subSections: [{ id: 'channels-commissions', label: 'Channels, Sub-Channels & Commission' }, { id: 'providers-branches', label: 'Carrier Branches & Conventional/Takaful Gate' }] },
       { id: 'charges-authority', label: 'Charges, Takaful Master, Authority & Vocabulary', subSections: [{ id: 'ul-charges', label: 'Unit-Linked & Takaful Fee Caps' }, { id: 'claims-authority', label: 'Claims Authority & Regulated Labels' }] },
+    ],
+  },
+  {
+    tabId: DISTRIBUTION_CONFIG_TAB_IDS['omni-channel'],
+    label: 'Omni-channel configuration',
+    sections: [
+      { id: 'scope-directory', label: 'Channel Scope Directory', subSections: [{ id: 'scope-picker', label: 'Channel & Coordinator Scope' }, { id: 'scope-audit', label: 'Configuration Audit Trail' }] },
+      { id: 'product-assignment', label: 'Product Type, Product & Sub-Product Assignment', subSections: [{ id: 'product-type', label: 'Product Type' }, { id: 'product', label: 'Product' }, { id: 'sub-products', label: 'Sub-Products' }] },
+      { id: 'commercial-terms', label: 'Commission, Premium Uplift & Disbursement', subSections: [{ id: 'commission', label: 'Commission Schedule' }, { id: 'premium-uplift', label: 'Premium Uplift Percentage' }, { id: 'disbursement', label: 'Commission Disbursement Terms' }] },
+      { id: 'clawback-rules', label: 'Clawback Rules', subSections: [{ id: 'clawback-schedule', label: 'Recovery Schedule' }, { id: 'clawback-trigger', label: 'Trigger & Basis' }] },
+    ],
+  },
+  {
+    tabId: DISTRIBUTION_CONFIG_TAB_IDS.partner,
+    label: 'Partner configuration',
+    sections: [
+      { id: 'scope-directory', label: 'Partner Scope Directory', subSections: [{ id: 'scope-picker', label: 'Channel & Partner Scope' }, { id: 'scope-audit', label: 'Configuration Audit Trail' }] },
+      { id: 'product-assignment', label: 'Product Type, Product & Sub-Product Assignment', subSections: [{ id: 'product-type', label: 'Product Type' }, { id: 'product', label: 'Product' }, { id: 'sub-products', label: 'Sub-Products' }] },
+      { id: 'commercial-terms', label: 'Commission, Premium Uplift & Disbursement', subSections: [{ id: 'commission', label: 'Commission Schedule' }, { id: 'premium-uplift', label: 'Premium Uplift Percentage' }, { id: 'disbursement', label: 'Commission Disbursement Terms' }] },
+      { id: 'clawback-rules', label: 'Clawback Rules', subSections: [{ id: 'clawback-schedule', label: 'Recovery Schedule' }, { id: 'clawback-trigger', label: 'Trigger & Basis' }] },
+    ],
+  },
+  {
+    tabId: DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner'],
+    label: 'Sub-channel partners',
+    sections: [
+      { id: 'scope-directory', label: 'Sub-Channel Partner Scope Directory', subSections: [{ id: 'scope-picker', label: 'Channel, Partner & Sub-Channel Scope' }, { id: 'scope-audit', label: 'Configuration Audit Trail' }] },
+      { id: 'product-assignment', label: 'Product Type, Product & Sub-Product Assignment', subSections: [{ id: 'product-type', label: 'Product Type' }, { id: 'product', label: 'Product' }, { id: 'sub-products', label: 'Sub-Products' }] },
+      { id: 'commercial-terms', label: 'Commission, Premium Uplift & Disbursement', subSections: [{ id: 'commission', label: 'Commission Schedule' }, { id: 'premium-uplift', label: 'Premium Uplift Percentage' }, { id: 'disbursement', label: 'Commission Disbursement Terms' }] },
+      { id: 'clawback-rules', label: 'Clawback Rules', subSections: [{ id: 'clawback-schedule', label: 'Recovery Schedule' }, { id: 'clawback-trigger', label: 'Trigger & Basis' }] },
     ],
   },
   {
@@ -507,6 +541,7 @@ interface ProfileSeedSpec {
   readonly entityScope: string;
   readonly channelScope: string;
   readonly subChannelScope: string;
+  readonly partnerScope?: string;
   readonly defaultLandingTab: string;
   readonly reportsToProfileId: string | null;
   readonly escalationProfileId: string | null;
@@ -526,6 +561,17 @@ interface ProfileSeedSpec {
 
 export const ROLE_MATRIX_TAB_ID = 'role-matrix';
 export const ADMIN_ONLY_TAB_IDS: ReadonlySet<string> = new Set(['access-doa', ROLE_MATRIX_TAB_ID]);
+/** Dedicated distribution-configuration tabs are never handed out to unrelated operational roles. */
+export const DISTRIBUTION_CONFIG_TAB_ID_SET: ReadonlySet<string> = new Set(Object.values(DISTRIBUTION_CONFIG_TAB_IDS));
+export const DISTRIBUTION_CONFIG_ALLOWED_ROLE_IDS: ReadonlySet<string> = new Set([
+  'administration', 'configurator', 'omni-channel-coordinator', 'partner-coordinator', 'sub-channel-coordinator',
+]);
+
+function mayUseDistributionConfigTabs(role: Pick<SecurityRole, 'id' | 'family' | 'unrestricted'>): boolean {
+  return role.unrestricted
+    || DISTRIBUTION_CONFIG_ALLOWED_ROLE_IDS.has(role.id)
+    || role.family === 'distribution-config';
+}
 
 const ALL_TAB_IDS = CONSOLE_TABS.length > 0
   ? Array.from(new Set([...CONSOLE_TABS.map((t) => t.id), 'access-doa', ROLE_MATRIX_TAB_ID]))
@@ -540,6 +586,7 @@ const MANAGER_ROLE_IDS = new Set([
 /** Roles that hold first-line supervisor authority (may change officer roles only). */
 const SUPERVISOR_ROLE_IDS = new Set([
   'supervisor', 'endorsement-supervisor', 'agent-supervisor', 'banca-supervisor',
+  'omni-channel-coordinator', 'partner-coordinator', 'sub-channel-coordinator',
 ]);
 
 function authorityLevelForSeed(spec: ProfileSeedSpec): RoleAuthorityLevel {
@@ -558,12 +605,19 @@ function buildGranularMaps(spec: ProfileSeedSpec): {
   const tabAccess: Record<string, AccessLevel> = {};
   const sectionAccess: Record<string, AccessLevel> = {};
   const subSectionAccess: Record<string, AccessLevel> = {};
+  const distributionAllowed = mayUseDistributionConfigTabs({
+    id: spec.id, family: spec.family, unrestricted: Boolean(spec.unrestricted),
+  });
 
   for (const tabId of ALL_TAB_IDS) {
     if (spec.unrestricted) {
       tabAccess[tabId] = 'full';
     } else if (ADMIN_ONLY_TAB_IDS.has(tabId)) {
       // Access & DOA and Role access matrix tabs are restricted strictly to Administration.
+      tabAccess[tabId] = 'none';
+    } else if (DISTRIBUTION_CONFIG_TAB_ID_SET.has(tabId) && !distributionAllowed) {
+      // The three distribution configuration screens belong to the configuration analyst and the
+      // scoped coordinator templates, never to a general operational or partner role.
       tabAccess[tabId] = 'none';
     } else if (spec.fullTabs.includes(tabId)) {
       tabAccess[tabId] = 'full';
@@ -579,18 +633,19 @@ function buildGranularMaps(spec: ProfileSeedSpec): {
   // "inherit" really has no override of its own, and moving the tab moves the whole branch.
   for (const entry of SECURITY_SURFACE_CATALOGUE) {
     const adminOnly = ADMIN_ONLY_TAB_IDS.has(entry.tabId);
+    const blockedDistribution = DISTRIBUTION_CONFIG_TAB_ID_SET.has(entry.tabId) && !distributionAllowed;
     for (const sec of entry.sections) {
       const sKey = `${entry.tabId}:${sec.id}`;
       if (spec.unrestricted) {
         sectionAccess[sKey] = 'full';
-      } else if (!adminOnly && spec.sectionOverrides?.[sKey] !== undefined) {
+      } else if (!adminOnly && !blockedDistribution && spec.sectionOverrides?.[sKey] !== undefined) {
         sectionAccess[sKey] = spec.sectionOverrides[sKey]!;
       }
       for (const sub of sec.subSections) {
         const subKey = `${entry.tabId}:${sec.id}:${sub.id}`;
         if (spec.unrestricted) {
           subSectionAccess[subKey] = 'full';
-        } else if (!adminOnly && spec.subSectionOverrides?.[subKey] !== undefined) {
+        } else if (!adminOnly && !blockedDistribution && spec.subSectionOverrides?.[subKey] !== undefined) {
           subSectionAccess[subKey] = spec.subSectionOverrides[subKey]!;
         }
       }
@@ -599,7 +654,7 @@ function buildGranularMaps(spec: ProfileSeedSpec): {
   return { tabAccess, sectionAccess, subSectionAccess };
 }
 
-/** Complete catalogue of all 36 enterprise roles requested for the Insurance ERP. Roles, not user logins. */
+/** Built-in enterprise role templates. Roles are permission templates, not named user logins. */
 const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
   // ======================== 1. GOVERNANCE & CONFIGURATION (3) ========================
   {
@@ -650,24 +705,96 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
   },
   {
     id: 'configurator',
-    name: 'Configurator',
-    title: 'Product, Rating, Wording & Platform Configurator',
+    name: 'Configuration Analyst',
+    title: 'Product, Rating, Distribution & Platform Configuration Analyst',
     family: 'governance-config',
-    badge: 'MASTER CONFIGURATOR',
-    summary: 'Configures product shelf, tariff tables, age calculation rules (ANB/ANxB/ALB), dependent product rules, omni-channels, providers, email templates and branding.',
+    badge: 'CONFIGURATION ANALYST',
+    summary: 'The configuration-analyst role (id retained as `configurator` for API compatibility): files product shelf, tariff, distribution, commission, uplift, disbursement, clawback, email and branding settings.',
     entityScope: '*',
     channelScope: '*',
     subChannelScope: '*',
+    partnerScope: '*',
     defaultLandingTab: 'master',
     reportsToProfileId: 'administration',
     escalationProfileId: 'administration',
     doaLimitAed: '500,000.00',
     doaActions: ['master-config-change'],
     piiAccess: 'masked',
-    fullTabs: ['master', 'email', 'labels', 'theme', 'reconciliation'],
+    fullTabs: [
+      'master', 'email', 'labels', 'theme', 'reconciliation',
+      DISTRIBUTION_CONFIG_TAB_IDS['omni-channel'], DISTRIBUTION_CONFIG_TAB_IDS.partner, DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner'],
+    ],
     readTabs: ['overview', 'journey', 'funds', 'regulatory', 'whats-new', 'tour'],
     aiConfidencePct: 98,
     aiRationale: 'Full control over non-cash configuration surfaces while masking customer PII and blocking direct claim payouts or GL postings (SoD safe).',
+  },
+
+  // ======================== 1b. OMNI-CHANNEL COORDINATION (3) ========================
+  {
+    id: 'omni-channel-coordinator',
+    name: 'Omni-Channel Coordinator',
+    title: 'Per-Channel Distribution Configuration Coordinator',
+    family: 'distribution-config',
+    badge: 'CHANNEL COORDINATOR',
+    summary: 'Supervisor-tier template for one omni-channel (clone and set `channelScope` per channel). Files channel-wide product, commission, uplift, disbursement and clawback terms; partner and sub-channel tabs remain read-only.',
+    entityScope: 'ALK-CONV',
+    channelScope: '*',
+    subChannelScope: '*',
+    partnerScope: '*',
+    defaultLandingTab: DISTRIBUTION_CONFIG_TAB_IDS['omni-channel'],
+    reportsToProfileId: 'supervisor',
+    escalationProfileId: 'administration',
+    doaLimitAed: '250,000.00',
+    doaActions: ['master-config-change', 'discount-concession'],
+    piiAccess: 'masked',
+    fullTabs: ['overview', 'tour', DISTRIBUTION_CONFIG_TAB_IDS['omni-channel']],
+    readTabs: ['master', 'whats-new', DISTRIBUTION_CONFIG_TAB_IDS.partner, DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner']],
+    aiConfidencePct: 94,
+    aiRationale: 'Owns channel-level distribution terms and needs read-only sight of narrower partner and sub-channel overrides to keep escalation coherent.',
+  },
+  {
+    id: 'partner-coordinator',
+    name: 'Partner Coordinator',
+    title: 'Per-Partner Distribution Configuration Coordinator',
+    family: 'distribution-config',
+    badge: 'PARTNER COORDINATOR',
+    summary: 'Supervisor-tier template for one named partner (clone and set `partnerScope`). Files partner-specific products, commission, premium uplift, disbursement and clawback terms, with channel and sub-channel context visible read-only.',
+    entityScope: 'ALK-CONV',
+    channelScope: '*',
+    subChannelScope: '*',
+    partnerScope: '*',
+    defaultLandingTab: DISTRIBUTION_CONFIG_TAB_IDS.partner,
+    reportsToProfileId: 'supervisor',
+    escalationProfileId: 'administration',
+    doaLimitAed: '200,000.00',
+    doaActions: ['master-config-change', 'discount-concession'],
+    piiAccess: 'masked',
+    fullTabs: ['overview', 'tour', DISTRIBUTION_CONFIG_TAB_IDS.partner],
+    readTabs: ['master', 'whats-new', DISTRIBUTION_CONFIG_TAB_IDS['omni-channel'], DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner']],
+    aiConfidencePct: 94,
+    aiRationale: 'Owns partner contract terms while inheriting channel ceilings and inspecting narrower sub-channel partner overrides.',
+  },
+  {
+    id: 'sub-channel-coordinator',
+    name: 'Sub-Channel Coordinator',
+    title: 'Per-Sub-Channel Partner Distribution Configuration Coordinator',
+    family: 'distribution-config',
+    badge: 'SUB-CHANNEL COORDINATOR',
+    summary: 'Supervisor-tier template for one sub-channel × partner pair (clone and set `subChannelScope` and `partnerScope`). Files the most specific product, commission, uplift, disbursement and clawback terms.',
+    entityScope: 'ALK-CONV',
+    channelScope: '*',
+    subChannelScope: '*',
+    partnerScope: '*',
+    defaultLandingTab: DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner'],
+    reportsToProfileId: 'supervisor',
+    escalationProfileId: 'administration',
+    doaLimitAed: '150,000.00',
+    doaActions: ['master-config-change', 'discount-concession'],
+    piiAccess: 'masked',
+    fullTabs: ['overview', 'tour', DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner']],
+    readTabs: ['master', 'whats-new', DISTRIBUTION_CONFIG_TAB_IDS['omni-channel'], DISTRIBUTION_CONFIG_TAB_IDS.partner],
+    aiConfidencePct: 95,
+    aiRationale: 'Owns the narrowest commercial scope and needs read-only sight of the parent channel and partner terms it can override.',
   },
 
   // ======================== 2. UNDERWRITING, RETENTION & ENDORSEMENTS (6) ========================
@@ -1470,6 +1597,7 @@ export class SecurityGovernanceRegistry {
         entityScope: seed.entityScope,
         channelScope: seed.channelScope,
         subChannelScope: seed.subChannelScope,
+        ...(seed.partnerScope ? { partnerScope: seed.partnerScope } : {}),
         defaultLandingTab: seed.defaultLandingTab,
         reportsToProfileId: seed.reportsToProfileId,
         reportsToRoleId: seed.reportsToProfileId,
@@ -1887,6 +2015,7 @@ export class SecurityGovernanceRegistry {
     const p = this.getProfile(profileId);
     if (p.unrestricted) return 'full';
     if (ADMIN_ONLY_TAB_IDS.has(tabId)) return 'none';
+    if (DISTRIBUTION_CONFIG_TAB_ID_SET.has(tabId) && !mayUseDistributionConfigTabs(p)) return 'none';
     return p.tabAccess[tabId] ?? 'none';
   }
 
@@ -1894,6 +2023,7 @@ export class SecurityGovernanceRegistry {
     const p = this.getProfile(profileId);
     if (p.unrestricted) return 'full';
     if (ADMIN_ONLY_TAB_IDS.has(tabId)) return 'none';
+    if (DISTRIBUTION_CONFIG_TAB_ID_SET.has(tabId) && !mayUseDistributionConfigTabs(p)) return 'none';
     return p.sectionAccess[`${tabId}:${sectionId}`] ?? this.canAccessTab(profileId, tabId);
   }
 
@@ -1901,6 +2031,7 @@ export class SecurityGovernanceRegistry {
     const p = this.getProfile(profileId);
     if (p.unrestricted) return 'full';
     if (ADMIN_ONLY_TAB_IDS.has(tabId)) return 'none';
+    if (DISTRIBUTION_CONFIG_TAB_ID_SET.has(tabId) && !mayUseDistributionConfigTabs(p)) return 'none';
     return p.subSectionAccess[`${tabId}:${sectionId}:${subSectionId}`] ?? this.canAccessSection(profileId, tabId, sectionId);
   }
 
@@ -1914,6 +2045,7 @@ export class SecurityGovernanceRegistry {
     entityScope?: string;
     channelScope?: string;
     subChannelScope?: string;
+    partnerScope?: string;
     defaultLandingTab?: string;
     reportsToProfileId?: string | null;
     escalationProfileId?: string | null;
@@ -1937,6 +2069,7 @@ export class SecurityGovernanceRegistry {
       ?? (input.cloneFromProfileId ? this.getProfile(input.cloneFromProfileId) : this.getProfile('agent-1'));
     const isNew = !this.profiles.has(cleanId);
     const actor = this.resolveActor(input.actorProfileId ?? input.by);
+    const targetRole = { id: cleanId, family: input.family ?? existing.family, unrestricted: false };
 
     if (cleanId === 'administration') {
       throw new SecurityGovernanceError('Administration holds permanent complete unrestricted access and cannot have permissions removed');
@@ -1967,6 +2100,9 @@ export class SecurityGovernanceRegistry {
         if (ADMIN_ONLY_TAB_IDS.has(tabId) && level !== 'none') {
           throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
         }
+        if (DISTRIBUTION_CONFIG_TAB_ID_SET.has(tabId) && level !== 'none' && !mayUseDistributionConfigTabs(targetRole)) {
+          throw new SecurityGovernanceError('Distribution configuration tabs are restricted to the Configuration Analyst, Administration and coordinator role family');
+        }
         const cat = SECURITY_SURFACE_CATALOGUE.find((c) => c.tabId === tabId);
         this.assertGrantWithinActor({
           actor,
@@ -1992,6 +2128,9 @@ export class SecurityGovernanceRegistry {
         if (tabId && ADMIN_ONLY_TAB_IDS.has(tabId) && level !== 'none') {
           throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
         }
+        if (tabId && DISTRIBUTION_CONFIG_TAB_ID_SET.has(tabId) && level !== 'none' && !mayUseDistributionConfigTabs(targetRole)) {
+          throw new SecurityGovernanceError('Distribution configuration tabs are restricted to the Configuration Analyst, Administration and coordinator role family');
+        }
         if (!actor.unrestricted) {
           this.assertGrantWithinActor({
             actor,
@@ -2007,6 +2146,9 @@ export class SecurityGovernanceRegistry {
         const [tabId, sectionId, subId] = subKey.split(':');
         if (tabId && ADMIN_ONLY_TAB_IDS.has(tabId) && level !== 'none') {
           throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
+        }
+        if (tabId && DISTRIBUTION_CONFIG_TAB_ID_SET.has(tabId) && level !== 'none' && !mayUseDistributionConfigTabs(targetRole)) {
+          throw new SecurityGovernanceError('Distribution configuration tabs are restricted to the Configuration Analyst, Administration and coordinator role family');
         }
         if (!actor.unrestricted) {
           this.assertGrantWithinActor({
@@ -2077,6 +2219,9 @@ export class SecurityGovernanceRegistry {
       entityScope: input.entityScope?.trim() || existing.entityScope,
       channelScope: input.channelScope?.trim() || existing.channelScope,
       subChannelScope: input.subChannelScope?.trim() || existing.subChannelScope,
+      ...(input.partnerScope !== undefined || existing.partnerScope !== undefined
+        ? { partnerScope: input.partnerScope?.trim() || existing.partnerScope || '*' }
+        : {}),
       defaultLandingTab: input.defaultLandingTab?.trim() || existing.defaultLandingTab,
       reportsToProfileId: input.reportsToProfileId === undefined ? existing.reportsToProfileId : input.reportsToProfileId,
       reportsToRoleId: input.reportsToProfileId === undefined ? existing.reportsToRoleId : input.reportsToProfileId,
@@ -2130,6 +2275,14 @@ export class SecurityGovernanceRegistry {
     const targetTabId = input.kind === 'tab' ? input.key : input.key.split(':')[0] ?? '';
     if (ADMIN_ONLY_TAB_IDS.has(targetTabId) && input.level !== 'none' && input.level !== 'inherit') {
       throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
+    }
+    if (
+      DISTRIBUTION_CONFIG_TAB_ID_SET.has(targetTabId)
+      && !mayUseDistributionConfigTabs(role)
+      && input.level !== 'none'
+      && input.level !== 'inherit'
+    ) {
+      throw new SecurityGovernanceError('Distribution configuration tabs are restricted to the Configuration Analyst, Administration and coordinator role family');
     }
 
     if (input.kind === 'tab') {
@@ -2400,10 +2553,12 @@ export class SecurityGovernanceRegistry {
     const tabAccess: Record<string, AccessLevel> = {};
     const sectionAccess: Record<string, AccessLevel> = {};
     const subSectionAccess: Record<string, AccessLevel> = {};
+    const distributionAllowed = mayUseDistributionConfigTabs(this.getProfile(targetProfileId));
     for (const t of rec.tabs) {
       const adminOnly = ADMIN_ONLY_TAB_IDS.has(t.tabId);
-      tabAccess[t.tabId] = adminOnly ? 'none' : t.level;
-      if (adminOnly) continue;
+      const blockedDistribution = DISTRIBUTION_CONFIG_TAB_ID_SET.has(t.tabId) && !distributionAllowed;
+      tabAccess[t.tabId] = adminOnly || blockedDistribution ? 'none' : t.level;
+      if (adminOnly || blockedDistribution) continue;
       for (const s of t.sections) {
         sectionAccess[`${t.tabId}:${s.sectionId}`] = s.level;
         for (const sub of s.subSections) {
@@ -2926,6 +3081,7 @@ export class SecurityGovernanceRegistry {
         entityScope: p.entityScope,
         channelScope: p.channelScope,
         subChannelScope: p.subChannelScope,
+        partnerScope: p.partnerScope ?? '*',
         defaultLandingTab: p.defaultLandingTab,
         reportsToProfileId: p.reportsToProfileId,
         reportsToRoleId: p.reportsToRoleId,

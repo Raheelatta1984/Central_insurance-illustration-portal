@@ -38,7 +38,9 @@ import {
 } from './rbac-views';
 import { RoleAccessMatrixPanel } from './role-matrix-views';
 import { ReconciliationPanel } from './reconciliation-views';
+import { DistributionConfigurationPanel } from './distribution-config-views';
 import { ADMIN_ONLY_TAB_IDS } from '../core/rbac';
+import { DISTRIBUTION_CONFIG_TAB_IDS, type DistributionScopeKind } from '../core/tour';
 import { PartnerPortalApp } from './partner-portal';
 
 type Tab = ConsoleTab;
@@ -1111,6 +1113,20 @@ function App() {
     if (activeSecurityProfile && !activeSecurityProfile.unrestricted && ADMIN_ONLY_TAB_IDS.has(tab)) {
       return <Overview data={data} onNavigate={setTab} />;
     }
+    const distributionReadOnly = (tabId: string): boolean => Boolean(
+      activeSecurityProfile
+      && !activeSecurityProfile.unrestricted
+      && (activeSecurityProfile.tabAccess[tabId] ?? 'none') !== 'full',
+    );
+    const distributionPanel = (scope: DistributionScopeKind) => (
+      <DistributionConfigurationPanel
+        key={scope}
+        data={data}
+        scope={scope}
+        readOnly={distributionReadOnly(DISTRIBUTION_CONFIG_TAB_IDS[scope])}
+        onReload={load}
+      />
+    );
     switch (tab) {
       case 'tour': return <Tour />;
       case 'overview': return <Overview data={data} onNavigate={setTab} />;
@@ -1131,6 +1147,9 @@ function App() {
       );
       case 'journey': return <CustomerJourneyPanel data={data} onReload={load} onNavigate={setTab} />;
       case 'master': return <MasterSettingsErp data={data} onReload={load} onNavigate={setTab} />;
+      case 'distribution-channels': return distributionPanel('omni-channel');
+      case 'distribution-partners': return distributionPanel('partner');
+      case 'distribution-subchannels': return distributionPanel('sub-channel-partner');
       case 'email': return <EmailConfigurationPanel data={data} onReload={load} />;
       case 'policyholder': return <Policyholder data={data} onReload={load} />;
       case 'decisions': return <Decisions data={data} />;

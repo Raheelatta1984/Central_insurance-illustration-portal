@@ -122,6 +122,12 @@ export function authorize(
   if (path.startsWith('/master/') && !has(principal, ['master-admin', 'configurator', 'fund-configuration'])) {
     return 'master settings require a master-admin, configurator or admin principal';
   }
+  if (path.startsWith('/distribution/') && !has(principal, [
+    'master-admin', 'configurator', 'configuration-analyst',
+    'omni-channel-coordinator', 'partner-coordinator', 'sub-channel-coordinator',
+  ])) {
+    return 'distribution configuration requires a configuration analyst or coordinator principal';
+  }
   if (path.startsWith('/claims/')) {
     if (!has(principal, CLAIMS_ROLES)) return 'claims decisions require a claims authority role';
     const claimed = typeof payload['role'] === 'string' ? payload['role'] : undefined;

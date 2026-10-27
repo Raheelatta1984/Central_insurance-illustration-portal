@@ -5,10 +5,13 @@ import { SecurityGovernanceError } from './rbac.js';
 import { createRuntimeState, dispatchApiRoute } from './routes.js';
 import { CONSOLE_TABS } from './tour.js';
 
-const EXPECTED_36_PROFILES = [
+const EXPECTED_PROFILES = [
   'administration',
   'supervisor',
   'configurator',
+  'omni-channel-coordinator',
+  'partner-coordinator',
+  'sub-channel-coordinator',
   'underwriter-officer',
   'underwriter-manager',
   'retention-officer',
@@ -44,14 +47,14 @@ const EXPECTED_36_PROFILES = [
   'branch-manager',
 ] as const;
 
-describe('Enterprise Pre-Load Security, 36-Profile RBAC, AI Access Advisor & DOA Workflow', () => {
-  it('seeds all 36 enterprise profiles and grants administration complete unrestricted access everywhere', () => {
+describe('Enterprise Pre-Load Security, role-based RBAC, AI Access Advisor & DOA Workflow', () => {
+  it('seeds every built-in enterprise role and grants administration complete unrestricted access everywhere', () => {
     const w = buildWorld();
     const snap = w.rbac.snapshot();
 
-    expect(snap.profileCount).toBe(36);
+    expect(snap.profileCount).toBe(EXPECTED_PROFILES.length);
     const ids = snap.profiles.map((p) => p.id);
-    for (const expectedId of EXPECTED_36_PROFILES) {
+    for (const expectedId of EXPECTED_PROFILES) {
       expect(ids).toContain(expectedId);
     }
 
@@ -213,8 +216,8 @@ describe('Role authority tiers, DOA change control and the role access tree', ()
     const w = buildWorld();
     const snap = w.rbac.snapshot();
 
-    expect(snap.roleCount).toBe(36);
-    expect(snap.roles).toHaveLength(36);
+    expect(snap.roleCount).toBe(EXPECTED_PROFILES.length);
+    expect(snap.roles).toHaveLength(EXPECTED_PROFILES.length);
     expect(snap.roles).toEqual(snap.profiles);
     expect(snap.activeRoleId).toBe(snap.activeProfileId);
     expect(snap.authorities.map((a) => a.id)).toEqual(['officer', 'supervisor', 'manager', 'executive']);

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * e2e-smoke.mjs — boots a real browser against a running console and verifies:
- *   1. Pre-load Security & 36-Profile Selection Gate renders prior to entering the workspace.
- *   2. Administration enters with full unrestricted access across all 29 tabs.
+ *   1. Pre-load Security & role-based Selection Gate renders prior to entering the workspace.
+ *   2. Administration enters with full unrestricted access across every console tab.
  *   3. Dedicated Role Access & DOA tab renders AI Advisor, Entity × Channel × Sub-Channel mapping & DOA queue.
  *   4. Customer Journey & Smart Auto-Pick sections render cleanly.
  */
@@ -16,12 +16,12 @@ try {
   const title = await page.title();
   if (!/Central Insurance/.test(title)) throw new Error(`unexpected page title: ${title}`);
 
-  // 1. Pre-load Security Gate must appear first with all 36 enterprise profiles
+  // 1. Pre-load Security Gate must appear first with the live role count.
   const adminEnterBtn = page.locator('[data-select-profile="administration"]');
   await adminEnterBtn.waitFor({ state: 'visible', timeout: 10000 });
   const gateText = await page.textContent('body');
-  if (!/All Profiles \(36\)/.test(gateText ?? '')) {
-    throw new Error('pre-load security gate did not render all 36 profiles');
+  if (!/All Roles \(\d+\)/.test(gateText ?? '')) {
+    throw new Error('pre-load security gate did not render its role directory');
   }
   await adminEnterBtn.click();
   await page.waitForSelector('nav button', { timeout: 10000 });
@@ -42,7 +42,7 @@ try {
   const body = await page.textContent('body');
   if (!/onboarding/i.test(body ?? '')) throw new Error('journey sections did not render');
 
-  console.log(`e2e smoke passed against ${base} (36-profile gate + RBAC/DOA + Smart Auto-Pick verified)`);
+  console.log(`e2e smoke passed against ${base} (role gate + RBAC/DOA + Smart Auto-Pick verified)`);
 } finally {
   await browser.close();
 }
