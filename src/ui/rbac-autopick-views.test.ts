@@ -17,7 +17,7 @@ const h = React.createElement;
 const noop = async () => {};
 
 describe('RBAC Pre-Load Gate, DOA Panel, Smart ComboBox & Auto-Pick UI Views', () => {
-  it('renders the Pre-Load ProfileSelectionGate with all 36 enterprise profiles and Administration unrestricted badge', () => {
+  it('renders the Pre-Load ProfileSelectionGate with every enterprise role and the Administration unrestricted badge', () => {
     const data = worldSnapshot(buildWorld());
     const html = renderToString(
       h(ProfileSelectionGate, {
@@ -30,7 +30,9 @@ describe('RBAC Pre-Load Gate, DOA Panel, Smart ComboBox & Auto-Pick UI Views', (
     expect(html).toContain('Enterprise Security &amp; DOA Governance Gate');
     expect(html).toContain('Select Your Security Role to Enter');
     expect(html).toContain('Enter as Administration');
-    expect(html).toContain('Search all 36 roles');
+    expect(html).toContain(`Search all ${data.security.roleCount} roles`);
+    expect(html).toContain('Configuration Analyst');
+    expect(html).toContain('Omni-Channel Coordinator');
     expect(html).toContain('data-select-profile="administration"');
     expect(html).toContain('Marsh');
     expect(html).not.toContain('aria-expanded');

@@ -27,7 +27,8 @@ describe('Role access matrix tab', () => {
     const html = renderPanel();
 
     expect(html).toContain('Role access matrix — tabs, sections, sub-sections &amp; DOA authority');
-    expect(html).toContain('36 roles across 4 authority tiers');
+    const expectedRoles = worldSnapshot(buildWorld()).security.roleCount;
+    expect(html).toContain(`${expectedRoles} roles across 4 authority tiers`);
     expect(html).toContain('roles only — user logins are a later layer');
     expect(html).toContain('Tab → Section → Sub-section visibility tree');
     expect(html).toContain('DOA limits &amp; limit-increase requests');

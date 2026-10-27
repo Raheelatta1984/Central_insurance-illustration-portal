@@ -25,10 +25,11 @@ if (existsSync(routesServerPath)) {
   const { createRuntimeState, dispatchApiRoute } = require(routesServerPath);
   const beforeRefresh = JSON.stringify({ ...record, capturedAt: '' });
   const state = createRuntimeState(1);
-const freshPaths = [
-  '/world',
-  '/reconciliation',
-  '/security/rbac',
+  const freshPaths = [
+    '/world',
+    '/distribution/config',
+    '/reconciliation',
+    '/security/rbac',
     '/master/age-calculation',
     '/themes',
     '/batch',

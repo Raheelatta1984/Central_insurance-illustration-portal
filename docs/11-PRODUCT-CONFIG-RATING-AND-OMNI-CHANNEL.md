@@ -203,3 +203,31 @@ Deliberately open: rates filed here are read by `POST /master/rates/price` and b
 insurance; the quote, proposal and illustration paths still take their rate from the product master unless a
 grid row prices them, so this change is **additive and audited** rather than a silent restatement of the
 books — which is what a pricing change has to be.
+
+---
+
+## 8. Three dedicated distribution configuration tabs
+
+The combined Master settings panel above remains the compatibility view of the channel, partner and
+sub-channel masters. The commercial shelf now also has three top-level tabs:
+
+- **Omni Channel configuration** (`distribution-channels`) — one channel-wide row.
+- **Partner configuration** (`distribution-partners`) — one partner inside a parent channel.
+- **Sub Channel Partners configuration** (`distribution-subchannels`) — the narrowest
+  channel × partner × sub-channel row.
+
+Each screen configures the type of products (product line), a product from the priced master, its
+sub-products (varieties), a commission percentage schedule, premium uplift percentage, commission
+disbursement terms (frequency, trigger, settlement days, holdback) and clawback rules (trigger, basis
+and recovery schedule). Percentages are stored as integer basis points; the API validates them, the
+live masters and the active role before filing a row.
+
+The three rows resolve in most-specific-first order: sub-channel partner, then partner, then
+omni-channel, then the legacy offer/partner defaults. `priceRisk`, `commissionFor` and `clawbackFor`
+all read that order, so the configuration is not a disconnected form. These tabs are visible only to
+Administration, the Configuration Analyst and the three scoped coordinator templates. See
+[`docs/27-DISTRIBUTION-CONFIGURATION-AND-COORDINATOR-ROLES.md`](27-DISTRIBUTION-CONFIGURATION-AND-COORDINATOR-ROLES.md)
+and [`docs/API-REFERENCE.md`](API-REFERENCE.md) for `/distribution/config`.
+
+The historical test count in section 7 belongs to the rating-and-omni-channel release that added the
+combined panel; the current whole-suite count is reported by `npm run verify`.

@@ -331,6 +331,31 @@ export class ErpManager {
       },
       () => this.regional.current.localCurrency,
     );
+    // The dedicated distribution configuration tabs file commercial terms at channel, partner and
+    // sub-channel-partner scope. Resolving them here keeps pricing, commission and clawback probes on
+    // the same terms an operator sees on those screens — no second calculator in the UI.
+    const distributionConfig = w.distributionConfig;
+    this.channels.setDistributionTermsResolver((scope) => {
+      const product = this.products.get(scope.productId.trim().toUpperCase());
+      const row = distributionConfig.resolveFor({
+        ...scope,
+        subProduct: product?.variety ?? null,
+      });
+      if (!row) return undefined;
+      return {
+        commissionBps: row.commissionBps,
+        clawback: {
+          basis: row.clawback.basis,
+          trigger: row.clawback.trigger,
+          recoveryBps: row.clawback.recoveryBps,
+          note: row.clawback.note,
+        },
+        premiumUpliftBps: row.premiumUpliftBps,
+        mortalityUpliftBps: row.mortalityUpliftBps,
+        ratePerThousand: null,
+        source: `the ${row.scope} distribution configuration ${row.key}`,
+      };
+    });
     this.providers = new DistributionGovernance(
       this.channels,
       (productId) => {
@@ -2476,7 +2501,7 @@ export class ErpManager {
       };
     }
     if (!partner) throw new ErpError(`no partner ${partnerId} — file the partner on its channel before pricing through it`);
-    const terms = this.channels.termsFor(partnerId, input.productId);
+    const terms = this.channels.termsFor(partnerId, input.productId, { subChannelCode: input.subChannelCode });
     let amount = base.amount;
     let basis = base.basis;
     if (!base.priced) {

@@ -62,7 +62,7 @@ export const TAB_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze({
     watch: 'A figure that looks wrong here is wrong everywhere: it is the same snapshot every other screen reads.',
   },
   'access-doa': {
-    headline: 'Thirty-six roles, three-tier RBAC, AI advisor and live DOA routing',
+    headline: 'Role-driven RBAC, four authority tiers, AI advisor and live DOA routing',
     body: 'Every operator enters through the role security layer — from Administration (complete unrestricted access) through technical desks (Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Finance, Cost Control, Fund Config & Investment) to Agency, Marsh Broker, Bancassurance, Branch, Aggregator, Direct Customer and Referral Partners. These are roles, not user accounts: a future login layer will provision named users against them. AI recommends optimal Tabs, Sections and Sub-Sections with Segregation-of-Duties checks, while Entity × Channel × Sub-Channel mappings route out-of-limit actions to the right supervisor with instant approver notifications.',
     doThis: ['Switch between roles or launch the Pre-Load Role Gate to experience each role\u2019s tailored workspace and landing screen.', 'Run the AI Access & SoD Advisor on any role to inspect confidence scores, toxic-combination checks and one-click apply.', 'Test a DOA request above an officer\u2019s cap and watch the notification land in the mapped Supervisor / Manager inbox for approval or escalation.'],
     watch: 'Administration holds permanent complete access and cannot lock itself out; no requester may self-approve their own DOA request. Only supervisor- or manager-tier roles may change a DOA limit — an officer can only raise a limit-increase request.',
@@ -84,6 +84,24 @@ export const TAB_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze({
     body: 'Master settings is where the tenant is configured: country, calendar, time zone and currencies, actuarial age auto-calculation (Age Nearest / Age Next / Age Last) with per-product overrides, dependent product & rider auto-pick rules, smart editable combo-box suggestions, the product shelf grid, rating tables, omni-channel and partner commissions, multi-country providers, unit-linked charges, takaful window, claims authority matrix, FX rate card and regulated vocabulary.',
     doThis: ['Set country, region, time zone, currencies and actuarial age calculation basis (ANB / ANxB / ALB) first: every quote and customer auto-pick reads them.', 'Define or re-file a product in the factory grid with smart combo-box names/descriptions and configure its auto-picked dependent riders.', 'If the omni-channel is not set up, the button files the six standard routes; then the partners, their shelves, commission and clawback are yours to file.', 'Rename a journey field or a vocabulary label and watch the change reach the screens that render it.'],
     watch: 'These settings are filed data with an audit trail, not preferences: a change here re-prices new business and re-words documents, so it is recorded with the actor and the time.',
+  },
+  'distribution-channels': {
+    headline: 'One channel-wide commercial shelf, filed as data',
+    body: 'This is the channel layer of distribution configuration. It assigns a product type, a product and its sub-products to one omni-channel, then files the commission schedule, premium uplift percentage, commission-disbursement terms and clawback rule that apply before any partner narrows them. Percentages are stored as integer basis points, so a quote and a commission statement agree.',
+    doThis: ['Choose the channel, product type, product and sub-products, then read the channel commission ceiling before filing a schedule.', 'Enter commission and premium uplift as percentages, state when commission is disbursed and file the clawback recovery schedule.', 'Check the existing rows and edit or remove the row that owns this channel × product key.'],
+    watch: 'A channel is the broadest distribution scope. A partner or sub-channel partner row filed for the same product is more specific and wins at read time; a commission above the channel ceiling is refused.',
+  },
+  'distribution-partners': {
+    headline: 'Partner contract terms without another spreadsheet',
+    body: 'The partner layer narrows a channel-wide shelf to one named partner. Products and sub-products, commission percentages, premium uplift, holdback, settlement frequency, payout trigger and clawback recovery are filed on one auditable row. The channel ceiling and the partner’s parent channel are checked before the row is accepted.',
+    doThis: ['Select the parent channel and a partner filed on that channel, then assign the product type, product and sub-products.', 'File the commission schedule, premium uplift percentage, disbursement terms and clawback rule for the partner.', 'Compare the filed rows with the channel layer: a partner row overrides a channel row, but a sub-channel partner row overrides both.'],
+    watch: 'A partner cannot be configured against a different parent channel, and a commission schedule above the channel or sub-channel ceiling is refused rather than clipped.',
+  },
+  'distribution-subchannels': {
+    headline: 'The narrowest shelf: sub-channel × partner',
+    body: 'Sub-channel partner configuration is the most specific layer. It is for a named partner desk, branch, feed or journey inside one channel, with its own product assignment, commission schedule, premium uplift, disbursement terms and clawback rule. Pricing, commission and clawback probes resolve this layer before partner or channel terms.',
+    doThis: ['Pick the parent channel, partner and sub-channel; the sub-channel must belong to that channel and, where linked, to that partner.', 'Assign the product type, product and sub-products, then file the commercial and clawback terms.', 'Use the filed-rows table to verify inheritance: sub-channel partner beats partner, partner beats channel.'],
+    watch: 'Scope is checked against the live channel, partner, sub-channel and product masters. A stale or mismatched scope is refused with the reason, never saved as an orphan.',
   },
   email: {
     headline: 'Each letter from the desk that owns it',
@@ -320,9 +338,9 @@ export const SECTION_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze
     watch: 'Changing the age basis changes the rated age on new quotations from that moment forward; issued policies retain the age filed at underwriting.',
   },
   'access-doa:profile-directory': {
-    headline: 'Thirty-six security roles across seven operational and channel families',
-    body: 'Every persona — Administration (complete unrestricted access), Supervisor, Configurator, Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Bancassurance Ops, Fund Config, Accountant, Finance, Cost Controller, Fund Investment, Agents 1/2/Marsh/Supervisor, Banca 1/2/Supervisor, Branch Officer/Manager, Bank Manager, Aggregator, Direct Customer and Referral Partners 1/2 — has its own least-privilege workspace and DOA cap.',
-    doThis: ['Filter by family or search any profile, inspect its allowed tabs and DOA threshold, and click Switch Profile to enter that workspace immediately.', 'Clone any profile to create a regional or desk-specific variant without touching Administration.', 'Click Launch Pre-Load Profile Selector in the header whenever you want to return to the pre-load gate screen.'],
+    headline: 'Security roles across governance, configuration, coordination and channel families',
+    body: 'Every role — Administration (complete unrestricted access), Supervisor, Configuration Analyst, the three distribution coordinator templates, Underwriting, Retention, Endorsement, Claims, Settlement, Reinsurance, Bancassurance Ops, Fund Config, Accountant, Finance, Cost Controller, Fund Investment, Agents 1/2/Marsh/Supervisor, Banca 1/2/Supervisor, Branch Officer/Manager, Bank Manager, Aggregator, Direct Customer and Referral Partners 1/2 — has its own least-privilege workspace and DOA cap.',
+    doThis: ['Filter by family or search any role, inspect its allowed tabs and DOA threshold, and click Switch Profile to enter that workspace immediately.', 'Clone a coordinator template to create a per-channel, per-partner or per-sub-channel variant with explicit scopes, without touching Administration.', 'Click Launch Pre-Load Profile Selector in the header whenever you want to return to the pre-load gate screen.'],
     watch: 'Administration holds permanent complete access to every tab, section, sub-section and approval gate so the platform can never lock itself out.',
   },
   'access-doa:ai-advisor': {
@@ -397,6 +415,18 @@ export const SECTION_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze
     doThis: ['Inspect pending tentative proposals and their similarity scores.', 'Confirm or reject a proposal with a written audit reason and review the append-only reconciliation audit log.'],
     watch: 'Confirming an identity proposal links policy identity only; financial commission calculations remain disabled.',
   },
+  'distribution-channels:scope-directory': { headline: 'Choose the channel before the terms', body: 'The channel is the broadest scope. A coordinator can clone this role and set one channelScope, then file terms that apply to every partner on that route.', doThis: ['Select one filed channel.', 'Read its commission ceiling before entering a schedule.'], watch: 'A narrower partner or sub-channel partner row overrides this one.' },
+  'distribution-channels:product-assignment': { headline: 'Assign a type, a product and its sub-products', body: 'Product type is the line from the product factory, product is the priced master, and sub-products are varieties in that line. References are checked at the API boundary.', doThis: ['Pick a product type.', 'Pick a product and at least one sub-product.'], watch: 'A row naming a product from another line is refused.' },
+  'distribution-channels:commercial-terms': { headline: 'File percentages and payment terms together', body: 'Commission and premium uplift are percentages stored as basis points; disbursement frequency, payout trigger, settlement days and holdback describe when commission is actually paid.', doThis: ['Enter the commission schedule and premium uplift percentages.', 'State the disbursement trigger, frequency, settlement days and holdback.'], watch: 'Commission above the channel ceiling is refused rather than capped silently.' },
+  'distribution-channels:clawback-rules': { headline: 'Write the recovery schedule on the record', body: 'The clawback rule names the trigger, policy-year or policy-month basis, and a declining recovery schedule for commission that must come back when cover does not persist.', doThis: ['Choose the trigger and basis.', 'File the recovery percentages for each period.'], watch: 'The last recovery percentage repeats for later periods.' },
+  'distribution-partners:scope-directory': { headline: 'A partner belongs to one parent channel', body: 'Partner configuration is always checked against the partner’s filed channel. Clone the partner coordinator role and set partnerScope for a named partner desk.', doThis: ['Select the parent channel.', 'Select a partner filed on that channel.'], watch: 'A partner from another channel is refused.' },
+  'distribution-partners:product-assignment': { headline: 'Narrow the shelf to what the contract allows', body: 'A partner row files the product type, product and sub-products that partner may sell, independently of the channel-wide shelf.', doThis: ['Pick the product type and product.', 'Select the licensed sub-products.'], watch: 'A sub-channel partner row is still more specific.' },
+  'distribution-partners:commercial-terms': { headline: 'Partner commission, uplift and disbursement', body: 'These terms override channel terms for the same product, with the channel ceiling still enforced. The audit trail records who filed the row and when.', doThis: ['File commission and premium uplift percentages.', 'State disbursement frequency, trigger, settlement days and holdback.'], watch: 'Percentages are basis points on the record, never floating-point multipliers.' },
+  'distribution-partners:clawback-rules': { headline: 'Clawback belongs beside the commission', body: 'The partner clawback rule travels with its commission terms, so a commission probe and a clawback probe resolve the same filed row.', doThis: ['Choose the trigger and basis.', 'Enter the recovery schedule.'], watch: 'No recovery schedule means no clawback configuration was filed.' },
+  'distribution-subchannels:scope-directory': { headline: 'The narrowest distribution scope', body: 'A sub-channel partner row is keyed by channel, partner and sub-channel. Clone the sub-channel coordinator role and set subChannelScope and partnerScope for each desk.', doThis: ['Select channel, partner and sub-channel in that order.', 'Check the sub-channel’s parent and optional partner linkage.'], watch: 'A mismatched hierarchy is refused before the row is saved.' },
+  'distribution-subchannels:product-assignment': { headline: 'Sub-products at the desk level', body: 'The most specific row can narrow the product shelf to the varieties a desk, branch, feed or embedded journey actually sells.', doThis: ['Pick the product type and product.', 'Select only the sub-products this desk sells.'], watch: 'A product variety outside the selected line is refused.' },
+  'distribution-subchannels:commercial-terms': { headline: 'Sub-channel terms win last', body: 'Pricing, commission and clawback probes resolve this row before partner or channel terms when a sub-channel is supplied.', doThis: ['File commission and premium uplift percentages.', 'State the commission disbursement terms.'], watch: 'The sub-channel commission override, when filed, is the ceiling.' },
+  'distribution-subchannels:clawback-rules': { headline: 'Clawback for the narrowest book', body: 'A desk-specific clawback schedule overrides a partner or channel clawback plan for policies attributed to this sub-channel partner.', doThis: ['Choose the trigger and basis.', 'File the recovery schedule percentages.'], watch: 'The same trigger and basis are used by commission and clawback probes.' },
 });
 
 /* ------------------------------------------------------------------ composing a note */
@@ -521,6 +551,8 @@ export function worldFacts(w: World): Record<string, string[]> {
   const accountingStats = w.fundsAccounting.stats();
   const superStats = w.superFunds.stats();
   const warehouseSnapshot = w.warehouse.snapshot(w);
+  const distributionStats = w.distributionConfig.stats();
+  const securitySnapshot = w.rbac.snapshot();
 
   // The local currency governs how the tenant quotes and files; the books keep the currency they were
   // written in. Saying "base currency MYR" over a ledger kept in dirhams would be a lie on every screen.
@@ -540,7 +572,7 @@ export function worldFacts(w: World): Record<string, string[]> {
     ],
     'access-doa': [
       ...shared,
-      `${w.rbac.listRoles().length} security roles configured across 7 role families; active role: ${w.rbac.activeRole().name} (${w.rbac.activeRole().authorityLevel} tier, DOA cap ${w.rbac.snapshot().roles.find((p) => p.id === w.rbac.activeRole().id)?.doaLimitLabel ?? 'Unlimited'}).`,
+      `${w.rbac.listRoles().length} security roles configured across ${securitySnapshot.families.length} role families; active role: ${w.rbac.activeRole().name} (${w.rbac.activeRole().authorityLevel} tier, DOA cap ${securitySnapshot.roles.find((p) => p.id === w.rbac.activeRole().id)?.doaLimitLabel ?? 'Unlimited'}).`,
       `${w.rbac.snapshot().supervisionMappings.length} Entity × Channel × Sub-Channel supervision chains and ${w.rbac.snapshot().doaRequests.filter((r) => r.status === 'pending' || r.status === 'escalated').length} pending DOA approval(s) in queue.`,
     ],
     'role-matrix': [
@@ -558,6 +590,21 @@ export function worldFacts(w: World): Record<string, string[]> {
       `${products.length} product masters across ${new Set(products.map((p) => p.line)).size} lines; ${products.filter((p) => p.category === 'takaful').length} of them in the takaful window.`,
       `${regional.foreignCurrencies.length} foreign currency quote(s) on the rate card, last set by ${regional.updatedBy}.`,
       renamed > 0 ? `${renamed} journey field label(s) renamed on file.` : 'Journey fields all show their default labels.',
+    ],
+    'distribution-channels': [
+      ...shared,
+      `${distributionStats.byScope['omni-channel']} channel-wide configuration row(s) on file, ${distributionStats.enabled} enabled across all three scopes.`,
+      'Channel rows are the broadest commercial shelf: partner and sub-channel partner rows override them for the same product.',
+    ],
+    'distribution-partners': [
+      ...shared,
+      `${distributionStats.byScope.partner} partner configuration row(s) on file across ${new Set(products.map((p) => p.line)).size} product type(s).`,
+      'A partner row is validated against its parent channel ceiling before it can price commission or premium uplift.',
+    ],
+    'distribution-subchannels': [
+      ...shared,
+      `${distributionStats.byScope['sub-channel-partner']} sub-channel partner configuration row(s) on file; ${distributionStats.products} distinct product(s) configured across distribution.`,
+      'The narrowest enabled row wins for pricing, commission and clawback when a sub-channel is supplied.',
     ],
     email: [
       ...shared,
