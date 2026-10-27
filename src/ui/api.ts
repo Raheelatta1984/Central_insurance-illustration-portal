@@ -13,10 +13,10 @@ export interface ApiOptions {
   readonly idempotencyKey?: string;
 }
 
-function authHeaders(win: { localStorage?: { getItem(key: string): string | null } }): Record<string, string> {
+function authHeaders(win: { localStorage?: { getItem(key: string): string | null }; sessionStorage?: { getItem(key: string): string | null } }): Record<string, string> {
   try {
     const headers: Record<string, string> = {};
-    const token = win.localStorage?.getItem('portal-api-token');
+    const token = win.sessionStorage?.getItem('portal-api-token') ?? win.localStorage?.getItem('portal-api-token');
     if (token) headers['authorization'] = `Bearer ${token}`;
     const roleId = win.localStorage?.getItem('portal-active-role') ?? win.localStorage?.getItem('portal-active-profile');
     if (roleId) {
@@ -31,7 +31,7 @@ function authHeaders(win: { localStorage?: { getItem(key: string): string | null
 }
 
 export async function api<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown, options: ApiOptions = {}): Promise<T> {
-  const win = window as unknown as { __OFFLINE__?: unknown; localStorage?: { getItem(key: string): string | null } };
+  const win = window as unknown as { __OFFLINE__?: unknown; localStorage?: { getItem(key: string): string | null }; sessionStorage?: { getItem(key: string): string | null } };
   if (!win.__OFFLINE__) {
     const res = await fetch(`/api${path}`, {
       method,

@@ -1,0 +1,17 @@
+# Conditional partner quotation: prototype contract
+
+## Decision and scope
+
+The customer may review and sign an **indicative quotation subject to underwriting**. The indication uses the existing filed product and loading inputs; it is not an underwriting decision, a binding offer or evidence of cover. It must plainly state that underwriting may decline or change the price, exclusions or other terms, that no cover exists, and that changed terms require a new quotation and a fresh customer acceptance. It must not invite payment before underwriting is complete. This decision was selected by the user for the prototype; it is not an actuarial, legal or regulatory approval.
+
+For a partner-attributed journey the intended order is: collect customer information → issue and sign the conditional quotation → submit for one independent partner supervisor, manager or senior manager review → route according to the information on file → medical evidence assessment/review as needed and automated or independent human underwriting under the existing authority limits → confirm that the customer accepted the actual terms → collect payment → complete existing routing, reinsurance and issuance gates. A decline or unresolved referral cannot issue a policy. If the ultimate terms differ, payment and conversion must stay blocked until the customer has accepted a new, correctly versioned quotation. A reviewer cannot approve their own submission; a human underwriting decision is not the partner reviewer's decision.
+
+## Alternatives considered
+
+A provisional quotation presented as an already accepted underwriting decision is misleading and was rejected. Issuing cover or collecting money first was rejected. Reusing an automatically generated decision to masquerade as an independent human review was rejected. Inventing a new actuarial rate, underwriting rule, regulator wording or external payment integration was rejected.
+
+## Evidence and release gate
+
+The workflow is designed so that neither an underwriting assessment, medical evidence review, recorded decision nor accepted exposure occurs before partner approval, including through the legacy API and direct conversion paths. The focused tests cover automated and manual routes, rejections, stale or changed application/quotation terms, scope and identity checks, and refusal to take money or issue cover on unaccepted changes. A revised quote is generated only if filed pricing reproduces the underwriting decision. A manual underwriter must affirm all final terms are represented; unsupported conditions require insurer resolution outside the prototype. The original PDF and acceptance are retained, and the revised quote is linked to the current decision. Name entry and an email record are not verified electronic signing or proof of delivery. The existing direct non-partner journeys must continue to work.
+
+This remains a high-risk prototype. `AGENTS.md` calls for named human approval and an independent verifier before merging; at the requester’s direction, the prototype is being merged with both reviews still outstanding. Neither has been represented as completed. Those reviews remain prerequisites for live use, along with legal/actuarial approval, durable transaction/audit storage, real identity, insurer communications and money movement; see the [production-readiness roadmap](22-PARTNER-PRODUCTION-ROADMAP.md). A filed demo rate or a decision to merge is not proof of production compliance.

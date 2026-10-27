@@ -183,6 +183,8 @@ function describeValue(value: unknown): string {
 export class UnderwritingEngine {
   private readonly applications = new Map<string, Application>();
   private readonly accepted = new Map<string, UnderwritingDecision[]>();
+  /** A partner case is held until its signed conditional quotation is independently approved. */
+  private readonly partnerHolds = new Set<string>();
   private seq = 0;
 
   constructor(
@@ -206,10 +208,27 @@ export class UnderwritingEngine {
     return [...this.rules.values()];
   }
 
-  register(input: { partyId: string; productId: string; sumAssured: Money; at: string; profile: RiskProfile }): Application {
-    const application: Application = { id: `UW-${String(++this.seq).padStart(6, '0')}`, ...input, amendments: [] };
+  register(input: { partyId: string; productId: string; sumAssured: Money; at: string; profile: RiskProfile; holdForPartnerApproval?: boolean }): Application {
+    const { holdForPartnerApproval, ...facts } = input;
+    const application: Application = { id: `UW-${String(++this.seq).padStart(6, '0')}`, ...facts, amendments: [] };
     this.applications.set(application.id, application);
+    if (holdForPartnerApproval) this.partnerHolds.add(application.id);
     return application;
+  }
+
+  isHeldForPartnerApproval(applicationId: string): boolean { return this.partnerHolds.has(applicationId); }
+
+  /** Internal transition used only after a signed application receives a partner decision. */
+  releasePartnerHold(applicationId: string): void {
+    this.application(applicationId);
+    if (!this.partnerHolds.delete(applicationId)) throw new UnderwritingError('application is not awaiting partner approval');
+  }
+
+  /** Restore the hold if the synchronous approval transaction could not calculate a route. */
+  restorePartnerHold(applicationId: string): void {
+    const app = this.application(applicationId);
+    if (app.decision) throw new UnderwritingError('cannot re-hold an application with an underwriting decision');
+    this.partnerHolds.add(applicationId);
   }
 
   application(id: string): Application {
@@ -234,7 +253,7 @@ export class UnderwritingEngine {
     by: string;
     reason: string;
     patch: Partial<Omit<RiskProfile, 'partyId'>>;
-  }): { application: Application; amendments: readonly ProfileAmendment[]; reassessment: UnderwritingDecision; decisionSetAside: DecisionOutcome | null } {
+  }): { application: Application; amendments: readonly ProfileAmendment[]; reassessment: UnderwritingDecision | null; decisionSetAside: DecisionOutcome | null } {
     const app = this.application(applicationId);
     const reason = input.reason.trim();
     if (reason.length < AMENDMENT_REASON_MINIMUM) {
@@ -256,7 +275,7 @@ export class UnderwritingEngine {
     }
 
     if (added.length === 0) {
-      return { application: app, amendments: [], reassessment: this.assess(app.id), decisionSetAside: null };
+      return { application: app, amendments: [], reassessment: this.isHeldForPartnerApproval(app.id) ? null : this.assess(app.id), decisionSetAside: null };
     }
 
     const setAside = app.decision?.outcome ?? null;
@@ -271,7 +290,7 @@ export class UnderwritingEngine {
       });
       delete app.decision;
     }
-    return { application: app, amendments: added, reassessment: this.assess(app.id), decisionSetAside: setAside };
+    return { application: app, amendments: added, reassessment: this.isHeldForPartnerApproval(app.id) ? null : this.assess(app.id), decisionSetAside: setAside };
   }
 
   bmi(profile: RiskProfile): number {
@@ -283,6 +302,7 @@ export class UnderwritingEngine {
   /** Emphysema-free, auditable build-up of the extra mortality loading. */
   assess(applicationId: string): UnderwritingDecision {
     const app = this.application(applicationId);
+    if (this.isHeldForPartnerApproval(applicationId)) throw new UnderwritingError('partner approval is required before underwriting assessment');
     const rules = this.rulesFor(app.productId);
     const profile = app.profile;
     const reasons: Reason[] = [];
@@ -534,7 +554,7 @@ export class UnderwritingEngine {
   /** Applications a human still has to look at, with the reason each one is waiting. */
   queue(): Array<{ applicationId: string; partyId: string; outcome: DecisionOutcome; waitingOn: string[]; reasonCodes: string[] }> {
     return this.list()
-      .filter((a) => !a.decision || a.decision.outcome === 'referred')
+      .filter((a) => !this.isHeldForPartnerApproval(a.id) && (!a.decision || a.decision.outcome === 'referred'))
       .map((a) => {
         const assessment = a.decision ?? this.assess(a.id);
         return {

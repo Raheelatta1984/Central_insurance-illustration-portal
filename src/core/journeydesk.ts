@@ -331,10 +331,10 @@ export class JourneyDesk {
 
     const applicationId = caze.artefacts.applicationId;
     const app = applicationId ? w.underwriting.list().find((a) => a.id === applicationId) ?? null : null;
-    const assessment = app ? app.decision ?? w.underwriting.assess(app.id) : null;
+    const assessment = app ? app.decision ?? (w.underwriting.isHeldForPartnerApproval(app.id) ? null : w.underwriting.assess(app.id)) : null;
     const decision = app?.decision ?? null;
 
-    const medicalSet = app ? medicalRequirements({
+    const medicalSet = app && !w.underwriting.isHeldForPartnerApproval(app.id) ? medicalRequirements({
       age: app.profile.age,
       sumAssured: app.sumAssured,
       rules: w.underwriting.rulesFor(app.productId),
@@ -415,6 +415,9 @@ export class JourneyDesk {
         extraMortalityBps: decision.extraMortalityBps, loadedPremium: decision.loadedPremium,
       } : null,
       routing,
+      partnerUnderwritingHeld: Boolean(caze.distribution && (!app || w.underwriting.isHeldForPartnerApproval(app.id))),
+      partnerRoutingBlocker: w.partnerPortal?.gate(w, caze, routing) ?? null,
+      partnerConversionBlocker: w.partnerPortal?.gate(w, caze, routing, true) ?? null,
       payment,
       quotation: quotationRecord ? {
         quotationId: quotationRecord.quotationId,
@@ -443,11 +446,22 @@ export class JourneyDesk {
 
   /* ------------------------------------------------------------------ saving and submitting */
 
+  private assertIndependentPartnerUnderwriter(w: World, c: JourneyCase, stage: JourneyStageId, by: string): void {
+    if (!c.distribution || (stage !== 'medical' && stage !== 'uw-review')) return;
+    const blocker = w.partnerPortal.underwritingApprovalBlocker(w, c);
+    if (blocker) throw new JourneyDeskError(blocker);
+    const row = w.partnerPortal.current(c.caseId)!;
+    if (row.route?.automatic || row.submittedBy === by || row.review?.by === by) throw new JourneyDeskError('medical and underwriting review require an independent insurer underwriter');
+  }
+
   save(w: World, input: { caseId: string; stageId: JourneyStageId; answers: Answers; by?: string; at?: string }): JourneyProgress {
     const caze = this.get(input.caseId);
+    w.partnerPortal?.assertEditable(caze, input.stageId);
+    this.assertIndependentPartnerUnderwriter(w, caze, input.stageId, input.by?.trim() || 'operator');
     const at = input.at ?? `${w.asOf}T10:00:00+04:00`;
     this.assertEditable(input.stageId, input.answers, caze.answers[input.stageId]);
     caze.answers[input.stageId] = { ...caze.answers[input.stageId], ...input.answers };
+    if (caze.distribution && input.stageId === 'quotation') caze.answers.quotation['buyLinkSent'] = false;
     if (input.stageId === 'identity' && String(input.answers['nameEn'] ?? '').trim()) {
       caze.customerName = String(input.answers['nameEn']).trim();
       caze.country = String(input.answers['country'] ?? caze.country).toUpperCase();
@@ -461,12 +475,15 @@ export class JourneyDesk {
   submit(w: World, input: { caseId: string; stageId: JourneyStageId; answers?: Answers; by?: string; at?: string }): SubmitResult {
     const caze = this.get(input.caseId);
     const stageId = input.stageId;
+    w.partnerPortal?.assertEditable(caze, stageId);
     const at = input.at ?? `${w.asOf}T11:00:00+04:00`;
     const by = input.by?.trim() || 'operator';
+    this.assertIndependentPartnerUnderwriter(w, caze, stageId, by);
     if (input.answers) {
       this.assertEditable(stageId, input.answers, caze.answers[stageId]);
       caze.answers[stageId] = { ...caze.answers[stageId], ...input.answers };
     }
+    if (caze.distribution && stageId === 'quotation') caze.answers.quotation['buyLinkSent'] = false;
 
     // A full pass first: every gate is evaluated in order, so the values later sections read (the
     // loading breakdown, the allocation plan, the beneficiary set) exist before anything is written.
@@ -630,6 +647,7 @@ export class JourneyDesk {
 
       case 'coverage': {
         if (caze.artefacts.applicationId) {
+          if (w.underwriting.isHeldForPartnerApproval(caze.artefacts.applicationId)) return { applicationId: caze.artefacts.applicationId, note: 'Underwriting awaits partner approval.' };
           const existing = w.underwriting.assess(caze.artefacts.applicationId);
           return {
             applicationId: existing.applicationId, sumAssured: formatAmount(existing.sumAssured),
@@ -659,6 +677,7 @@ export class JourneyDesk {
           familyHistory: list(caze.answers['loadings']?.['familyHistory']),
           residenceCountry: String(answers['residenceCountry'] ?? caze.country),
           annualIncome: String(answers['annualIncome'] ?? '0'),
+          holdForPartnerApproval: Boolean(caze.distribution),
           at,
         });
         caze.artefacts = { ...caze.artefacts, applicationId: created.applicationId };
@@ -694,8 +713,8 @@ export class JourneyDesk {
           amended = {
             amendments: result.amendments.map((a) => ({ field: a.field, from: a.from, to: a.to, by: a.by, at: a.at })),
             decisionSetAside: result.decisionSetAside,
-            reassessedOutcome: result.reassessment.outcome,
-            reassessedExtraBps: result.reassessment.extraMortalityBps,
+            reassessedOutcome: result.reassessment?.outcome ?? null,
+            reassessedExtraBps: result.reassessment?.extraMortalityBps ?? null,
           };
         }
         return {
@@ -725,6 +744,12 @@ export class JourneyDesk {
       }
 
       case 'medical': {
+        if (caze.distribution) {
+          const blocker = w.partnerPortal.underwritingApprovalBlocker(w, caze);
+          if (blocker) throw new JourneyDeskError(blocker);
+          const row = w.partnerPortal.current(caze.caseId)!;
+          if (row.route?.automatic || row.submittedBy === by || row.review?.by === by) throw new JourneyDeskError('medical evidence must be reviewed by an independent insurer underwriter on a manual route');
+        }
         const set = caze.computed.__medicalRequirements;
         if (!set) throw new JourneyDeskError('the medical requirements could not be determined for this risk');
         return {
@@ -771,11 +796,20 @@ export class JourneyDesk {
 
       case 'uw-review': {
         if (!caze.artefacts.applicationId) throw new JourneyDeskError('there is no underwriting application to decide');
+        if (caze.distribution) {
+          const blocker = w.partnerPortal.underwritingApprovalBlocker(w, caze);
+          if (blocker) throw new JourneyDeskError(blocker);
+          const row = w.partnerPortal.current(caze.caseId)!;
+          if (row.route?.automatic) throw new JourneyDeskError('this case is assigned to the automated underwriting route');
+          if (row.submittedBy === by || row.review?.by === by) throw new JourneyDeskError('the insurer underwriter must be independent of the partner submission and approval');
+          if (answers['decidedByAi'] === true) throw new JourneyDeskError('this route requires a human underwriter');
+          if (w.underwriting.application(caze.artefacts.applicationId).decision) throw new JourneyDeskError('this application already has an underwriting decision');
+        }
         const outcome = String(answers['decisionOutcome'] ?? '') as DecisionOutcome;
         const decidedByAi = answers['decidedByAi'] === true;
         const decision = w.underwriting.decide(caze.artefacts.applicationId, {
           at,
-          by: String(answers['decidedBy'] ?? by),
+          by: caze.distribution ? by : String(answers['decidedBy'] ?? by),
           isAi: decidedByAi,
           ...(outcome && outcome !== 'referred' ? { override: outcome } : {}),
           acceptReferralReasonCodes: list(answers['acceptedReferrals']),
@@ -804,7 +838,7 @@ export class JourneyDesk {
             language: String(answers['emailLanguage'] ?? 'both') as 'en' | 'ar' | 'both',
             consentId: caze.artefacts.consentId,
             at, by,
-            buyLink: `https://portal.example/buy/${issued.record.quotationId}?token=${randomTokenHex(16)}`,
+            ...(facts.conditional ? {} : { buyLink: `https://portal.example/buy/${issued.record.quotationId}?token=${randomTokenHex(16)}` }),
           });
           caze.artefacts = { ...caze.artefacts, emailMessageId: dispatch.messageId };
           email = {
@@ -832,7 +866,7 @@ export class JourneyDesk {
           signedBy: String(answers['signedBy'] ?? caze.customerName),
           at: `${String(answers['signedAt'] ?? at.slice(0, 10))}T12:00:00+04:00`,
         });
-        caze.artefacts = { ...caze.artefacts, buyToken: finalisation.buyToken };
+        if (finalisation.buyToken) caze.artefacts = { ...caze.artefacts, buyToken: finalisation.buyToken };
         return {
           signedBy: finalisation.signedBy, signatureReference: finalisation.signatureReference,
           signedAt: finalisation.signedAt, coolingOffEndsOn: finalisation.coolingOffEndsOn,
@@ -944,6 +978,7 @@ export class JourneyDesk {
           : null;
         const converted = w.erp.convertProposalToPolicy(w, {
           applicationId: caze.artefacts.applicationId,
+          partnerJourneyCaseId: caze.distribution ? caze.caseId : undefined,
           paymentFrequency: String(caze.answers['coverage']?.['paymentFrequency'] ?? 'annual') as 'annual',
           beneficiaryName: primary?.name ?? caze.customerName,
           beneficiaryRelationship: primary?.relationship ?? 'family',
@@ -1035,6 +1070,27 @@ export class JourneyDesk {
 
   /* ------------------------------------------------------------------ the quotation, assembled from the journey */
 
+  /** Prepare a separate final quotation without overwriting the signed conditional one. */
+  issueRevisedPartnerQuote(w: World, caseId: string, by: string, at: string): { quotationId: string; version: number } {
+    const c = this.get(caseId);
+    const app = c.artefacts.applicationId ? w.underwriting.application(c.artefacts.applicationId) : null;
+    const decision = app?.decision;
+    if (!c.distribution || !decision || ['referred', 'declined', 'postponed'].includes(decision.outcome)) throw new JourneyDeskError('an accepting underwriting decision is required before preparing revised terms');
+    this.progress(w, caseId); // Rebuild rating and allocation from the current filed inputs.
+    const facts: QuotationFacts = { ...this.quotationFacts(w, c, at, by), conditional: false, requiresFreshAcceptance: true };
+    const sameMoney = (a: Money, b: Money) => a.currency === b.currency && a.minor === b.minor;
+    if (decision.applicationId !== app!.id || decision.productId !== facts.product.productId || decision.partyId !== facts.customer.partyId || !sameMoney(facts.sumAssured, decision.sumAssured)
+      || !sameMoney(facts.standardPremium, decision.standardPremium) || !sameMoney(facts.loadedPremium, decision.loadedPremium)
+      || facts.underwriting.extraMortalityBps !== decision.extraMortalityBps || facts.underwriting.outcome !== decision.outcome
+      || JSON.stringify([...facts.exclusions].sort()) !== JSON.stringify([...decision.exclusions].sort())) {
+      throw new JourneyDeskError('the filed quotation calculation does not reproduce the underwriting terms; a qualified insurer must resolve the pricing before a revised quote can be issued');
+    }
+    const issued = this.quotations.issue(facts);
+    if (issued.refused) throw new JourneyDeskError(issued.reason);
+    this.quotations.dispatch({ quotationId: issued.record.quotationId, to: facts.customer.email, consentId: c.artefacts.consentId, at, by });
+    return { quotationId: issued.record.quotationId, version: issued.record.version };
+  }
+
   private quotationFacts(w: World, caze: JourneyCase, at: string, by: string): QuotationFacts {
     const ctx = this.context(w, caze);
     // The pack in force for this customer's country files the default illustration rates a product,
@@ -1082,7 +1138,8 @@ export class JourneyDesk {
       attestationAgreed: caze.answers['needs']?.['attestationAgreed'] === true,
     });
     const decision = ctx.decision ?? ctx.application;
-    if (!decision) throw new JourneyDeskError('the case has not been assessed — a quotation cannot be issued on an unassessed risk');
+    const conditional = Boolean(caze.distribution && caze.artefacts.applicationId && w.underwriting.isHeldForPartnerApproval(caze.artefacts.applicationId));
+    if (!decision && !conditional) throw new JourneyDeskError('the case has not been assessed — a quotation cannot be issued on an unassessed risk');
     const charges = w.unitLinked.chargeSchedule();
 
     /*
@@ -1156,12 +1213,13 @@ export class JourneyDesk {
       medicalRequirements: medical ? medical.requirements.map((r) => ({ label: r.label, status: r.status, source: r.source })) : [],
       outstandingMedical: medical ? medical.outstanding.map((r) => r.label) : [],
       underwriting: {
-        outcome: String(caze.answers['uw-review']?.['decisionOutcome'] ?? decision.outcome),
-        decidedBy: decision.decidedBy || String(caze.answers['uw-review']?.['decidedBy'] ?? by),
-        decidedByAi: decision.decidedByAi,
+        outcome: conditional ? 'pending' : caze.distribution ? decision!.outcome : String(caze.answers['uw-review']?.['decisionOutcome'] ?? decision!.outcome),
+        decidedBy: conditional ? '' : (decision!.decidedBy || String(caze.answers['uw-review']?.['decidedBy'] ?? by)),
+        decidedByAi: conditional ? false : decision!.decidedByAi,
         extraMortalityBps: breakdown.totalExtraBps,
-        referrals: ctx.application?.referrals ?? [],
+        referrals: conditional ? [] : (ctx.application?.referrals ?? []),
       },
+      conditional,
       needs: { needId: evaluation.needId, pack: evaluation.pack, completed: evaluation.completed, percent: evaluation.percent },
       illustration: {
         wording: ctx.illustrationWording,
@@ -1303,7 +1361,7 @@ export class JourneyDesk {
         });
         return {
           caseId: c.caseId, customerName: c.customerName, status: c.status, openedAt: c.openedAt,
-          openedBy: c.openedBy, country: c.country, currency: c.currency,
+          openedBy: c.openedBy, country: c.country, currency: c.currency, distribution: c.distribution ?? null,
           artefacts: { ...c.artefacts },
           autoPick,
           log: [...c.log].reverse().map((l) => ({ ...l })),

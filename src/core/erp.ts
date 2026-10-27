@@ -845,6 +845,8 @@ export class ErpManager {
     residenceCountry?: string;
     annualIncome?: string | number;
     at?: string;
+    /** Internal journey flag, never accepted from the public proposal endpoint. */
+    holdForPartnerApproval?: boolean;
   }) {
     const prod = this.products.get(input.productId);
     if (!prod) throw new ErpError(`unknown product ${input.productId} — define it in Master Settings first`);
@@ -921,8 +923,9 @@ export class ErpManager {
       sumAssured,
       at,
       profile,
+      holdForPartnerApproval: input.holdForPartnerApproval,
     });
-    const assessment = w.underwriting.assess(app.id);
+    const assessment = input.holdForPartnerApproval ? null : w.underwriting.assess(app.id);
 
     const meta: ErpProposalMeta = {
       applicationId: app.id,
@@ -961,19 +964,19 @@ export class ErpManager {
       sex: profile.sex,
       dependentProducts: resolvedDependentProducts,
       sumAssured: formatAmount(sumAssured),
-      standardPremium: formatAmount(assessment.standardPremium),
-      loadedPremium: formatAmount(assessment.loadedPremium),
-      extraMortalityBps: assessment.extraMortalityBps,
-      outcome: assessment.outcome,
-      exclusions: assessment.exclusions,
-      evidence: assessment.evidence,
-      referrals: assessment.referrals,
-      reasons: assessment.reasons,
-      reinsurance: {
+      standardPremium: assessment ? formatAmount(assessment.standardPremium) : 'Awaiting partner approval',
+      loadedPremium: assessment ? formatAmount(assessment.loadedPremium) : 'Awaiting partner approval',
+      extraMortalityBps: assessment?.extraMortalityBps ?? null,
+      outcome: assessment?.outcome ?? 'awaiting-partner-approval',
+      exclusions: assessment?.exclusions ?? [],
+      evidence: assessment?.evidence ?? [],
+      referrals: assessment?.referrals ?? [],
+      reasons: assessment?.reasons ?? [],
+      reinsurance: assessment ? {
         mode: assessment.reinsurance.mode,
         threshold: formatAmount(assessment.reinsurance.threshold),
         note: assessment.reinsurance.note,
-      },
+      } : null,
     };
   }
 
@@ -1011,6 +1014,8 @@ export class ErpManager {
 
   convertProposalToPolicy(w: World, input: {
     applicationId: string;
+    /** Internal journey-only marker; the HTTP conversion endpoint never accepts it. */
+    partnerJourneyCaseId?: string;
     policyId?: string;
     paymentFrequency?: PaymentFrequency;
     beneficiaryName?: string;
@@ -1022,6 +1027,14 @@ export class ErpManager {
     at?: string;
   }): { policy: ErpPolicy; initialReceipt?: PremiumReceipt } {
     const app = w.underwriting.application(input.applicationId);
+    const partnerCase = w.journey?.list().find((c) => c.artefacts.applicationId === app.id && c.distribution);
+    if (partnerCase) {
+      if (input.partnerJourneyCaseId !== partnerCase.caseId) throw new ErpError('partner applications must be converted through their approved customer journey');
+      const route = w.journey.context(w, partnerCase).routing;
+      const blocker = w.partnerPortal.gate(w, partnerCase, route, true);
+      if (blocker) throw new ErpError(blocker);
+      if (!partnerCase.artefacts.routeId || !w.journey.context(w, partnerCase).payment?.clearsDue) throw new ErpError('partner conversion requires recorded underwriting routing and cleared payment');
+    }
     let decision = app.decision;
     if (!decision || decision.outcome === 'referred') {
       // If a human converts a referred proposal directly, decide it as senior-underwriter first
@@ -2880,7 +2893,8 @@ export class ErpManager {
       };
     });
 
-    const proposals = w.underwriting.list().map((a) => {
+    // A partner application does not enter the underwriting work queue before partner review.
+    const proposals = w.underwriting.list().filter((a) => !w.underwriting.isHeldForPartnerApproval(a.id)).map((a) => {
       const meta = this.proposals.get(a.id);
       const assessment = a.decision ?? w.underwriting.assess(a.id);
       const party = w.parties.get(a.partyId);

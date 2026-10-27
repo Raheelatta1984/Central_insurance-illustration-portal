@@ -252,7 +252,7 @@ describe('reviewing and updating the risk questionnaire', () => {
     expect(amended.amendments[2]).toMatchObject({ from: 'none', to: 'hypertension-controlled' });
     expect(amended.amendments.every((a) => a.reason.length >= 24)).toBe(true);
     // Class 4 is outside this product's standard range (150 bps), plus smoker 100 bps and 25 bps.
-    expect(amended.reassessment.extraMortalityBps).toBe(150 + 100 + 25);
+    expect(amended.reassessment!.extraMortalityBps).toBe(150 + 100 + 25);
     expect(engine.amendmentsFor(app.id)).toHaveLength(3);
     expect(engine.application(app.id).profile.occupationClass).toBe(4);
   });
@@ -269,7 +269,7 @@ describe('reviewing and updating the risk questionnaire', () => {
     });
     expect(amended.decisionSetAside).toBe('standard');
     expect(engine.application(app.id).decision).toBeUndefined();
-    expect(amended.reassessment.outcome).toBe('referred');
+    expect(amended.reassessment!.outcome).toBe('referred');
     const trail = engine.amendmentsFor(app.id);
     expect(trail.at(-1)).toMatchObject({ field: 'decision', to: 'set aside — the case must be decided again on the updated answers' });
     expect(trail.at(-1)!.from).toMatch(/standard decided by senior-underwriter/);

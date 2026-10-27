@@ -42,6 +42,7 @@ import { LoadingBreakdown, MedicalRequirementSet, RiderPricing, RiderSelection, 
 import { DecisionOutcome, OccupationClass, ProductRules } from './underwriting.js';
 import { PaymentMethod, Reconciliation } from './payments.js';
 import { RoutingDecision, RoutingLimits, UnderwritingQueue } from './uwroute.js';
+import type { PartnerScope } from './partner-portal.js';
 
 export class JourneyError extends Error {}
 
@@ -425,6 +426,8 @@ export interface JourneyCase {
   readonly caseId: string;
   readonly openedAt: string;
   readonly openedBy: string;
+  /** Distribution attribution is set before routing and cannot be silently changed. */
+  distribution?: PartnerScope;
   /** Mutable: the golden record names the journey, and the name arrives in the first section. */
   customerName: string;
   readonly currency: string;
@@ -475,6 +478,9 @@ export interface JourneyContext {
   readonly application?: { readonly sumAssured: Money; readonly standardPremium: Money; readonly loadedPremium: Money; readonly extraMortalityBps: number; readonly outcome: DecisionOutcome; readonly referrals: readonly string[]; readonly exclusions: readonly string[]; readonly evidence: readonly string[]; readonly decidedBy: string; readonly decidedByAi: boolean } | null;
   readonly decision?: { readonly outcome: DecisionOutcome; readonly decidedBy: string; readonly decidedByAi: boolean; readonly extraMortalityBps: number; readonly loadedPremium: Money } | null;
   readonly routing?: RoutingDecision | null;
+  readonly partnerUnderwritingHeld?: boolean;
+  readonly partnerRoutingBlocker?: string | null;
+  readonly partnerConversionBlocker?: string | null;
   readonly payment?: Reconciliation | null;
   readonly quotation?: { readonly quotationId: string; readonly version: number; readonly status: string; readonly totalPayable: Money; readonly expiresAt: string; readonly dispatched: boolean; readonly finalised: boolean; readonly blockers: readonly string[] } | null;
   readonly policy?: { readonly policyId: string; readonly status: string; readonly contributionsToDate: Money; readonly commencement: string; readonly currentValue: Money; readonly holdings: ReadonlyArray<{ fundId: string; fundName: string; units: string; price: string; value: Money; priceAsOf: string }>; readonly targetWeights: ReadonlyArray<{ fundId: string; weightBps: number }> } | null;
@@ -834,6 +840,10 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
   },
 
   medical: (c, ctx) => {
+    if (c.distribution && (!c.artefacts.applicationId || ctx.partnerUnderwritingHeld)) {
+      delete c.computed.__medicalRequirements;
+      return { percent: 0, complete: false, missing: [], blockers: ['Medical evidence assessment and review await partner approval'], warnings: [], summary: [], artefacts: [] };
+    }
     const a = c.answers['medical'];
     const product = ctx.products.find((p) => p.productId === String(c.answers['recommendation']?.['productId'] ?? ''));
     const breakdown = c.computed.__loadingBreakdown;
@@ -962,7 +972,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
     const set = c.computed.__medicalRequirements;
     if (set && !set.complete) blockers.push(`Medical evidence is outstanding: ${set.blockers.join('; ')}`);
     const outcome = String(a['decisionOutcome'] ?? ctx.decision?.outcome ?? ctx.application?.outcome ?? '') as DecisionOutcome | '';
-    if (outcome === 'declined' || outcome === 'postponed') {
+    if ((outcome === 'declined' || outcome === 'postponed') && !c.distribution) {
       blockers.push(`The decision is "${outcome}": no quotation may be issued, and only a named human may record that outcome`);
     }
     if (outcome === 'referred') warnings.push('The case is still referred — a senior underwriter must decide it before a quotation can be issued');
@@ -994,9 +1004,9 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
       else if (!q.dispatched) blockers.push('The quotation has been generated but not sent to the customer');
     } else {
       // Nothing issued yet: the gate checks the preconditions the issue will be tested against.
-      if (!decision) blockers.push('The case has not been assessed — no quotation can be issued on an unassessed risk');
-      else if (decision.outcome === 'declined' || decision.outcome === 'postponed') blockers.push(`The decision is "${decision.outcome}": no quotation may be issued`);
-      else if (decision.outcome === 'referred') blockers.push('The case is still referred; a decision under authority is needed before a quotation can be issued');
+      if (!decision && !c.distribution) blockers.push('The case has not been assessed — no quotation can be issued on an unassessed risk');
+      else if (decision && (decision.outcome === 'declined' || decision.outcome === 'postponed')) blockers.push(`The decision is "${decision.outcome}": no quotation may be issued`);
+      else if (decision && decision.outcome === 'referred') blockers.push('The case is still referred; a decision under authority is needed before a quotation can be issued');
       const breakdown = c.computed.__loadingBreakdown;
       if (breakdown?.reconciliation.agrees === false) blockers.push(breakdown.reconciliation.detail);
       const plan = c.computed.__allocationPlan;
@@ -1051,6 +1061,9 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
     const recon = ctx.payment;
     const due = ctx.quotation?.totalPayable ?? money(0n, ctx.currency);
     const captured = Boolean(recon && recon.payments.length > 0);
+    // Every capture, including a later instalment after a partial payment, must respect the
+    // current approval, underwriting decision and customer acceptance. Direct journeys are unchanged.
+    if (ctx.partnerRoutingBlocker) blockers.push(ctx.partnerRoutingBlocker);
     if (due.minor === 0n) {
       blockers.push('There is no amount due yet — the quotation has to be issued first');
     } else if (!captured) {
@@ -1094,6 +1107,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
     const gaps = fieldGaps(stageSpec('routing'), computed, ctx.fieldSettings);
     const blockers: string[] = [];
     const warnings: string[] = [];
+    if (ctx.partnerRoutingBlocker) blockers.push(ctx.partnerRoutingBlocker);
     if (!routing) blockers.push('The route has not been decided yet — submit this section to route the case');
     if (routing) {
       if (a['reinsuranceAnswer'] === 'decline') blockers.push('The reinsurer declined the risk: it cannot be bound on this treaty');
@@ -1123,6 +1137,7 @@ const reviewers: Record<JourneyStageId, (c: JourneyCase, ctx: JourneyContext) =>
       ], artefacts: ['Policy number', 'First premium receipt and journal', 'Units allocated at the dealing valuation'] };
     }
     const decision = ctx.decision ?? ctx.application;
+    if (ctx.partnerConversionBlocker) blockers.push(ctx.partnerConversionBlocker);
     if (!decision) blockers.push('There is no underwriting decision to convert');
     else if (decision.outcome === 'declined' || decision.outcome === 'postponed') blockers.push(`The decision is "${decision.outcome}": the proposal cannot become a policy`);
     else if (decision.outcome === 'referred') blockers.push('The case is still referred; a decision under authority is needed before conversion');
@@ -1339,7 +1354,13 @@ export function journeyProgress(caze: JourneyCase, ctx: JourneyContext, options:
   let firstIncomplete: JourneyStageId | null = null;
   let blockedBy: JourneyStageId | null = null;
 
-  for (const stage of JOURNEY_STAGES) {
+  // A partner signs a conditional quote before medical evidence review and underwriting.
+  const partnerUpfront = JOURNEY_STAGES.filter((stage) => stage.id !== 'medical' && stage.id !== 'uw-review');
+  const afterSignOff = partnerUpfront.findIndex((stage) => stage.id === 'finalisation') + 1;
+  const orderedStages = caze.distribution
+    ? [...partnerUpfront.slice(0, afterSignOff), stageSpec('medical'), stageSpec('uw-review'), ...partnerUpfront.slice(afterSignOff)]
+    : JOURNEY_STAGES;
+  for (const [index, stage] of orderedStages.entries()) {
     const review = reviews.get(stage.id)!;
     const locked = blockedBy !== null;
     const submitted = caze.submitted.includes(stage.id) || options.ignoreSubmittedFor === stage.id;
@@ -1356,7 +1377,7 @@ export function journeyProgress(caze: JourneyCase, ctx: JourneyContext, options:
       : review.percent > 0 ? 'in-progress'
       : 'ready';
     states.push({
-      id: stage.id, order: stage.order, title: stage.title, shortTitle: stage.shortTitle,
+      id: stage.id, order: caze.distribution ? index + 1 : stage.order, title: stage.title, shortTitle: stage.shortTitle,
       purpose: stage.purpose, regulatoryBasis: stage.regulatoryBasis, owner: stage.owner,
       detailTab: stage.detailTab, fields: stage.fields.map((fd) => ({
         ...fd,

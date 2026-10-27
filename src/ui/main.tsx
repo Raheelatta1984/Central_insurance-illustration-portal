@@ -7,6 +7,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { WorldSnapshot } from '../core/demo';
+import { LabelRegistry } from '../core/labels';
 
 import { CONSOLE_TABS, ConsoleTab, TOUR, TourStep, tourMinutes } from '../core/tour';
 import { applyDateFormat, applyTimeFormat, zonedParts } from '../core/regional';
@@ -36,10 +37,13 @@ import {
   RoleAccessAndDoaPanel,
 } from './rbac-views';
 import { RoleAccessMatrixPanel } from './role-matrix-views';
+import { PartnerPortalApp } from './partner-portal';
 
 type Tab = ConsoleTab;
 
 const TABS = CONSOLE_TABS;
+const partnerLabels = new LabelRegistry();
+const isOffline = () => Boolean((window as unknown as { __OFFLINE__?: unknown }).__OFFLINE__);
 
 const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; wide?: boolean; guide?: boolean }> = ({ title, subtitle, children, wide, guide = true }) => (
   <section className="card" style={wide ? { gridColumn: '1 / -1' } : undefined}>
@@ -115,6 +119,7 @@ function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab
           <div className="row" style={{ marginTop: 8 }}>
             <button onClick={() => onNavigate('access-doa')}>⚿ Role Access &amp; DOA ({data.security.roleCount} roles)</button>
             <button onClick={() => onNavigate('role-matrix')}>⑃ Role access matrix — tabs &amp; sections</button>
+            <a href={isOffline() ? "#partner-portal" : "/partner-portal"} style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 12px', borderRadius: 8, background: '#3ea6ff', color: '#06121f', fontWeight: 700, textDecoration: 'none' }}>◈ {partnerLabels.t('partner.openPortal')}</a>
             <button onClick={() => onNavigate('journey')}>➤ Start a customer journey</button>
             <button onClick={() => onNavigate('parties')}>+ Create Customer</button>
             <button onClick={() => onNavigate('underwriting')}>+ Create Proposal &amp; Quote</button>
@@ -2977,4 +2982,14 @@ code, pre { overflow-wrap:anywhere; }
 `;
 document.head.appendChild(style);
 
-createRoot(document.getElementById('root')!).render(<App />);
+function RootRouter() {
+  const showPartner = () => window.location.pathname.replace(/\/$/, '') === '/partner-portal' || (isOffline() && window.location.hash === '#partner-portal');
+  const [partnerOpen, setPartnerOpen] = useState(showPartner);
+  useEffect(() => {
+    const update = () => setPartnerOpen(showPartner());
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
+  return partnerOpen ? <PartnerPortalApp /> : <App />;
+}
+createRoot(document.getElementById('root')!).render(<RootRouter />);

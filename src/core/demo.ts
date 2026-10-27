@@ -47,6 +47,7 @@ import { BatchRegistry, batchSubjectsFromWorld } from './batch.js';
 import { WhatsNewRegistry } from './whatsnew.js';
 import { EmailConfigRegistry } from './email-config.js';
 import { SecurityGovernanceRegistry } from './rbac.js';
+import { PartnerPortal } from './partner-portal.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -92,6 +93,8 @@ export interface World {
   readonly erp: ErpManager;
   /** The guided lifecycle: gated sections from onboarding to investment progress, with its books. */
   readonly journey: JourneyDesk;
+  /** Scoped, in-memory partner workflow. Not part of the reporting-store replay. */
+  readonly partnerPortal: PartnerPortal;
   /** The AI guide: the sticky note on every section of every screen, and the switch that hides them. */
   readonly guide: GuideDesk;
   readonly fundsAccounting: FundsAccountingRegistry;
@@ -815,7 +818,7 @@ export function buildWorld(): World {
   // The guide is a desk, not a screen: it holds the switch and its audit trail, and reads the world
   // when it composes notes, so the figures inside a note are the engine's and never a typed string.
   const guide = new GuideDesk({ at: `${withErp.asOf}T12:00:00Z`, by: 'console-default' });
-  return { ...withErp, journey, guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig, rbac };
+  return { ...withErp, journey, partnerPortal: new PartnerPortal(), guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig, rbac };
 }
 
 /**
@@ -899,7 +902,7 @@ export function underwritingSnapshot(engine: UnderwritingEngine, asOf: string) {
         facultativeRequired: exposure.facultativeRequired,
       };
     }),
-    applications: engine.list().map((a) => {
+    applications: engine.list().filter((a) => !engine.isHeldForPartnerApproval(a.id)).map((a) => {
       const assessment = a.decision ?? engine.assess(a.id);
       return {
         id: a.id, partyId: a.partyId, productId: a.productId, at: a.at,
