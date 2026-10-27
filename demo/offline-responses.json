@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-27T13:11:29.126Z",
+  "capturedAt": "2026-10-27T13:50:23.065Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -32077,7 +32077,7 @@
                 "facts": [
                   "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                   "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                  "14 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+                  "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
                 ],
                 "tone": "info",
                 "curated": true
@@ -34171,7 +34171,7 @@
             "whats-new": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
               "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-              "14 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+              "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
             ],
             "warehouse": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
@@ -37004,6 +37004,21 @@
         "whatsNew": {
           "entries": [
             {
+              "id": "WN-PR-42",
+              "at": "2026-10-27",
+              "title": "Publish release notes automatically from PRs",
+              "category": "feature",
+              "source": "PR #42 · opened 2026-10-27 · auto-filed",
+              "why": "Release notes were curated by hand. A merged PR (#38) shipped without an entry, PR #39 was only a correction, and the What's New tab explicitly told operators that merging a PR does nothing. Maintaining the seed, rebuilding the offline demo and committing the generated files is a manual three-step ritual that gets forgotten.",
+              "what": ".github/workflows/whats-new.yml reacts to pull_request_target (opened / edited / synchronize / reopened / closed), push on main, and workflow_dispatch backfill. It checks out **main only** — never PR code — verifies the full build, then commits the regenerated feed and offline demo to main. tools/whats-new-sync.mjs + domain drafters in src/core/whatsnew.ts turn PR title, labels and ## Why / ## What changed / ## What you need to do sections into an operator-facing note. One stable WN-PR-‹n› entry per PR: proposed on open, shipped with the merge date on merge, removed on unmerged close. PR text is sanitised to bounded plain text before it reaches generated code, HTML or the console. backlog/whats-new-auto.json (source of truth) and generated src/core/whatsnew.auto.ts feed the registry, API and static demo. A lastMergedAt watermark backfill and proposed-entry re-check self-heal failed or missed runs; whats-new:skip / whats-new:include control eligibility. UI badges proposed entries as \"in review — not shipped\" and links to the PR. CI and npm run whats-new:check fail if the two committed files drift. Docs: new decision record docs/28-AUTOMATIC-WHATS-NEW.md, updated docs/13-…, README, CONTRIBUTING, backlog chunk and ledger row.",
+              "whatYouNeedToDo": "In review — not shipped yet. Write PR bodies with the three headings above — they become the release note. Label internal/tooling PRs whats-new:skip. Enable **Settings → Actions → General → Workflow permissions → Read and write** (or set a WHATS_NEW_TOKEN secret) so the workflow can commit to main. No manual What's New edit is needed.",
+              "area": "What's New",
+              "risk": "medium",
+              "stage": "proposed",
+              "pr": 42,
+              "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/42"
+            },
+            {
               "id": "WN-0014",
               "at": "2026-10-27",
               "title": "Access & DOA and Role access matrix tabs restricted to Administration only",
@@ -37173,14 +37188,14 @@
             }
           ],
           "categories": [
-            "security",
             "feature",
+            "security",
             "fix",
             "improvement",
             "data"
           ],
           "latestAt": "2026-10-27",
-          "pending": 0,
+          "pending": 1,
           "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
         },
         "emailConfig": {
@@ -63283,6 +63298,21 @@
       "body": {
         "entries": [
           {
+            "id": "WN-PR-42",
+            "at": "2026-10-27",
+            "title": "Publish release notes automatically from PRs",
+            "category": "feature",
+            "source": "PR #42 · opened 2026-10-27 · auto-filed",
+            "why": "Release notes were curated by hand. A merged PR (#38) shipped without an entry, PR #39 was only a correction, and the What's New tab explicitly told operators that merging a PR does nothing. Maintaining the seed, rebuilding the offline demo and committing the generated files is a manual three-step ritual that gets forgotten.",
+            "what": ".github/workflows/whats-new.yml reacts to pull_request_target (opened / edited / synchronize / reopened / closed), push on main, and workflow_dispatch backfill. It checks out **main only** — never PR code — verifies the full build, then commits the regenerated feed and offline demo to main. tools/whats-new-sync.mjs + domain drafters in src/core/whatsnew.ts turn PR title, labels and ## Why / ## What changed / ## What you need to do sections into an operator-facing note. One stable WN-PR-‹n› entry per PR: proposed on open, shipped with the merge date on merge, removed on unmerged close. PR text is sanitised to bounded plain text before it reaches generated code, HTML or the console. backlog/whats-new-auto.json (source of truth) and generated src/core/whatsnew.auto.ts feed the registry, API and static demo. A lastMergedAt watermark backfill and proposed-entry re-check self-heal failed or missed runs; whats-new:skip / whats-new:include control eligibility. UI badges proposed entries as \"in review — not shipped\" and links to the PR. CI and npm run whats-new:check fail if the two committed files drift. Docs: new decision record docs/28-AUTOMATIC-WHATS-NEW.md, updated docs/13-…, README, CONTRIBUTING, backlog chunk and ledger row.",
+            "whatYouNeedToDo": "In review — not shipped yet. Write PR bodies with the three headings above — they become the release note. Label internal/tooling PRs whats-new:skip. Enable **Settings → Actions → General → Workflow permissions → Read and write** (or set a WHATS_NEW_TOKEN secret) so the workflow can commit to main. No manual What's New edit is needed.",
+            "area": "What's New",
+            "risk": "medium",
+            "stage": "proposed",
+            "pr": 42,
+            "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/42"
+          },
+          {
             "id": "WN-0014",
             "at": "2026-10-27",
             "title": "Access & DOA and Role access matrix tabs restricted to Administration only",
@@ -63452,14 +63482,14 @@
           }
         ],
         "categories": [
-          "security",
           "feature",
+          "security",
           "fix",
           "improvement",
           "data"
         ],
         "latestAt": "2026-10-27",
-        "pending": 0,
+        "pending": 1,
         "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
       }
     },
@@ -66166,7 +66196,7 @@
               "facts": [
                 "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                 "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                "14 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+                "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
               ],
               "tone": "info",
               "curated": true
@@ -68260,7 +68290,7 @@
           "whats-new": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
             "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-            "14 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+            "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
           ],
           "warehouse": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",

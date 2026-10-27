@@ -128,6 +128,11 @@ describe("what's new", () => {
       expect(draft.whatYouNeedToDo).toContain('confirm the headers');
       expect(draft.url).toMatch(/^https:\/\/github\.com\//);
       expect(plainText('<img src=x onerror=alert(1)>', 50)).not.toContain('<');
+      const identifiers = plainText('Use `pull_request_target`, PR #38 and workflow_dispatch', 100);
+      expect(identifiers).toContain('pull_request_target');
+      expect(identifiers).toContain('#38');
+      expect(identifiers).toContain('workflow_dispatch');
+      expect(plainText('One stable WN-PR-<n> entry', 40)).toBe('One stable WN-PR-‹n› entry');
       expect(() => assertPublishableEntry(draft)).not.toThrow();
 
       // PR text is untrusted and is embedded in a generated module and an offline <script> payload.

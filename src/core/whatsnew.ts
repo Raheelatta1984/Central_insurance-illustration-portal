@@ -159,12 +159,17 @@ function stripControlCharacters(value: string): string {
  */
 export function plainText(value: string, max = 1500): string {
   const text = stripControlCharacters(value)
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/[<>]/g, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    // Angle brackets become typographic quotes rather than being deleted: a literal `</script>`
+    // can never terminate the offline replay's <script> block, and identifiers such as
+    // `WN-PR-<n>` stay readable instead of being mistaken for an HTML tag.
+    .replace(/</g, '‹')
+    .replace(/>/g, '›')
     .replace(/^\s*```.*$/gm, '')
     .replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, '')
-    .replace(/[`*_~>#]/g, '')
+    // Only cosmetic characters go: `_`, `*` and `#` are part of ordinary technical identifiers
+    // (pull_request_target, PR #38, workflow_dispatch) and are harmless in JSON/HTML text.
+    .replace(/[`~]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
