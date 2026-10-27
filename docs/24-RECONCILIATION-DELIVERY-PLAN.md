@@ -1,12 +1,12 @@
 # 24 — Reconciliation delivery plan and open decisions
 
-**Status: planning only, blocked on business and licensing input.** This is not an implementation checklist with completed items. The [ADR](23-PARTNER-COMMISSION-RECONCILIATION.md) describes the proposed boundary; the [reference map](25-RECONIQ-INTEGRATION-MAP.md) describes what can be studied after rights are resolved. No duration, rate, formula, limit, date convention or payment rule below is an approved value.
+**Status: financial implementation blocked on business rules; limited non-financial foundation implemented but awaiting independent review.** The [ADR](23-PARTNER-COMMISSION-RECONCILIATION.md) describes the target; the [reference map](25-RECONIQ-INTEGRATION-MAP.md) records the authorized reference and the [foundation contract](26-RECONCILIATION-FOUNDATION-CONTRACT.md) describes the inactive slice. No duration, rate, formula, limit, date convention or payment rule below is an approved value.
 
 ## Requested first input
 
 Please provide the approved **free-look, commission eligibility and clawback rule document** (or the first such document, if they are separate). It should identify insurer, jurisdiction, product/insurance class, contract/channel scope, effective dates, rule owner and approval, and include worked boundary and paid-commission examples. Do not send real policyholder or banking data. Additional documents can follow one at a time.
 
-The copyright holder/legal team must also confirm how GPL-3.0 ReconIQ code, tests and fixtures may be used in the proprietary target. Until the financial decisions and licensing position are resolved, financial calculations and a source/test port must not be implemented. Production security and payment approvals are separate gates.
+On 2026-10-27 the requester stated they own ReconIQ and authorized its reuse for this project. Financial calculations remain blocked until the business decisions are resolved. Normal distribution/license review, production security and payment approvals are separate release gates.
 
 ## Open business decisions — all unanswered
 
@@ -36,7 +36,7 @@ The request supplies the mandatory exclusions and immutable-adjustment principle
 - **Hosting/data protection:** Postgres hosting and migrations, private object storage, key management, malware scanner, residency regions, retention/legal hold/deletion policies, backup and disaster recovery.
 - **Operations:** notification provider, outbox worker runtime, monitoring, escalation/SLA ownership, allowed file types and limits, PDF/OCR policy, accessibility and supported languages.
 - **AP/ERP:** external integration/interface and sandbox details, or a signed-off controlled export format and acknowledgment/import process.
-- **Rights:** written copyright/compatible-license authorization or counsel-reviewed plan for implementing the requested behavior without importing incompatible GPL-covered material.
+- **Rights:** the requester stated they own ReconIQ and authorized reuse on 2026-10-27; complete any normal distribution/license review before release.
 
 ## Phases and evidence gates
 
@@ -47,7 +47,7 @@ Each phase is a separate contract-bound, reversible change set/PR with the featu
 | 0. Decisions and contracts | Complete the ADR, integration map, approved rules and license decision; agree exact API/events, tenancy/role matrix and acceptance examples. | Named decision owners and versions, approved domain/API contracts, no invented financial defaults. |
 | 1. Secure durable platform | Feature gate; Postgres driver/runner and expand/contract migrations; insurer, configurable channels, hierarchy, memberships/roles and administration views; scoped repository and RLS; audit/outbox/idempotency; IdP boundary. | Real Postgres migration/rollback and RLS tests, sibling/descendant and forged-ID tests, restart/concurrency tests, independent security review. |
 | 2. Documents and inputs | Private file store, upload/type/size/malware quarantine, CSV/XLSX/text-PDF adapters, detection/confirmation and versioned source mappings; synthetic examples only. | Safe parsing tests including malformed/scanned/encrypted PDFs, archive bombs, ambiguous mappings, isolated downloads and audit; no secrets or personal data in fixtures. |
-| 3. Reconciliation | Typed, pure deterministic matching/findings, insurance-class partitions, human-confirmed probable matches, configured tolerances/FX, reproducibility and scoped run repository. Implement only after license approval. | Approved behavior/regression tests and deterministic replay; exact/variant/probable ambiguity, duplicates, endorsements, currencies and separate classes verified. No payable from a tentative pair. |
+| 3. Reconciliation | Typed, pure deterministic matching/findings, insurance-class partitions, human-confirmed probable matches, configured tolerances/FX, reproducibility and scoped run repository. Reuse is authorized by the requester; normal release/license review remains open. | Approved behavior/regression tests and deterministic replay; exact/variant/probable ambiguity, duplicates, endorsements, currencies and separate classes verified. No payable from a tentative pair. |
 | 4. Approved financial rules | Effective-dated rule publication, free-look quarantine, status eligibility, earning and transparent component-based calculations, event-linked clawback/adjustments, decimal arithmetic. Only after written rule approval. | Human-approved worked examples, first/last-day tests, missing/overlapping rule refusals, historical/partial payment cases, idempotency and concurrency tests, named human + independent verifier. |
 | 5. Statements and notifications | Schedules, duplicate/overlap controls, immutable versions, partner approval/submission, contact directory, transactionally persisted in-app/email outbox and delivery attempts; partner React views. | DST/cutoff/calendar examples approved, version immutability and replacement tests, scoped export/download attacks, recipient/CC resolution and retry evidence. |
 | 6. Insurer review | Independent authoritative rerun and comparisons, reviews/findings/exclusions, required comments, escalation, segregation of duties and insurer UI. | End-to-end partner versus insurer review; no self-approval or AP access from returned/disputed versions; concurrent transition tests and audit evidence. |
@@ -56,7 +56,7 @@ Each phase is a separate contract-bound, reversible change set/PR with the featu
 
 ## Required verification matrix
 
-All rows below are **planned**, not passed by the existing baseline suite.
+These are the **target** acceptance requirements; the limited foundation exercises only the ownership metadata and offline matching subset described in [the foundation contract](26-RECONCILIATION-FOUNDATION-CONTRACT.md). The broader workflows, external identity and production operating environment remain unverified.
 
 | Acceptance concern | Required verification |
 | --- | --- |
@@ -72,7 +72,7 @@ All rows below are **planned**, not passed by the existing baseline suite.
 
 ## Baseline verification for this planning slice
 
-On 2026-10-27, the unchanged application baseline was checked with Node 22: `npm ci` (0 reported vulnerabilities), `npm run typecheck` (pass), `npm run lint` (pass with 81 existing warnings), `npm run test:coverage` (79 files / 993 tests passed; 89.63% lines and 68.51% branches), `npm run build` (pass with an existing large-bundle warning), `npm run docs:api` with generated-output diff check (pass), and `node tools/fleet.mjs --limit=5 --dry` (pass; no claimable chunks). These are regression checks of the existing application, **not** acceptance tests for this proposed feature. Browser E2E was not run because a Chromium executable was not available. No implementation, migration, feature flag or production-ready workflow is included in this planning slice.
+On 2026-10-27, the unchanged application baseline was checked with Node 22: `npm ci` (0 reported vulnerabilities), `npm run typecheck` (pass), `npm run lint` (pass with 81 existing warnings), `npm run test:coverage` (79 files / 993 tests passed; 89.63% lines and 68.51% branches), `npm run build` (pass with an existing large-bundle warning), `npm run docs:api` with generated-output diff check (pass), and `node tools/fleet.mjs --limit=5 --dry` (pass; no claimable chunks). These are regression checks of the existing application, **not** acceptance tests for this proposed feature. Browser E2E was not run because a Chromium executable was not available. This is historical evidence for the earlier planning-only slice, not evidence for any later code. See the [foundation contract](26-RECONCILIATION-FOUNDATION-CONTRACT.md) for current scope.
 
 ## Rollout and rollback
 
