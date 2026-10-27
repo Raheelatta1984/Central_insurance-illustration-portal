@@ -25,10 +25,28 @@ describe('identity-only column suggestions', () => {
   });
 });
 
-describe('release lock', () => {
-  it('never enables the unfinished workflow even when the flag is requested', () => {
-    expect(reconciliationFeatureGate({})).toEqual({ requested: false, enabled: false, reason: 'release_prerequisites_incomplete' });
-    expect(reconciliationFeatureGate({ PARTNER_COMMISSION_RECONCILIATION_ENABLED: ' true ' })).toEqual({ requested: true, enabled: false, reason: 'release_prerequisites_incomplete' });
-    expect(reconciliationFeatureGate({ PARTNER_COMMISSION_RECONCILIATION_ENABLED: 'false' }).enabled).toBe(false);
+describe('unlocked non-financial reconciliation feature gate', () => {
+  it('enables the non-financial foundation by default while keeping financial calculations locked', () => {
+    expect(reconciliationFeatureGate({})).toEqual({
+      requested: false,
+      enabled: true,
+      financialCalculationsEnabled: false,
+      mode: 'non_financial_foundation',
+      reason: 'non_financial_foundation_unlocked',
+    });
+    expect(reconciliationFeatureGate({ PARTNER_COMMISSION_RECONCILIATION_ENABLED: ' true ' })).toEqual({
+      requested: true,
+      enabled: true,
+      financialCalculationsEnabled: false,
+      mode: 'non_financial_foundation',
+      reason: 'non_financial_foundation_unlocked',
+    });
+    expect(reconciliationFeatureGate({ PARTNER_COMMISSION_RECONCILIATION_ENABLED: 'false' })).toEqual({
+      requested: false,
+      enabled: false,
+      financialCalculationsEnabled: false,
+      mode: 'disabled',
+      reason: 'disabled_by_environment',
+    });
   });
 });

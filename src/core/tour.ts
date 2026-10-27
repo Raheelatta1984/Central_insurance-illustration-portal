@@ -47,6 +47,7 @@ export const CONSOLE_TABS = [
   { id: 'labels', label: 'Labels & rename', icon: '⌘' },
   { id: 'durability', label: 'Durability', icon: '⟲' },
   { id: 'theme', label: 'Application theme', icon: '◐' },
+  { id: 'reconciliation', label: 'Partner reconciliation', icon: '⇌' },
   { id: 'whats-new', label: "What's New", icon: '✦' },
 ] as const;
 

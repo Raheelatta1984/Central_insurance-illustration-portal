@@ -229,6 +229,12 @@ export const TAB_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze({
     doThis: ['Read the snapshot summary: accounts, journals, size, fingerprint.', 'Run the durability drill and read the per-entity result.', 'Rebuild every register from the snapshot and read what came back.'],
     watch: 'The fingerprint is stable across runs, so a tampered payload would be caught — and a restore that disagrees halts the module.',
   },
+  reconciliation: {
+    headline: 'Unlocked non-financial partner reconciliation foundation',
+    body: 'Scoped ownership metadata, insurer-owned configurable channel and sub-channel types, identity-only column mapping proposals requiring explicit human confirmation, deterministic policy matching (exact normalized keys and insured-corroborated zero-padding variants), duplicate quarantine, and human review of tentative fuzzy proposals. Financial commission, free-look, clawback, payable statement and AP payment rules remain locked until signed off.',
+    doThis: ['Inspect the insurer channel/sub-channel catalogue and partner ownership hierarchy, or add a new insurer-owned channel/sub-channel type.', 'Propose identity columns from a partner CSV header row, verify non-identity/financial columns are ignored, and confirm the mapping explicitly.', 'Run a scoped partner-versus-insurer identity match and review quarantined duplicates and tentative proposals.'],
+    watch: 'No premium, commission rate, clawback, tax, FX, payable statement or settlement entry is calculated on this foundation surface.',
+  },
 });
 
 /* ------------------------------------------------------------------ the playbook: one note per section */
@@ -364,8 +370,32 @@ export const SECTION_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze
   'access-doa:doa-queue': {
     headline: 'Delegation of Authority (DOA) approvals and real-time approver notifications',
     body: 'When any officer, advisor, branch desk or partner submits an action above their DOA limit, the engine creates a tracked DOA request and sends an instant notification to the mapped Supervisor/Manager (plus Administration visibility). Approvers can approve within their cap, escalate upward, or reject with reasons — notifying the requester immediately.',
-    doThis: ['Simulate or raise a DOA request above an officer\u2019s cap and watch the Approver Notification count increment immediately.', 'Switch into the assigned Supervisor/Manager (or stay in Administration) and click Approve, Escalate or Reject.', 'Check that an approver whose own DOA is exceeded automatically escalates to the next tier rather than breaching authority.'],
-    watch: 'No non-admin profile can approve its own DOA request — four-eyes control is enforced in the core engine.',
+    doThis: ['Simulate or raise a DOA request above an officer\u2019s cap and watch the Approver Notification count increment immediately.', 'Approve, Escalate or Reject within Administration or via the approver\u2019s workflow.', 'Check that an approver whose own DOA is exceeded automatically escalates to the next tier rather than breaching authority.'],
+    watch: 'Access & DOA and Role access matrix tabs are restricted strictly to Administration; no non-admin profile can open either tab or approve its own DOA request.',
+  },
+  'reconciliation:scope-hierarchy': {
+    headline: 'Insurer-owned channel types and immutable partner ownership scope',
+    body: 'Every reconciliation run executes inside one insurer, one root channel partner, an optional sub-partner under that root, and one insurance class. Insurers add new channel and sub-channel codes as reference data without altering database enums.',
+    doThis: ['Review the configured conventional and takaful channel/sub-channel codes and partner hierarchy.', 'Add a new channel or sub-channel type for an insurer and check the audit trail.'],
+    watch: 'Cross-partner and cross-insurer sub-partner scopes are refused before matching starts.',
+  },
+  'reconciliation:column-mapping': {
+    headline: 'Identity-only column suggestions, confirmed by a human',
+    body: 'Source file headers are matched deterministically against four non-financial identity fields only: policyNumber, insuredName, insurer and insuranceClass. Colliding headers are flagged ambiguous, financial columns (premium, commission, rate, payable) are ignored, and every mapping stays unconfirmed until an operator confirms it.',
+    doThis: ['Paste comma-separated partner file headers and click Propose identity columns.', 'Verify financial columns are listed as ignored non-identity headers, then confirm the mapping.'],
+    watch: 'No header suggestion is ever auto-confirmed without a human confirmation step.',
+  },
+  'reconciliation:identity-matching': {
+    headline: 'Deterministic policy matching and duplicate quarantine',
+    body: 'Within a single validated scope, unique normalized policy numbers match deterministically, unique numeric zero-padding differences match only when normalized insured names corroborate, and duplicate normalized policy keys or uncorroborated variants are quarantined rather than silently paired.',
+    doThis: ['Select insurer, root partner, optional sub-partner and insurance class.', 'Run identity matching on partner and insurer rows and inspect exact matches, safe variants and quarantined findings.'],
+    watch: 'Duplicate policy keys are quarantined on both sides so neither row can auto-match by order of arrival.',
+  },
+  'reconciliation:proposal-review': {
+    headline: 'Tentative proposals require explicit human confirmation or rejection',
+    body: 'Remaining unmatched rows are compared within a bounded budget to produce tentative identity proposals. Proposals never count as reconciled matches until a human confirms or rejects them with an audit note.',
+    doThis: ['Inspect pending tentative proposals and their similarity scores.', 'Confirm or reject a proposal with a written audit reason and review the append-only reconciliation audit log.'],
+    watch: 'Confirming an identity proposal links policy identity only; financial commission calculations remain disabled.',
   },
 });
 
@@ -557,6 +587,10 @@ export function worldFacts(w: World): Record<string, string[]> {
     ledger: [...shared, `Conventional book ${balanced ? 'balanced' : 'OUT OF BALANCE'}; takaful window ${takafulBalanced ? 'balanced' : 'OUT OF BALANCE'}.`],
     labels: [...shared, `Arabic coverage ${labelCoverage.covered} of ${labelCoverage.total} default keys; ${w.labels.auditTrail().length} rename(s) on the audit trail.`],
     durability: [...shared, 'The drill seals the books and the registers, rebuilds them into a fresh world and compares record by record.'],
+    reconciliation: [
+      ...shared,
+      `${w.reconciliation.snapshot().partners.length} scoped partner/sub-partner node(s), ${w.reconciliation.snapshot().mappings.length} identity mapping(s) and ${w.reconciliation.snapshot().runs.length} non-financial identity run(s); financial calculations remain locked.`,
+    ],
   };
 }
 

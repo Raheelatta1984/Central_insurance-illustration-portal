@@ -16,6 +16,8 @@ try {
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   await page.locator('[data-select-profile="administration"]').first().click();
   await page.getByRole('button', { name: /what's new log/i }).first().click();
+  await page.getByRole('heading', { name: 'Access & DOA and Role access matrix tabs restricted to Administration only' }).waitFor({ state: 'visible' });
+  await page.getByRole('heading', { name: 'Unlocked non-financial partner reconciliation foundation' }).waitFor({ state: 'visible' });
   await page.getByRole('heading', { name: "What's New publication corrected" }).waitFor({ state: 'visible' });
   const heading = page.getByRole('heading', { name: 'Partner reconciliation foundation — not yet available' });
   await heading.waitFor({ state: 'visible' });

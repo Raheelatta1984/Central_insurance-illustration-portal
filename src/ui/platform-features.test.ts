@@ -64,8 +64,11 @@ describe('expanded operational tabs render from the live world', () => {
     const whatsNew = renderToString(h(WhatsNewPanel, { data, onReload: reload }));
     expect(whatsNew).toContain("What&#x27;s New");
     expect(whatsNew).toContain('What you need to do');
+    expect(whatsNew).toContain('Access &amp; DOA and Role access matrix tabs restricted to Administration only');
+    expect(whatsNew).toContain('Unlocked non-financial partner reconciliation foundation');
     expect(whatsNew).toContain('What&#x27;s New publication corrected');
     expect(whatsNew).toContain('Partner reconciliation foundation — not yet available');
+    expect(whatsNew.indexOf('Access &amp; DOA and Role access matrix tabs restricted to Administration only')).toBeLessThan(whatsNew.indexOf('Unlocked non-financial partner reconciliation foundation'));
     expect(whatsNew.indexOf('What&#x27;s New publication corrected')).toBeLessThan(whatsNew.indexOf('Partner reconciliation foundation — not yet available'));
     expect(whatsNew).toContain('PR #38');
     expect(whatsNew).toContain('merging a PR does not automatically add one');

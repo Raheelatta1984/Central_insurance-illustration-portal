@@ -58,6 +58,7 @@ import {
 import { dataPlaneReport, mintIds } from './dataplane.js';
 import { PartnerAccessError, PartnerPortalError, SERVICE_KINDS } from './partner-portal.js';
 import type { PartnerScope, PartnerReviewer } from './partner-portal.js';
+import type { IdentityField } from './reconciliation/column-mapping.js';
 
 export interface RuntimeState {
   world: World;
@@ -3976,6 +3977,122 @@ export async function dispatchApiRoute(
         ...(payload['valuationDate'] ? { valuationDate: String(payload['valuationDate']) } : {}),
       });
       return ok({ autoPick });
+    }
+
+    /** Unlocked non-financial partner reconciliation foundation snapshot (hierarchy, identity mappings, runs, audit). */
+    case 'GET /reconciliation':
+      return ok(state.world.reconciliation.snapshot());
+
+    /** Add an insurer-owned configurable channel or sub-channel reference type without DDL changes. */
+    case 'POST /reconciliation/channel-type': {
+      const created = state.world.reconciliation.addChannelType({
+        insurerId: reqString(payload, 'insurerId'),
+        code: reqString(payload, 'code'),
+        name: reqString(payload, 'name'),
+        parentChannelTypeCode: typeof payload['parentChannelTypeCode'] === 'string' ? payload['parentChannelTypeCode'] : null,
+        by: String(payload['by'] ?? payload['actor'] ?? state.world.rbac.activeProfile().id),
+        at: state.now(),
+      });
+      return ok({ created, reconciliation: state.world.reconciliation.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    /** Propose deterministic identity-only column mappings (never auto-confirmed; ignores financial headers). */
+    case 'POST /reconciliation/columns/propose': {
+      const rawHeaders = Array.isArray(payload['headers'])
+        ? payload['headers'].map((h) => String(h))
+        : typeof payload['headersCsv'] === 'string'
+          ? payload['headersCsv'].split(',').map((h) => h.trim()).filter(Boolean)
+          : [];
+      if (rawHeaders.length === 0) {
+        throw new RequestValidationError('headers array or headersCsv string is required');
+      }
+      const mapping = state.world.reconciliation.proposeMapping({
+        insurerId: typeof payload['insurerId'] === 'string' && payload['insurerId'].trim() ? payload['insurerId'] : 'ALK-CONV',
+        sourceLabel: typeof payload['sourceLabel'] === 'string' && payload['sourceLabel'].trim() ? payload['sourceLabel'] : 'UPLOADED-SOURCE.csv',
+        headers: rawHeaders,
+        by: String(payload['by'] ?? payload['actor'] ?? state.world.rbac.activeProfile().id),
+        at: state.now(),
+      });
+      return ok({ mapping, reconciliation: state.world.reconciliation.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    /** Human confirmation of identity-only column assignments for a proposed mapping. */
+    case 'POST /reconciliation/columns/confirm': {
+      const rawAssignments = (payload['assignments'] && typeof payload['assignments'] === 'object')
+        ? payload['assignments'] as Record<string, unknown>
+        : {};
+      const assignments: Partial<Record<IdentityField, number | null>> = {};
+      for (const field of ['policyNumber', 'insuredName', 'insurer', 'insuranceClass'] as const) {
+        const val = rawAssignments[field];
+        if (val === null || val === undefined || val === '') {
+          assignments[field] = null;
+        } else {
+          const parsed = Number(val);
+          if (!Number.isInteger(parsed)) throw new RequestValidationError(`assignments.${field} must be an integer column index or null`);
+          assignments[field] = parsed;
+        }
+      }
+      const mapping = state.world.reconciliation.confirmMapping({
+        mappingId: reqString(payload, 'mappingId'),
+        assignments,
+        by: String(payload['by'] ?? payload['actor'] ?? state.world.rbac.activeProfile().id),
+        at: state.now(),
+      });
+      return ok({ mapping, reconciliation: state.world.reconciliation.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    /** Execute a scoped, deterministic non-financial policy identity matching run. */
+    case 'POST /reconciliation/identity/match': {
+      const scopeRaw = (payload['scope'] && typeof payload['scope'] === 'object')
+        ? payload['scope'] as Record<string, unknown>
+        : payload;
+      const parseRows = (raw: unknown, prefix: string) => {
+        if (!Array.isArray(raw)) throw new RequestValidationError(`${prefix} must be an array of identity rows`);
+        return raw.map((item, idx) => {
+          const obj = (item && typeof item === 'object') ? item as Record<string, unknown> : {};
+          return {
+            rowId: typeof obj['rowId'] === 'string' && obj['rowId'].trim() ? obj['rowId'].trim() : `${prefix}-${idx + 1}`,
+            policyNumber: obj['policyNumber'] === null || obj['policyNumber'] === undefined || String(obj['policyNumber']).trim() === ''
+              ? null
+              : String(obj['policyNumber']),
+            insuredName: obj['insuredName'] === null || obj['insuredName'] === undefined || String(obj['insuredName']).trim() === ''
+              ? null
+              : String(obj['insuredName']),
+          };
+        });
+      };
+      const run = state.world.reconciliation.runIdentityMatch({
+        scope: {
+          insurerId: reqString(scopeRaw, 'insurerId'),
+          channelPartnerId: reqString(scopeRaw, 'channelPartnerId'),
+          subpartnerId: typeof scopeRaw['subpartnerId'] === 'string' && scopeRaw['subpartnerId'].trim()
+            ? scopeRaw['subpartnerId'].trim()
+            : null,
+          insuranceClass: reqString(scopeRaw, 'insuranceClass'),
+        },
+        partnerRows: parseRows(payload['partnerRows'], 'P-ROW'),
+        insurerRows: parseRows(payload['insurerRows'], 'I-ROW'),
+        ...(payload['proposalThreshold'] !== undefined ? { proposalThreshold: Number(payload['proposalThreshold']) } : {}),
+        ...(payload['maxProposalComparisons'] !== undefined ? { maxProposalComparisons: Number(payload['maxProposalComparisons']) } : {}),
+        by: String(payload['by'] ?? payload['actor'] ?? state.world.rbac.activeProfile().id),
+        at: state.now(),
+      });
+      return ok({ run, reconciliation: state.world.reconciliation.snapshot(), world: worldSnapshot(state.world) });
+    }
+
+    /** Confirm or reject a tentative identity proposal on a reconciliation run with a mandatory audit note. */
+    case 'POST /reconciliation/proposals/review': {
+      const decision = reqEnum(payload, 'decision', ['confirm', 'reject'] as const);
+      const run = state.world.reconciliation.reviewProposal({
+        runId: reqString(payload, 'runId'),
+        leftRowId: reqString(payload, 'leftRowId'),
+        rightRowId: reqString(payload, 'rightRowId'),
+        decision,
+        note: reqString(payload, 'note'),
+        by: String(payload['by'] ?? payload['actor'] ?? state.world.rbac.activeProfile().id),
+        at: state.now(),
+      });
+      return ok({ run, reconciliation: state.world.reconciliation.snapshot(), world: worldSnapshot(state.world) });
     }
 
     case 'POST /reset': {

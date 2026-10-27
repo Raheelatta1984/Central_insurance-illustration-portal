@@ -37,6 +37,8 @@ import {
   RoleAccessAndDoaPanel,
 } from './rbac-views';
 import { RoleAccessMatrixPanel } from './role-matrix-views';
+import { ReconciliationPanel } from './reconciliation-views';
+import { ADMIN_ONLY_TAB_IDS } from '../core/rbac';
 import { PartnerPortalApp } from './partner-portal';
 
 type Tab = ConsoleTab;
@@ -115,28 +117,40 @@ function Overview({ data, onNavigate }: { data: WorldSnapshot; onNavigate?: (tab
           <Pill tone="info">Premium Receipts: {data.erp.receipts.length}</Pill>
           <Pill tone="warn">Alterations: {data.erp.alterations.length}</Pill>
         </div>
-        {onNavigate && (
-          <div className="row" style={{ marginTop: 8 }}>
-            <button onClick={() => onNavigate('access-doa')}>⚿ Role Access &amp; DOA ({data.security.roleCount} roles)</button>
-            <button onClick={() => onNavigate('role-matrix')}>⑃ Role access matrix — tabs &amp; sections</button>
-            <a href={isOffline() ? "#partner-portal" : "/partner-portal"} style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 12px', borderRadius: 8, background: '#3ea6ff', color: '#06121f', fontWeight: 700, textDecoration: 'none' }}>◈ {partnerLabels.t('partner.openPortal')}</a>
-            <button onClick={() => onNavigate('journey')}>➤ Start a customer journey</button>
-            <button onClick={() => onNavigate('parties')}>+ Create Customer</button>
-            <button onClick={() => onNavigate('underwriting')}>+ Create Proposal &amp; Quote</button>
-            <button onClick={() => onNavigate('policyholder')}>+ Convert Policy / Receive Premium / Alter</button>
-            <button onClick={() => onNavigate('claims')}>+ Register &amp; Decide Claim</button>
-            <button onClick={() => onNavigate('funds')}>+ Inject NAV / Create Fund</button>
-            <button onClick={() => onNavigate('funds-accounting')}>▦ Funds Accounting</button>
-            <button onClick={() => onNavigate('super-funds')}>⬢ Super Funds</button>
-            <button onClick={() => onNavigate('warehouse')}>⊞ Data Warehouse &amp; Security</button>
-            <button onClick={() => onNavigate('batch')}>▤ Batch Processing</button>
-            <button onClick={() => onNavigate('email')}>✉ Email Configuration</button>
-            <button onClick={() => onNavigate('theme')}>◐ Application Theme</button>
-            <button onClick={() => onNavigate('whats-new')}>✦ What&apos;s New Log</button>
-            <button onClick={() => onNavigate('reinsurance')}>+ Register Reinsurer / Treaty</button>
-            <button className="ghost" onClick={() => onNavigate('master')}>⚙ Master Settings</button>
-          </div>
-        )}
+        {onNavigate && (() => {
+          const activeRole = data.security.roles.find((r) => r.id === data.security.activeRoleId);
+          const isAdmin = Boolean(activeRole?.unrestricted);
+          const canOpenReconciliation = isAdmin || (activeRole?.tabAccess['reconciliation'] ?? 'none') !== 'none';
+          return (
+            <div className="row" style={{ marginTop: 8 }}>
+              {isAdmin && (
+                <>
+                  <button onClick={() => onNavigate('access-doa')}>⚿ Role Access &amp; DOA ({data.security.roleCount} roles)</button>
+                  <button onClick={() => onNavigate('role-matrix')}>⑃ Role access matrix — tabs &amp; sections</button>
+                </>
+              )}
+              {canOpenReconciliation && (
+                <button onClick={() => onNavigate('reconciliation')}>⇌ Partner reconciliation</button>
+              )}
+              <a href={isOffline() ? "#partner-portal" : "/partner-portal"} style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 12px', borderRadius: 8, background: '#3ea6ff', color: '#06121f', fontWeight: 700, textDecoration: 'none' }}>◈ {partnerLabels.t('partner.openPortal')}</a>
+              <button onClick={() => onNavigate('journey')}>➤ Start a customer journey</button>
+              <button onClick={() => onNavigate('parties')}>+ Create Customer</button>
+              <button onClick={() => onNavigate('underwriting')}>+ Create Proposal &amp; Quote</button>
+              <button onClick={() => onNavigate('policyholder')}>+ Convert Policy / Receive Premium / Alter</button>
+              <button onClick={() => onNavigate('claims')}>+ Register &amp; Decide Claim</button>
+              <button onClick={() => onNavigate('funds')}>+ Inject NAV / Create Fund</button>
+              <button onClick={() => onNavigate('funds-accounting')}>▦ Funds Accounting</button>
+              <button onClick={() => onNavigate('super-funds')}>⬢ Super Funds</button>
+              <button onClick={() => onNavigate('warehouse')}>⊞ Data Warehouse &amp; Security</button>
+              <button onClick={() => onNavigate('batch')}>▤ Batch Processing</button>
+              <button onClick={() => onNavigate('email')}>✉ Email Configuration</button>
+              <button onClick={() => onNavigate('theme')}>◐ Application Theme</button>
+              <button onClick={() => onNavigate('whats-new')}>✦ What&apos;s New Log</button>
+              <button onClick={() => onNavigate('reinsurance')}>+ Register Reinsurer / Treaty</button>
+              <button className="ghost" onClick={() => onNavigate('master')}>⚙ Master Settings</button>
+            </div>
+          );
+        })()}
       </Card>
       <Card title="Unit-linked book" subtitle="Live engine state, priced from published valuations">
         <div className="stat"><span>Policy</span><b>{data.policy.id}</b></div>
@@ -1075,10 +1089,28 @@ function App() {
   );
   const visibleTabs = useMemo(() => {
     if (!activeSecurityProfile || activeSecurityProfile.unrestricted) return TABS;
-    return TABS.filter((t) => t.id === 'tour' || (activeSecurityProfile.tabAccess[t.id] ?? 'none') !== 'none');
+    return TABS.filter(
+      (t) =>
+        !ADMIN_ONLY_TAB_IDS.has(t.id)
+        && (t.id === 'tour' || (activeSecurityProfile.tabAccess[t.id] ?? 'none') !== 'none'),
+    );
   }, [activeSecurityProfile]);
+
+  useEffect(() => {
+    if (!activeSecurityProfile || activeSecurityProfile.unrestricted) return;
+    if (ADMIN_ONLY_TAB_IDS.has(tab)) {
+      const fallback = (activeSecurityProfile.defaultLandingTab && !ADMIN_ONLY_TAB_IDS.has(activeSecurityProfile.defaultLandingTab))
+        ? (activeSecurityProfile.defaultLandingTab as Tab)
+        : 'overview';
+      setTab(fallback);
+    }
+  }, [activeSecurityProfile, tab]);
+
   const body = useMemo(() => {
     if (!data) return null;
+    if (activeSecurityProfile && !activeSecurityProfile.unrestricted && ADMIN_ONLY_TAB_IDS.has(tab)) {
+      return <Overview data={data} onNavigate={setTab} />;
+    }
     switch (tab) {
       case 'tour': return <Tour />;
       case 'overview': return <Overview data={data} onNavigate={setTab} />;
@@ -1109,6 +1141,13 @@ function App() {
       case 'warehouse': return <WarehousePanel data={data} onReload={load} />;
       case 'batch': return <BatchPanel data={data} onReload={load} />;
       case 'theme': return <ApplicationThemePanel data={data} onReload={load} />;
+      case 'reconciliation': return (
+        <ReconciliationPanel
+          data={data}
+          onReload={load}
+          readOnly={Boolean(activeSecurityProfile && !activeSecurityProfile.unrestricted && activeSecurityProfile.tabAccess['reconciliation'] === 'read')}
+        />
+      );
       case 'whats-new': return <WhatsNewPanel data={data} onReload={load} />;
       case 'takaful': return <Takaful data={data} onReload={load} />;
       case 'group': return <GroupFinance data={data} />;
@@ -1125,7 +1164,7 @@ function App() {
       case 'durability': return <Durability />;
       default: return null;
     }
-  }, [data, tab, load]);
+  }, [data, tab, load, activeSecurityProfile]);
   if (data && profileGateOpen) {
     return (
       <ProfileSelectionGate

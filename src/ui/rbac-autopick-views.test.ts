@@ -68,6 +68,20 @@ describe('RBAC Pre-Load Gate, DOA Panel, Smart ComboBox & Auto-Pick UI Views', (
       }),
     );
     expect(strip).toContain('Role Gate');
+
+    // Non-administrator profiles never render Roles & DOA Matrix shortcuts in ProfileAccessGuardBanner.
+    const nonAdminWorld = buildWorld();
+    nonAdminWorld.rbac.selectActiveRole('supervisor');
+    const nonAdminData = worldSnapshot(nonAdminWorld);
+    const nonAdminBanner = renderToString(
+      h(ProfileAccessGuardBanner, {
+        security: nonAdminData.security,
+        tab: 'overview',
+        onReload: noop,
+        onOpenAccessTab: () => {},
+      }),
+    );
+    expect(nonAdminBanner).not.toContain('Roles &amp; DOA Matrix');
   });
 
   it('renders SmartComboBox, SmartMultiComboBox, Auto-Pick Proposal Banner, Master Age Rule Gate & Journey Auto-Pick', () => {

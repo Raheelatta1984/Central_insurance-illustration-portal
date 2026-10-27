@@ -17,14 +17,34 @@ describe("what's new", () => {
     expect(entry?.whatYouNeedToDo).not.toBe('');
   });
 
-  it('publishes PR 38 accurately without presenting the disabled foundation as an available workflow', () => {
-    const note = new WhatsNewRegistry().list().find((entry) => entry.source.includes('PR #38'));
+  it('publishes WN-0014, WN-0013 and historical PR 38 release notes accurately', () => {
+    const list = new WhatsNewRegistry().list();
+    const rbacNote = list.find((entry) => entry.id === 'WN-0014');
+    expect(rbacNote).toMatchObject({
+      at: '2026-10-27',
+      category: 'security',
+      area: 'Access & DOA',
+      title: 'Access & DOA and Role access matrix tabs restricted to Administration only',
+    });
+    expect(rbacNote?.what).toContain('35 non-administrator profiles');
+
+    const unlockedNote = list.find((entry) => entry.id === 'WN-0013');
+    expect(unlockedNote).toMatchObject({
+      at: '2026-10-27',
+      category: 'feature',
+      area: 'Partner reconciliation',
+      title: 'Unlocked non-financial partner reconciliation foundation',
+    });
+    expect(unlockedNote?.what).toContain('non_financial_foundation');
+    expect(unlockedNote?.whatYouNeedToDo).toContain('Financial commission, free-look, clawback, payable statement and AP payment calculations remain disabled');
+
+    const note = list.find((entry) => entry.source.includes('PR #38'));
     expect(note).toMatchObject({ id: 'WN-0011', at: '2026-10-27', area: 'Partner reconciliation' });
     expect(note?.title).toContain('not yet available');
     expect(note?.what).toContain('disabled, non-financial groundwork');
     expect(note?.what).toContain('did not add a reconciliation screen');
     expect(note?.whatYouNeedToDo).toContain('No new reconciliation workflow is available');
-    const correction = new WhatsNewRegistry().list().find((entry) => entry.id === 'WN-0012');
+    const correction = list.find((entry) => entry.id === 'WN-0012');
     expect(correction?.what).toContain('Merged PRs are not imported automatically');
     expect(new Set(WHATS_NEW_SEED.map((entry) => entry.id)).size).toBe(WHATS_NEW_SEED.length);
   });

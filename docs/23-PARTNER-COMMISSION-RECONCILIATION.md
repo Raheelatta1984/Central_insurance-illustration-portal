@@ -1,6 +1,6 @@
 # 23 — Partner commission reconciliation: architecture decision record
 
-**Status: target design proposed; financial/workflow implementation and production use blocked.** A limited, inactive non-financial foundation is described in the [foundation contract](26-RECONCILIATION-FOUNDATION-CONTRACT.md).
+**Status: target design proposed; unlocked non-financial foundation delivered; financial commission/payment calculations remain blocked.** The unlocked non-financial foundation (`src/core/reconciliation/`, `/api/reconciliation`, `Partner reconciliation` tab) is described in the [foundation contract](26-RECONCILIATION-FOUNDATION-CONTRACT.md).
 
 **Date:** 2026-10-27
 

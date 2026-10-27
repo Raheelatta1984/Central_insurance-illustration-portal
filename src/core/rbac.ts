@@ -471,6 +471,16 @@ export const SECURITY_SURFACE_CATALOGUE: readonly TabCatalogueEntry[] = Object.f
     ],
   },
   {
+    tabId: 'reconciliation',
+    label: 'Partner reconciliation',
+    sections: [
+      { id: 'scope-hierarchy', label: 'Insurer Channel Types & Partner Ownership Scope', subSections: [{ id: 'channel-types', label: 'Configurable Channel & Sub-Channel Types' }] },
+      { id: 'column-mapping', label: 'Identity-Only Header Mapping & Human Confirmation', subSections: [{ id: 'header-confirm', label: 'Source Header Proposal & Confirmation' }] },
+      { id: 'identity-matching', label: 'Deterministic Scoped Policy Identity Matching', subSections: [{ id: 'scoped-runs', label: 'Exact, Safe Variant & Quarantine Findings' }] },
+      { id: 'proposal-review', label: 'Tentative Proposal Human Review & Audit Trail', subSections: [{ id: 'review-queue', label: 'Confirm or Reject Tentative Proposals' }] },
+    ],
+  },
+  {
     tabId: 'whats-new',
     label: "What's New",
     sections: [
@@ -515,6 +525,7 @@ interface ProfileSeedSpec {
 }
 
 export const ROLE_MATRIX_TAB_ID = 'role-matrix';
+export const ADMIN_ONLY_TAB_IDS: ReadonlySet<string> = new Set(['access-doa', ROLE_MATRIX_TAB_ID]);
 
 const ALL_TAB_IDS = CONSOLE_TABS.length > 0
   ? Array.from(new Set([...CONSOLE_TABS.map((t) => t.id), 'access-doa', ROLE_MATRIX_TAB_ID]))
@@ -547,14 +558,13 @@ function buildGranularMaps(spec: ProfileSeedSpec): {
   const tabAccess: Record<string, AccessLevel> = {};
   const sectionAccess: Record<string, AccessLevel> = {};
   const subSectionAccess: Record<string, AccessLevel> = {};
-  const authority = authorityLevelForSeed(spec);
 
   for (const tabId of ALL_TAB_IDS) {
     if (spec.unrestricted) {
       tabAccess[tabId] = 'full';
-    } else if (tabId === ROLE_MATRIX_TAB_ID) {
-      // The section enable/disable tree is a governance tool: officer-level roles never see it.
-      tabAccess[tabId] = authority === 'officer' ? 'none' : 'full';
+    } else if (ADMIN_ONLY_TAB_IDS.has(tabId)) {
+      // Access & DOA and Role access matrix tabs are restricted strictly to Administration.
+      tabAccess[tabId] = 'none';
     } else if (spec.fullTabs.includes(tabId)) {
       tabAccess[tabId] = 'full';
     } else if ((spec.readTabs ?? []).includes(tabId)) {
@@ -568,18 +578,19 @@ function buildGranularMaps(spec: ProfileSeedSpec): {
   // parent at read time, which is what makes the enable/disable tree explainable: a node marked
   // "inherit" really has no override of its own, and moving the tab moves the whole branch.
   for (const entry of SECURITY_SURFACE_CATALOGUE) {
+    const adminOnly = ADMIN_ONLY_TAB_IDS.has(entry.tabId);
     for (const sec of entry.sections) {
       const sKey = `${entry.tabId}:${sec.id}`;
       if (spec.unrestricted) {
         sectionAccess[sKey] = 'full';
-      } else if (spec.sectionOverrides?.[sKey] !== undefined) {
+      } else if (!adminOnly && spec.sectionOverrides?.[sKey] !== undefined) {
         sectionAccess[sKey] = spec.sectionOverrides[sKey]!;
       }
       for (const sub of sec.subSections) {
         const subKey = `${entry.tabId}:${sec.id}:${sub.id}`;
         if (spec.unrestricted) {
           subSectionAccess[subKey] = 'full';
-        } else if (spec.subSectionOverrides?.[subKey] !== undefined) {
+        } else if (!adminOnly && spec.subSectionOverrides?.[subKey] !== undefined) {
           subSectionAccess[subKey] = spec.subSectionOverrides[subKey]!;
         }
       }
@@ -626,13 +637,13 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     entityScope: '*',
     channelScope: '*',
     subChannelScope: '*',
-    defaultLandingTab: 'access-doa',
+    defaultLandingTab: 'overview',
     reportsToProfileId: 'administration',
     escalationProfileId: 'administration',
     doaLimitAed: '1,500,000.00',
     doaActions: ['quote-high-sum-assured', 'discount-concession', 'endorsement-alteration', 'restricted-section-access'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'access-doa', 'journey', 'policyholder', 'onboarding', 'parties', 'ingest', 'ai'],
+    fullTabs: ['overview', 'journey', 'policyholder', 'onboarding', 'parties', 'ingest', 'reconciliation', 'ai'],
     readTabs: ['underwriting', 'claims', 'email', 'warehouse', 'whats-new', 'tour'],
     aiConfidencePct: 96,
     aiRationale: 'Cross-desk queue oversight, human AI review, DOA inbox management, and read-only visibility into technical claims/underwriting.',
@@ -653,8 +664,8 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '500,000.00',
     doaActions: ['master-config-change'],
     piiAccess: 'masked',
-    fullTabs: ['master', 'email', 'labels', 'theme'],
-    readTabs: ['overview', 'journey', 'funds', 'regulatory', 'access-doa', 'whats-new', 'tour'],
+    fullTabs: ['master', 'email', 'labels', 'theme', 'reconciliation'],
+    readTabs: ['overview', 'journey', 'funds', 'regulatory', 'whats-new', 'tour'],
     aiConfidencePct: 98,
     aiRationale: 'Full control over non-cash configuration surfaces while masking customer PII and blocking direct claim payouts or GL postings (SoD safe).',
   },
@@ -677,7 +688,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['underwriting-approval', 'quote-high-sum-assured'],
     piiAccess: 'full',
     fullTabs: ['underwriting', 'onboarding'],
-    readTabs: ['overview', 'journey', 'parties', 'reinsurance', 'regulatory', 'access-doa'],
+    readTabs: ['overview', 'journey', 'parties', 'reinsurance', 'regulatory'],
     subSectionOverrides: { 'underwriting:proposal-quote:policy-conversion': 'read' },
     aiConfidencePct: 97,
     aiRationale: 'Full risk scoring, medical questionnaire review and standard binding up to 500k AED; escalates jumbo risks automatically to Underwriter Manager.',
@@ -698,7 +709,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '5,000,000.00',
     doaActions: ['underwriting-approval', 'quote-high-sum-assured', 'discount-concession'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'underwriting', 'journey', 'onboarding', 'parties', 'ai', 'access-doa'],
+    fullTabs: ['overview', 'underwriting', 'journey', 'onboarding', 'parties', 'ai'],
     readTabs: ['reinsurance', 'regulatory', 'policyholder', 'master'],
     aiConfidencePct: 99,
     aiRationale: 'Full underwriting authority up to 5M AED across Conventional & Takaful books, plus human sign-off on AI referrals and officer escalations.',
@@ -720,7 +731,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['retention-waiver', 'discount-concession'],
     piiAccess: 'full',
     fullTabs: ['policyholder', 'decisions', 'cover'],
-    readTabs: ['overview', 'journey', 'parties', 'email', 'funds', 'access-doa'],
+    readTabs: ['overview', 'journey', 'parties', 'email', 'funds'],
     subSectionOverrides: { 'policyholder:policy-admin:endorsements-retention': 'full' },
     aiConfidencePct: 95,
     aiRationale: 'Equipped with Decision Theatre switch/withdrawal previews, Policyholder conservation tools and Cover Control, escalating fee waivers >15k AED to Retention Manager.',
@@ -741,7 +752,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '150,000.00',
     doaActions: ['retention-waiver', 'discount-concession', 'endorsement-alteration'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'policyholder', 'decisions', 'cover', 'email', 'access-doa'],
+    fullTabs: ['overview', 'policyholder', 'decisions', 'cover', 'email'],
     readTabs: ['journey', 'parties', 'warehouse', 'batch'],
     aiConfidencePct: 96,
     aiRationale: 'Approves retention waivers up to 150k AED with full visibility into persistency cohorts, renewal email routes and policyholder look-through.',
@@ -763,7 +774,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['endorsement-alteration'],
     piiAccess: 'full',
     fullTabs: ['policyholder', 'parties', 'cover'],
-    readTabs: ['overview', 'decisions', 'underwriting', 'email', 'access-doa'],
+    readTabs: ['overview', 'decisions', 'underwriting', 'email'],
     aiConfidencePct: 96,
     aiRationale: 'Direct access to Policyholder alterations, Customer 360 updates and Cover segments; financial alterations above 50k AED route to Endorsement Supervisor.',
   },
@@ -783,7 +794,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '500,000.00',
     doaActions: ['endorsement-alteration', 'retention-waiver'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'policyholder', 'parties', 'decisions', 'cover', 'access-doa'],
+    fullTabs: ['overview', 'policyholder', 'parties', 'decisions', 'cover'],
     readTabs: ['underwriting', 'email', 'funds', 'ledger'],
     aiConfidencePct: 97,
     aiRationale: 'Approves financial endorsements up to 500k AED and escalates underwriting-impacting increases above 500k AED to Underwriter Manager.',
@@ -807,7 +818,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['claim-approval'],
     piiAccess: 'full',
     fullTabs: ['claims'],
-    readTabs: ['overview', 'policyholder', 'parties', 'cover', 'underwriting', 'access-doa'],
+    readTabs: ['overview', 'policyholder', 'parties', 'cover', 'underwriting'],
     subSectionOverrides: { 'claims:adjudication-settlement:claim-settle': 'read' },
     aiConfidencePct: 98,
     aiRationale: 'Segregation of Duties enforced: Claim Officer assesses & approves within 50k AED but cash disbursement belongs to Settlement Desk; >50k AED routes to Claim Manager.',
@@ -828,7 +839,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '500,000.00',
     doaActions: ['claim-approval'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'claims', 'takaful', 'ai', 'access-doa'],
+    fullTabs: ['overview', 'claims', 'takaful', 'ai'],
     readTabs: ['policyholder', 'reinsurance', 'parties', 'regulatory', 'ledger'],
     subSectionOverrides: { 'claims:adjudication-settlement:claim-settle': 'read' },
     aiConfidencePct: 99,
@@ -851,7 +862,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['settlement-release'],
     piiAccess: 'full',
     fullTabs: ['claims', 'policyholder'],
-    readTabs: ['overview', 'parties', 'ledger', 'funds-accounting', 'access-doa'],
+    readTabs: ['overview', 'parties', 'ledger', 'funds-accounting'],
     subSectionOverrides: { 'claims:adjudication-settlement:claim-approve': 'read', 'claims:adjudication-settlement:claim-settle': 'full' },
     aiConfidencePct: 97,
     aiRationale: 'Four-eyes payout control: executes settlement disbursements up to 100k AED on already-adjudicated claims and routes larger releases to Settlement Manager.',
@@ -872,7 +883,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '2,000,000.00',
     doaActions: ['settlement-release', 'accounting-voucher'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'claims', 'policyholder', 'batch', 'access-doa'],
+    fullTabs: ['overview', 'claims', 'policyholder', 'batch'],
     readTabs: ['ledger', 'funds-accounting', 'reinsurance', 'parties'],
     aiConfidencePct: 98,
     aiRationale: 'High-value settlement release up to 2M AED with visibility into GL books, batch payment runs and reinsurance recoveries.',
@@ -894,7 +905,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['reinsurance-placement'],
     piiAccess: 'masked',
     fullTabs: ['reinsurance'],
-    readTabs: ['overview', 'underwriting', 'claims', 'takaful', 'regulatory', 'access-doa'],
+    readTabs: ['overview', 'underwriting', 'claims', 'takaful', 'regulatory'],
     aiConfidencePct: 97,
     aiRationale: 'Full access to treaty bordereaux, facultative placement prep and collateral monitoring up to 1M AED; routes treaty changes & >1M placements to Reinsurance Manager.',
   },
@@ -914,7 +925,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '10,000,000.00',
     doaActions: ['reinsurance-placement', 'underwriting-approval'],
     piiAccess: 'masked',
-    fullTabs: ['overview', 'reinsurance', 'takaful', 'regulatory', 'access-doa'],
+    fullTabs: ['overview', 'reinsurance', 'takaful', 'regulatory'],
     readTabs: ['underwriting', 'claims', 'group', 'ledger', 'warehouse'],
     aiConfidencePct: 99,
     aiRationale: 'Authorizes ceded placements & security releases up to 10M AED with full UAE reinsurance rule-book and statutory return access.',
@@ -937,8 +948,8 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '250,000.00',
     doaActions: ['endorsement-alteration', 'accounting-voucher'],
     piiAccess: 'full',
-    fullTabs: ['ingest', 'onboarding', 'journey', 'policyholder', 'batch'],
-    readTabs: ['overview', 'parties', 'email', 'warehouse', 'access-doa'],
+    fullTabs: ['ingest', 'reconciliation', 'onboarding', 'journey', 'policyholder', 'batch'],
+    readTabs: ['overview', 'parties', 'email', 'warehouse'],
     aiConfidencePct: 96,
     aiRationale: 'Tailored for bank middle-office operations: Ingestion feed reconciliation, KYC queue, Policy issuance & Batch sweeps, reporting to Banca Supervisor.',
   },
@@ -959,7 +970,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['fund-nav-signoff', 'master-config-change'],
     piiAccess: 'masked',
     fullTabs: ['funds', 'super-funds', 'funds-accounting'],
-    readTabs: ['overview', 'master', 'takaful', 'policyholder', 'access-doa'],
+    readTabs: ['overview', 'master', 'takaful', 'policyholder'],
     aiConfidencePct: 97,
     aiRationale: 'Focused control over Funds, Super Funds and Fund Accounting rules while escalating live fee or valuation sign-offs >250k AED to Fund Investment Manager.',
   },
@@ -979,8 +990,8 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '100,000.00',
     doaActions: ['accounting-voucher'],
     piiAccess: 'masked',
-    fullTabs: ['ledger', 'funds-accounting', 'batch'],
-    readTabs: ['overview', 'group', 'takaful', 'warehouse', 'claims', 'reinsurance', 'access-doa'],
+    fullTabs: ['ledger', 'funds-accounting', 'batch', 'reconciliation'],
+    readTabs: ['overview', 'group', 'takaful', 'warehouse', 'claims', 'reinsurance'],
     aiConfidencePct: 98,
     aiRationale: 'Full access to double-entry Books, Funds Accounting vouchers and scheduled Batch postings within 100k AED; >100k AED routes to Finance.',
   },
@@ -1000,7 +1011,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '2,500,000.00',
     doaActions: ['accounting-voucher', 'settlement-release'],
     piiAccess: 'masked',
-    fullTabs: ['overview', 'group', 'ledger', 'funds-accounting', 'batch', 'warehouse', 'durability', 'access-doa'],
+    fullTabs: ['overview', 'group', 'ledger', 'funds-accounting', 'batch', 'reconciliation', 'warehouse', 'durability'],
     readTabs: ['takaful', 'super-funds', 'claims', 'reinsurance', 'regulatory', 'master'],
     aiConfidencePct: 99,
     aiRationale: 'Full group finance, ledger proof, voucher approval up to 2.5M AED and cryptographic durability verification.',
@@ -1021,8 +1032,8 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '500,000.00',
     doaActions: ['discount-concession', 'retention-waiver', 'accounting-voucher'],
     piiAccess: 'masked',
-    fullTabs: ['warehouse', 'ai', 'batch'],
-    readTabs: ['overview', 'group', 'ledger', 'funds-accounting', 'super-funds', 'master', 'access-doa'],
+    fullTabs: ['warehouse', 'reconciliation', 'ai', 'batch'],
+    readTabs: ['overview', 'group', 'ledger', 'funds-accounting', 'super-funds', 'master'],
     subSectionOverrides: {
       'master:omni-providers:channels-commissions': 'full',
       'master:charges-authority:ul-charges': 'full',
@@ -1047,7 +1058,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['fund-nav-signoff'],
     piiAccess: 'masked',
     fullTabs: ['funds', 'super-funds', 'decisions'],
-    readTabs: ['overview', 'policyholder', 'funds-accounting', 'takaful', 'access-doa'],
+    readTabs: ['overview', 'policyholder', 'funds-accounting', 'takaful'],
     aiConfidencePct: 97,
     aiRationale: 'Operational NAV valuation, look-through pricing and Super investment runs up to 500k AED; escalates seed/rebalance sign-off to Fund Investment Manager.',
   },
@@ -1067,7 +1078,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '10,000,000.00',
     doaActions: ['fund-nav-signoff', 'accounting-voucher', 'master-config-change'],
     piiAccess: 'masked',
-    fullTabs: ['overview', 'funds', 'super-funds', 'funds-accounting', 'takaful', 'decisions', 'access-doa'],
+    fullTabs: ['overview', 'funds', 'super-funds', 'funds-accounting', 'takaful', 'decisions'],
     readTabs: ['policyholder', 'warehouse', 'ledger', 'group'],
     aiConfidencePct: 99,
     aiRationale: 'Full investment governance across Unit-Linked, Takaful PIF and Superannuation portfolios with 10M AED DOA authority.',
@@ -1091,7 +1102,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured', 'discount-concession'],
     piiAccess: 'full',
     fullTabs: ['journey', 'onboarding', 'parties', 'decisions'],
-    readTabs: ['overview', 'policyholder', 'cover', 'access-doa'],
+    readTabs: ['overview', 'policyholder', 'cover'],
     subSectionOverrides: {
       'journey:underwriting-decision:uw-signoff': 'read',
       'parties:customer-360:consent-merge': 'read',
@@ -1116,7 +1127,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured', 'discount-concession'],
     piiAccess: 'full',
     fullTabs: ['journey', 'onboarding', 'parties', 'decisions'],
-    readTabs: ['overview', 'policyholder', 'takaful', 'cover', 'access-doa'],
+    readTabs: ['overview', 'policyholder', 'takaful', 'cover'],
     subSectionOverrides: {
       'journey:underwriting-decision:uw-signoff': 'read',
       'parties:customer-360:consent-merge': 'read',
@@ -1141,7 +1152,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured', 'discount-concession'],
     piiAccess: 'full',
     fullTabs: ['journey', 'underwriting', 'onboarding', 'parties', 'decisions'],
-    readTabs: ['overview', 'policyholder', 'reinsurance', 'regulatory', 'access-doa'],
+    readTabs: ['overview', 'policyholder', 'reinsurance', 'regulatory'],
     subSectionOverrides: {
       'underwriting:uw-adjudication:uw-decision': 'read',
       'master:omni-providers:providers-branches': 'read',
@@ -1159,13 +1170,13 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     entityScope: '*',
     channelScope: 'AGENCY',
     subChannelScope: '*',
-    defaultLandingTab: 'access-doa',
+    defaultLandingTab: 'overview',
     reportsToProfileId: 'underwriter-manager',
     escalationProfileId: 'administration',
     doaLimitAed: '1,500,000.00',
     doaActions: ['quote-high-sum-assured', 'discount-concession', 'retention-waiver'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'access-doa', 'journey', 'onboarding', 'parties', 'decisions'],
+    fullTabs: ['overview', 'journey', 'onboarding', 'parties', 'decisions', 'reconciliation'],
     readTabs: ['underwriting', 'policyholder', 'warehouse', 'master'],
     aiConfidencePct: 98,
     aiRationale: 'First-line DOA approver for all Agency & Marsh broker producers up to 1.5M AED, escalating technical risk decisions above cap to Underwriter Manager.',
@@ -1189,7 +1200,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured', 'discount-concession'],
     piiAccess: 'full',
     fullTabs: ['journey', 'onboarding', 'parties', 'decisions'],
-    readTabs: ['overview', 'policyholder', 'funds', 'access-doa'],
+    readTabs: ['overview', 'policyholder', 'funds'],
     subSectionOverrides: { 'journey:underwriting-decision:uw-signoff': 'read' },
     aiConfidencePct: 97,
     aiRationale: 'Scoped to BANCA-PREMIER-1 with customer auto-pick, fund look-through visibility and 300k AED straight-through quote cap; reports to Banca Supervisor.',
@@ -1211,7 +1222,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured', 'discount-concession'],
     piiAccess: 'full',
     fullTabs: ['journey', 'onboarding', 'parties', 'decisions'],
-    readTabs: ['overview', 'policyholder', 'takaful', 'funds', 'access-doa'],
+    readTabs: ['overview', 'policyholder', 'takaful', 'funds'],
     subSectionOverrides: { 'journey:underwriting-decision:uw-signoff': 'read' },
     aiConfidencePct: 97,
     aiRationale: 'Scoped to BANCA-ISLAMIC-2 with Shariah fund & Takaful pool visibility; routes >300k AED cases automatically to Banca Supervisor.',
@@ -1226,13 +1237,13 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     entityScope: '*',
     channelScope: 'BANCA',
     subChannelScope: '*',
-    defaultLandingTab: 'access-doa',
+    defaultLandingTab: 'overview',
     reportsToProfileId: 'bank-manager',
     escalationProfileId: 'underwriter-manager',
     doaLimitAed: '1,500,000.00',
     doaActions: ['quote-high-sum-assured', 'discount-concession', 'endorsement-alteration'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'access-doa', 'journey', 'onboarding', 'parties', 'ingest', 'decisions'],
+    fullTabs: ['overview', 'journey', 'onboarding', 'parties', 'ingest', 'reconciliation', 'decisions'],
     readTabs: ['underwriting', 'policyholder', 'warehouse', 'batch'],
     aiConfidencePct: 98,
     aiRationale: 'Supervises all bancassurance specialists and feed operations up to 1.5M AED, escalating larger private-bank cases to Bank Manager.',
@@ -1254,7 +1265,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured'],
     piiAccess: 'full',
     fullTabs: ['journey', 'onboarding', 'parties'],
-    readTabs: ['overview', 'cover', 'access-doa'],
+    readTabs: ['overview', 'cover'],
     subSectionOverrides: {
       'journey:underwriting-decision:uw-signoff': 'read',
       'parties:customer-360:consent-merge': 'read',
@@ -1272,14 +1283,14 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     entityScope: 'ALK-CONV',
     channelScope: 'BANCA',
     subChannelScope: 'BRANCH-RETAIL-01',
-    defaultLandingTab: 'access-doa',
+    defaultLandingTab: 'overview',
     reportsToProfileId: 'bank-manager',
     escalationProfileId: 'underwriter-manager',
     doaLimitAed: '750,000.00',
     doaActions: ['quote-high-sum-assured', 'discount-concession', 'retention-waiver'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'access-doa', 'journey', 'onboarding', 'parties', 'policyholder'],
-    readTabs: ['decisions', 'underwriting', 'warehouse'],
+    fullTabs: ['overview', 'journey', 'onboarding', 'parties', 'policyholder'],
+    readTabs: ['decisions', 'underwriting', 'warehouse', 'reconciliation'],
     aiConfidencePct: 97,
     aiRationale: 'Approves retail branch referrals up to 750k AED and escalates HNW/corporate bank cases cleanly to Bank Manager.',
   },
@@ -1299,7 +1310,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaLimitAed: '5,000,000.00',
     doaActions: ['quote-high-sum-assured', 'discount-concession', 'retention-waiver', 'endorsement-alteration'],
     piiAccess: 'full',
-    fullTabs: ['overview', 'access-doa', 'journey', 'policyholder', 'decisions', 'warehouse'],
+    fullTabs: ['overview', 'journey', 'policyholder', 'decisions', 'warehouse', 'reconciliation'],
     readTabs: ['underwriting', 'funds', 'takaful', 'ingest', 'batch'],
     aiConfidencePct: 99,
     aiRationale: 'Top distribution governance across the entire bank partnership up to 5M AED with full warehouse analytics and multi-branch supervision.',
@@ -1323,7 +1334,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured'],
     piiAccess: 'masked',
     fullTabs: ['journey', 'cover'],
-    readTabs: ['regulatory', 'decisions', 'access-doa'],
+    readTabs: ['regulatory', 'decisions'],
     subSectionOverrides: {
       'journey:underwriting-decision:uw-signoff': 'none',
       'journey:quotation-conversion:inforce-servicing': 'read',
@@ -1373,7 +1384,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured'],
     piiAccess: 'masked',
     fullTabs: ['onboarding', 'journey'],
-    readTabs: ['decisions', 'access-doa'],
+    readTabs: ['decisions'],
     subSectionOverrides: {
       'journey:underwriting-decision:uw-signoff': 'none',
       'journey:quotation-conversion:payment-issue': 'none',
@@ -1399,7 +1410,7 @@ const PROFILE_SEEDS: readonly ProfileSeedSpec[] = [
     doaActions: ['quote-high-sum-assured'],
     piiAccess: 'masked',
     fullTabs: ['onboarding', 'journey'],
-    readTabs: ['decisions', 'takaful', 'access-doa'],
+    readTabs: ['decisions', 'takaful'],
     subSectionOverrides: {
       'journey:underwriting-decision:uw-signoff': 'none',
       'journey:quotation-conversion:payment-issue': 'none',
@@ -1875,18 +1886,21 @@ export class SecurityGovernanceRegistry {
   canAccessTab(profileId: string, tabId: string): AccessLevel {
     const p = this.getProfile(profileId);
     if (p.unrestricted) return 'full';
+    if (ADMIN_ONLY_TAB_IDS.has(tabId)) return 'none';
     return p.tabAccess[tabId] ?? 'none';
   }
 
   canAccessSection(profileId: string, tabId: string, sectionId: string): AccessLevel {
     const p = this.getProfile(profileId);
     if (p.unrestricted) return 'full';
+    if (ADMIN_ONLY_TAB_IDS.has(tabId)) return 'none';
     return p.sectionAccess[`${tabId}:${sectionId}`] ?? this.canAccessTab(profileId, tabId);
   }
 
   canAccessSubSection(profileId: string, tabId: string, sectionId: string, subSectionId: string): AccessLevel {
     const p = this.getProfile(profileId);
     if (p.unrestricted) return 'full';
+    if (ADMIN_ONLY_TAB_IDS.has(tabId)) return 'none';
     return p.subSectionAccess[`${tabId}:${sectionId}:${subSectionId}`] ?? this.canAccessSection(profileId, tabId, sectionId);
   }
 
@@ -1938,6 +1952,10 @@ export class SecurityGovernanceRegistry {
     if (input.reportsToProfileId) this.getProfile(input.reportsToProfileId);
     if (input.escalationProfileId) this.getProfile(input.escalationProfileId);
 
+    if (input.defaultLandingTab && ADMIN_ONLY_TAB_IDS.has(input.defaultLandingTab.trim())) {
+      throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
+    }
+
     // A tab change re-seats its whole branch: child overrides are cleared so they inherit the new tab
     // level, unless the caller supplied an explicit child grant in the same request.
     const nextTabAccess: Record<string, AccessLevel> = { ...existing.tabAccess, ...(input.tabAccess ?? {}) };
@@ -1946,6 +1964,9 @@ export class SecurityGovernanceRegistry {
 
     if (input.tabAccess) {
       for (const [tabId, level] of Object.entries(input.tabAccess)) {
+        if (ADMIN_ONLY_TAB_IDS.has(tabId) && level !== 'none') {
+          throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
+        }
         const cat = SECURITY_SURFACE_CATALOGUE.find((c) => c.tabId === tabId);
         this.assertGrantWithinActor({
           actor,
@@ -1965,27 +1986,49 @@ export class SecurityGovernanceRegistry {
       }
     }
 
-    if (input.sectionAccess && !actor.unrestricted) {
+    if (input.sectionAccess) {
       for (const [sKey, level] of Object.entries(input.sectionAccess)) {
         const [tabId, sectionId] = sKey.split(':');
-        this.assertGrantWithinActor({
-          actor,
-          actorLevel: tabId && sectionId ? this.canAccessSection(actor.id, tabId, sectionId) : 'none',
-          requested: level,
-          label: `section "${sKey}"`,
-        });
+        if (tabId && ADMIN_ONLY_TAB_IDS.has(tabId) && level !== 'none') {
+          throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
+        }
+        if (!actor.unrestricted) {
+          this.assertGrantWithinActor({
+            actor,
+            actorLevel: tabId && sectionId ? this.canAccessSection(actor.id, tabId, sectionId) : 'none',
+            requested: level,
+            label: `section "${sKey}"`,
+          });
+        }
       }
     }
-    if (input.subSectionAccess && !actor.unrestricted) {
+    if (input.subSectionAccess) {
       for (const [subKey, level] of Object.entries(input.subSectionAccess)) {
         const [tabId, sectionId, subId] = subKey.split(':');
-        this.assertGrantWithinActor({
-          actor,
-          actorLevel: tabId && sectionId && subId ? this.canAccessSubSection(actor.id, tabId, sectionId, subId) : 'none',
-          requested: level,
-          label: `sub-section "${subKey}"`,
-        });
+        if (tabId && ADMIN_ONLY_TAB_IDS.has(tabId) && level !== 'none') {
+          throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
+        }
+        if (!actor.unrestricted) {
+          this.assertGrantWithinActor({
+            actor,
+            actorLevel: tabId && sectionId && subId ? this.canAccessSubSection(actor.id, tabId, sectionId, subId) : 'none',
+            requested: level,
+            label: `sub-section "${subKey}"`,
+          });
+        }
       }
+    }
+
+    for (const adminTabId of ADMIN_ONLY_TAB_IDS) {
+      nextTabAccess[adminTabId] = 'none';
+    }
+    for (const key of Object.keys(nextSectionAccess)) {
+      const tabId = key.split(':')[0];
+      if (tabId && ADMIN_ONLY_TAB_IDS.has(tabId)) delete nextSectionAccess[key];
+    }
+    for (const key of Object.keys(nextSubAccess)) {
+      const tabId = key.split(':')[0];
+      if (tabId && ADMIN_ONLY_TAB_IDS.has(tabId)) delete nextSubAccess[key];
     }
 
     const doaLimitMinor = input.doaLimitAed === undefined
@@ -2083,6 +2126,11 @@ export class SecurityGovernanceRegistry {
     const sectionAccess = { ...role.sectionAccess };
     const subSectionAccess = { ...role.subSectionAccess };
     const kindLabel = input.kind === 'subSection' ? 'sub-section' : input.kind;
+
+    const targetTabId = input.kind === 'tab' ? input.key : input.key.split(':')[0] ?? '';
+    if (ADMIN_ONLY_TAB_IDS.has(targetTabId) && input.level !== 'none' && input.level !== 'inherit') {
+      throw new SecurityGovernanceError('Access & DOA and Role access matrix tabs are restricted to the Administration profile only');
+    }
 
     if (input.kind === 'tab') {
       const cat = SECURITY_SURFACE_CATALOGUE.find((c) => c.tabId === input.key);
@@ -2353,7 +2401,9 @@ export class SecurityGovernanceRegistry {
     const sectionAccess: Record<string, AccessLevel> = {};
     const subSectionAccess: Record<string, AccessLevel> = {};
     for (const t of rec.tabs) {
-      tabAccess[t.tabId] = t.level;
+      const adminOnly = ADMIN_ONLY_TAB_IDS.has(t.tabId);
+      tabAccess[t.tabId] = adminOnly ? 'none' : t.level;
+      if (adminOnly) continue;
       for (const s of t.sections) {
         sectionAccess[`${t.tabId}:${s.sectionId}`] = s.level;
         for (const sub of s.subSections) {
@@ -2361,9 +2411,10 @@ export class SecurityGovernanceRegistry {
         }
       }
     }
+    const safeLandingTab = ADMIN_ONLY_TAB_IDS.has(rec.recommendedLandingTab) ? 'overview' : rec.recommendedLandingTab;
     const profile = this.upsertProfile({
       id: targetProfileId,
-      defaultLandingTab: rec.recommendedLandingTab,
+      defaultLandingTab: safeLandingTab,
       reportsToProfileId: rec.recommendedSupervisorProfileId,
       escalationProfileId: rec.recommendedEscalationProfileId,
       doaLimitAed: rec.recommendedDoaMinor === null
