@@ -49,9 +49,25 @@ plus category, source (commit / PR / change request), the console area to open, 
 `generateFromCommits` drafts entries from commit records: a conventional-commit prefix
 (`feat:`, `fix:`, `security:`, `data:`, breaking `!`) sets the category, the first body paragraph
 becomes Why, the second becomes What, and the action line is templated by category. Drafting is
-local and template-based (no external AI service is called); a deployment may put an LLM behind
-the same interface, but the filed entry remains the auditable record. Entries that do not say
+local and template-based (no external AI service is called). Entries that do not say
 why/what/action are refused by the registry.
+
+**Publication is manual, not a GitHub integration.** Merging a PR does not call the generator or
+add a release entry. Add a plain-language entry to `WHATS_NEW_SEED` in `src/core/whatsnew.ts`,
+then run `npm run build` and commit the regenerated `demo/offline-responses.json` and
+`demo/offline.html` with the source change. Vercel's static site copies that committed HTML; it
+does not rebuild the application or fetch merged PRs. A regression test compares both recorded
+endpoints and the offline HTML to the seed, catching stale demo artefacts once an entry is added.
+It does **not** guarantee every future PR gets an entry. Entries filed through the UI/API live
+only in memory and do not survive a process restart or offline page reload; they are not a durable
+audit log. The publication decision is to keep the curated, operator-facing seed and regenerate
+its static artefacts, rather than expose raw Git history or treat temporary UI filing as durable.
+The trade-off is that maintainers must explicitly curate future releases.
+
+For a browser smoke test, assemble the static site with `npm run demo:site`, serve `site/` on port
+4173, and run `npm run test:e2e:whats-new` with a Playwright Chromium installation. Set
+`WHATS_NEW_BASE_URL` to test a different console URL. This exercises the Administration entry,
+What's New navigation, PR #38 note and its disabled-workflow notice.
 
 ## 3. Data warehouse — Snowflake, Excel, Access, validated secrets, breach agreement, rotating PII masking
 

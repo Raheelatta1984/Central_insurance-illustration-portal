@@ -35,7 +35,7 @@ export const WhatsNewPanel: React.FC<{ data: WorldSnapshot; onReload: () => Prom
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: '1 / -1' }}>
-        <header><h3>What's New — every change, explained</h3>
+        <header><h3>What's New</h3>
           <p className="muted small">Newest first. Each entry names its source (commit, PR or change request) and says <b>why</b> it exists, <b>what</b> changed, and <b>what you need to do</b>. {feed.howEntriesAreMade}</p></header>
         <div className="pills">
           <span className="pill ok">{feed.entries.length} entries</span>
@@ -70,7 +70,7 @@ export const WhatsNewPanel: React.FC<{ data: WorldSnapshot; onReload: () => Prom
 
       <section className="card" style={{ gridColumn: '1 / -1' }}>
         <h4>Generate an entry from a commit</h4>
-        <p className="muted small">Write the commit subject as <code>feat(batch): …</code> / <code>security(warehouse): …</code> and the body as two paragraphs — why, then what. The generator drafts the entry in the same shape as above; a human files it, so this tab stays an auditable record, not a raw git log.</p>
+        <p className="muted small">Write the commit subject as <code>feat(batch): …</code> / <code>security(warehouse): …</code> and the body as two paragraphs — why, then what.</p>
         <div className="row">
           <label>Commit hash<input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="ccf51a3" /></label>
           <label>PR<input value={pr} onChange={(e) => setPr(e.target.value)} placeholder="#11" /></label>

@@ -31,7 +31,8 @@
     "mail:smoke": "node tools/mail-smoke.mjs",
     "infra:plan": "node tools/dataplane.mjs",
     "infra:check": "node tools/dataplane.mjs --check",
-    "recon:migrate": "npm run build:server && node tools/reconciliation-migrate.mjs"
+    "recon:migrate": "npm run build:server && node tools/reconciliation-migrate.mjs",
+    "test:e2e:whats-new": "node tools/whats-new-e2e.mjs"
   },
   "dependencies": {
     "pg": "^8.23.1",
