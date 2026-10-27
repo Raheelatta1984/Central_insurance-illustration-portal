@@ -1,8 +1,8 @@
 /**
  * What's New — the last tab in the console.
  *
- * Every change that ships (a commit, a merged PR, a change request) becomes one entry written
- * for an operator, not for a developer: WHY it exists, WHAT changed, and WHAT YOU NEED TO DO.
+ * Entries are curated for operators: WHY a change exists, WHAT changed, and WHAT TO DO.
+ * Merging a PR does not automatically add an entry; the published seed is maintained by hand.
  * Entries can be filed by hand, or generated from commit subjects: `generateFromCommits` turns
  * conventional-commit / PR titles into the same shape, categorises them, and drafts the
  * why/what/action text from the commit body when one is present. That drafting is template-based
@@ -98,8 +98,22 @@ function areaFor(subject: string): string {
   return 'Overview';
 }
 
-/** Filed entries. Newest first. The auto-generator above appends future commits in the same shape. */
+/** Published entries, newest first. Commit drafting is an explicit action, not an automatic feed. */
 export const WHATS_NEW_SEED: ReadonlyArray<WhatsNewEntry> = [
+  {
+    id: 'WN-0012', at: '2026-10-27', title: "What's New publication corrected", category: 'fix',
+    source: "What's New publication correction", area: "What's New", risk: 'low',
+    why: 'The merged reconciliation foundation was absent because release entries are curated manually and the deployed demo uses a committed snapshot.',
+    what: 'Added the missing PR #38 entry, rebuilt the static demo, and added checks that detect a stale demo when published entries change. Merged PRs are not imported automatically.',
+    whatYouNeedToDo: 'Read the reconciliation entry below. For future releases, maintainers must add an entry and rebuild the demo; filing an entry on this screen is temporary.',
+  },
+  {
+    id: 'WN-0011', at: '2026-10-27', title: 'Partner reconciliation foundation — not yet available', category: 'improvement',
+    source: 'PR #38 · merged 2026-10-27', area: 'Partner reconciliation', risk: 'medium',
+    why: 'Partner commission reconciliation needs insurer- and partner-scoped groundwork before any commission is calculated or paid.',
+    what: 'Added disabled, non-financial groundwork: ownership metadata and read-only database isolation, guarded migrations, and offline identity-matching and column-mapping helpers. This did not add a reconciliation screen, file uploads, commission calculations, approvals or payment processing.',
+    whatYouNeedToDo: 'No new reconciliation workflow is available to use. Provide the approved free-look, commission and clawback rules; keep the feature disabled and do not use real customer data until the required finance, security, privacy and payment acceptance is complete.',
+  },
   {
     id: 'WN-0010', at: '2026-10-21', title: 'Security profiles renamed to roles, four authority tiers, DOA change only at supervisor/manager level, officer limit-increase requests, and a role access matrix with a tab → section → sub-section enable/disable tree', category: 'security',
     source: 'branch arena/b567474d-central-insurance-illustration · docs/17-RBAC-DOA-AUTOPICK-AND-SMART-COMBOBOX.md', area: 'Role access matrix', risk: 'high',
@@ -199,7 +213,7 @@ export class WhatsNewRegistry {
       entries: this.list(),
       categories: [...new Set(this.entries.map((e) => e.category))],
       latestAt: this.entries[0]?.at ?? null,
-      howEntriesAreMade: 'File an entry by hand, or generate one from a commit: write the commit subject as feat:/fix:/security:/data: … and the body as two paragraphs (why, then what). generateFromCommits drafts Why / What / What-you-need-to-do in this shape; a human files it, so the tab stays an auditable record rather than raw git log.',
+      howEntriesAreMade: 'Entries are curated manually; merging a PR does not automatically add one. To publish a lasting entry, update the release seed and rebuild the demo. Entries filed using this screen are temporary and do not survive a restart. You can draft one from a commit subject and body, then file it manually.',
     };
   }
 

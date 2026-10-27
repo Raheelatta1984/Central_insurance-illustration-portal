@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-27T03:22:23.697Z",
+  "capturedAt": "2026-10-27T08:05:56.701Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -31834,7 +31834,7 @@
                 "facts": [
                   "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                   "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                  "10 filed entries, latest dated 2026-10-21. Each says why, what changed and what you need to do."
+                  "12 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
                 ],
                 "tone": "info",
                 "curated": true
@@ -33562,7 +33562,7 @@
             "whats-new": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
               "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-              "10 filed entries, latest dated 2026-10-21. Each says why, what changed and what you need to do."
+              "12 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
             ],
             "warehouse": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
@@ -36390,6 +36390,30 @@
         "whatsNew": {
           "entries": [
             {
+              "id": "WN-0012",
+              "at": "2026-10-27",
+              "title": "What's New publication corrected",
+              "category": "fix",
+              "source": "What's New publication correction",
+              "area": "What's New",
+              "risk": "low",
+              "why": "The merged reconciliation foundation was absent because release entries are curated manually and the deployed demo uses a committed snapshot.",
+              "what": "Added the missing PR #38 entry, rebuilt the static demo, and added checks that detect a stale demo when published entries change. Merged PRs are not imported automatically.",
+              "whatYouNeedToDo": "Read the reconciliation entry below. For future releases, maintainers must add an entry and rebuild the demo; filing an entry on this screen is temporary."
+            },
+            {
+              "id": "WN-0011",
+              "at": "2026-10-27",
+              "title": "Partner reconciliation foundation — not yet available",
+              "category": "improvement",
+              "source": "PR #38 · merged 2026-10-27",
+              "area": "Partner reconciliation",
+              "risk": "medium",
+              "why": "Partner commission reconciliation needs insurer- and partner-scoped groundwork before any commission is calculated or paid.",
+              "what": "Added disabled, non-financial groundwork: ownership metadata and read-only database isolation, guarded migrations, and offline identity-matching and column-mapping helpers. This did not add a reconciliation screen, file uploads, commission calculations, approvals or payment processing.",
+              "whatYouNeedToDo": "No new reconciliation workflow is available to use. Provide the approved free-look, commission and clawback rules; keep the feature disabled and do not use real customer data until the required finance, security, privacy and payment acceptance is complete."
+            },
+            {
               "id": "WN-0010",
               "at": "2026-10-21",
               "title": "Security profiles renamed to roles, four authority tiers, DOA change only at supervisor/manager level, officer limit-increase requests, and a role access matrix with a tab → section → sub-section enable/disable tree",
@@ -36511,13 +36535,14 @@
             }
           ],
           "categories": [
-            "security",
             "fix",
+            "improvement",
+            "security",
             "feature",
             "data"
           ],
-          "latestAt": "2026-10-21",
-          "howEntriesAreMade": "File an entry by hand, or generate one from a commit: write the commit subject as feat:/fix:/security:/data: … and the body as two paragraphs (why, then what). generateFromCommits drafts Why / What / What-you-need-to-do in this shape; a human files it, so the tab stays an auditable record rather than raw git log."
+          "latestAt": "2026-10-27",
+          "howEntriesAreMade": "Entries are curated manually; merging a PR does not automatically add one. To publish a lasting entry, update the release seed and rebuild the demo. Entries filed using this screen are temporary and do not survive a restart. You can draft one from a commit subject and body, then file it manually."
         },
         "emailConfig": {
           "accounts": [
@@ -60859,6 +60884,30 @@
       "body": {
         "entries": [
           {
+            "id": "WN-0012",
+            "at": "2026-10-27",
+            "title": "What's New publication corrected",
+            "category": "fix",
+            "source": "What's New publication correction",
+            "area": "What's New",
+            "risk": "low",
+            "why": "The merged reconciliation foundation was absent because release entries are curated manually and the deployed demo uses a committed snapshot.",
+            "what": "Added the missing PR #38 entry, rebuilt the static demo, and added checks that detect a stale demo when published entries change. Merged PRs are not imported automatically.",
+            "whatYouNeedToDo": "Read the reconciliation entry below. For future releases, maintainers must add an entry and rebuild the demo; filing an entry on this screen is temporary."
+          },
+          {
+            "id": "WN-0011",
+            "at": "2026-10-27",
+            "title": "Partner reconciliation foundation — not yet available",
+            "category": "improvement",
+            "source": "PR #38 · merged 2026-10-27",
+            "area": "Partner reconciliation",
+            "risk": "medium",
+            "why": "Partner commission reconciliation needs insurer- and partner-scoped groundwork before any commission is calculated or paid.",
+            "what": "Added disabled, non-financial groundwork: ownership metadata and read-only database isolation, guarded migrations, and offline identity-matching and column-mapping helpers. This did not add a reconciliation screen, file uploads, commission calculations, approvals or payment processing.",
+            "whatYouNeedToDo": "No new reconciliation workflow is available to use. Provide the approved free-look, commission and clawback rules; keep the feature disabled and do not use real customer data until the required finance, security, privacy and payment acceptance is complete."
+          },
+          {
             "id": "WN-0010",
             "at": "2026-10-21",
             "title": "Security profiles renamed to roles, four authority tiers, DOA change only at supervisor/manager level, officer limit-increase requests, and a role access matrix with a tab → section → sub-section enable/disable tree",
@@ -60980,13 +61029,14 @@
           }
         ],
         "categories": [
-          "security",
           "fix",
+          "improvement",
+          "security",
           "feature",
           "data"
         ],
-        "latestAt": "2026-10-21",
-        "howEntriesAreMade": "File an entry by hand, or generate one from a commit: write the commit subject as feat:/fix:/security:/data: … and the body as two paragraphs (why, then what). generateFromCommits drafts Why / What / What-you-need-to-do in this shape; a human files it, so the tab stays an auditable record rather than raw git log."
+        "latestAt": "2026-10-27",
+        "howEntriesAreMade": "Entries are curated manually; merging a PR does not automatically add one. To publish a lasting entry, update the release seed and rebuild the demo. Entries filed using this screen are temporary and do not survive a restart. You can draft one from a commit subject and body, then file it manually."
       }
     },
     "GET /api/warehouse": {
@@ -63585,7 +63635,7 @@
               "facts": [
                 "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                 "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                "10 filed entries, latest dated 2026-10-21. Each says why, what changed and what you need to do."
+                "12 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
               ],
               "tone": "info",
               "curated": true
@@ -65313,7 +65363,7 @@
           "whats-new": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
             "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-            "10 filed entries, latest dated 2026-10-21. Each says why, what changed and what you need to do."
+            "12 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
           ],
           "warehouse": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
