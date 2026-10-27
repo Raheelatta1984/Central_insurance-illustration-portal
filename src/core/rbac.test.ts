@@ -225,11 +225,56 @@ describe('Role authority tiers, DOA change control and the role access tree', ()
     expect(snap.userProfileLayer.implemented).toBe(false);
     expect(snap.catalogue.some((c) => c.tabId === 'role-matrix')).toBe(true);
 
-    // The visibility tree is a supervisor/manager tool: officer roles never receive the tab.
-    expect(w.rbac.canAccessTab('claim-officer', 'role-matrix')).toBe('none');
-    expect(w.rbac.canAccessTab('supervisor', 'role-matrix')).toBe('full');
-    expect(w.rbac.canAccessTab('claim-manager', 'role-matrix')).toBe('full');
+    // Access & DOA and Role access matrix tabs are restricted strictly to Administration.
+    expect(w.rbac.canAccessTab('administration', 'access-doa')).toBe('full');
     expect(w.rbac.canAccessTab('administration', 'role-matrix')).toBe('full');
+    for (const role of snap.roles) {
+      if (role.id === 'administration') {
+        expect(role.allowedTabs).toContain('access-doa');
+        expect(role.allowedTabs).toContain('role-matrix');
+        continue;
+      }
+      expect(w.rbac.canAccessTab(role.id, 'access-doa'), `${role.id} access-doa`).toBe('none');
+      expect(w.rbac.canAccessTab(role.id, 'role-matrix'), `${role.id} role-matrix`).toBe('none');
+      expect(role.allowedTabs, `${role.id} allowedTabs`).not.toContain('access-doa');
+      expect(role.allowedTabs, `${role.id} allowedTabs`).not.toContain('role-matrix');
+      expect(role.fullTabs, `${role.id} fullTabs`).not.toContain('access-doa');
+      expect(role.fullTabs, `${role.id} fullTabs`).not.toContain('role-matrix');
+      expect(role.readTabs, `${role.id} readTabs`).not.toContain('access-doa');
+      expect(role.readTabs, `${role.id} readTabs`).not.toContain('role-matrix');
+      expect(['access-doa', 'role-matrix']).not.toContain(role.defaultLandingTab);
+    }
+
+    // Even Administration cannot grant Access & DOA or Role access matrix to a non-administrator profile.
+    expect(() =>
+      w.rbac.setRoleNodeAccess({
+        roleId: 'supervisor',
+        kind: 'tab',
+        key: 'access-doa',
+        level: 'read',
+        actorProfileId: 'administration',
+      }),
+    ).toThrow(/Administration profile only/);
+    expect(() =>
+      w.rbac.setRoleNodeAccess({
+        roleId: 'claim-manager',
+        kind: 'tab',
+        key: 'role-matrix',
+        level: 'full',
+        actorProfileId: 'administration',
+      }),
+    ).toThrow(/Administration profile only/);
+
+    // Cloning Administration into a custom role strips Access & DOA and Role access matrix to 'none'.
+    const cloned = w.rbac.upsertProfile({
+      id: 'regional-lead',
+      name: 'Regional Lead',
+      cloneFromProfileId: 'administration',
+      doaLimitAed: '1,000,000.00',
+      actorProfileId: 'administration',
+    });
+    expect(cloned.tabAccess['access-doa']).toBe('none');
+    expect(cloned.tabAccess['role-matrix']).toBe('none');
   });
 
   it('refuses an officer changing its own DOA cap and allows only a higher tier to change it', () => {

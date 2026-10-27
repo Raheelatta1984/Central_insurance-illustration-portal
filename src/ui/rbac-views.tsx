@@ -421,16 +421,18 @@ export const HeaderSecurityStrip: React.FC<{
                   Mark all read
                 </button>
               )}
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  setDrawerOpen(false);
-                  onOpenAccessTab();
-                }}
-              >
-                Open Access &amp; DOA Tab →
-              </button>
+              {active.unrestricted && (
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    onOpenAccessTab();
+                  }}
+                >
+                  Open Access &amp; DOA Tab →
+                </button>
+              )}
               <button type="button" className="ghost" onClick={() => setDrawerOpen(false)}>×</button>
             </div>
           </div>
@@ -584,9 +586,6 @@ export const ProfileAccessGuardBanner: React.FC<{
         />
         <button type="button" disabled={busy} onClick={() => void submitQuickDoa()} style={{ padding: '4px 10px', fontSize: 12 }}>
           Raise DOA Approval →
-        </button>
-        <button type="button" className="ghost" onClick={onOpenAccessTab} style={{ padding: '4px 9px', fontSize: 12 }}>
-          Roles &amp; DOA Matrix
         </button>
         {active.doaLimitMinor !== null && (
           <button type="button" className="ghost" onClick={() => setShowIncrease((v) => !v)} style={{ padding: '4px 9px', fontSize: 12 }}>

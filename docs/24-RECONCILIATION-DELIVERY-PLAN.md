@@ -1,6 +1,6 @@
 # 24 — Reconciliation delivery plan and open decisions
 
-**Status: financial implementation blocked on business rules; limited non-financial foundation implemented.** The requester authorized its merge without an independent branch review on 2026-10-27; no such review is claimed. The [ADR](23-PARTNER-COMMISSION-RECONCILIATION.md) describes the target; the [reference map](25-RECONIQ-INTEGRATION-MAP.md) records the authorized reference and the [foundation contract](26-RECONCILIATION-FOUNDATION-CONTRACT.md) describes the inactive slice. No duration, rate, formula, limit, date convention or payment rule below is an approved value.
+**Status: unlocked non-financial reconciliation foundation delivered; financial implementation remains blocked on business rules.** The [ADR](23-PARTNER-COMMISSION-RECONCILIATION.md) describes the target; the [reference map](25-RECONIQ-INTEGRATION-MAP.md) records the authorized reference and the [foundation contract](26-RECONCILIATION-FOUNDATION-CONTRACT.md) describes the unlocked non-financial slice (`financialCalculationsEnabled: false`). No duration, rate, formula, limit, date convention or payment rule below is an approved value.
 
 ## Requested first input
 

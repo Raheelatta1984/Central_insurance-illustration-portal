@@ -17,7 +17,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import type { WorldSnapshot } from '../core/demo';
-import type { AccessLevel, DoaActionKind } from '../core/rbac';
+import { ADMIN_ONLY_TAB_IDS, type AccessLevel, type DoaActionKind } from '../core/rbac';
 import { api } from './api';
 import { SectionStack, type SectionModel } from './sections';
 
@@ -311,17 +311,19 @@ export const RoleAccessMatrixPanel: React.FC<{
           </thead>
           <tbody>
             {security.catalogue.map((cat) => {
-              const tabLevel = effectiveTab(selectedRole, cat.tabId);
+              const adminOnlyTab = ADMIN_ONLY_TAB_IDS.has(cat.tabId);
+              const tabLevel = adminOnlyTab && !selectedRole.unrestricted ? 'none' : effectiveTab(selectedRole, cat.tabId);
               return (
                 <React.Fragment key={cat.tabId}>
                   <tr>
                     <td>
                       <b>{cat.label}</b> <span className="muted small">({cat.tabId})</span>
+                      {adminOnlyTab && <span className="pill warn" style={{ marginLeft: 6, fontSize: 10 }}>Administration only</span>}
                     </td>
                     <td>
                       <select
                         value={tabLevel}
-                        disabled={busy || !canEditVisibility}
+                        disabled={busy || !canEditVisibility || adminOnlyTab}
                         onChange={(e) => void setNode('tab', cat.tabId, e.target.value as AccessLevel)}
                         style={{ minWidth: 210 }}
                       >
@@ -334,8 +336,8 @@ export const RoleAccessMatrixPanel: React.FC<{
                   </tr>
                   {cat.sections.map((sec) => {
                     const sectionKey = `${cat.tabId}:${sec.id}`;
-                    const sectionLevel = effectiveSection(selectedRole, cat.tabId, sec.id);
-                    const sectionExplicit = selectedRole.sectionAccess[sectionKey] !== undefined;
+                    const sectionLevel = adminOnlyTab && !selectedRole.unrestricted ? 'none' : effectiveSection(selectedRole, cat.tabId, sec.id);
+                    const sectionExplicit = !adminOnlyTab && selectedRole.sectionAccess[sectionKey] !== undefined;
                     return (
                       <React.Fragment key={sectionKey}>
                         <tr>
@@ -346,7 +348,7 @@ export const RoleAccessMatrixPanel: React.FC<{
                           <td>
                             <select
                               value={sectionExplicit ? sectionLevel : 'inherit'}
-                              disabled={busy || !canEditVisibility}
+                              disabled={busy || !canEditVisibility || adminOnlyTab}
                               onChange={(e) => void setNode('section', sectionKey, e.target.value as AccessLevel | 'inherit')}
                               style={{ minWidth: 210 }}
                             >

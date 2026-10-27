@@ -12,7 +12,7 @@ Prior to opening the ERP console, operators land on **`<ProfileSelectionGate />`
 
 ### Supported Enterprise Roles (All 36 Built-In)
 
-1. **`administration`** — **Executive** · **Unrestricted Complete Access** across **all 30 tabs**, **every section**, **every sub-section**, full unmasked PII, and unlimited DOA override authority (`doaLimitMinor = null`).
+1. **`administration`** — **Executive** · **Unrestricted Complete Access** across **all 31 tabs** (the **only** role granted the `Access & DOA` and `Role access matrix` governance tabs), **every section**, **every sub-section**, full unmasked PII, and unlimited DOA override authority (`doaLimitMinor = null`).
 2. **`supervisor`** — **Supervisor** · Operations Desk Supervisor.
 3. **`configurator`** — **Officer** · Product, Tariff & Master Data Configurator.
 4. **`underwriter-officer`** — **Officer** · Life, Medical & General Risk Underwriter Officer.
@@ -57,7 +57,7 @@ Tier counts are derived from the seed ids, not hand-maintained: **22 officer · 
 
 Permissions resolve deterministically across three levels (`'full' | 'read' | 'none'`):
 
-1. **Tab Level** (`tabAccess[tabId]`) across all **30** console tabs (`TABS`, matching `CONSOLE_TABS`).
+1. **Tab Level** (`tabAccess[tabId]`) across all **31** console tabs (`TABS`, matching `CONSOLE_TABS`). `access-doa` (**Access & DOA**) and `role-matrix` (**Role access matrix**) are restricted strictly to **`administration`** (`ADMIN_ONLY_TAB_IDS`) and deleted from all 35 non-administrator profiles.
 2. **Section Level** (`sectionAccess['tabId:sectionId']`).
 3. **Sub-Section Level** (`subSectionAccess['tabId:sectionId:subSectionId']`).
 
@@ -111,7 +111,7 @@ A dedicated console tab, **`role-matrix`** ("Role Access Matrix"), placed direct
 
 Storage is override-only: `tabAccess` holds a level for every tab, while `sectionAccess` / `subSectionAccess` only hold **explicit** overrides. A missing key means *inherit*, which is what makes the tree explainable: moving a tab moves the whole branch unless a child was deliberately pinned. `'inherit'` is accepted by `setRoleNodeAccess` and clears the override; `'full'` / `'read'` / `'none'` cascade down the branch.
 
-Enforcement is server-side in the registry, not just hidden in the UI: an officer role cannot open the `role-matrix` tab at all (its tab access is `'none'` by derivation), and every mutation re-checks the actor's tier, rank and DOA cap before writing.
+Enforcement is server-side in the registry, not just hidden in the UI: **both `access-doa` and `role-matrix` are restricted strictly to `administration`** (`ADMIN_ONLY_TAB_IDS`), deleted from all 35 non-administrator profiles, blocked from being granted to non-administrator roles via `setRoleNodeAccess` or `upsertProfile`, and every mutation re-checks the actor's tier, rank and DOA cap before writing.
 
 ---
 

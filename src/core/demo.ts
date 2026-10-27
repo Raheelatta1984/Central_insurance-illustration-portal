@@ -48,6 +48,7 @@ import { WhatsNewRegistry } from './whatsnew.js';
 import { EmailConfigRegistry } from './email-config.js';
 import { SecurityGovernanceRegistry } from './rbac.js';
 import { PartnerPortal } from './partner-portal.js';
+import { ReconciliationFoundationWorkspace } from './reconciliation/workspace.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -107,6 +108,8 @@ export interface World {
   readonly emailConfig: EmailConfigRegistry;
   /** 36-profile pre-load security gate, 3-tier RBAC, AI Access & SoD Advisor, Entity×Channel×Sub-Channel supervision & DOA queue. */
   readonly rbac: SecurityGovernanceRegistry;
+  /** Unlocked non-financial partner reconciliation foundation (hierarchy, identity column mapping, deterministic matching, proposal review). */
+  readonly reconciliation: ReconciliationFoundationWorkspace;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -782,6 +785,7 @@ export function buildWorld(): World {
   // credentials stay in the environment, referenced by name and never stored here.
   const emailConfig = new EmailConfigRegistry({ clock: () => '2026-10-05T12:00:00+04:00' });
   const rbac = new SecurityGovernanceRegistry();
+  const reconciliation = new ReconciliationFoundationWorkspace('2026-10-05T09:00:00Z');
 
   const baseWorld = {
     registers,
@@ -795,7 +799,7 @@ export function buildWorld(): World {
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
-    fundsAccounting, superFunds, warehouse, themes, rbac,
+    fundsAccounting, superFunds, warehouse, themes, rbac, reconciliation,
   } as unknown as World;
   const erp = new ErpManager(baseWorld);
   const withErp: World = { ...baseWorld, erp } as World;
@@ -818,7 +822,7 @@ export function buildWorld(): World {
   // The guide is a desk, not a screen: it holds the switch and its audit trail, and reads the world
   // when it composes notes, so the figures inside a note are the engine's and never a typed string.
   const guide = new GuideDesk({ at: `${withErp.asOf}T12:00:00Z`, by: 'console-default' });
-  return { ...withErp, journey, partnerPortal: new PartnerPortal(), guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig, rbac };
+  return { ...withErp, journey, partnerPortal: new PartnerPortal(), guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig, rbac, reconciliation };
 }
 
 /**
@@ -1540,6 +1544,7 @@ export function worldSnapshot(w: World) {
     whatsNew: w.whatsNew.snapshot(),
     emailConfig: w.emailConfig.snapshot(),
     security: w.rbac.snapshot(),
+    reconciliation: w.reconciliation.snapshot(),
     days: DAYS,
     // The demo world's business date at midday in its operating zone — deliberately not wall
     // time, so the snapshot (and the recorded offline demo built from it) is reproducible.

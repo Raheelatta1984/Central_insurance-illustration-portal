@@ -88,6 +88,7 @@ function defaultAction(category: WhatsNewCategory): string {
 
 function areaFor(subject: string): string {
   const s = subject.toLowerCase();
+  if (s.includes('reconcil')) return 'Partner reconciliation';
   if (s.includes('security') || s.includes('rbac') || s.includes('doa') || s.includes('profile')) return 'Access & DOA';
   if (s.includes('batch') || s.includes('anniversary') || s.includes('clawback')) return 'Batch processing';
   if (s.includes('warehouse') || s.includes('snowflake') || s.includes('mask')) return 'Data warehouse';
@@ -100,6 +101,20 @@ function areaFor(subject: string): string {
 
 /** Published entries, newest first. Commit drafting is an explicit action, not an automatic feed. */
 export const WHATS_NEW_SEED: ReadonlyArray<WhatsNewEntry> = [
+  {
+    id: 'WN-0014', at: '2026-10-27', title: 'Access & DOA and Role access matrix tabs restricted to Administration only', category: 'security',
+    source: 'RBAC governance tightening · 2026-10-27', area: 'Access & DOA', risk: 'medium',
+    why: 'Role governance, Tab → Section → Sub-Section permission trees and DOA matrix administration belong exclusively to the executive Administration profile and should not appear in operational, supervisor, manager, broker, bancassurance or partner workspaces.',
+    what: 'Deleted Access & DOA (access-doa) and Role access matrix (role-matrix) from all 35 non-administrator profiles, enforced Administration-only tab guards in SecurityGovernanceRegistry and the console UI, updated supervisor and branch/agent/banca supervisor default landing tabs to Overview, and removed non-admin matrix shortcut buttons.',
+    whatYouNeedToDo: 'Switch into Administration via the Role Gate whenever inspecting or editing role permissions, supervision chains or DOA matrices. Non-administrator roles continue raising and deciding operational DOA requests through their header notifications and guard banner.',
+  },
+  {
+    id: 'WN-0013', at: '2026-10-27', title: 'Unlocked non-financial partner reconciliation foundation', category: 'feature',
+    source: 'Reconciliation foundation unlock · 2026-10-27', area: 'Partner reconciliation', risk: 'medium',
+    why: 'Insurer operations, distribution supervisors and finance desks need configurable channel/sub-channel reference types, human-confirmed identity header mapping and deterministic scoped policy matching now, while keeping unapproved financial commission formulas safely locked.',
+    what: 'Unlocked reconciliationFeatureGate in non_financial_foundation mode by default (financialCalculationsEnabled: false), added ReconciliationFoundationWorkspace, /api/reconciliation endpoints, and the Partner reconciliation console tab with insurer/partner ownership hierarchy, identity-only header confirmation, exact and insured-corroborated zero-padding matching, duplicate quarantine and auditable human review of tentative proposals.',
+    whatYouNeedToDo: 'Open Partner reconciliation to configure insurer channel/sub-channel types, confirm identity-only CSV headers, run scoped partner-versus-insurer policy matching and review tentative proposals. Financial commission, free-look, clawback, payable statement and AP payment calculations remain disabled until business rules are signed off.',
+  },
   {
     id: 'WN-0012', at: '2026-10-27', title: "What's New publication corrected", category: 'fix',
     source: "What's New publication correction", area: "What's New", risk: 'low',
