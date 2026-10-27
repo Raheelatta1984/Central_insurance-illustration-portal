@@ -845,6 +845,8 @@ export class ErpManager {
     residenceCountry?: string;
     annualIncome?: string | number;
     at?: string;
+    /** Internal journey flag, never accepted from the public proposal endpoint. */
+    holdForPartnerApproval?: boolean;
   }) {
     const prod = this.products.get(input.productId);
     if (!prod) throw new ErpError(`unknown product ${input.productId} — define it in Master Settings first`);
@@ -921,8 +923,9 @@ export class ErpManager {
       sumAssured,
       at,
       profile,
+      holdForPartnerApproval: input.holdForPartnerApproval,
     });
-    const assessment = w.underwriting.assess(app.id);
+    const assessment = input.holdForPartnerApproval ? null : w.underwriting.assess(app.id);
 
     const meta: ErpProposalMeta = {
       applicationId: app.id,
@@ -961,19 +964,19 @@ export class ErpManager {
       sex: profile.sex,
       dependentProducts: resolvedDependentProducts,
       sumAssured: formatAmount(sumAssured),
-      standardPremium: formatAmount(assessment.standardPremium),
-      loadedPremium: formatAmount(assessment.loadedPremium),
-      extraMortalityBps: assessment.extraMortalityBps,
-      outcome: assessment.outcome,
-      exclusions: assessment.exclusions,
-      evidence: assessment.evidence,
-      referrals: assessment.referrals,
-      reasons: assessment.reasons,
-      reinsurance: {
+      standardPremium: assessment ? formatAmount(assessment.standardPremium) : 'Awaiting partner approval',
+      loadedPremium: assessment ? formatAmount(assessment.loadedPremium) : 'Awaiting partner approval',
+      extraMortalityBps: assessment?.extraMortalityBps ?? null,
+      outcome: assessment?.outcome ?? 'awaiting-partner-approval',
+      exclusions: assessment?.exclusions ?? [],
+      evidence: assessment?.evidence ?? [],
+      referrals: assessment?.referrals ?? [],
+      reasons: assessment?.reasons ?? [],
+      reinsurance: assessment ? {
         mode: assessment.reinsurance.mode,
         threshold: formatAmount(assessment.reinsurance.threshold),
         note: assessment.reinsurance.note,
-      },
+      } : null,
     };
   }
 
@@ -2890,7 +2893,8 @@ export class ErpManager {
       };
     });
 
-    const proposals = w.underwriting.list().map((a) => {
+    // A partner application does not enter the underwriting work queue before partner review.
+    const proposals = w.underwriting.list().filter((a) => !w.underwriting.isHeldForPartnerApproval(a.id)).map((a) => {
       const meta = this.proposals.get(a.id);
       const assessment = a.decision ?? w.underwriting.assess(a.id);
       const party = w.parties.get(a.partyId);

@@ -32,7 +32,8 @@ export interface PartnerApplication {
   status: ApplicationStatus;
   review: { by: string; role: PartnerReviewer; at: string; outcome: 'approved' | 'returned' | 'rejected'; note: string } | null;
   route: { route: UnderwritingRoute; automatic: boolean; assignedTo: string; reasons: readonly string[] } | null;
-  underwritingReview: { by: string; at: string; note: string; decisionFingerprint: string } | null;
+  underwritingReview: { by: string; at: string; note: string; decisionFingerprint: string; termsReconciled: true } | null;
+  revisedQuotation?: { quotationId: string; version: number; decisionFingerprint: string; issuedBy: string; issuedAt: string } | null;
 }
 export interface CommissionEntry {
   readonly id: string;
@@ -128,15 +129,17 @@ export class PartnerPortal {
     if (c.distribution && !scopeEquals(c.distribution, scope)) throw new PartnerPortalError('the journey already belongs to another partner or sub-channel');
     if (c.artefacts.policyId || c.artefacts.routeId || c.submitted.includes('routing')) throw new PartnerPortalError('attribute the journey before underwriting routing or policy conversion');
     if (c.country !== p.country || c.currency !== p.currency) throw new PartnerPortalError('journey country and currency must match the partner');
+    if (!c.distribution && c.artefacts.applicationId) throw new PartnerPortalError('attribute the partner before creating the coverage application or performing underwriting');
     if (!c.distribution) {
       c.distribution = scope;
+      c.answers.quotation = { ...c.answers.quotation, buyLinkSent: false };
       this.audit(input.at, input.by, 'journey-attributed', c.caseId, scope, 'Partner and distribution route attached before routing.');
     }
     return c;
   }
 
   /** Only the stable signed application facts; payment credentials and case answers are not retained. */
-  private signedFingerprint(w: World, c: JourneyCase): string {
+  private signedFingerprint(w: World, c: JourneyCase, approved?: Pick<PartnerApplication, 'quotationId' | 'quotationVersion'>): string {
     if (!c.artefacts.applicationId || !c.artefacts.quotationId) throw new PartnerPortalError('an application and quotation are required');
     const app = w.underwriting.application(c.artefacts.applicationId);
     if (!c.distribution) throw new PartnerPortalError('partner attribution is required');
@@ -144,22 +147,18 @@ export class PartnerPortal {
     const partner = w.erp.channels.partner(c.distribution.partnerId)!;
     if (c.country !== partner.country || c.currency !== partner.currency) throw new PartnerPortalError('journey country and currency must match the partner');
     if (!partner.productIds.includes(app.productId) || w.erp.channels.offer(partner.partnerId, app.productId)?.enabled === false) throw new PartnerPortalError('the product is not enabled on this partner shelf');
-    const quote = w.journey.quotations.get(c.artefacts.quotationId);
+    const quote = approved ? w.journey.quotations.get(approved.quotationId, approved.quotationVersion) : w.journey.quotations.get(c.artefacts.quotationId);
     if (quote.status !== 'finalised' || !quote.finalisation?.signatureReference) throw new PartnerPortalError('the current quotation must be signed by the customer');
-    // The existing journey can retain an old underwriting application after edited coverage.
-    // Never approve or convert a quote whose risk, decision or price no longer matches that file.
-    const decision = app.decision;
+    // A signed conditional quote and the application basis are frozen before any underwriting decision.
+    if (!quote.facts.conditional) throw new PartnerPortalError('partner review requires a signed conditional quotation');
     const coverage = c.answers['coverage'];
     const loadings = c.answers['loadings'];
     const profile = app.profile;
     const list = (value: unknown) => (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []).map((item) => String(item).trim()).filter(Boolean);
     const matchesList = (value: unknown, actual: string[]) => JSON.stringify(list(value)) === JSON.stringify(actual);
     const income = parseAmount(String(coverage['annualIncome'] ?? '0'), c.currency);
-    if (!decision || quote.facts.product.productId !== app.productId || quote.facts.customer.partyId !== app.partyId
+    if (quote.facts.product.productId !== app.productId || quote.facts.customer.partyId !== app.partyId
       || quote.facts.sumAssured.minor !== app.sumAssured.minor || quote.facts.sumAssured.currency !== app.sumAssured.currency
-      || quote.facts.loadedPremium.minor !== decision.loadedPremium.minor || quote.facts.loadedPremium.currency !== decision.loadedPremium.currency
-      || quote.facts.underwriting.extraMortalityBps !== decision.extraMortalityBps || quote.facts.underwriting.outcome !== decision.outcome
-      || quote.facts.underwriting.decidedBy !== decision.decidedBy || quote.facts.underwriting.decidedByAi !== decision.decidedByAi
       || profile.age !== Number(coverage['age'] ?? 35) || profile.sex !== (coverage['sex'] === 'female' ? 'female' : 'male')
       || profile.smoker !== (coverage['smoker'] === true) || profile.heightCm !== Number(coverage['heightCm'] ?? 175)
       || profile.weightKg !== Number(coverage['weightKg'] ?? 75) || profile.residenceCountry !== String(coverage['residenceCountry'] ?? c.country)
@@ -168,9 +167,9 @@ export class PartnerPortal {
       || !matchesList(loadings['pursuits'], profile.pursuits) || !matchesList(loadings['familyHistory'], profile.familyHistory)) {
       throw new PartnerPortalError('the signed risk or underwriting terms changed; the quotation and underwriting file do not match. Start a new journey and obtain a new signed quotation');
     }
-    const stages: JourneyStageId[] = ['identity', 'profile', 'needs', 'recommendation', 'coverage', 'loadings', 'riders', 'medical', 'funds', 'beneficiaries', 'uw-review', 'quotation', 'finalisation'];
+    const stages: JourneyStageId[] = ['identity', 'profile', 'needs', 'recommendation', 'coverage', 'loadings', 'riders', 'funds', 'beneficiaries', 'quotation', 'finalisation'];
     return fingerprintOf({
-      scope: c.distribution, application: { id: app.id, partyId: app.partyId, productId: app.productId, sumAssured: app.sumAssured, profile: app.profile, decision },
+      scope: c.distribution, application: { id: app.id, partyId: app.partyId, productId: app.productId, sumAssured: app.sumAssured, profile: app.profile },
       stages: Object.fromEntries(stages.map((s) => [s, c.answers[s]])),
       quote: { id: quote.quotationId, version: quote.version, signature: quote.finalisation.signatureReference, pdf: quote.pdf.fingerprint },
     });
@@ -193,11 +192,12 @@ export class PartnerPortal {
     if (!progress.stages.find((s) => s.id === 'finalisation')?.complete) throw new PartnerPortalError('complete customer review and sign-off before submitting for partner approval');
     const fingerprint = this.signedFingerprint(w, c);
     const app = w.underwriting.application(c.artefacts.applicationId!);
+    if (!w.underwriting.isHeldForPartnerApproval(app.id) || app.decision) throw new PartnerPortalError('the application must not be underwritten before partner approval');
     const quote = w.journey.quotations.get(c.artefacts.quotationId!);
     const row: PartnerApplication = {
       id: this.id('PAPP'), caseId: c.caseId, scope: { ...c.distribution }, applicationId: app.id,
       quotationId: quote.quotationId, quotationVersion: quote.version, fingerprint,
-      submittedBy: text(input.by, 'submitter'), submittedAt: input.at, status: 'pending', review: null, route: null, underwritingReview: null,
+      submittedBy: text(input.by, 'submitter'), submittedAt: input.at, status: 'pending', review: null, route: null, underwritingReview: null, revisedQuotation: null,
     };
     this.applications.push(row);
     this.audit(input.at, input.by, 'application-submitted', row.id, row.scope, `Signed quotation ${quote.quotationId} v${quote.version}; application ${app.id}.`);
@@ -211,15 +211,36 @@ export class PartnerPortal {
     if (!(['supervisor', 'manager', 'senior-manager'] as string[]).includes(input.role)) throw new PartnerPortalError('a supervisor, manager or senior manager must review the application');
     const note = text(input.note, 'review note', 8);
     const c = w.journey.get(row.caseId);
+    const review = { by: input.by, role: input.role, at: input.at, outcome: input.outcome, note };
     if (input.outcome === 'approved') {
       this.scope(w, row.scope, true);
-      if (this.signedFingerprint(w, c) !== row.fingerprint) throw new PartnerPortalError('the signed application changed; return and submit it again');
-      const route = w.journey.context(w, c).routing;
-      if (!route) throw new PartnerPortalError('the underwriting rules cannot route this application');
-      row.route = { route: route.route, automatic: route.automatic, assignedTo: route.assignedTo, reasons: [...route.reasons] };
+      if (this.signedFingerprint(w, c, row) !== row.fingerprint) throw new PartnerPortalError('the signed application changed; return and submit it again');
+      if (!w.underwriting.isHeldForPartnerApproval(row.applicationId)) throw new PartnerPortalError('the application is not held for partner approval');
+      // Approval is recorded before releasing the underwriting hold. On a route error the hold and
+      // pending state are restored; an unsuccessful review must never release underwriting.
+      row.review = review;
+      row.status = 'approved';
+      w.underwriting.releasePartnerHold(row.applicationId);
+      try {
+        const route = w.journey.context(w, c).routing;
+        if (!route) throw new PartnerPortalError('the underwriting rules cannot route this application');
+        row.route = { route: route.route, automatic: route.automatic, assignedTo: route.assignedTo, reasons: [...route.reasons] };
+        if (route.automatic) {
+          const decision = w.underwriting.decide(row.applicationId, { at: input.at, by: 'partner-routing-rules', isAi: true });
+          c.answers['uw-review'] = { questionnaireReviewed: true, questionnaireUpdatedBy: 'partner-routing-rules', questionnaireNotes: 'Automatic assessment after partner approval.', decisionOutcome: decision.outcome, decidedBy: decision.decidedBy, decidedByAi: true };
+          // An automatic route has no outstanding evidence; complete the empty medical section only now.
+          if (!c.submitted.includes('medical')) c.submitted.push('medical');
+          if (!c.submitted.includes('uw-review')) c.submitted.push('uw-review');
+        }
+      } catch (error) {
+        row.review = null; row.status = 'pending'; row.route = null;
+        w.underwriting.restorePartnerHold(row.applicationId);
+        throw error;
+      }
+    } else {
+      row.review = review;
+      row.status = input.outcome;
     }
-    row.review = { by: input.by, role: input.role, at: input.at, outcome: input.outcome, note };
-    row.status = input.outcome;
     this.audit(input.at, input.by, `application-${input.outcome}`, row.id, row.scope, row.route ? `${input.role}: ${note} Routed to ${row.route.route}.` : `${input.role}: ${note}`);
     return row;
   }
@@ -229,26 +250,87 @@ export class PartnerPortal {
     const row = this.application(input.id);
     if (this.current(row.caseId) !== row || row.status !== 'approved') throw new PartnerPortalError('only the current approved case can be returned for amendment');
     const c = w.journey.get(row.caseId);
-    if (c.artefacts.paymentId || c.artefacts.routeId || c.artefacts.policyId) throw new PartnerPortalError('a paid, routed or issued case cannot be returned here; contact the insurer for cancellation or correction');
+    if (c.artefacts.paymentId || c.artefacts.routeId || c.artefacts.policyId || w.underwriting.application(row.applicationId).decision) throw new PartnerPortalError('an underwritten, paid, routed or issued case cannot be returned here; contact the insurer for cancellation or correction');
     // Validate the audit reason before changing status so a refused request cannot mutate the case.
     const reason = text(input.note, 'reason', 8);
+    w.underwriting.restorePartnerHold(row.applicationId);
     row.status = 'returned';
     this.audit(input.at, input.by, 'application-returned-for-amendment', row.id, row.scope, reason);
     return row;
   }
 
   /** Human underwriting review follows partner approval. It is not an automated decline or issuance. */
-  underwritingReview(w: World, input: { id: string; by: string; note: string; at: string }): PartnerApplication {
+  underwritingReview(w: World, input: { id: string; by: string; note: string; at: string; termsReconciled: boolean }): PartnerApplication {
     const row = this.application(input.id);
     const c = w.journey.get(row.caseId);
     if (row.status !== 'approved' || !row.route || row.route.automatic) throw new PartnerPortalError('this case is not awaiting a manual underwriting review');
     if (row.submittedBy === input.by || row.review?.by === input.by) throw new PartnerPortalError('manual underwriting must be reviewed independently of the partner submission and approval');
-    if (this.signedFingerprint(w, c) !== row.fingerprint) throw new PartnerPortalError('the signed application changed; return and resubmit it');
+    if (this.signedFingerprint(w, c, row) !== row.fingerprint) throw new PartnerPortalError('the signed application changed; return and resubmit it');
     const decision = w.underwriting.application(row.applicationId).decision;
-    if (!decision || decision.decidedByAi || ['referred', 'declined', 'postponed'].includes(decision.outcome)) throw new PartnerPortalError('a current human underwriting decision accepting the risk is required');
-    row.underwritingReview = { by: input.by, at: input.at, note: text(input.note, 'underwriting review note', 8), decisionFingerprint: fingerprintOf(decision) };
+    if (!decision || decision.decidedByAi || decision.decidedBy !== input.by || ['referred', 'declined', 'postponed'].includes(decision.outcome)) throw new PartnerPortalError('the same independent underwriter must record a current human decision accepting the risk');
+    const note = text(input.note, 'underwriting review note', 8);
+    if (input.termsReconciled !== true) throw new PartnerPortalError('the underwriter must confirm all final terms are represented in the decision and quotation; unsupported conditions require insurer resolution');
+    // Evidence review can remove an initial outstanding-evidence route and reveal a senior or
+    // reinsurance route. Keep human review mandatory, and retain the reroute in the audit trail.
+    const route = w.journey.context(w, c).routing;
+    if (!route) throw new PartnerPortalError('the post-evidence underwriting route cannot be determined');
+    if (route.route !== row.route.route || route.automatic !== row.route.automatic) {
+      const previous = row.route.route;
+      row.route = { route: route.route, automatic: false, assignedTo: route.automatic ? input.by : route.assignedTo, reasons: [...route.reasons] };
+      this.audit(input.at, input.by, 'underwriting-rerouted', row.id, row.scope, `Post-evidence route ${previous} → ${route.route}; human review remains required.`);
+    }
+    row.underwritingReview = { by: input.by, at: input.at, note, decisionFingerprint: fingerprintOf(decision), termsReconciled: true };
     this.audit(input.at, input.by, 'underwriting-reviewed', row.id, row.scope, `Human underwriting review recorded: ${row.underwritingReview.note}`);
     return row;
+  }
+
+  /** An insurer can prepare a new final offer when underwriting changes the indication. */
+  reissueQuotation(w: World, input: { id: string; by: string; at: string }): PartnerApplication {
+    const row = this.application(input.id);
+    const c = w.journey.get(row.caseId);
+    const blocker = this.underwritingApprovalBlocker(w, c);
+    if (blocker) throw new PartnerPortalError(blocker);
+    if (c.artefacts.paymentId || c.artefacts.routeId || c.artefacts.policyId) throw new PartnerPortalError('a paid, routed or issued case cannot be re-quoted here');
+    const decision = w.underwriting.application(row.applicationId).decision;
+    if (!decision || ['referred', 'declined', 'postponed'].includes(decision.outcome)) throw new PartnerPortalError('an accepting underwriting decision is required before a revised quotation');
+    if (!row.route?.automatic && (!row.underwritingReview || !row.underwritingReview.termsReconciled || row.underwritingReview.decisionFingerprint !== fingerprintOf(decision))) throw new PartnerPortalError('a current independent insurer underwriting review is required before a revised quotation');
+    const issued = w.journey.issueRevisedPartnerQuote(w, c.caseId, input.by, input.at);
+    row.revisedQuotation = { ...issued, decisionFingerprint: fingerprintOf(decision), issuedBy: text(input.by, 'issuer'), issuedAt: input.at };
+    this.audit(input.at, input.by, 'revised-quotation-issued', row.id, row.scope, `Revised quotation ${issued.quotationId} v${issued.version} requires new customer acceptance.`);
+    return row;
+  }
+
+  /** Record a fresh signature against the revised document; the original remains unchanged. */
+  acceptRevisedQuotation(w: World, input: { id: string; signedBy: string; by: string; at: string; reviewedWithCustomer: boolean }): PartnerApplication {
+    const row = this.application(input.id);
+    const c = w.journey.get(row.caseId);
+    const blocker = this.underwritingApprovalBlocker(w, c);
+    if (blocker) throw new PartnerPortalError(blocker);
+    if (c.artefacts.paymentId || c.artefacts.routeId || c.artefacts.policyId) throw new PartnerPortalError('a paid, routed or issued case cannot accept a revised quotation here');
+    const revised = row.revisedQuotation;
+    const decision = w.underwriting.application(row.applicationId).decision;
+    if (!revised || !decision || revised.decisionFingerprint !== fingerprintOf(decision)) throw new PartnerPortalError('a current revised quotation is required');
+    if (input.reviewedWithCustomer !== true) throw new PartnerPortalError('confirm the revised quotation was reviewed with the customer before recording acceptance');
+    const original = w.journey.quotations.get(row.quotationId, row.quotationVersion);
+    const signedBy = text(input.signedBy, 'customer signature');
+    if (signedBy !== original.finalisation?.signedBy) throw new PartnerPortalError('the revised quotation must be accepted by the same customer who signed the original');
+    const quote = w.journey.quotations.get(revised.quotationId, revised.version);
+    if (!quote.email || quote.status !== 'dispatched' || !quote.facts.requiresFreshAcceptance) throw new PartnerPortalError('the current revised quotation must be prepared for the customer before acceptance');
+    const acceptance = w.journey.quotations.finalise({ quotationId: revised.quotationId, version: revised.version, signedBy, at: input.at });
+    c.artefacts = { ...c.artefacts, quotationId: revised.quotationId, quotationVersion: revised.version, buyToken: acceptance.buyToken };
+    this.audit(input.at, input.by, 'revised-quotation-accepted', row.id, row.scope, `Customer ${signedBy} accepted revised quotation ${revised.quotationId} v${revised.version}.`);
+    return row;
+  }
+
+  /** Partner review must be current before any human underwriting can be started. */
+  underwritingApprovalBlocker(w: World, c: JourneyCase): string | null {
+    if (!c.distribution) return null;
+    const row = this.current(c.caseId);
+    if (!row || row.status !== 'approved' || !row.route) return 'Partner supervisor, manager or senior manager approval is required before underwriting';
+    try {
+      if (!scopeEquals(row.scope, c.distribution) || this.signedFingerprint(w, c, row) !== row.fingerprint) return 'The signed application changed; return it for a new partner approval';
+    } catch { return 'The partner scope or signed quotation is no longer valid; return it for a new approval'; }
+    return null;
   }
 
   /** Called by both the journey gate and the direct conversion path. */
@@ -258,13 +340,30 @@ export class PartnerPortal {
     if (!row || row.status !== 'approved' || !row.route) return 'Partner supervisor, manager or senior manager approval is required before underwriting routing';
     try {
       this.scope(w, c.distribution, true);
-      if (!scopeEquals(row.scope, c.distribution) || this.signedFingerprint(w, c) !== row.fingerprint) return 'The signed application changed; return it for a new partner approval';
+      if (!scopeEquals(row.scope, c.distribution) || this.signedFingerprint(w, c, row) !== row.fingerprint) return 'The signed application changed; return it for a new partner approval';
     } catch { return 'The partner scope or signed quotation is no longer valid; return it for a new approval'; }
-    if (route && (route.route !== row.route.route || route.automatic !== row.route.automatic)) return 'The underwriting route changed; return the application for a new partner approval';
-    if (requireUnderwriter && !row.route.automatic) {
-      const decision = w.underwriting.application(row.applicationId).decision;
-      if (!row.underwritingReview || !decision || row.underwritingReview.decisionFingerprint !== fingerprintOf(decision)) return 'A current independent insurer underwriting review is required before conversion';
+    if (route && (route.route !== row.route.route || (route.automatic !== row.route.automatic && !(route.automatic && !row.route.automatic)))) return 'The underwriting route changed; obtain a current insurer review before payment or conversion';
+    const decision = w.underwriting.application(row.applicationId).decision;
+    if (!decision || ['referred', 'declined', 'postponed'].includes(decision.outcome)) return 'An accepting underwriting decision is required before payment or conversion';
+    let quote = w.journey.quotations.get(row.quotationId, row.quotationVersion);
+    if (row.revisedQuotation) {
+      const revised = row.revisedQuotation;
+      if (revised.decisionFingerprint !== fingerprintOf(decision)) return 'The underwriting decision changed; issue and accept a new revised quotation';
+      quote = w.journey.quotations.get(revised.quotationId, revised.version);
+      if (quote.status !== 'finalised' || !quote.finalisation?.signatureReference || c.artefacts.quotationId !== revised.quotationId) return 'The customer must accept the revised quotation before payment or conversion';
     }
+    const sameMoney = (a: { minor: bigint; currency: string }, b: { minor: bigint; currency: string }) => a.minor === b.minor && a.currency === b.currency;
+    const sameExclusions = JSON.stringify([...quote.facts.exclusions].sort()) === JSON.stringify([...decision.exclusions].sort());
+    if (decision.applicationId !== row.applicationId || decision.productId !== quote.facts.product.productId || decision.partyId !== quote.facts.customer.partyId || !sameMoney(quote.facts.sumAssured, decision.sumAssured)
+      || !sameMoney(quote.facts.standardPremium, decision.standardPremium) || !sameMoney(quote.facts.loadedPremium, decision.loadedPremium)
+      || quote.facts.underwriting.extraMortalityBps !== decision.extraMortalityBps
+      || (!quote.facts.conditional && quote.facts.underwriting.outcome !== decision.outcome) || !sameExclusions) {
+      return 'Underwriting changed the quoted terms: a new quotation and fresh customer acceptance are required before payment or conversion';
+    }
+    if (!row.route.automatic && (!row.underwritingReview || !row.underwritingReview.termsReconciled || row.underwritingReview.decisionFingerprint !== fingerprintOf(decision))) {
+      return 'A current independent insurer underwriting review is required before payment or conversion';
+    }
+    void requireUnderwriter;
     return null;
   }
 
@@ -272,7 +371,9 @@ export class PartnerPortal {
   assertEditable(c: JourneyCase, stage: JourneyStageId): void {
     const row = this.current(c.caseId);
     const protectedStages: JourneyStageId[] = ['identity', 'profile', 'needs', 'recommendation', 'coverage', 'loadings', 'riders', 'medical', 'funds', 'beneficiaries', 'uw-review', 'quotation', 'finalisation'];
-    if (row && (row.status === 'pending' || row.status === 'approved') && protectedStages.includes(stage)) {
+    const manualUnderwriting = (stage === 'medical' || stage === 'uw-review') && row?.status === 'approved' && row.route && !row.route.automatic && !c.submitted.includes(stage);
+    if (c.distribution && (stage === 'medical' || stage === 'uw-review') && !manualUnderwriting) throw new PartnerPortalError('medical and underwriting review require an approved manual insurer route');
+    if (row && (row.status === 'pending' || row.status === 'approved') && protectedStages.includes(stage) && !manualUnderwriting) {
       throw new PartnerPortalError('return the partner application before editing the signed application');
     }
     if (!c.distribution) return;
@@ -282,7 +383,7 @@ export class PartnerPortal {
     if (c.artefacts.applicationId && c.submitted.includes(stage) && applicationBasis.includes(stage)) {
       throw new PartnerPortalError('this application basis cannot be revised here after the underwriting file is created; start a new journey');
     }
-    if (c.artefacts.quotationId && c.submitted.includes('quotation') && protectedStages.includes(stage)
+    if (c.artefacts.quotationId && c.submitted.includes('quotation') && protectedStages.includes(stage) && !manualUnderwriting
       && (stage !== 'finalisation' || c.submitted.includes('finalisation'))) {
       throw new PartnerPortalError('a quoted partner application cannot be amended here; start a new journey and obtain a new signed quotation');
     }

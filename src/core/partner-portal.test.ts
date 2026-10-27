@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createRuntimeState, dispatchApiRoute, type RuntimeState } from './routes.js';
 import type { PartnerScope } from './partner-portal.js';
+import { money, toDecimalString } from './money.js';
 
 type Body = Record<string, unknown>;
 async function call(state: RuntimeState, method: 'GET' | 'POST', path: string, body: Body = {}, query = ''): Promise<any> {
@@ -58,11 +59,36 @@ async function setup() {
 async function signedCase(state: RuntimeState, overrides: Record<string, Body> = {}) {
   const { caseId } = await call(state, 'POST', '/partner-portal/journey/open', { ...scope, customerName: 'Noura Saeed Al Zaabi', by: 'agent' });
   let due = '';
-  for (const stageId of Object.keys(ANSWERS).slice(0, 13)) {
+  const bookBefore = state.world.underwriting.bookPremium().policies;
+  for (const stageId of Object.keys(ANSWERS).slice(0, 13).filter((stageId) => stageId !== 'uw-review' && stageId !== 'medical')) {
     const result = await call(state, 'POST', '/journey/submit', { caseId, stageId, answers: { ...ANSWERS[stageId], ...overrides[stageId] }, by: 'agent' });
     expect(result.accepted, `${stageId}: ${result.reason}`).toBe(true);
-    if (stageId === 'quotation') due = String(result.detail.totalPayable).replace(' AED', '');
+    if (stageId === 'coverage') {
+      const app = state.world.underwriting.application(String(result.artefacts.applicationId));
+      expect(state.world.underwriting.isHeldForPartnerApproval(app.id)).toBe(true);
+      expect(() => state.world.underwriting.assess(app.id)).toThrow(/partner approval/i);
+      expect(() => state.world.underwriting.decide(app.id, { at: '2026-10-05', by: 'unauthorised' })).toThrow(/partner approval/i);
+      expect(app.decision).toBeUndefined();
+    }
+    if (stageId === 'quotation') {
+      due = String(result.detail.totalPayable).replace(' AED', '');
+      const quote = state.world.journey.quotations.get(String(result.artefacts.quotationId));
+      expect(quote.facts.conditional).toBe(true);
+      expect(state.world.journey.get(String(caseId)).answers.quotation['buyLinkSent']).toBe(false);
+      expect(quote.pdf.text).toMatch(/SUBJECT TO UNDERWRITING/i);
+      expect(quote.email?.body).toMatch(/no underwriting decision or cover exists/i);
+    }
   }
+  const c = state.world.journey.get(String(caseId));
+  const quote = state.world.journey.quotations.get(c.artefacts.quotationId!);
+  expect(c.submitted).not.toContain('medical');
+  await expect(call(state, 'POST', '/partner-portal/journey/stage', { caseId, stageId: 'medical', action: 'save', answers: ANSWERS['medical'], by: 'insurer-underwriter' })).rejects.toThrow(/approved manual insurer route/i);
+  expect(c.computed.__medicalRequirements).toBeUndefined();
+  expect(quote.facts.medicalRequirements).toEqual([]);
+  expect(quote.pdf.text).toMatch(/medical evidence may be required/i);
+  expect(quote.finalisation?.readyToBuyOnline).toBe(false);
+  expect(quote.finalisation?.buyToken).toBe('');
+  expect(state.world.underwriting.bookPremium().policies).toBe(bookBefore);
   return { caseId: String(caseId), due };
 }
 async function submit(state: RuntimeState, caseId: string) {
@@ -70,6 +96,19 @@ async function submit(state: RuntimeState, caseId: string) {
 }
 async function approve(state: RuntimeState, id: string, role = 'manager') {
   return call(state, 'POST', '/partner-portal/applications/review', { id, by: 'reviewer', role, outcome: 'approved', note: 'Reviewed the signed application.' });
+}
+async function reviewMedical(state: RuntimeState, caseId: string) {
+  const result = await call(state, 'POST', '/partner-portal/journey/stage', { caseId, stageId: 'medical', action: 'submit', answers: ANSWERS['medical'], by: 'insurer-underwriter' });
+  expect(result.accepted, result.reason).toBe(true);
+}
+async function manuallyUnderwrite(state: RuntimeState, caseId: string, applicationId: string) {
+  await reviewMedical(state, caseId);
+  const result = await call(state, 'POST', '/partner-portal/journey/stage', { caseId, stageId: 'uw-review', action: 'submit', answers: ANSWERS['uw-review'], by: 'insurer-underwriter' });
+  expect(result.accepted, result.reason).toBe(true);
+  await expect(call(state, 'POST', '/partner-portal/underwriting/review', { id: applicationId, by: 'reviewer', note: 'Current underwriting decision reviewed.', termsReconciled: true })).rejects.toThrow(/independently/);
+  await expect(call(state, 'POST', '/partner-portal/underwriting/review', { id: applicationId, by: 'insurer-underwriter', note: 'Current underwriting decision reviewed independently.', termsReconciled: false })).rejects.toThrow(/confirm all final terms/i);
+  const reviewed = await call(state, 'POST', '/partner-portal/underwriting/review', { id: applicationId, by: 'insurer-underwriter', note: 'Current underwriting decision reviewed independently.', termsReconciled: true });
+  expect(reviewed.underwritingReview.by).toBe('insurer-underwriter');
 }
 
 it('requires enabled matching partner scopes for every channel and sub-channel', async () => {
@@ -82,7 +121,7 @@ it('requires enabled matching partner scopes for every channel and sub-channel',
 });
 
 describe('signed application and fallback review', () => {
-  it('holds routing and both conversion paths until one independent manager has reviewed, then routes automatically', async () => {
+  it('holds underwriting until manager approval and requires an independent human for a manual route', async () => {
     const state = await setup();
     const { caseId, due } = await signedCase(state);
     const appId = state.world.journey.get(caseId).artefacts.applicationId!;
@@ -93,7 +132,7 @@ describe('signed application and fallback review', () => {
     await expect(call(state, 'POST', '/policies/convert', { applicationId: appId })).rejects.toThrow(/approved customer journey/);
     const paymentBefore = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'payment', answers: { ...ANSWERS['payment'], amount: due }, by: 'cashier' });
     expect(paymentBefore.accepted).toBe(false);
-    expect(paymentBefore.reason).toMatch(/partner.*approval/i);
+    expect(paymentBefore.reason).toMatch(/locked|partner.*approval/i);
     const before = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'routing', answers: ANSWERS['routing'] });
     expect(before.accepted).toBe(false);
     expect(state.world.journey.context(state.world, state.world.journey.get(caseId)).partnerRoutingBlocker).toMatch(/partner.*approval/i);
@@ -104,8 +143,13 @@ describe('signed application and fallback review', () => {
     expect(approved.route).toMatchObject({ route: expect.any(String), automatic: expect.any(Boolean), assignedTo: expect.any(String) });
     expect(approved.review.role).toBe('manager'); // a supervisor was not required to decide first
     expect(approved.route.automatic).toBe(false); // this larger risk requires independent human review
+    await expect(call(state, 'POST', '/partner-portal/journey/stage', { caseId, stageId: 'medical', action: 'save', answers: ANSWERS['medical'], by: 'reviewer' })).rejects.toThrow(/independent insurer/i);
+    expect(state.world.journey.get(caseId).answers.medical['results']).toBeUndefined();
     await expect(call(state, 'POST', '/partner-portal/applications/review', { id: submitted.id, by: 'reviewer', role: 'manager', outcome: 'returned', note: 'short' })).rejects.toThrow(/reason/);
     expect(state.world.partnerPortal.application(submitted.id).status).toBe('approved');
+    const awaitingUnderwriter = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'payment', answers: { ...ANSWERS['payment'], amount: due } });
+    expect(awaitingUnderwriter.accepted).toBe(false);
+    await manuallyUnderwrite(state, caseId, submitted.id);
     const payment = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'payment', answers: { ...ANSWERS['payment'], amount: due }, by: 'cashier' });
     expect(payment.accepted, payment.reason).toBe(true);
     await expect(call(state, 'POST', '/partner-portal/applications/review', { id: submitted.id, by: 'reviewer', role: 'manager', outcome: 'returned', note: 'Customer has asked to change coverage.' })).rejects.toThrow(/paid/);
@@ -115,14 +159,6 @@ describe('signed application and fallback review', () => {
 
     const routed = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'routing', answers: ANSWERS['routing'] });
     expect(routed.accepted, routed.reason).toBe(true);
-    if (!approved.route.automatic) {
-      const premature = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'conversion', answers: ANSWERS['conversion'] });
-      expect(premature.accepted).toBe(false);
-      expect(premature.reason).toMatch(/underwriting review/i);
-      await expect(call(state, 'POST', '/partner-portal/underwriting/review', { id: submitted.id, by: 'reviewer', note: 'Current underwriting decision reviewed.' })).rejects.toThrow(/independently/);
-      const reviewed = await call(state, 'POST', '/partner-portal/underwriting/review', { id: submitted.id, by: 'insurer-underwriter', note: 'Current underwriting decision reviewed independently.' });
-      expect(reviewed.underwritingReview.by).toBe('insurer-underwriter');
-    }
     const converted = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'conversion', answers: ANSWERS['conversion'] });
     expect(converted.accepted, converted.reason).toBe(true);
     expect(converted.detail.policyId).toMatch(/^UL-/);
@@ -131,7 +167,7 @@ describe('signed application and fallback review', () => {
 
   it('lets a senior manager approve a low-risk automated route without a prior supervisor decision', async () => {
     const state = await setup();
-    const { caseId, due } = await signedCase(state, { coverage: { sumAssured: '100000' } });
+    const { caseId, due } = await signedCase(state, { coverage: { sumAssured: '100000' }, riders: { riders: [] } });
     const submitted = await submit(state, caseId);
     const reviewed = await approve(state, submitted.id, 'senior-manager');
     expect(reviewed.review.role).toBe('senior-manager');
@@ -143,6 +179,103 @@ describe('signed application and fallback review', () => {
     expect(routing.accepted, routing.reason).toBe(true);
     const policy = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'conversion', answers: ANSWERS['conversion'] });
     expect(policy.accepted, policy.reason).toBe(true);
+  });
+
+  it('blocks changed underwriting terms until the same customer freshly signs a revised quote', async () => {
+    const state = await setup();
+    const { caseId, due } = await signedCase(state);
+    const submitted = await submit(state, caseId);
+    const original = state.world.journey.quotations.get(submitted.quotationId, submitted.quotationVersion);
+    const product = state.world.erp.listProductMasters().find((p) => p.productId === 'PROD-UL-GLOBAL')!;
+    const changedRate = toDecimalString(money(product.rules.baseRatePerThousandMinor + 5n, product.currency));
+    state.world.erp.defineProductMaster(state.world, { productId: product.productId, name: product.name, baseRatePerThousand: changedRate });
+    const approved = await approve(state, submitted.id);
+    expect(approved.route.automatic).toBe(false);
+    await manuallyUnderwrite(state, caseId, submitted.id);
+    const c = state.world.journey.get(caseId);
+    expect(state.world.partnerPortal.gate(state.world, c, state.world.journey.context(state.world, c).routing)).toMatch(/new quotation and fresh customer acceptance/i);
+    const blocked = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'payment', answers: { ...ANSWERS['payment'], amount: due } });
+    expect(blocked.accepted).toBe(false);
+    const revision = await call(state, 'POST', '/partner-portal/quotation/reissue', { id: submitted.id, by: 'insurer-underwriter' });
+    const revised = state.world.journey.quotations.get(revision.revisedQuotation.quotationId);
+    expect(revised.facts.requiresFreshAcceptance).toBe(true);
+    expect(revised.pdf.text).toMatch(/REVISED TERMS.*NEW ACCEPTANCE REQUIRED/i);
+    expect(revised.email?.body).toMatch(/freshly accept these revised terms before making any payment/i);
+    expect(revised.facts.totalPayable.minor).not.toBe(original.facts.totalPayable.minor);
+    await expect(call(state, 'POST', '/partner-portal/quotation/accept', { id: submitted.id, signedBy: 'Different person', reviewedWithCustomer: true, by: 'agent' })).rejects.toThrow(/same customer/);
+    expect(state.world.partnerPortal.gate(state.world, c, state.world.journey.context(state.world, c).routing)).toMatch(/customer must accept/i);
+    await expect(call(state, 'POST', '/partner-portal/quotation/accept', { id: submitted.id, signedBy: original.finalisation!.signedBy, by: 'agent' })).rejects.toThrow(/reviewed with the customer/i);
+    await call(state, 'POST', '/partner-portal/quotation/accept', { id: submitted.id, signedBy: original.finalisation!.signedBy, reviewedWithCustomer: true, by: 'agent' });
+    expect(state.world.journey.quotations.get(original.quotationId).finalisation?.signatureReference).toBe(original.finalisation?.signatureReference);
+    expect(state.world.partnerPortal.gate(state.world, c, state.world.journey.context(state.world, c).routing)).toBeNull();
+    const newDue = state.world.journey.quotations.get(revision.revisedQuotation.quotationId).totalPayable.replace(' AED', '');
+    const paid = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'payment', answers: { ...ANSWERS['payment'], amount: newDue } });
+    expect(paid.accepted, paid.reason).toBe(true);
+    const routed = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'routing', answers: ANSWERS['routing'] });
+    expect(routed.accepted, routed.reason).toBe(true);
+    const issued = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'conversion', answers: ANSWERS['conversion'] });
+    expect(issued.accepted, issued.reason).toBe(true);
+  });
+
+  it('requires fresh acceptance of changed rates on the automated route as well', async () => {
+    const state = await setup();
+    const { caseId } = await signedCase(state, { coverage: { ...ANSWERS['coverage'], sumAssured: '200000' }, riders: { riders: [] } });
+    const row = await submit(state, caseId);
+    const product = state.world.erp.listProductMasters().find((p) => p.productId === 'PROD-UL-GLOBAL')!;
+    state.world.erp.defineProductMaster(state.world, { productId: product.productId, name: product.name, baseRatePerThousand: toDecimalString(money(product.rules.baseRatePerThousandMinor + 5n, product.currency)) });
+    expect((await approve(state, row.id)).route.automatic).toBe(true);
+    const c = state.world.journey.get(caseId);
+    expect(state.world.partnerPortal.gate(state.world, c)).toMatch(/new quotation and fresh customer acceptance/i);
+    const revised = await call(state, 'POST', '/partner-portal/quotation/reissue', { id: row.id, by: 'insurer-underwriter' });
+    const doc = await call(state, 'GET', '/partner-portal/quotation', {}, `id=${row.id}`);
+    expect(doc.quotationId).toBe(revised.revisedQuotation.quotationId);
+    expect(doc.pdf.base64.startsWith('JVBER')).toBe(true);
+    await expect(call(state, 'POST', '/partner-portal/quotation/accept', { id: row.id, signedBy: ' ', reviewedWithCustomer: true, by: 'agent' })).rejects.toThrow(/signedBy|signature/i);
+    await call(state, 'POST', '/partner-portal/quotation/accept', { id: row.id, signedBy: 'Noura Saeed Al Zaabi', reviewedWithCustomer: true, by: 'agent' });
+    expect(state.world.partnerPortal.gate(state.world, c)).toBeNull();
+    // Simulate a later underwriting decision by the engine: the signature is bound to the old one.
+    state.world.underwriting.decide(row.applicationId, { at: '2026-10-06T10:00:00Z', by: 'different-decision', isAi: true });
+    expect(state.world.partnerPortal.gate(state.world, c)).toMatch(/decision changed/i);
+    await expect(call(state, 'POST', '/partner-portal/quotation/accept', { id: row.id, signedBy: 'Noura Saeed Al Zaabi', reviewedWithCustomer: true, by: 'agent' })).rejects.toThrow(/current revised quotation/i);
+  });
+
+  it('refuses to manufacture a quote when current filed rates no longer reproduce the decision', async () => {
+    const state = await setup();
+    const { caseId } = await signedCase(state);
+    const row = await submit(state, caseId); await approve(state, row.id); await manuallyUnderwrite(state, caseId, row.id);
+    const product = state.world.erp.listProductMasters().find((p) => p.productId === 'PROD-UL-GLOBAL')!;
+    state.world.erp.defineProductMaster(state.world, { productId: product.productId, name: product.name, baseRatePerThousand: toDecimalString(money(product.rules.baseRatePerThousandMinor + 5n, product.currency)) });
+    await expect(call(state, 'POST', '/partner-portal/quotation/reissue', { id: row.id, by: 'insurer-underwriter' })).rejects.toThrow(/does not reproduce/i);
+    expect(state.world.partnerPortal.application(row.id).revisedQuotation).toBeNull();
+  });
+
+  it('never permits payment, conversion, or re-quotation on a declined decision', async () => {
+    const state = await setup();
+    const { caseId, due } = await signedCase(state);
+    const row = await submit(state, caseId); await approve(state, row.id);
+    await reviewMedical(state, caseId);
+    const decision = await call(state, 'POST', '/partner-portal/journey/stage', { caseId, stageId: 'uw-review', action: 'submit', answers: { ...ANSWERS['uw-review'], decisionOutcome: 'declined' }, by: 'insurer-underwriter' });
+    expect(decision.accepted, decision.reason).toBe(true);
+    expect(state.world.partnerPortal.gate(state.world, state.world.journey.get(caseId))).toMatch(/accepting underwriting decision/i);
+    await expect(call(state, 'POST', '/partner-portal/quotation/reissue', { id: row.id, by: 'insurer-underwriter' })).rejects.toThrow(/accepting underwriting decision/i);
+    const payment = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'payment', answers: { ...ANSWERS['payment'], amount: due } });
+    expect(payment.accepted).toBe(false);
+    await expect(call(state, 'POST', '/policies/convert', { applicationId: row.applicationId })).rejects.toThrow(/approved customer journey/i);
+  });
+
+  it('re-holds a returned manual case and blocks legacy underwriting amendment and decision bypasses', async () => {
+    const state = await setup();
+    const { caseId } = await signedCase(state); const row = await submit(state, caseId);
+    await expect(call(state, 'POST', '/underwriting/amend', { applicationId: row.applicationId, reason: 'Changed questionnaire', smoker: true })).rejects.toThrow(/must not be amended/i);
+    await expect(call(state, 'POST', '/underwriting/decide', { applicationId: row.applicationId })).rejects.toThrow(/scoped insurer/i);
+    await expect(call(state, 'POST', '/journey/submit', { caseId, stageId: 'uw-review', answers: ANSWERS['uw-review'] })).rejects.toThrow(/scoped insurer/i);
+    await approve(state, row.id);
+    await expect(call(state, 'POST', '/underwriting/amend', { applicationId: row.applicationId, reason: 'Changed questionnaire', smoker: true })).rejects.toThrow(/must not be amended/i);
+    await call(state, 'POST', '/partner-portal/applications/review', { id: row.id, by: 'reviewer', role: 'manager', outcome: 'returned', note: 'Return for a fresh partner review.' });
+    expect(state.world.underwriting.isHeldForPartnerApproval(row.applicationId)).toBe(true);
+    expect(() => state.world.underwriting.assess(row.applicationId)).toThrow(/partner approval/i);
+    const again = await submit(state, caseId); expect(again.id).not.toBe(row.id);
+    expect((await approve(state, again.id)).status).toBe('approved');
   });
 
   it('also accepts a supervisor as the single independent reviewer', async () => {
@@ -192,10 +325,10 @@ describe('commission and insurer conversations', () => {
     const { caseId, due } = await signedCase(state);
     const application = await submit(state, caseId);
     const approved = await approve(state, application.id);
+    if (!approved.route.automatic) await manuallyUnderwrite(state, caseId, application.id);
     await call(state, 'POST', '/journey/submit', { caseId, stageId: 'payment', answers: { ...ANSWERS['payment'], amount: due } });
     const routed = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'routing', answers: ANSWERS['routing'] });
     expect(routed.accepted, routed.reason).toBe(true);
-    if (!approved.route.automatic) await call(state, 'POST', '/partner-portal/underwriting/review', { id: application.id, by: 'insurer-underwriter', note: 'Current underwriting decision reviewed independently.' });
     const conversion = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'conversion', answers: ANSWERS['conversion'] });
     expect(conversion.accepted, conversion.reason).toBe(true);
     const policyId = conversion.detail.policyId;

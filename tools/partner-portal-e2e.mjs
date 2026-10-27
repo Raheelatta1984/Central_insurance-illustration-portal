@@ -13,9 +13,11 @@ const state=createRuntimeState(1,()=> '2026-10-05T12:00:00Z');
 await dispatchApiRoute(state,'POST','/partner-portal/demo/setup',new URLSearchParams(),{});
 const scope={partnerId:'DEMO-BROKER',channelCode:'BROKER',subChannelCode:'DEMO-BROKER-DESK'};
 const result=await dispatchApiRoute(state,'POST','/partner-portal/journey/open',new URLSearchParams(),{...scope,by:'alice',customerName:'Review fixture'}); const caseId=result.body.caseId;
+const revisedCaseId=(await dispatchApiRoute(state,'POST','/partner-portal/journey/open',new URLSearchParams(),{...scope,by:'alice',customerName:'Revised fixture'})).body.caseId;
 // Synthetic policy attribution exercises the UI scope selection; domain tests use a real issued policy.
 state.world.journey.get(caseId).artefacts.policyId = 'POL-TEST';
 state.world.partnerPortal.applications.push({id:'PAPP-BROWSER',caseId,scope,applicationId:'APP',quotationId:'QUOTE',quotationVersion:1,fingerprint:'fixture',submittedBy:'alice',submittedAt:state.now(),status:'pending',review:null,route:null,underwritingReview:null});
+state.world.partnerPortal.applications.push({id:'PAPP-REVISED',caseId:revisedCaseId,scope,applicationId:'APP2',quotationId:'QUOTE2',quotationVersion:1,fingerprint:'fixture',submittedBy:'alice',submittedAt:state.now(),status:'approved',review:null,route:null,underwritingReview:null,revisedQuotation:{quotationId:'QTN-REVISED',version:1,decisionFingerprint:'decision',issuedBy:'uw',issuedAt:state.now()}});
 state.world.partnerPortal.commissions.push({id:'COM-BROWSER',scope,policyId:'POL-TEST',productId:'PROD-UL-GLOBAL',period:'2026-10',sourceRef:'BATCH-TEST',currency:'AED',premiumMinor:'100000',expectedMinor:'15000',bps:1500,basis:'fixture',createdBy:'finance',createdAt:state.now(),statements:[{reference:'STMT-TEST',amountMinor:'15000',by:'finance',at:state.now()}],status:'awaiting-review',review:null,disbursements:[]});
 const server=createPortalServer({state,auth:loadAuthConfig({PORTAL_AUTH_TOKENS:'test=bob:partner-manager,partner:DEMO-BROKER,subchannel:DEMO-BROKER-DESK;finance=fin:partner-finance;service=service:partner-insurer'}),env:{},dist:`${process.cwd()}/dist`,log:()=>{}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r)); const base=`http://127.0.0.1:${server.address().port}`;
@@ -56,6 +58,22 @@ try {
  await page.getByRole('button',{name:/Return/}).click();
  await page.getByRole('status').filter({hasText:'Application returned'}).waitFor();
  assert.equal(state.world.partnerPortal.application('PAPP-BROWSER').review.by,'bob');
+ // Revised acceptance controls: this is a UI fixture; domain tests exercise the real PDF and decision binding.
+ await page.getByRole('combobox',{name:/^Application/}).selectOption('PAPP-REVISED');
+ await page.getByRole('heading',{name:'Revised underwriting terms'}).waitFor();
+ await page.getByText(/not verified electronic signing/i).first().waitFor();
+ assert.equal(await page.getByRole('button',{name:'Prepare revised quotation'}).count(),0,'partner reviewer must not prepare insurer quotations');
+ await page.route('**/api/partner-portal/quotation?id=PAPP-REVISED', route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({pdf:{fileName:'revised.pdf',base64:Buffer.from('%PDF-1.7 fixture').toString('base64')}})}));
+ const downloadPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Download revised quotation PDF'}).click();
+ assert.equal((await downloadPromise).suggestedFilename(),'revised.pdf');
+ let acceptanceBody;
+ await page.route('**/api/partner-portal/quotation/accept', route => { acceptanceBody=route.request().postDataJSON(); return route.fulfill({status:200,contentType:'application/json',body:'{}'}); });
+ await page.getByLabel('Customer name for renewed acceptance').fill('Review fixture');
+ await page.getByLabel(/customer reviewed the revised quotation/i).check();
+ await page.getByRole('button',{name:'Record renewed acceptance'}).click();
+ await page.getByRole('status').filter({hasText:'Renewed acceptance recorded'}).waitFor();
+ assert.equal(acceptanceBody.id,'PAPP-REVISED'); assert.equal(acceptanceBody.signedBy,'Review fixture'); assert.equal(acceptanceBody.reviewedWithCustomer,true);
  await page.getByRole('button',{name:'Commission',exact:true}).click();
  await page.getByRole('combobox',{name:/^Commission/}).selectOption('COM-BROWSER');
  await page.getByLabel(/^Review note/).fill('Matches the statement exactly.');
@@ -115,5 +133,5 @@ try {
  await offline.getByRole('link',{name:'Back to console',exact:true}).click();
  await offline.getByText('Enterprise Security & DOA Governance Gate').waitFor();
  await offline.close();
- assert.deepEqual(errors,[]); console.log('Partner e2e passed: login, sub-channel scope, editor, reviews, commission, requests, reporting, mobile and standalone demo',dim);
+ assert.deepEqual(errors,[]); console.log('Partner e2e passed: login, sub-channel scope, editor, reviews, revised-quote controls, commission, requests, reporting, mobile and standalone demo',dim);
 } catch(e) {console.error('BODY',(await page.locator('body').innerText()).slice(-7000)); console.error('PAGE ERRORS',errors);throw e;} finally {await browser.close();await new Promise(r=>server.close(r));}

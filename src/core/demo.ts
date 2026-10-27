@@ -902,7 +902,7 @@ export function underwritingSnapshot(engine: UnderwritingEngine, asOf: string) {
         facultativeRequired: exposure.facultativeRequired,
       };
     }),
-    applications: engine.list().map((a) => {
+    applications: engine.list().filter((a) => !engine.isHeldForPartnerApproval(a.id)).map((a) => {
       const assessment = a.decision ?? engine.assess(a.id);
       return {
         id: a.id, partyId: a.partyId, productId: a.productId, at: a.at,

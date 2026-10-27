@@ -58,6 +58,10 @@ export interface QuotationChargeLine {
 }
 
 export interface QuotationFacts {
+  /** An indicative partner quote is not an underwriting decision, payment request, or offer of cover. */
+  readonly conditional?: boolean;
+  /** A post-underwriting quotation must be freshly accepted before payment. */
+  readonly requiresFreshAcceptance?: boolean;
   readonly tenant: { readonly name: string };
   readonly customer: QuotationCustomer;
   readonly product: QuotationProduct;
@@ -216,10 +220,10 @@ export function quotationCompliance(facts: QuotationFacts): { checks: Compliance
       ? `Need analysis ${facts.needs.needId} is complete (${facts.needs.percent}%) under ${facts.needs.pack}.`
       : `Need analysis ${facts.needs.needId} is only ${facts.needs.percent}% complete; ${facts.needs.pack} does not allow a ${facts.product.category} quotation before it is finished.`);
 
-  push('loadings-reconciled', 'Loadings reconcile with the underwriting file',
+  push('loadings-reconciled', facts.conditional ? 'Indicative loadings reconcile with the rating inputs' : 'Loadings reconcile with the underwriting file',
     facts.loadingLines.reduce((s, l) => s + (l.bps ?? 0), 0) === facts.underwriting.extraMortalityBps,
     facts.loadingLines.reduce((s, l) => s + (l.bps ?? 0), 0) === facts.underwriting.extraMortalityBps
-      ? `Itemised loading of ${facts.loadingLines.reduce((s, l) => s + (l.bps ?? 0), 0)} bps agrees with the underwriting decision's ${facts.underwriting.extraMortalityBps} bps.`
+      ? `Itemised loading of ${facts.loadingLines.reduce((s, l) => s + (l.bps ?? 0), 0)} bps agrees with the ${facts.conditional ? 'indicative rating' : 'underwriting decision'} of ${facts.underwriting.extraMortalityBps} bps.`
       : `Itemised loading is ${facts.loadingLines.reduce((s, l) => s + (l.bps ?? 0), 0)} bps but the underwriting file carries ${facts.underwriting.extraMortalityBps} bps; the customer would be quoted a premium the file does not support.`,
     true);
 
@@ -243,17 +247,20 @@ export function quotationCompliance(facts: QuotationFacts): { checks: Compliance
   push('beneficiaries', 'Primary beneficiaries total exactly 100%', facts.beneficiaryLines.length > 0 && primaryTotal === 10_000,
     facts.beneficiaryLines.length === 0 ? 'No beneficiary has been designated.' : `Primary shares total ${primaryTotal} bps (${(primaryTotal / 100).toFixed(2)}%).`);
 
-  push('medical-evidence', 'Every medical requirement received and reviewed, or waived by a named person',
-    facts.outstandingMedical.length === 0,
-    facts.outstandingMedical.length === 0
-      ? `${facts.medicalRequirements.length} requirement(s) on file, none outstanding.`
-      : `Outstanding: ${facts.outstandingMedical.join('; ')}.`);
+  push('medical-evidence', facts.conditional ? 'Medical evidence is subject to underwriting' : 'Every medical requirement received and reviewed, or waived by a named person',
+    facts.conditional || facts.outstandingMedical.length === 0,
+    facts.conditional ? 'Medical requirements will be assessed after partner approval; no underwriting review has been completed.'
+      : facts.outstandingMedical.length === 0
+        ? `${facts.medicalRequirements.length} requirement(s) on file, none outstanding.`
+        : `Outstanding: ${facts.outstandingMedical.join('; ')}.`);
 
-  push('underwriting-decided', 'The case has been decided by someone with authority',
-    facts.underwriting.outcome !== 'referred' && facts.underwriting.decidedBy.trim() !== '',
-    facts.underwriting.outcome === 'referred'
-      ? 'The case is still referred; a quotation may not be issued on an undecided risk.'
-      : `Decided by ${facts.underwriting.decidedBy}${facts.underwriting.decidedByAi ? ' (AI agent, inside its straight-through limit)' : ''} with outcome "${facts.underwriting.outcome}".`);
+  push('underwriting-decided', facts.conditional ? 'Indicative terms are subject to underwriting' : 'The case has been decided by someone with authority',
+    facts.conditional ? facts.underwriting.outcome === 'pending' && facts.underwriting.decidedBy === ''
+      : facts.underwriting.outcome !== 'referred' && facts.underwriting.decidedBy.trim() !== '',
+    facts.conditional ? 'No underwriting decision or offer of cover has been made; final terms may change and require customer acceptance.'
+      : facts.underwriting.outcome === 'referred'
+        ? 'The case is still referred; a quotation may not be issued on an undecided risk.'
+        : `Decided by ${facts.underwriting.decidedBy}${facts.underwriting.decidedByAi ? ' (AI agent, inside its straight-through limit)' : ''} with outcome "${facts.underwriting.outcome}".`);
 
   push('comparison-presented', 'A comparison of alternatives was presented', facts.comparisonPresented,
     facts.comparisonPresented ? 'The recommendation list was presented with the quotation.' : 'No comparison was presented; the customer must see the alternatives before this is issued.', false);
@@ -302,7 +309,8 @@ export function quotationDocument(facts: QuotationFacts, quotationId: string, ve
   const c = facts.customer;
   const lines: PdfLine[] = [];
 
-  lines.push({ text: `Quotation ${quotationId} · version ${version}`, bold: true });
+  lines.push({ text: `${facts.conditional ? 'INDICATIVE — SUBJECT TO UNDERWRITING · ' : facts.requiresFreshAcceptance ? 'REVISED TERMS — NEW ACCEPTANCE REQUIRED · ' : ''}Quotation ${quotationId} · version ${version}`, bold: true });
+  if (facts.conditional) lines.push({ text: 'No underwriting decision has been made and no cover exists. Medical evidence may be required. The insurer may decline or change the premium, exclusions or terms. Changed terms require a new quotation and your fresh acceptance before payment or issue.', bold: true });
   lines.push({ text: `Issued ${facts.issuedAt} by ${facts.issuedBy} · valid for ${DEFAULT_VALIDITY_DAYS} days, to ${addDays(facts.issuedAt, DEFAULT_VALIDITY_DAYS)}` });
   lines.push({ text: `Regulatory pack: ${facts.needs.pack} · needs analysis ${facts.needs.needId} (${facts.needs.percent}% complete)` });
   lines.push({ text: '', rule: true });
@@ -348,7 +356,7 @@ export function quotationDocument(facts: QuotationFacts, quotationId: string, ve
   }
 
   lines.push({ text: 'Underwriting', bold: true, gapBefore: 10 });
-  lines.push({ text: `Outcome: ${facts.underwriting.outcome} · decided by ${facts.underwriting.decidedBy}${facts.underwriting.decidedByAi ? ' (AI agent)' : ''} · extra mortality ${facts.underwriting.extraMortalityBps} bps`, indent: 8 });
+  lines.push({ text: facts.conditional ? `Underwriting has not yet been performed. Indicative rating: ${facts.underwriting.extraMortalityBps} bps.` : `Outcome: ${facts.underwriting.outcome} · decided by ${facts.underwriting.decidedBy}${facts.underwriting.decidedByAi ? ' (AI agent)' : ''} · extra mortality ${facts.underwriting.extraMortalityBps} bps`, indent: 8 });
   if (facts.underwriting.referrals.length > 0) lines.push({ text: `Referrals recorded: ${facts.underwriting.referrals.join(', ')}`, indent: 8 });
   for (const e of facts.exclusions) lines.push({ text: `Exclusion: ${e}`, indent: 8 });
 
@@ -545,14 +553,15 @@ export class QuotationBook {
     const body = [
       `${greeting},`,
       '',
-      `Your quotation ${record.quotationId} (version ${record.version}) for ${record.productName} is attached as a PDF.`,
+      `Your ${record.facts.conditional ? 'indicative quotation, subject to underwriting,' : 'quotation'} ${record.quotationId} (version ${record.version}) for ${record.productName} is attached as a PDF.`,
+      ...(record.facts.conditional ? ['No underwriting decision or cover exists. The insurer may decline or change the premium, exclusions or terms; changed terms require your new acceptance before payment or issue.'] : []),
       `Sum assured ${record.sumAssured}. Premium ${record.premiumPerFrequency} ${record.facts.paymentFrequency}, ${record.totalPayable} payable in total including loadings and riders.`,
       // The illustration is what the customer is actually buying, so it is quoted in the email too —
       // an attachment nobody opens should still leave them knowing the thirty-year figure.
       ...(illustration ? ['', ...plainTextMilestones(illustration), illustration.paymentTermsLabel, illustrationHeadline(illustration)] : []),
       `The quotation is valid until ${record.expiresAt.slice(0, 10)}. A free-look period of ${record.facts.illustration.coolingOffDays} day(s) applies from the date the policy is delivered.`,
       record.facts.illustration.wording,
-      input.buyLink ? `To buy online: ${input.buyLink}` : 'To buy online, use the secure payment link in the customer portal.',
+      ...(record.facts.conditional ? ['Do not make payment until underwriting is complete and the final terms have been accepted.'] : record.facts.requiresFreshAcceptance ? ['Please review and freshly accept these revised terms before making any payment.'] : [input.buyLink ? `To buy online: ${input.buyLink}` : 'To buy online, use the secure payment link in the customer portal.']),
       '',
       `${this.tenantName}`,
     ].join('\n');
@@ -644,10 +653,10 @@ export class QuotationBook {
       insideValidity: true, daysRemaining,
       coolingOffEndsOn: addDays(at, record.facts.illustration.coolingOffDays),
       coolingOffStatement: `You have ${record.facts.illustration.coolingOffDays} day(s) from delivery of the policy to cancel without reason and receive a refund less any medical examination cost.`,
-      readyToBuyOnline: true,
+      readyToBuyOnline: !record.facts.conditional,
       // A CSPRNG token, never a hash of the quotation id/signature: whoever holds the emailed
       // link holds the right to buy, so it must not be derivable from public identifiers.
-      buyToken: randomTokenHex(16),
+      buyToken: record.facts.conditional ? '' : randomTokenHex(16),
     };
     this.records.set(key(record.quotationId, record.version), { ...record, status: 'finalised', finalisation });
     return finalisation;

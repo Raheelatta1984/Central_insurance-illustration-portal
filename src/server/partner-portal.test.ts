@@ -112,10 +112,34 @@ describe('the partner HTTP boundary', () => {
     const response = await request('agent', '/partner-portal/journey/open', { partnerId: 'DEMO-BROKER', subChannelCode: 'DEMO-BROKER-DESK', customerName: 'Test customer' });
     const { caseId } = await response.json() as { caseId: string };
     expect((await request('agent', '/partner-portal/journey/stage', { caseId, stageId: 'uw-review', action: 'submit', answers: {} })).status).toBe(403);
+    expect((await request('agent', '/partner-portal/journey/stage', { caseId, stageId: 'medical', action: 'submit', answers: {} })).status).toBe(403);
+    expect((await request('service', '/partner-portal/journey/stage', { caseId, stageId: 'medical', action: 'save', answers: {} })).status).toBe(403);
+    state.world.journey.get(caseId).answers.medical = { reviewNote: 'confidential medical note' };
+    state.world.journey.get(caseId).answers['uw-review'] = { questionnaireNotes: 'confidential underwriting note' };
+    const partnerView = await (await request('agent', `/partner-portal/journey?caseId=${caseId}`)).json() as { stages: Array<{ id: string; answers: Record<string, unknown>; fields: unknown[] }> };
+    for (const id of ['medical', 'uw-review']) {
+      expect(partnerView.stages.find((stage) => stage.id === id)?.answers).toEqual({});
+      expect(partnerView.stages.find((stage) => stage.id === id)?.fields).toEqual([]);
+    }
+    const insurerView = await (await request('underwriter', `/partner-portal/journey?caseId=${caseId}`)).json() as { stages: Array<{ id: string; answers: Record<string, unknown> }> };
+    expect(insurerView.stages.find((stage) => stage.id === 'medical')?.answers['reviewNote']).toBe('confidential medical note');
+
     expect((await request('service', '/partner-portal/journey/stage', { caseId, stageId: 'uw-review', action: 'submit', answers: {} })).status).toBe(403);
     expect((await request('underwriter', '/partner-portal/journey/stage', { caseId, stageId: 'uw-review', action: 'submit', answers: {} })).status).not.toBe(403);
     expect((await request('agent', '/partner-portal/commission/disbursement', { id: 'unknown', amount: '2.00', reference: 'BANK' })).status).toBe(403);
     expect((await request('agent', '/partner-portal/demo/setup', {})).status).toBe(403);
+  });
+
+  it('limits revised quotations and acceptance to authorized roles and partner scopes', async () => {
+    const id = 'AUTH-TEST'; // Fixture registered by the reviewer-boundary test above.
+    expect((await request('agent', '/partner-portal/quotation/reissue', { id, by: 'uw' })).status).toBe(403);
+    expect((await request('service', '/partner-portal/quotation/reissue', { id, by: 'uw' })).status).toBe(403);
+    expect((await request('viewer', '/partner-portal/quotation/accept', { id, signedBy: 'Customer' })).status).toBe(403);
+    expect((await request('bank', '/partner-portal/quotation/accept', { id, signedBy: 'Customer' })).status).toBe(403);
+    expect((await request('bank', `/partner-portal/quotation?id=${id}`)).status).toBe(403);
+    expect((await request('agent', '/partner-portal/quotation/accept', { id, signedBy: 'Customer' })).status).toBe(409);
+    expect((await request('underwriter', '/partner-portal/quotation/reissue', { id })).status).toBe(409);
+    expect((await request('agent', `/partner-portal/quotation?id=${id}`)).status).toBe(409);
   });
 
   it('only allows an authenticated insurer to close an insurer-facing request', async () => {

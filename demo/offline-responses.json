@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-26T22:59:40.158Z",
+  "capturedAt": "2026-10-27T03:22:23.697Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -6323,6 +6323,7 @@
             "partner.submitReview": "Submit for partner review",
             "partner.reviewApplication": "Review application",
             "partner.underwriterReview": "Record underwriting review",
+            "partner.termsReconciled": "I confirm all final underwriting terms are represented in the decision and quotation; unsupported conditions must be resolved outside this prototype.",
             "partner.scope": "Partner and sub-channel",
             "partner.partner": "Partner",
             "partner.subchannel": "Sub-channel",
@@ -6387,7 +6388,7 @@
             "partner.emptyReports": "There are no commission figures to report yet.",
             "partner.allRoutes": "Partner-wide",
             "partner.caseEditor": "Customer journey",
-            "partner.editorHint": "Complete each section in order. Structured lists and questionnaires are entered as JSON; underwriting review remains with the insurer.",
+            "partner.editorHint": "Complete each section in order. Structured lists and questionnaires are entered as JSON; medical and underwriting review follow approval and remain with the insurer.",
             "partner.stage": "Section",
             "partner.stageAction": "Save or submit",
             "partner.required": "Required",
@@ -6413,7 +6414,16 @@
             "partner.disbursed": "Disbursed (recorded)",
             "partner.guidance": "HOW IT WORKS",
             "partner.steps": "Signed application → partner approval → underwriting route → policy conversion",
-            "partner.quoteLimitation": "Prototype limitation: the existing quotation process records an insurer underwriting decision before the customer signs. Partner approval gates later routing and conversion; it does not yet defer all underwriting until after approval.",
+            "partner.quoteLimitation": "Indicative quotations are subject to underwriting. No payment or cover is allowed before partner approval and underwriting. Changed terms require a revised quotation and fresh customer acceptance. This prototype records names, not verified electronic signatures.",
+            "partner.revisedTerms": "Revised underwriting terms",
+            "partner.revisedWarning": "Prepare a revised quote only after insurer underwriting. Download and present the document to the customer before recording fresh acceptance. Email delivery is not guaranteed; this name entry is not verified electronic signing.",
+            "partner.reissueQuote": "Prepare revised quotation",
+            "partner.revisedPrepared": "Revised quotation prepared; provide it to the customer for review and fresh acceptance.",
+            "partner.downloadRevised": "Download revised quotation PDF",
+            "partner.revisedSignature": "Customer name for renewed acceptance",
+            "partner.reviewedRevised": "I confirm the customer reviewed the revised quotation before this acceptance is recorded.",
+            "partner.recordAcceptance": "Record renewed acceptance",
+            "partner.revisedAccepted": "Renewed acceptance recorded in the prototype.",
             "partner.operationalReport": "Operational snapshot",
             "partner.issuedPolicies": "Issued policies",
             "partner.submittedApplications": "Submitted applications",
@@ -6631,6 +6641,7 @@
             "partner.submitReview": "Submit for partner review",
             "partner.reviewApplication": "Review application",
             "partner.underwriterReview": "Record underwriting review",
+            "partner.termsReconciled": "I confirm all final underwriting terms are represented in the decision and quotation; unsupported conditions must be resolved outside this prototype.",
             "partner.scope": "Partner and sub-channel",
             "partner.partner": "Partner",
             "partner.subchannel": "Sub-channel",
@@ -6695,7 +6706,7 @@
             "partner.emptyReports": "There are no commission figures to report yet.",
             "partner.allRoutes": "Partner-wide",
             "partner.caseEditor": "Customer journey",
-            "partner.editorHint": "Complete each section in order. Structured lists and questionnaires are entered as JSON; underwriting review remains with the insurer.",
+            "partner.editorHint": "Complete each section in order. Structured lists and questionnaires are entered as JSON; medical and underwriting review follow approval and remain with the insurer.",
             "partner.stage": "Section",
             "partner.stageAction": "Save or submit",
             "partner.required": "Required",
@@ -6721,7 +6732,16 @@
             "partner.disbursed": "Disbursed (recorded)",
             "partner.guidance": "HOW IT WORKS",
             "partner.steps": "Signed application → partner approval → underwriting route → policy conversion",
-            "partner.quoteLimitation": "Prototype limitation: the existing quotation process records an insurer underwriting decision before the customer signs. Partner approval gates later routing and conversion; it does not yet defer all underwriting until after approval.",
+            "partner.quoteLimitation": "Indicative quotations are subject to underwriting. No payment or cover is allowed before partner approval and underwriting. Changed terms require a revised quotation and fresh customer acceptance. This prototype records names, not verified electronic signatures.",
+            "partner.revisedTerms": "Revised underwriting terms",
+            "partner.revisedWarning": "Prepare a revised quote only after insurer underwriting. Download and present the document to the customer before recording fresh acceptance. Email delivery is not guaranteed; this name entry is not verified electronic signing.",
+            "partner.reissueQuote": "Prepare revised quotation",
+            "partner.revisedPrepared": "Revised quotation prepared; provide it to the customer for review and fresh acceptance.",
+            "partner.downloadRevised": "Download revised quotation PDF",
+            "partner.revisedSignature": "Customer name for renewed acceptance",
+            "partner.reviewedRevised": "I confirm the customer reviewed the revised quotation before this acceptance is recorded.",
+            "partner.recordAcceptance": "Record renewed acceptance",
+            "partner.revisedAccepted": "Renewed acceptance recorded in the prototype.",
             "partner.operationalReport": "Operational snapshot",
             "partner.issuedPolicies": "Issued policies",
             "partner.submittedApplications": "Submitted applications",
@@ -6939,6 +6959,7 @@
             "partner.submitReview": "Submit for partner review",
             "partner.reviewApplication": "Review application",
             "partner.underwriterReview": "Record underwriting review",
+            "partner.termsReconciled": "I confirm all final underwriting terms are represented in the decision and quotation; unsupported conditions must be resolved outside this prototype.",
             "partner.scope": "Partner and sub-channel",
             "partner.partner": "Partner",
             "partner.subchannel": "Sub-channel",
@@ -7003,7 +7024,7 @@
             "partner.emptyReports": "There are no commission figures to report yet.",
             "partner.allRoutes": "Partner-wide",
             "partner.caseEditor": "Customer journey",
-            "partner.editorHint": "Complete each section in order. Structured lists and questionnaires are entered as JSON; underwriting review remains with the insurer.",
+            "partner.editorHint": "Complete each section in order. Structured lists and questionnaires are entered as JSON; medical and underwriting review follow approval and remain with the insurer.",
             "partner.stage": "Section",
             "partner.stageAction": "Save or submit",
             "partner.required": "Required",
@@ -7029,7 +7050,16 @@
             "partner.disbursed": "Disbursed (recorded)",
             "partner.guidance": "HOW IT WORKS",
             "partner.steps": "Signed application → partner approval → underwriting route → policy conversion",
-            "partner.quoteLimitation": "Prototype limitation: the existing quotation process records an insurer underwriting decision before the customer signs. Partner approval gates later routing and conversion; it does not yet defer all underwriting until after approval.",
+            "partner.quoteLimitation": "Indicative quotations are subject to underwriting. No payment or cover is allowed before partner approval and underwriting. Changed terms require a revised quotation and fresh customer acceptance. This prototype records names, not verified electronic signatures.",
+            "partner.revisedTerms": "Revised underwriting terms",
+            "partner.revisedWarning": "Prepare a revised quote only after insurer underwriting. Download and present the document to the customer before recording fresh acceptance. Email delivery is not guaranteed; this name entry is not verified electronic signing.",
+            "partner.reissueQuote": "Prepare revised quotation",
+            "partner.revisedPrepared": "Revised quotation prepared; provide it to the customer for review and fresh acceptance.",
+            "partner.downloadRevised": "Download revised quotation PDF",
+            "partner.revisedSignature": "Customer name for renewed acceptance",
+            "partner.reviewedRevised": "I confirm the customer reviewed the revised quotation before this acceptance is recorded.",
+            "partner.recordAcceptance": "Record renewed acceptance",
+            "partner.revisedAccepted": "Renewed acceptance recorded in the prototype.",
             "partner.operationalReport": "Operational snapshot",
             "partner.issuedPolicies": "Issued policies",
             "partner.submittedApplications": "Submitted applications",
@@ -7186,7 +7216,7 @@
           ],
           "coverageAr": {
             "covered": 63,
-            "total": 306,
+            "total": 316,
             "missing": [
               "partner.workspace",
               "partner.openPortal",
@@ -7323,6 +7353,7 @@
               "partner.submitReview",
               "partner.reviewApplication",
               "partner.underwriterReview",
+              "partner.termsReconciled",
               "partner.scope",
               "partner.partner",
               "partner.subchannel",
@@ -7414,6 +7445,15 @@
               "partner.guidance",
               "partner.steps",
               "partner.quoteLimitation",
+              "partner.revisedTerms",
+              "partner.revisedWarning",
+              "partner.reissueQuote",
+              "partner.revisedPrepared",
+              "partner.downloadRevised",
+              "partner.revisedSignature",
+              "partner.reviewedRevised",
+              "partner.recordAcceptance",
+              "partner.revisedAccepted",
               "partner.operationalReport",
               "partner.issuedPolicies",
               "partner.submittedApplications",
@@ -31716,7 +31756,7 @@
                 "facts": [
                   "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                   "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                  "Arabic coverage 63 of 306 default keys; 10 rename(s) on the audit trail."
+                  "Arabic coverage 63 of 316 default keys; 10 rename(s) on the audit trail."
                 ],
                 "tone": "info",
                 "curated": true
@@ -33587,7 +33627,7 @@
             "labels": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
               "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-              "Arabic coverage 63 of 306 default keys; 10 rename(s) on the audit trail."
+              "Arabic coverage 63 of 316 default keys; 10 rename(s) on the audit trail."
             ],
             "durability": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
@@ -63467,7 +63507,7 @@
               "facts": [
                 "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                 "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                "Arabic coverage 63 of 306 default keys; 10 rename(s) on the audit trail."
+                "Arabic coverage 63 of 316 default keys; 10 rename(s) on the audit trail."
               ],
               "tone": "info",
               "curated": true
@@ -65338,7 +65378,7 @@
           "labels": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
             "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-            "Arabic coverage 63 of 306 default keys; 10 rename(s) on the audit trail."
+            "Arabic coverage 63 of 316 default keys; 10 rename(s) on the audit trail."
           ],
           "durability": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",

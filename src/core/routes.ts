@@ -643,6 +643,8 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /underwriting/amend': {
+      const applicationId = String(payload['applicationId'] ?? '');
+      if (state.world.journey.list().some((c) => c.distribution && c.artefacts.applicationId === applicationId)) throw new PartnerAccessError('partner applications must not be amended through the unscoped underwriting route; start a new journey for changed risk');
       // The medical questionnaire is reviewed and updated in service: every change is recorded
       // from -> to with the person and the reason, and a decision taken on the old answers is set
       // aside so the case has to be decided again.
@@ -674,7 +676,7 @@ export async function dispatchApiRoute(
         amendments: amended.amendments.map((m) => ({ at: m.at, by: m.by, field: m.field, from: m.from, to: m.to, reason: m.reason })),
         trail: state.world.underwriting.amendmentsFor(amended.application.id).map((m) => ({ at: m.at, by: m.by, field: m.field, from: m.from, to: m.to, reason: m.reason })),
         decisionSetAside: amended.decisionSetAside,
-        reassessment: {
+        reassessment: amended.reassessment ? {
           outcome: amended.reassessment.outcome,
           extraMortalityBps: amended.reassessment.extraMortalityBps,
           standardPremium: formatAmount(amended.reassessment.standardPremium),
@@ -683,12 +685,13 @@ export async function dispatchApiRoute(
           evidence: amended.reassessment.evidence,
           referrals: amended.reassessment.referrals,
           reasons: amended.reassessment.reasons.map((r) => ({ code: r.code, detail: r.detail, source: r.source, referral: r.referral === true })),
-        },
+        } : null,
       });
     }
 
     case 'POST /underwriting/decide': {
       const applicationId = String(payload['applicationId']);
+      if (state.world.journey.list().some((c) => c.distribution && c.artefacts.applicationId === applicationId)) throw new PartnerAccessError('partner applications must use the scoped insurer underwriting journey');
       const decision = state.world.underwriting.decide(applicationId, {
         at: String(payload['at'] ?? `${state.world.asOf}T09:00:00+04:00`),
         by: String(payload['by'] ?? 'senior-underwriter'),
@@ -3023,9 +3026,21 @@ export async function dispatchApiRoute(
       const allowedStages = new Set(['identity', 'profile', 'needs', 'recommendation', 'coverage', 'loadings', 'riders', 'medical', 'funds', 'beneficiaries', 'uw-review', 'quotation', 'finalisation']);
       return ok({ caseId: c.caseId, customerName: c.customerName, scope: c.distribution,
         artefacts: { applicationId: c.artefacts.applicationId ?? null, quotationId: c.artefacts.quotationId ?? null, policyId: c.artefacts.policyId ?? null },
-        stages: progress.stages.filter((s) => allowedStages.has(s.id)).map((s) => ({ id: s.id, title: s.title, status: s.status, complete: s.complete, missing: s.missing, blockers: s.blockers,
-          fields: s.fields.filter((f) => f.editable && f.kind !== 'readonly').map((f) => ({ id: f.id, label: f.label, kind: f.kind, mandatory: f.mandatory, options: f.options ?? [], hint: f.hint ?? '' })),
-          answers: Object.fromEntries(Object.entries(c.answers[s.id]).filter(([k]) => !k.startsWith('__'))) })), nextRecommended: progress.nextRecommended });
+        stages: progress.stages.filter((s) => allowedStages.has(s.id)).map((s) => {
+          const restricted = (s.id === 'medical' || s.id === 'uw-review') && !isInternal(principal, ['partner-underwriter']);
+          return { id: s.id, title: s.title, status: s.status, complete: s.complete,
+            missing: restricted ? [] : s.missing, blockers: restricted && s.blockers.length ? ['Insurer review required'] : s.blockers,
+            fields: restricted ? [] : s.fields.filter((f) => f.editable && f.kind !== 'readonly' && !(s.id === 'quotation' && f.id === 'buyLinkSent')).map((f) => ({ id: f.id, label: f.label, kind: f.kind, mandatory: f.mandatory, options: f.options ?? [], hint: f.hint ?? '' })),
+            answers: restricted ? {} : Object.fromEntries(Object.entries(c.answers[s.id]).filter(([k]) => !k.startsWith('__'))) };
+        }), nextRecommended: progress.nextRecommended });
+    }
+    case 'GET /partner-portal/quotation': {
+      const principal = portalPrincipal(payload);
+      const row = scopedRecord(principal, () => state.world.partnerPortal.application((searchParams.get('id') ?? '').trim()));
+      if (!row.revisedQuotation) throw new PartnerPortalError('there is no revised quotation for this application');
+      const quote = state.world.journey.quotations.get(row.revisedQuotation.quotationId, row.revisedQuotation.version);
+      return ok({ quotationId: quote.quotationId, version: quote.version, status: quote.status, totalPayable: quote.totalPayable,
+        pdf: { fileName: quote.pdf.fileName, base64: quote.pdf.base64, fingerprint: quote.pdf.fingerprint } });
     }
     case 'POST /partner-portal/journey/open': {
       const principal = portalPrincipal(payload); requirePartnerAction(principal);
@@ -3048,10 +3063,16 @@ export async function dispatchApiRoute(
       const principal = portalPrincipal(payload); requirePartnerAction(principal);
       const c = portalJourney(state, principal, reqString(payload, 'caseId'));
       const stage = reqEnum(payload, 'stageId', ['identity', 'profile', 'needs', 'recommendation', 'coverage', 'loadings', 'riders', 'medical', 'funds', 'beneficiaries', 'uw-review', 'quotation', 'finalisation'] as const);
-      if (stage === 'uw-review') requireInternal(principal, ['partner-underwriter']);
+      if (stage === 'uw-review' || stage === 'medical') requireInternal(principal, ['partner-underwriter']);
       const raw = payload['answers'];
       if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new RequestValidationError('answers must be a JSON object');
-      const args = { caseId: c.caseId, stageId: stage, answers: raw as Record<string, unknown>, by: portalActor(principal, payload), at: state.now() };
+      const by = portalActor(principal, payload);
+      const answers = stage === 'uw-review' && !principal.demo
+        ? { ...(raw as Record<string, unknown>), decidedBy: by, questionnaireUpdatedBy: by, decidedByAi: false }
+        : stage === 'medical' && !principal.demo
+          ? { ...(raw as Record<string, unknown>), reviewedBy: by, ...(Array.isArray((raw as Record<string, unknown>)['results']) ? { results: ((raw as Record<string, unknown>)['results'] as Array<Record<string, unknown>>).map((r) => ({ ...r, by })) } : {}) }
+          : raw as Record<string, unknown>;
+      const args = { caseId: c.caseId, stageId: stage, answers, by, at: state.now() };
       const action = reqEnum(payload, 'action', ['save', 'submit'] as const);
       if (action === 'save') { state.world.journey.save(state.world, args); return ok({ saved: true, caseId: c.caseId, stageId: stage }); }
       const result = state.world.journey.submit(state.world, args);
@@ -3077,7 +3098,17 @@ export async function dispatchApiRoute(
     case 'POST /partner-portal/underwriting/review': {
       const principal = portalPrincipal(payload); requireInternal(principal, ['partner-underwriter']);
       const id = reqString(payload, 'id'); const row = scopedRecord(principal, () => state.world.partnerPortal.application(id));
-      return ok(state.world.partnerPortal.underwritingReview(state.world, { id, by: portalActor(principal, payload), note: reqString(payload, 'note'), at: state.now() }));
+      return ok(state.world.partnerPortal.underwritingReview(state.world, { id, by: portalActor(principal, payload), note: reqString(payload, 'note'), termsReconciled: payload['termsReconciled'] === true, at: state.now() }));
+    }
+    case 'POST /partner-portal/quotation/reissue': {
+      const principal = portalPrincipal(payload); requireInternal(principal, ['partner-underwriter']);
+      const id = reqString(payload, 'id'); scopedRecord(principal, () => state.world.partnerPortal.application(id));
+      return ok(state.world.partnerPortal.reissueQuotation(state.world, { id, by: portalActor(principal, payload), at: state.now() }));
+    }
+    case 'POST /partner-portal/quotation/accept': {
+      const principal = portalPrincipal(payload); requirePartnerAction(principal);
+      const id = reqString(payload, 'id'); scopedRecord(principal, () => state.world.partnerPortal.application(id));
+      return ok(state.world.partnerPortal.acceptRevisedQuotation(state.world, { id, signedBy: reqString(payload, 'signedBy'), reviewedWithCustomer: payload['reviewedWithCustomer'] === true, by: portalActor(principal, payload), at: state.now() }));
     }
     case 'POST /partner-portal/commission/accrue': {
       const principal = portalPrincipal(payload); requireInternal(principal, ['partner-finance']);
@@ -3166,6 +3197,8 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /journey/save': {
+      const c = state.world.journey.get(String(payload['caseId'] ?? ''));
+      if (c.distribution && (payload['stageId'] === 'uw-review' || payload['stageId'] === 'medical')) throw new PartnerAccessError('partner medical and underwriting review must use the scoped insurer journey');
       const progress = state.world.journey.save(state.world, {
         caseId: String(payload['caseId'] ?? ''),
         stageId: String(payload['stageId'] ?? 'identity') as JourneyStageId,
@@ -3177,6 +3210,8 @@ export async function dispatchApiRoute(
     }
 
     case 'POST /journey/submit': {
+      const c = state.world.journey.get(String(payload['caseId'] ?? ''));
+      if (c.distribution && (payload['stageId'] === 'uw-review' || payload['stageId'] === 'medical')) throw new PartnerAccessError('partner medical and underwriting review must use the scoped insurer journey');
       const answers = (payload['answers'] ?? {}) as Record<string, unknown>;
       const result = state.world.journey.submit(state.world, {
         caseId: String(payload['caseId'] ?? ''),
