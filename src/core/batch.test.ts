@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BatchRegistry, type BatchSubject } from './batch.js';
 import { PiiMasker, sha256Hex } from './pii-masking.js';
+import { AUTO_WHATS_NEW_ENTRIES } from './whatsnew.auto.js';
 import { WHATS_NEW_SEED, WhatsNewRegistry, generateFromCommits, categoriseCommit } from './whatsnew.js';
 
 const policy = (id: string, status: BatchSubject['status'], basisMinor = 1_000_000_00n): BatchSubject => ({
@@ -106,10 +107,15 @@ describe("what's new generation from commits", () => {
   it('refuses entries that do not say why, what and what to do', () => {
     const registry = new WhatsNewRegistry();
     expect(() => registry.file({ at: '2026-10-19', title: 'X', category: 'feature', source: 'test', why: '', what: 'w', whatYouNeedToDo: 'a', area: 'Overview', risk: 'low' })).toThrow(/why, what changed/);
-    // The seed is kept newest-first and in file order, so the newest filed entry leads the list.
+    // Auto-filed PR entries may lead the list; the curated seed keeps its authored relative order.
     const entries = registry.snapshot().entries;
+    const titles = entries.map((entry) => entry.title);
+    const positions = WHATS_NEW_SEED.map((entry) => titles.indexOf(entry.title));
     expect(entries.length).toBeGreaterThan(5);
-    expect(entries[0]!.title).toBe(WHATS_NEW_SEED[0]!.title);
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    expect(entries[0]!.at >= WHATS_NEW_SEED[0]!.at).toBe(true);
+    if (AUTO_WHATS_NEW_ENTRIES.length === 0) expect(entries[0]!.title).toBe(WHATS_NEW_SEED[0]!.title);
     expect(entries.some((entry) => entry.title.includes('Batch processing'))).toBe(true);
   });
 });

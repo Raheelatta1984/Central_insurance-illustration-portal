@@ -23,6 +23,8 @@ jobs:
         run: |
           npm run docs:api
           git diff --exit-code -- demo/ docs/API-REFERENCE.md
+      - name: What's New feed must be in sync with its generated module
+        run: node tools/whats-new-sync.mjs --check
       - name: Fleet backlog check (claimable chunks must still be verified)
         run: node tools/fleet.mjs --limit=5 --dry
   reconciliation-postgres:

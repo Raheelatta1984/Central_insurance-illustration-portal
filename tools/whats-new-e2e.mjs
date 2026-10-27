@@ -26,11 +26,11 @@ try {
   if (!cardText.includes('PR #38') || !cardText.includes('No new reconciliation workflow is available')) {
     throw new Error('PR #38 or its disabled-workflow notice is missing');
   }
-  if (!(await page.locator('body').innerText()).includes('merging a PR does not automatically add one')) {
-    throw new Error('Manual release publication notice is missing');
+  if (!(await page.locator('body').innerText()).includes('published automatically from pull requests')) {
+    throw new Error('Automatic PR publication notice is missing');
   }
   if (errors.length) throw new Error(`Browser errors: ${errors.join('; ')}`);
-  console.log('What\'s New browser smoke passed: PR #38, disabled status and manual-publication notice are visible.');
+  console.log('What\'s New browser smoke passed: PR #38, disabled status and automatic publication notice are visible.');
 } finally {
   await browser.close();
 }

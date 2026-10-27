@@ -52,17 +52,22 @@ becomes Why, the second becomes What, and the action line is templated by catego
 local and template-based (no external AI service is called). Entries that do not say
 why/what/action are refused by the registry.
 
-**Publication is manual, not a GitHub integration.** Merging a PR does not call the generator or
-add a release entry. Add a plain-language entry to `WHATS_NEW_SEED` in `src/core/whatsnew.ts`,
-then run `npm run build` and commit the regenerated `demo/offline-responses.json` and
-`demo/offline.html` with the source change. Vercel's static site copies that committed HTML; it
-does not rebuild the application or fetch merged PRs. A regression test compares both recorded
-endpoints and the offline HTML to the seed, catching stale demo artefacts once an entry is added.
-It does **not** guarantee every future PR gets an entry. Entries filed through the UI/API live
-only in memory and do not survive a process restart or offline page reload; they are not a durable
-audit log. The publication decision is to keep the curated, operator-facing seed and regenerate
-its static artefacts, rather than expose raw Git history or treat temporary UI filing as durable.
-The trade-off is that maintainers must explicitly curate future releases.
+**Publication is automatic from the pull-request lifecycle** (added 2026-10-27; design and
+decision record: `docs/28-AUTOMATIC-WHATS-NEW.md`). `.github/workflows/whats-new.yml` reacts to
+`pull_request_target` (opened / edited / synchronize / reopened / closed) and to `push` on `main`.
+`tools/whats-new-sync.mjs` calls `draftFromPullRequest` in `src/core/whatsnew.ts`, upserts one
+stable `WN-PR-<n>` entry per PR into `backlog/whats-new-auto.json`, generates
+`src/core/whatsnew.auto.ts`, and the job rebuilds and commits `demo/offline-responses.json` and
+`demo/offline.html` in the same commit. An entry is `proposed` while the PR is open (badged
+"in review — not shipped"), becomes `shipped` with the merge date when it merges, and is removed
+if the PR closes without merging. PR title, labels and the body's `## Why`, `## What changed` and
+`## What you need to do` sections become the operator-facing note; `whats-new:skip` excludes an
+internal PR and `whats-new:include` admits a bot PR. Vercel's static site copies the committed
+HTML, so committing the regenerated demo is part of publication, not a separate manual step.
+`npm run whats-new:check` (also a CI step) fails if the data file and generated module drift, and
+the existing regression test compares both recorded endpoints and the offline HTML to the live
+registry. `WHATS_NEW_SEED` remains the curated record of older releases. Entries filed through
+the UI/API still live only in memory and do not survive a restart; durable entries come from PRs.
 
 For a browser smoke test, assemble the static site with `npm run demo:site`, serve `site/` on port
 4173, and run `npm run test:e2e:whats-new` with a Playwright Chromium installation. Set
