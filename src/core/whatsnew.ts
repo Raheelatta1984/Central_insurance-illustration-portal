@@ -2,19 +2,24 @@
  * What's New — the last tab in the console.
  *
  * Entries are curated for operators: WHY a change exists, WHAT changed, and WHAT TO DO.
- * Merging a PR does not automatically add an entry; the published seed is maintained by hand.
- * Entries can be filed by hand, or generated from commit subjects: `generateFromCommits` turns
- * conventional-commit / PR titles into the same shape, categorises them, and drafts the
- * why/what/action text from the commit body when one is present. That drafting is template-based
- * and local (no external AI service is called); in a deployment it can be replaced by an LLM
- * call behind the same interface, with the filed entry kept as the auditable record.
+ * Publication is automatic: `tools/whats-new-sync.mjs` (driven by `.github/workflows/whats-new.yml`)
+ * files a `proposed` entry when a PR is opened and a `shipped` entry when it merges into `main`,
+ * using `draftFromPullRequest` below. Those entries live in a generated, committed feed next to the
+ * historical hand-written seed. Drafting is template-based and local — no external AI service is
+ * called — so the PR body remains the source of truth and the generated file is the audit record.
+ * `generateFromCommits` is kept for the on-screen "generate from a commit" tool and for commit
+ * records that have no PR.
  */
 
+import { AUTO_WHATS_NEW_ENTRIES } from './whatsnew.auto.js';
+
 export type WhatsNewCategory = 'feature' | 'improvement' | 'fix' | 'security' | 'data' | 'breaking' | 'docs';
+/** `proposed` = PR open, not shipped; `shipped` = merged into main. Undefined = curated seed. */
+export type WhatsNewStage = 'proposed' | 'shipped';
 
 export interface WhatsNewEntry {
   readonly id: string;
-  readonly at: string; // ISO date the change shipped
+  readonly at: string; // ISO date the change shipped (or was proposed)
   readonly title: string;
   readonly category: WhatsNewCategory;
   readonly source: string; // commit hash, PR number or change-request id
@@ -24,7 +29,34 @@ export interface WhatsNewEntry {
   readonly whatYouNeedToDo: string;
   readonly area: string; // console tab / module the reader should open
   readonly risk: 'low' | 'medium' | 'high';
+  readonly stage?: WhatsNewStage;
+  readonly pr?: number;
+  readonly url?: string; // only https://github.com/… links are generated
 }
+
+/** Committed, generated feed of PR-sourced entries. `lastMergedAt` is the backfill watermark. */
+export interface AutoWhatsNewFeed {
+  readonly version: 1;
+  readonly lastMergedAt: string;
+  readonly entries: ReadonlyArray<WhatsNewEntry>;
+}
+
+/** The subset of the GitHub pull-request payload the drafter needs (no repo code is executed). */
+export interface PullRequestLike {
+  readonly number: number;
+  readonly title: string;
+  readonly body?: string | null;
+  readonly createdAt: string;
+  readonly mergedAt?: string | null;
+  readonly merged?: boolean;
+  readonly htmlUrl?: string;
+  readonly labels?: ReadonlyArray<string>;
+  readonly author?: string;
+  readonly authorIsBot?: boolean;
+}
+
+export const WHATS_NEW_SKIP_LABEL = 'whats-new:skip';
+export const WHATS_NEW_INCLUDE_LABEL = 'whats-new:include';
 
 export interface CommitLike { readonly hash: string; readonly subject: string; readonly body?: string; readonly at?: string; readonly pr?: string }
 
@@ -99,7 +131,155 @@ function areaFor(subject: string): string {
   return 'Overview';
 }
 
-/** Published entries, newest first. Commit drafting is an explicit action, not an automatic feed. */
+/* ------------------------------------------------ automatic publication from pull requests */
+
+const LABEL_CATEGORY: Record<string, WhatsNewCategory> = {
+  feature: 'feature', enhancement: 'feature', feat: 'feature',
+  bug: 'fix', fix: 'fix', bugfix: 'fix',
+  security: 'security', data: 'data', breaking: 'breaking',
+  docs: 'docs', documentation: 'docs',
+  improvement: 'improvement', performance: 'improvement', refactor: 'improvement',
+};
+
+/** Strip C0 controls and JS line separators without losing the newlines the section parser needs. */
+function stripControlCharacters(value: string): string {
+  let out = '';
+  for (const ch of value) {
+    const code = ch.codePointAt(0) ?? 0;
+    const lineBreak = code === 0x09 || code === 0x0a || code === 0x0d;
+    out += !lineBreak && (code <= 0x1f || code === 0x2028 || code === 0x2029) ? ' ' : ch;
+  }
+  return out;
+}
+
+/**
+ * PR titles and bodies are untrusted text that ends up inside a generated TypeScript module,
+ * an offline HTML page and the console. Reduce every field to bounded plain text: no tags,
+ * no HTML-significant characters, no control characters, no markdown decoration.
+ */
+export function plainText(value: string, max = 1500): string {
+  const text = stripControlCharacters(value)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[<>]/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^\s*```.*$/gm, '')
+    .replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, '')
+    .replace(/[`*_~>#]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+function bodySections(body: string): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  let current = 'preamble';
+  for (const line of body.split(/\r?\n/)) {
+    const heading = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/);
+    if (heading) {
+      current = (heading[1] ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+      if (!out.has(current)) out.set(current, []);
+      continue;
+    }
+    if (!out.has(current)) out.set(current, []);
+    out.get(current)!.push(line);
+  }
+  return out;
+}
+
+function sectionText(sections: Map<string, string[]>, matches: (key: string) => boolean): string {
+  for (const [key, lines] of sections) if (matches(key) && lines.join('').trim()) return lines.join('\n');
+  return '';
+}
+
+/** Why / What changed / What you need to do — from PR body headings, with honest fallbacks. */
+export function draftSections(pr: PullRequestLike): { why: string; what: string; action: string } {
+  const sections = bodySections(pr.body ?? '');
+  const preamble = sectionText(sections, (k) => k === 'preamble');
+  return {
+    why: plainText(sectionText(sections, (k) => /why|background|motivation|problem/.test(k)), 700),
+    what: plainText(
+      sectionText(sections, (k) => /what changed|^what$|summary|changes|description/.test(k)) || preamble,
+      1400,
+    ),
+    action: plainText(sectionText(sections, (k) => /what you need to do|what to do|action|next step|operator action/.test(k)), 600),
+  };
+}
+
+export function categoryForPullRequest(pr: PullRequestLike): WhatsNewCategory {
+  for (const raw of pr.labels ?? []) {
+    const label = raw.toLowerCase().trim();
+    const scoped = label.startsWith('type:') ? label.slice(5).trim() : label;
+    if (LABEL_CATEGORY[scoped]) return LABEL_CATEGORY[scoped];
+  }
+  const declared = (pr.body ?? '').match(/^\s*(?:category|type)\s*:\s*([a-z]+)\s*$/im)?.[1]?.toLowerCase();
+  if (declared && LABEL_CATEGORY[declared]) return LABEL_CATEGORY[declared];
+  return categoriseCommit(pr.title);
+}
+
+function riskFor(category: WhatsNewCategory, labels: ReadonlyArray<string>): WhatsNewEntry['risk'] {
+  const normalised = labels.map((l) => l.toLowerCase().trim());
+  if (normalised.includes('risk:high')) return 'high';
+  if (normalised.includes('risk:low')) return 'low';
+  return category === 'breaking' || category === 'security' ? 'high' : category === 'feature' || category === 'data' ? 'medium' : 'low';
+}
+
+/** Internal PRs can opt out; bots are excluded unless a maintainer explicitly opts them in. */
+export function shouldPublishPullRequest(pr: PullRequestLike): boolean {
+  const labels = (pr.labels ?? []).map((l) => l.toLowerCase().trim());
+  if (labels.includes(WHATS_NEW_INCLUDE_LABEL)) return true;
+  if (labels.includes(WHATS_NEW_SKIP_LABEL) || /\[skip whats-new\]/i.test(`${pr.title}\n${pr.body ?? ''}`)) return false;
+  return !(pr.authorIsBot || /\[bot\]$/i.test(pr.author ?? ''));
+}
+
+/**
+ * One pull request becomes one operator-facing entry. Re-running for the same PR overwrites
+ * its entry (stable `WN-PR-<n>` id), so PR edits, re-runs and merge events are idempotent.
+ */
+export function draftFromPullRequest(pr: PullRequestLike, stage?: WhatsNewStage): WhatsNewEntry {
+  const resolved = stage ?? (pr.merged ? 'shipped' : 'proposed');
+  const title = plainText(cleanSubject(pr.title), 160) || `Change from PR #${pr.number}`;
+  const category = categoryForPullRequest(pr);
+  const at = (resolved === 'shipped' ? pr.mergedAt ?? pr.createdAt : pr.createdAt).slice(0, 10);
+  const parts = draftSections(pr);
+  const what = parts.what || `${title}. Filed automatically from PR #${pr.number}; the pull request had no "What changed" section, so read the linked PR for the full diff.`;
+  const action = parts.action || defaultAction(category);
+  const url = pr.htmlUrl && /^https:\/\/github\.com\/[^\s<>"']+$/.test(pr.htmlUrl) ? pr.htmlUrl : undefined;
+  return {
+    id: `WN-PR-${pr.number}`,
+    at, title, category,
+    source: `PR #${pr.number} · ${resolved === 'shipped' ? 'merged' : 'opened'} ${at} · auto-filed`,
+    why: parts.why || defaultWhy(category, title),
+    what,
+    whatYouNeedToDo: resolved === 'proposed' ? `In review — not shipped yet. ${action}` : action,
+    area: areaFor(pr.title),
+    risk: riskFor(category, pr.labels ?? []),
+    stage: resolved,
+    pr: pr.number,
+    ...(url ? { url } : {}),
+  };
+}
+
+/**
+ * Newest first; on a tie, higher PR number first. Array#sort is stable, so the hand-written
+ * seed keeps its authored order and the generated feed keeps its committed order.
+ */
+export function sortWhatsNewEntries(entries: ReadonlyArray<WhatsNewEntry>): WhatsNewEntry[] {
+  return [...entries].sort((a, b) => b.at.localeCompare(a.at) || (b.pr ?? 0) - (a.pr ?? 0));
+}
+
+export function upsertPullRequestFeed(feed: AutoWhatsNewFeed, pr: PullRequestLike, stage?: WhatsNewStage): AutoWhatsNewFeed {
+  const entry = draftFromPullRequest(pr, stage);
+  const entries = sortWhatsNewEntries([...feed.entries.filter((e) => e.id !== entry.id), entry]);
+  const lastMergedAt = entry.stage === 'shipped' && pr.mergedAt && pr.mergedAt > feed.lastMergedAt ? pr.mergedAt : feed.lastMergedAt;
+  return { ...feed, entries, lastMergedAt };
+}
+
+/** A PR closed without merging never shipped, so its proposed entry must disappear. */
+export function removeProposedPullRequest(feed: AutoWhatsNewFeed, number: number): AutoWhatsNewFeed {
+  return { ...feed, entries: feed.entries.filter((e) => !(e.id === `WN-PR-${number}` && e.stage === 'proposed')) };
+}
+
+/** Historical, hand-written release notes. New releases are filed automatically from PRs. */
 export const WHATS_NEW_SEED: ReadonlyArray<WhatsNewEntry> = [
   {
     id: 'WN-0014', at: '2026-10-27', title: 'Access & DOA and Role access matrix tabs restricted to Administration only', category: 'security',
@@ -203,9 +383,25 @@ export const WHATS_NEW_SEED: ReadonlyArray<WhatsNewEntry> = [
 
 export class WhatsNewError extends Error {}
 
+const CATEGORIES: ReadonlySet<string> = new Set<WhatsNewCategory>([
+  'feature', 'improvement', 'fix', 'security', 'data', 'breaking', 'docs',
+]);
+
+/** Generated entries are validated before they are written and again when the registry loads. */
+export function assertPublishableEntry(entry: WhatsNewEntry): void {
+  if (!entry.id?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(entry.at) || !entry.title?.trim()) throw new WhatsNewError("What's New entry needs an id, date and title");
+  if (!entry.why?.trim() || !entry.what?.trim() || !entry.whatYouNeedToDo?.trim()) throw new WhatsNewError("What's New entries must say why, what changed, and what the reader needs to do");
+  if (!CATEGORIES.has(entry.category)) throw new WhatsNewError(`Unknown What's New category: ${String(entry.category)}`);
+  if (!['low', 'medium', 'high'].includes(entry.risk)) throw new WhatsNewError(`Unknown What's New risk: ${String(entry.risk)}`);
+  if (entry.stage && !['proposed', 'shipped'].includes(entry.stage)) throw new WhatsNewError(`Unknown What's New stage: ${String(entry.stage)}`);
+  if (entry.url && !/^https:\/\/github\.com\/[^\s<>"']+$/.test(entry.url)) throw new WhatsNewError("What's New PR links must be https://github.com/ URLs");
+}
+
 export class WhatsNewRegistry {
-  private entries: WhatsNewEntry[] = [...WHATS_NEW_SEED];
-  private seq = WHATS_NEW_SEED.length;
+  private entries: WhatsNewEntry[] = sortWhatsNewEntries([...AUTO_WHATS_NEW_ENTRIES, ...WHATS_NEW_SEED]);
+  private seq = Math.max(0, ...this.entries.map((e) => Number(/^WN-(\d+)$/.exec(e.id)?.[1] ?? 0)));
+
+  constructor() { AUTO_WHATS_NEW_ENTRIES.forEach(assertPublishableEntry); }
 
   list(category?: WhatsNewCategory): WhatsNewEntry[] {
     return category ? this.entries.filter((e) => e.category === category) : [...this.entries];
@@ -228,7 +424,8 @@ export class WhatsNewRegistry {
       entries: this.list(),
       categories: [...new Set(this.entries.map((e) => e.category))],
       latestAt: this.entries[0]?.at ?? null,
-      howEntriesAreMade: 'Entries are curated manually; merging a PR does not automatically add one. To publish a lasting entry, update the release seed and rebuild the demo. Entries filed using this screen are temporary and do not survive a restart. You can draft one from a commit subject and body, then file it manually.',
+      pending: this.entries.filter((e) => e.stage === 'proposed').length,
+      howEntriesAreMade: 'Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart.',
     };
   }
 

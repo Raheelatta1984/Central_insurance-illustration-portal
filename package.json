@@ -32,7 +32,10 @@
     "infra:plan": "node tools/dataplane.mjs",
     "infra:check": "node tools/dataplane.mjs --check",
     "recon:migrate": "npm run build:server && node tools/reconciliation-migrate.mjs",
-    "test:e2e:whats-new": "node tools/whats-new-e2e.mjs"
+    "test:e2e:whats-new": "node tools/whats-new-e2e.mjs",
+    "whats-new:sync": "npm run build:server && node tools/whats-new-sync.mjs",
+    "whats-new:check": "node tools/whats-new-sync.mjs --check",
+    "whats-new:backfill": "npm run build:server && node tools/whats-new-sync.mjs --backfill"
   },
   "dependencies": {
     "pg": "^8.23.1",

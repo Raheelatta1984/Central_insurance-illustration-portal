@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-27T11:05:56.447Z",
+  "capturedAt": "2026-10-27T13:11:29.126Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -37180,7 +37180,8 @@
             "data"
           ],
           "latestAt": "2026-10-27",
-          "howEntriesAreMade": "Entries are curated manually; merging a PR does not automatically add one. To publish a lasting entry, update the release seed and rebuild the demo. Entries filed using this screen are temporary and do not survive a restart. You can draft one from a commit subject and body, then file it manually."
+          "pending": 0,
+          "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
         },
         "emailConfig": {
           "accounts": [
@@ -63458,7 +63459,8 @@
           "data"
         ],
         "latestAt": "2026-10-27",
-        "howEntriesAreMade": "Entries are curated manually; merging a PR does not automatically add one. To publish a lasting entry, update the release seed and rebuild the demo. Entries filed using this screen are temporary and do not survive a restart. You can draft one from a commit subject and body, then file it manually."
+        "pending": 0,
+        "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
       }
     },
     "GET /api/warehouse": {

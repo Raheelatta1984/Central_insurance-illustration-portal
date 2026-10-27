@@ -1,0 +1,109 @@
+# Publish What's New automatically from the pull-request lifecycle.
+#
+# SECURITY: `pull_request_target` runs with a write-capable token. This job checks out `main`
+# (trusted, reviewed code) and only *parses* the event payload — title, body, labels, dates.
+# It never checks out, installs or executes anything from the PR head, including for forks.
+# PR text is reduced to bounded plain text by `plainText()` before it reaches generated code,
+# the offline HTML or the console.
+#
+# Flow:
+#   PR opened / edited / synchronized  -> a `proposed` entry is filed in the committed feed
+#   PR merged into main (or push:main) -> the entry becomes `shipped` with its merge date
+#   PR closed without merging          -> the proposed entry is removed
+# Every run regenerates the committed static demo and verifies the build before pushing.
+name: What's New
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, closed]
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Optional ISO timestamp; re-publish PRs merged after it (backfill)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: whats-new-feed
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      # A PAT / GitHub App token is optional. With it, the automatic commit also triggers the
+      # normal CI + Pages builds; the built-in token still publishes, but does not re-trigger them.
+      GITHUB_TOKEN: ${{ secrets.WHATS_NEW_TOKEN || secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout main (never PR code)
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.WHATS_NEW_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v7
+        with: { node-version: '22', cache: npm }
+
+      - name: Install
+        run: npm ci
+
+      - name: Compile the domain drafter used by the generator
+        run: npm run build:server
+
+      - name: Sync the feed from this PR / from merged releases
+        id: sync
+        env:
+          WHATS_NEW_SINCE: ${{ github.event_name == 'workflow_dispatch' && inputs.since || '' }}
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node tools/whats-new-sync.mjs --backfill
+          else
+            node tools/whats-new-sync.mjs --event --comment
+          fi
+
+      - name: Rebuild the static demo and verify the regenerated feed
+        run: |
+          set -e
+          npm run typecheck
+          npm run lint
+          npm run build
+          npm run test:coverage
+          npm run docs:api
+          node tools/whats-new-sync.mjs --check
+
+      - name: Commit the feed and the rebuilt demo to main
+        id: commit
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backlog/whats-new-auto.json src/core/whatsnew.auto.ts demo/offline.html demo/offline-responses.json docs/API-REFERENCE.md
+          if git diff --cached --quiet; then
+            echo 'nothing to publish — feed and demo already in sync'
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m 'chore(whats-new): sync PR release feed [skip ci]'
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then break; fi
+            if [ "$attempt" = 3 ]; then echo 'push failed after 3 attempts' >&2; exit 1; fi
+            git fetch origin main
+            git rebase origin/main || { git rebase --abort; exit 1; }
+          done
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "### What's New sync" >> "$GITHUB_STEP_SUMMARY"
+          echo "- event: \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- generated feed committed: \`${{ steps.commit.outputs.changed }}\`" >> "$GITHUB_STEP_SUMMARY"

@@ -2,18 +2,28 @@
 
 **An AI-native Insurance ERP** — term and whole-of-life, critical illness, income protection, endowment, mortgage, medical, motor, travel, home and contents, property, liability, engineering, marine cargo, hull and aviation, group benefits, unit-linked and **takaful** (96 filed varieties across 17 lines) — with a group finance core, an end-to-end fund management engine, and micro-duration cover (daily / pay-as-you-go / start-and-stop).
 
-> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **funds accounting, super funds, data warehouse with rotating PII masking, batch processing, What's New, and the live application theme engine**, **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (941 cases over 75 files) and building — and the fleet simulator (`tools/fleet.mjs`) marks 1138 backlog chunks done in `ledger/runs.jsonl` against *module-level* test evidence (a planning signal, not per-chunk proof of each titled capability) while the remaining 732 critical-path chunks stay honestly open.
+> **Status: the money spine runs, and the sale runs on rails.** The domain core (money, double-entry ledger, NAV and dealing rules, unit-linked engine, micro-duration billing, takaful pools with surplus gates, consent, ingestion, AI governance, **the guided customer lifecycle**), **tenant master settings** (country, calendar, currencies, field renaming, the product factory as an editable grid, the rating tables by age/gender/occupation/sum assured, the omni-channel with partners, commission and clawback), **funds accounting, super funds, data warehouse with rotating PII masking, batch processing, What's New (auto-published from PRs), and the live application theme engine**, **the AI guide on every section**, the API server and the operator console are implemented, typechecked, tested (1,055 cases over 88 files) and building — and the fleet simulator (`tools/fleet.mjs`) marks 1138 backlog chunks done in `ledger/runs.jsonl` against *module-level* test evidence (a planning signal, not per-chunk proof of each titled capability) while the remaining 732 critical-path chunks stay honestly open.
 
 ```bash
 npm install
-npm run verify     # typecheck + lint + 941 tests with coverage + build + offline bundle sync
+npm run verify     # typecheck + lint + 1,055 tests with coverage + build + offline bundle sync
 npm run fleet      # work the backlog, one small chunk at a time
 npm start          # serve the console and API on :8787
 npm run tour:doc   # regenerate the guided tour from its data
 npm run docs:api   # regenerate docs/API-REFERENCE.md from the dispatcher (178 endpoints)
 
 # CI is live in .github/workflows/ci.yml (typecheck → lint → coverage → build → artefact sync → fleet).
+npm run whats-new:check   # generated PR release feed must match its committed data file
 ```
+
+## What's New publishes itself
+
+You do **not** write a release note by hand. `.github/workflows/whats-new.yml` files a draft
+("proposed") entry when a PR is opened, ships it with the merge date when the PR merges into
+`main`, removes it if the PR closes unmerged, and commits the regenerated offline demo in the
+same pass. Write a PR title plus `## Why`, `## What changed` and `## What you need to do` in the
+PR body; that text becomes the operator-facing note. Label an internal PR `whats-new:skip`.
+See [`docs/28-AUTOMATIC-WHATS-NEW.md`](docs/28-AUTOMATIC-WHATS-NEW.md).
 
 ## Why this exists
 
@@ -130,9 +140,10 @@ See [`docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md`](docs/16-MULTI-COUNTRY-PROVI
 | [`docs/20-PARTNER-PORTAL.md`](docs/20-PARTNER-PORTAL.md) | Scoped partner applications, underwriting-routing gates, commission reconciliation, service requests, identity and prototype limitations. |
 | [`docs/23-PARTNER-COMMISSION-RECONCILIATION.md`](docs/23-PARTNER-COMMISSION-RECONCILIATION.md) | Insurer-owned reconciliation ADR; financial implementation remains blocked. See the [delivery plan](docs/24-RECONCILIATION-DELIVERY-PLAN.md), [ReconIQ map](docs/25-RECONIQ-INTEGRATION-MAP.md) and inactive [foundation contract and runbook](docs/26-RECONCILIATION-FOUNDATION-CONTRACT.md). |
 | [`docs/12-FUNDS-SUPER-WAREHOUSE-AND-BRANDING.md`](docs/12-FUNDS-SUPER-WAREHOUSE-AND-BRANDING.md) | Country-specific funds accounting, event-to-voucher mappings, super-fund member administration and charges, warehouse datasets/exports/connector recipes, theme scope and omni-channel sub-channels |
-| [`docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md`](docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md) | Batch processing (quotation/illustration/issuance + monthly-anniversary mortality, premium/commission accrual, clawback, fund charges, dividends) with event-based accounting setups and the lapse/withdrawal/surrender stop rule; What's New generated from commits; Snowflake/Excel/Access warehouse connections with breach agreement, fingerprint-only secrets and rotating one-way PII masking; the Application theme tab |
+| [`docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md`](docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md) | Batch processing (quotation/illustration/issuance + monthly-anniversary mortality, premium/commission accrual, clawback, fund charges, dividends) with event-based accounting setups and the lapse/withdrawal/surrender stop rule; What's New generated from commits and published automatically from PRs; Snowflake/Excel/Access warehouse connections with breach agreement, fingerprint-only secrets and rotating one-way PII masking; the Application theme tab |
+| [`docs/28-AUTOMATIC-WHATS-NEW.md`](docs/28-AUTOMATIC-WHATS-NEW.md) | Why and how the What's New feed is published automatically on PR creation and merge into `main`, including the workflow, generator, PR-body conventions, security model and recovery |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The live CI pipeline (typecheck → lint → tests with coverage → build → generated-artefact sync check → a small fleet pass). |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The live CI pipeline (typecheck → lint → tests with coverage → build → generated-artefact / What’s New feed sync checks → a small fleet pass). |
 | [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 259 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
 | [`docs/14-REVIEW-REMEDIATION.md`](docs/14-REVIEW-REMEDIATION.md) | The 2026-10-20 external review: what was fixed, what was consciously deferred, and why. |
 | [`docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md`](docs/15-QUOTATION-EMAIL-AND-ILLUSTRATION.md) | The quotation email that actually leaves the building (Gmail API OAuth2, honest failure, `npm run mail:smoke`), and the benefit illustration: three filed return scenarios, the customer's own benefit and payment terms, and the product / omni-channel / sub-channel cascade |

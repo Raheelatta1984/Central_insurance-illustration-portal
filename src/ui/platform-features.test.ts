@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { buildWorld, worldSnapshot } from '../core/demo.js';
+import { draftFromPullRequest } from '../core/whatsnew.js';
 import { FundsAccountingPanel } from './funds-accounting-views.js';
 import { SuperFundsPanel } from './super-funds-views.js';
 import { WarehousePanel } from './warehouse-views.js';
@@ -71,12 +72,28 @@ describe('expanded operational tabs render from the live world', () => {
     expect(whatsNew.indexOf('Access &amp; DOA and Role access matrix tabs restricted to Administration only')).toBeLessThan(whatsNew.indexOf('Unlocked non-financial partner reconciliation foundation'));
     expect(whatsNew.indexOf('What&#x27;s New publication corrected')).toBeLessThan(whatsNew.indexOf('Partner reconciliation foundation — not yet available'));
     expect(whatsNew).toContain('PR #38');
-    expect(whatsNew).toContain('merging a PR does not automatically add one');
+    expect(whatsNew).toContain('published automatically from pull requests');
     expect(whatsNew).toContain('Snowflake, Excel and Access warehouse connections');
 
     const warehouse = renderToString(h(WarehousePanel, { data, onReload: reload }));
     expect(warehouse).toContain('5. Connections — Snowflake / Excel / Access + PII masking');
     expect(warehouse).toContain('Data warehouse — single tab');
+  });
+
+  it('labels PR-sourced What\u2019s New entries as in review until they merge', () => {
+    const draft = draftFromPullRequest({
+      number: 9001,
+      title: 'feat(whats-new): publish release notes from PRs',
+      body: '## Why\nOperators waited for a manual release note.\n\n## What changed\nThe feed is generated from PRs.',
+      createdAt: '2026-10-27T09:00:00Z',
+      htmlUrl: 'https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/9001',
+    });
+    const proposedData = { ...data, whatsNew: { ...data.whatsNew, entries: [draft, ...data.whatsNew.entries], pending: 1 } };
+    const html = renderToString(h(WhatsNewPanel, { data: proposedData, onReload: reload }));
+    expect(html.match(/in review — not shipped/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html).toContain('open PR #');
+    expect(html).toContain('>9001</a>');
+    expect(html).toContain('https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/9001');
   });
 
   it('renders the three onboarding scopes and a child route under a channel', () => {

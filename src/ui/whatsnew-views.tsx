@@ -40,6 +40,7 @@ export const WhatsNewPanel: React.FC<{ data: WorldSnapshot; onReload: () => Prom
         <div className="pills">
           <span className="pill ok">{feed.entries.length} entries</span>
           <span className="pill info">latest {feed.latestAt ?? '—'}</span>
+          {feed.pending > 0 && <span className="pill warn">{feed.pending} in review — not shipped</span>}
           {feed.categories.map((c) => <span key={c} className={`pill ${TONE[c] ?? 'info'}`}>{c}</span>)}
         </div>
         <div className="row" style={{ marginTop: 8 }}>
@@ -55,9 +56,11 @@ export const WhatsNewPanel: React.FC<{ data: WorldSnapshot; onReload: () => Prom
             <div className="pills">
               <span className={`pill ${TONE[entry.category] ?? 'info'}`}>{entry.category}</span>
               <span className="pill info">{entry.at}</span>
+              {entry.stage === 'proposed' && <span className="pill warn">in review — not shipped</span>}
               <span className="pill info">source: {entry.source}</span>
               <span className="pill info">open: {entry.area}</span>
               <span className={`pill ${entry.risk === 'high' ? 'bad' : entry.risk === 'medium' ? 'warn' : 'ok'}`}>risk: {entry.risk}</span>
+              {entry.url && <a className="pill info" href={entry.url} target="_blank" rel="noreferrer noopener">open PR #{entry.pr}</a>}
             </div>
           </header>
           <div className="stat"><span>Why</span><b className="small" style={{ fontWeight: 400 }}>{entry.why}</b></div>
