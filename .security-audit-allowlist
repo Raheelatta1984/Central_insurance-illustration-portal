@@ -1,0 +1,7 @@
+# Accepted dependency advisories, by GHSA id or CVE, one per line with the reason and a re-check date.
+#
+#   GHSA-xxxx-yyyy-zzzz   # why it is accepted, what is affected, when it is re-checked
+#
+# Nothing is accepted today: `npm audit` reports 0 vulnerabilities for the committed lockfile.
+# An entry here is visible in the diff precisely so that it is argued for, not buried. See
+# tools/security-audit.mjs.

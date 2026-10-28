@@ -3,7 +3,7 @@ import { LabelRegistry } from '../core/labels';
 import { formatAmount, money } from '../core/money';
 import { SERVICE_KINDS } from '../core/partner-portal';
 import type { PartnerPortal, ServiceKind } from '../core/partner-portal';
-import { api } from './api';
+import { api, ApiError, signIn, signOut } from './api';
 import './partner-portal.css';
 
 const registry = new LabelRegistry();
@@ -60,6 +60,7 @@ export function PartnerPortalApp() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
   const [actor, setActor] = useState('demo-agent');
   const [customer, setCustomer] = useState('');
   const [caseId, setCaseId] = useState('');
@@ -89,6 +90,16 @@ export function PartnerPortalApp() {
   const [offset, setOffset] = useState(0);
   const workspaceRequest = useRef(0);
 
+  /**
+   * One place where a failed call becomes an operator-facing message. A 401 means the session is
+   * over (expired, revoked, or never established): show the sign-in form again instead of a console
+   * full of "refused (401)" that the operator cannot act on.
+   */
+  const reportError = useCallback((e: unknown) => {
+    setError(e instanceof Error ? e.message : String(e));
+    if (e instanceof ApiError && e.status === 401) setAccess(null);
+  }, []);
+
   const loadAccess = useCallback(async () => {
     const result = await api<Access>('/partner-portal/access');
     setAccess(result);
@@ -102,8 +113,28 @@ export function PartnerPortalApp() {
     // A slow response for the previous partner/filter must not overwrite the current workspace.
     if (requestId === workspaceRequest.current) setWorkspace(result);
   }, [partnerId, subChannelCode, offset]);
-  useEffect(() => { void loadAccess().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e))); }, [loadAccess]);
-  useEffect(() => { void loadWorkspace().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e))); }, [loadWorkspace]);
+  /**
+   * The token is exchanged for a server-side session and then dropped. It is never written to
+   * `localStorage`/`sessionStorage`, so injected script cannot read it back — it can only *use* the
+   * session, which is exactly what a 401 handler and a revocable cookie are for.
+   */
+  const authenticate = useCallback(async () => {
+    setAuthBusy(true);
+    setError('');
+    try {
+      await signIn(token);
+      setToken('');
+      await loadAccess();
+    } catch (e) {
+      reportError(e);
+    } finally {
+      setAuthBusy(false);
+    }
+  }, [token, loadAccess, reportError]);
+
+
+  useEffect(() => { void loadAccess().catch(reportError); }, [loadAccess, reportError]);
+  useEffect(() => { void loadWorkspace().catch(reportError); }, [loadWorkspace, reportError]);
   const partner = access?.partners.find((p) => p.partnerId === partnerId);
   // A sub-channel-restricted token has no "all routes" option. Pick its first permitted
   // route on initial load as well as on partner changes, so the select and submitted scope agree.
@@ -138,7 +169,7 @@ export function PartnerPortalApp() {
       await loadAccess(); await loadWorkspace();
       setNotice(success);
       return result;
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); return null; }
+    } catch (e) { reportError(e); return null; }
     finally { setBusy(false); }
   }, [by, loadAccess, loadWorkspace]);
   const downloadRevised = async (id: string) => {
@@ -149,7 +180,7 @@ export function PartnerPortalApp() {
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
       const link = document.createElement('a'); link.href = url; link.download = quote.pdf.fileName; link.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) { reportError(e); }
   };
   const openDetails = useCallback(async (id: string) => {
     if (!id) { setDetails(null); return; }
@@ -189,7 +220,7 @@ export function PartnerPortalApp() {
       <a className="pp-brand" href={offline ? '#' : '/'} aria-label={t('back')}><span className="pp-brand-mark">✣</span><span><b>{t('brand')}</b><small>{t('brandSubtitle')}</small></span></a>
       <div className="pp-sidebar-label">{t('workspaceLabel')}</div>
       <nav aria-label={t('workspace')} className="pp-nav">{PAGES.map((item) => <button key={item.id} aria-label={t(item.id)} aria-current={page === item.id ? 'page' : undefined} className={page === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><span className="pp-nav-icon">{item.icon}</span><span>{t(item.id)}</span>{item.id === 'applications' && pending > 0 && <em>{pending}</em>}</button>)}</nav>
-      <div className="pp-sidebar-bottom"><span className="pp-side-dot" /> {t('connected')}<small>{access?.demo ? t('demo') : access?.actor ?? '—'}</small><a href={offline ? '#' : '/'}>← {t('back')}</a></div>
+      <div className="pp-sidebar-bottom"><span className="pp-side-dot" /> {t('connected')}<small>{access?.demo ? t('demo') : access?.actor ?? '—'}</small>{!offline && access && !access.demo && <button className="pp-text" onClick={() => void signOut().then(() => { setAccess(null); setWorkspace(null); }).catch(reportError)}>{t('signOut')}</button>}<a href={offline ? '#' : '/'}>← {t('back')}</a></div>
     </aside>
     <main className="pp-main">
       <header className="pp-topbar"><div><span className="pp-top-kicker">CENTRAL / {t('workspaceLabel')}</span><div className="pp-top-title">{t('workspace')}</div></div><div className="pp-top-actions">{access?.partners.length ? <label className="pp-partner-select"><span>{t('partner')}</span><select aria-label={t('partner')} value={partnerId} onChange={(e) => selectPartner(e.target.value)}>{access.partners.map((p) => <option value={p.partnerId} key={p.partnerId}>{p.name}</option>)}</select></label> : null}<div className="pp-avatar" title={access?.actor ?? ''}>{(partner?.name ?? 'C').slice(0, 1)}</div></div></header>
@@ -197,7 +228,7 @@ export function PartnerPortalApp() {
         {access?.demo && <div className="pp-demo"><b>{t('demo')}</b><span>{t('demoNotice')}</span></div>}
         {error && <div className="pp-message error" role="alert">{error}</div>}
         {notice && <div className="pp-message success" role="status">{notice}</div>}
-        {!access && <div className="pp-auth"><h1>{t('workspace')}</h1><p>{error ? t('error') : t('loading')}</p><Field label={t('token')}><input type="password" value={token} onChange={(e) => setToken(e.target.value)} /></Field><p>{t('tokenHelp')}</p><button onClick={() => { window.sessionStorage.setItem('portal-api-token', token); setError(''); void loadAccess().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e))); }}>{t('saveToken')}</button></div>}
+        {!access && <div className="pp-auth"><h1>{t('workspace')}</h1><p>{error ? t('error') : t('loading')}</p><Field label={t('token')}><input type="password" value={token} onChange={(e) => setToken(e.target.value)} /></Field><p>{t('tokenHelp')}</p><button disabled={authBusy || !token} onClick={() => void authenticate()}>{t('saveToken')}</button></div>}
         {access && !partner && <div className="pp-welcome"><div className="pp-welcome-icon">✣</div><div className="pp-eyebrow">{t('workspaceLabel')}</div><h1>{t('portalTitle')}</h1><p>{t('portalIntro')}</p><div className="pp-empty-setup"><h3>{t('noPartners')}</h3><p>{t('noPartnersHelp')}</p>{access.demo && <button disabled={busy} onClick={() => void perform('/partner-portal/demo/setup', {}, t('sampleCreated'))}>{t('sample')} <span>→</span></button>}<a href={offline ? '#' : '/'}>{t('setup')} ↗</a></div></div>}
         {access && partner && <>
           <div className="pp-breadcrumb">{t('workspace')} <span>/</span> {t(page)}</div>

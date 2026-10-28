@@ -20,9 +20,22 @@
  * Token format for `PORTAL_AUTH_TOKENS`: `token=name:role1,role2;token2=name:role`
  * e.g. `s3cr3t…=alice@insurer:admin;tok…=claims-bot:claims-officer,ai-straight-through`.
  * Tokens are compared by SHA-256 digest with a constant-work comparison.
+ *
+ * **Two ways in, one credential store.**
+ *  - A script, integration or mobile client sends `Authorization: Bearer <token>`. It holds the
+ *    token itself and that is correct: nothing in a browser can read it.
+ *  - A browser exchanges that token **once** at `POST /api/session` for an opaque session id kept
+ *    in an `HttpOnly` cookie (`SESSION_COOKIE`). Injected script can drive the session but can no
+ *    longer read, copy or exfiltrate the credential, and `DELETE /api/session` revokes it
+ *    server-side — a static bearer token cannot be revoked at all.
+ *
+ * The cookie is `__Host-` prefixed whenever it is `Secure` (which requires `Path=/`, no `Domain`),
+ * `SameSite=Lax` rather than `Strict` (the portal is linked from external systems and `Strict`
+ * would drop the session on arrival) — and `Lax` alone is not a CSRF defence, so cookie-authenticated
+ * unsafe methods are additionally Origin/Referer checked in `security.ts`.
  */
 import { IncomingMessage } from 'node:http';
-import { sha256Hex, timingSafeEqualHex } from '../core/hash.js';
+import { randomTokenHex, sha256Hex, timingSafeEqualHex } from '../core/hash.js';
 
 export interface Principal {
   readonly name: string;
@@ -65,18 +78,204 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
   return { enabled: false, principals: new Map() };
 }
 
-/** The principal for this request, or `undefined` when auth is on and no valid token arrived. */
-export function authenticate(config: AuthConfig, req: IncomingMessage): Principal | undefined {
-  if (!config.enabled) return DEMO_PRINCIPAL;
-  const header = req.headers['authorization'];
-  const value = Array.isArray(header) ? header[0] : header;
-  const match = value ? /^Bearer\s+(.+)$/i.exec(value.trim()) : null;
-  if (!match) return undefined;
-  const digest = sha256Hex(match[1]!.trim());
+/**
+ * The principal for this request, or `undefined` when auth is on and no valid credential arrived.
+ *
+ * A session cookie is only consulted when no `authorization` header is present: a caller that says
+ * "here is my bearer token" and gets it wrong must not silently fall through to an ambient cookie.
+ */
+export type AuthVia = 'bearer' | 'cookie' | 'demo';
+
+export interface AuthResult {
+  readonly principal: Principal;
+  /** How this request proved who it is — the CSRF rule applies to `'cookie'` only. */
+  readonly via: AuthVia;
+  /** The presented session id, when one was used; `revoke` needs it. */
+  readonly sessionId?: string;
+}
+
+/** The principal a raw token belongs to, or `undefined`. Used by both credential paths. */
+export function principalForToken(config: AuthConfig, token: string): Principal | undefined {
+  const digest = sha256Hex(token.trim());
   for (const [known, principal] of config.principals) {
     if (timingSafeEqualHex(known, digest)) return principal;
   }
   return undefined;
+}
+
+export function authenticate(
+  config: AuthConfig,
+  req: IncomingMessage,
+  sessions?: SessionStore,
+  env: NodeJS.ProcessEnv = process.env,
+): AuthResult | undefined {
+  if (!config.enabled) return { principal: DEMO_PRINCIPAL, via: 'demo' };
+  const header = req.headers['authorization'];
+  const value = Array.isArray(header) ? header[0] : header;
+  const match = value ? /^Bearer\s+(.+)$/i.exec(value.trim()) : null;
+  if (match) {
+    const principal = principalForToken(config, match[1]!);
+    return principal ? { principal, via: 'bearer' } : undefined;
+  }
+  const sessionId = sessionIdFromRequest(req, env);
+  const principal = sessionId ? sessions?.resolve(sessionId) : undefined;
+  if (!principal || !sessionId) return undefined;
+  return { principal, via: 'cookie', sessionId };
+}
+
+/**
+ * Browser sessions.
+ *
+ * An opaque 256-bit id, never a token the client can forge: the store is the only authority, so an
+ * entry deleted here ends the session everywhere at once. Entries are keyed by the SHA-256 of the
+ * id, so even a dump of this map does not hand over usable cookies.
+ *
+ * In-memory by design, and honest about it: this server already rebuilds the whole demo world on
+ * boot (see `main.ts`). A deployment that runs more than one instance must put this store behind
+ * the same durable/shared backend as the domain state — the interface is the seam for that.
+ */
+export interface SessionStoreOptions {
+  /** How long a browser session stays valid. Long enough for a shift, short enough to bound a stolen cookie. */
+  readonly ttlMs?: number;
+  /** Live sessions held at once; the oldest are dropped first. A cap, not a queue. */
+  readonly maxSessions?: number;
+  readonly now?: () => number;
+}
+
+export const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_MAX_SESSIONS = 500;
+
+export class SessionStore {
+  private readonly sessions = new Map<string, { principal: Principal; expiresAt: number }>();
+  private readonly ttlMs: number;
+  private readonly maxSessions: number;
+  private readonly clock: () => number;
+
+  constructor(options: SessionStoreOptions = {}) {
+    this.ttlMs = options.ttlMs ?? DEFAULT_SESSION_TTL_MS;
+    this.maxSessions = options.maxSessions ?? DEFAULT_MAX_SESSIONS;
+    this.clock = options.now ?? (() => Date.now());
+  }
+
+  get ttlSeconds(): number {
+    return Math.floor(this.ttlMs / 1000);
+  }
+
+  get size(): number {
+    return this.sessions.size;
+  }
+
+  /** Issue a session for an already-authenticated principal. Returns the id to put in the cookie. */
+  issue(principal: Principal): { id: string; expiresAt: number } {
+    const now = this.clock();
+    this.sweep(now);
+    if (this.sessions.size >= this.maxSessions) {
+      // Map iteration is insertion order, so the first key is the oldest live session.
+      const oldest = this.sessions.keys().next();
+      if (!oldest.done) this.sessions.delete(oldest.value);
+    }
+    const id = randomTokenHex(32);
+    const expiresAt = now + this.ttlMs;
+    this.sessions.set(sha256Hex(id), { principal, expiresAt });
+    return { id, expiresAt };
+  }
+
+  resolve(id: string | undefined): Principal | undefined {
+    if (!id) return undefined;
+    const key = sha256Hex(id);
+    const session = this.sessions.get(key);
+    if (!session) return undefined;
+    if (session.expiresAt <= this.clock()) {
+      this.sessions.delete(key);
+      return undefined;
+    }
+    return session.principal;
+  }
+
+  /** End one session now. Returns whether there was one to end. */
+  revoke(id: string | undefined): boolean {
+    return id ? this.sessions.delete(sha256Hex(id)) : false;
+  }
+
+  private sweep(now: number): void {
+    for (const [key, session] of this.sessions) {
+      if (session.expiresAt <= now) this.sessions.delete(key);
+    }
+  }
+}
+
+/**
+ * `__Host-` is a browser-enforced promise: Secure, `Path=/`, and no `Domain`, so a sibling host
+ * cannot set or overwrite it. Plain-HTTP LAN development opts out with `PORTAL_INSECURE_COOKIES=1`
+ * and gets an unprefixed name, because a `__Host-` cookie without `Secure` is silently discarded.
+ */
+export const SESSION_COOKIE = 'portal_session';
+export const HOST_SESSION_COOKIE = '__Host-portal_session';
+
+export function sessionCookieSecure(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env['PORTAL_INSECURE_COOKIES'] !== '1';
+}
+
+export function sessionCookieName(secure: boolean): string {
+  return secure ? HOST_SESSION_COOKIE : SESSION_COOKIE;
+}
+
+export interface SessionCookieOptions {
+  readonly secure: boolean;
+  readonly maxAgeSeconds: number;
+}
+
+/** The `Set-Cookie` value that starts a session. */
+export function sessionCookie(id: string, options: SessionCookieOptions): string {
+  return [
+    `${sessionCookieName(options.secure)}=${id}`,
+    'Path=/',
+    'HttpOnly',
+    ...(options.secure ? ['Secure'] : []),
+    'SameSite=Lax',
+    `Max-Age=${options.maxAgeSeconds}`,
+  ].join('; ');
+}
+
+/** The `Set-Cookie` value that ends one: same name and attributes, no lifetime. */
+export function clearedSessionCookie(secure: boolean): string {
+  return [
+    `${sessionCookieName(secure)}=`,
+    'Path=/',
+    'HttpOnly',
+    ...(secure ? ['Secure'] : []),
+    'SameSite=Lax',
+    'Max-Age=0',
+    'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+  ].join('; ');
+}
+
+export function parseCookies(header: string | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!header) return out;
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 1) continue;
+    const name = part.slice(0, eq).trim();
+    const raw = part.slice(eq + 1).trim();
+    if (!name) continue;
+    try {
+      out.set(name, decodeURIComponent(raw));
+    } catch {
+      out.set(name, raw);
+    }
+  }
+  return out;
+}
+
+/** The session id presented by this request, whichever cookie name this deployment uses. */
+export function sessionIdFromRequest(req: IncomingMessage, env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const header = req.headers['cookie'];
+  const value = Array.isArray(header) ? header[0] : header;
+  const cookies = parseCookies(value);
+  return cookies.get(sessionCookieName(sessionCookieSecure(env)))
+    ?? cookies.get(SESSION_COOKIE)
+    ?? cookies.get(HOST_SESSION_COOKIE);
 }
 
 const CLAIMS_ROLES = [

@@ -95,8 +95,10 @@ try {
  // From the partner-wide filter, a selected policy must carry its real sub-channel into
  // finance and service writes. Intercept just those calls to inspect the outgoing UI payload.
  const finance = await browser.newPage();
- await finance.addInitScript(() => sessionStorage.setItem('portal-api-token', 'finance'));
  await finance.goto(`${base}/partner-portal`,{waitUntil:'networkidle'});
+ // Sign in through the form: the token is exchanged for an HttpOnly session cookie, never stored.
+ await finance.getByLabel(/Access token/i).fill('finance'); await finance.getByRole('button',{name:/use access token/i}).click();
+ await finance.getByLabel('Partner',{exact:true}).waitFor();
  await finance.getByLabel('Partner',{exact:true}).selectOption('DEMO-BROKER');
  await finance.getByRole('button',{name:'Commission',exact:true}).click();
  await finance.getByRole('combobox',{name:/^Policy/}).selectOption('POL-TEST');
@@ -109,8 +111,9 @@ try {
  assert.equal(accrualBody.subChannelCode, 'DEMO-BROKER-DESK');
  await finance.close();
  const service = await browser.newPage();
- await service.addInitScript(() => sessionStorage.setItem('portal-api-token', 'service'));
  await service.goto(`${base}/partner-portal`,{waitUntil:'networkidle'});
+ await service.getByLabel(/Access token/i).fill('service'); await service.getByRole('button',{name:/use access token/i}).click();
+ await service.getByLabel('Partner',{exact:true}).waitFor();
  await service.getByLabel('Partner',{exact:true}).selectOption('DEMO-BROKER');
  await service.getByRole('button',{name:'Service requests',exact:true}).click();
  await service.getByRole('combobox',{name:/^Policy/}).selectOption('POL-TEST');
