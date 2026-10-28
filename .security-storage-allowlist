@@ -1,0 +1,9 @@
+# Credential-shaped keys that are allowed to be read from or written to browser storage.
+#
+# One substring per line; `#` starts a comment. Every line must match a real finding — a stale
+# entry fails the build, because an allowlist nobody prunes is a blindfold. See
+# tools/security-guard.mjs and docs/security/credential-storage-review-2026-10-28.md.
+#
+# EMPTY ON PURPOSE. Nothing in src/ may keep a credential in web storage: the browser's copy of an
+# operator credential lives in an HttpOnly session cookie (src/server/auth.ts) and nowhere else.
+# Non-secret UI state (`portal-active-role`, guide dismissals) is not matched by the guard at all.

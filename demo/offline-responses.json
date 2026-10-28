@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-27T13:57:45.779Z",
+  "capturedAt": "2026-10-28T10:54:09.254Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -6440,7 +6440,8 @@
             "partner.choosePartner": "Choose a partner to continue",
             "partner.saveToken": "Use access token",
             "partner.token": "Access token",
-            "partner.tokenHelp": "For an authenticated deployment, enter the token provided by your administrator. It is stored in this browser session.",
+            "partner.tokenHelp": "For an authenticated deployment, enter the token provided by your administrator. It is exchanged once for a server-side session cookie this page cannot read, and is never kept in browser storage.",
+            "partner.signOut": "Sign out",
             "master.product.id": "Product ID",
             "master.product.name": "Product name",
             "master.product.category": "Category",
@@ -6792,7 +6793,8 @@
             "partner.choosePartner": "Choose a partner to continue",
             "partner.saveToken": "Use access token",
             "partner.token": "Access token",
-            "partner.tokenHelp": "For an authenticated deployment, enter the token provided by your administrator. It is stored in this browser session.",
+            "partner.tokenHelp": "For an authenticated deployment, enter the token provided by your administrator. It is exchanged once for a server-side session cookie this page cannot read, and is never kept in browser storage.",
+            "partner.signOut": "Sign out",
             "master.product.id": "معرّف المنتج",
             "master.product.name": "اسم المنتج",
             "master.product.category": "الفئة",
@@ -7144,7 +7146,8 @@
             "partner.choosePartner": "Choose a partner to continue",
             "partner.saveToken": "Use access token",
             "partner.token": "Access token",
-            "partner.tokenHelp": "For an authenticated deployment, enter the token provided by your administrator. It is stored in this browser session.",
+            "partner.tokenHelp": "For an authenticated deployment, enter the token provided by your administrator. It is exchanged once for a server-side session cookie this page cannot read, and is never kept in browser storage.",
+            "partner.signOut": "Sign out",
             "master.product.id": "Product ID",
             "master.product.name": "Product name",
             "master.product.category": "Category",
@@ -7318,7 +7321,7 @@
           ],
           "coverageAr": {
             "covered": 63,
-            "total": 350,
+            "total": 351,
             "missing": [
               "partner.workspace",
               "partner.openPortal",
@@ -7573,6 +7576,7 @@
               "partner.saveToken",
               "partner.token",
               "partner.tokenHelp",
+              "partner.signOut",
               "distribution.tab.omni",
               "distribution.tab.partner",
               "distribution.tab.subChannel",
@@ -31973,7 +31977,7 @@
                 "facts": [
                   "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                   "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                  "Arabic coverage 63 of 350 default keys; 10 rename(s) on the audit trail."
+                  "Arabic coverage 63 of 351 default keys; 10 rename(s) on the audit trail."
                 ],
                 "tone": "info",
                 "curated": true
@@ -34236,7 +34240,7 @@
             "labels": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
               "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-              "Arabic coverage 63 of 350 default keys; 10 rename(s) on the audit trail."
+              "Arabic coverage 63 of 351 default keys; 10 rename(s) on the audit trail."
             ],
             "durability": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
@@ -66092,7 +66096,7 @@
               "facts": [
                 "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                 "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                "Arabic coverage 63 of 350 default keys; 10 rename(s) on the audit trail."
+                "Arabic coverage 63 of 351 default keys; 10 rename(s) on the audit trail."
               ],
               "tone": "info",
               "curated": true
@@ -68355,7 +68359,7 @@
           "labels": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
             "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-            "Arabic coverage 63 of 350 default keys; 10 rename(s) on the audit trail."
+            "Arabic coverage 63 of 351 default keys; 10 rename(s) on the audit trail."
           ],
           "durability": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",

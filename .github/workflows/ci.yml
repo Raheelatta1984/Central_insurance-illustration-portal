@@ -7,14 +7,18 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with: { node-version: '22', cache: npm }
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: No credentials in web storage (regression guard)
+        run: node tools/security-guard.mjs
+      - name: Dependency audit (fails on high/critical)
+        run: node tools/security-audit.mjs
       - name: Tests with coverage (money proof included)
         run: npm run test:coverage
       - name: Build UI and server
@@ -43,8 +47,8 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with: { node-version: '22', cache: npm }
       - run: npm ci
       - run: npm run build:server

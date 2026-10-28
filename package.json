@@ -23,6 +23,7 @@
     "demo:record:journey": "node tools/offline-record-journey.mjs",
     "demo:site": "node tools/demo-site.mjs",
     "lint": "eslint src",
+    "security:check": "node tools/security-guard.mjs && node tools/security-audit.mjs",
     "test:coverage": "vitest run --coverage",
     "docs:api": "node tools/api-doc.mjs",
     "test:e2e": "node tools/e2e-smoke.mjs",

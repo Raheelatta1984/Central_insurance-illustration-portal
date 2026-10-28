@@ -37,7 +37,11 @@ import { createRuntimeState, dispatchApiRoute, httpStatusForError, RuntimeState 
 import { assertPayloadObject, RequestValidationError } from '../core/validate.js';
 import { randomTokenHex } from '../core/hash.js';
 import { usingDemoVaultSecret } from '../core/pii-masking.js';
-import { AuthConfig, authenticate, authorize, corsOriginFor, loadAuthConfig } from './auth.js';
+import {
+  AuthConfig, authenticate, authorize, clearedSessionCookie, corsOriginFor, loadAuthConfig,
+  principalForToken, sessionCookie, sessionCookieSecure, SessionStore, sessionIdFromRequest,
+} from './auth.js';
+import { originRefusal, securityHeaders } from './security.js';
 import {
   RequestShield, loadRequestGuardConfig, rateLimitClientKey, requestShieldFromConfig,
 } from '../core/requestguard.js';
@@ -69,6 +73,8 @@ export interface PortalServerOptions {
    * `PORTAL_REQUEST_GUARD=off`.
    */
   readonly guard?: RequestShield;
+  /** Browser-session store. Tests inject one; deployments get the default in-memory store. */
+  readonly sessions?: SessionStore;
 }
 
 export function createPortalServer(options: PortalServerOptions = {}): Server {
@@ -81,6 +87,7 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
   const log = options.log ?? ((line: string) => console.error(line));
   const guardConfig = loadRequestGuardConfig(env);
   const guard: RequestShield | undefined = options.guard ?? requestShieldFromConfig(guardConfig, API_ROUTE_KEYS);
+  const sessions: SessionStore = options.sessions ?? new SessionStore();
 
   /**
    * The key a mutating call arrived under, for the length of that call. Every route answers
@@ -92,8 +99,9 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
   function sendBuffer(req: IncomingMessage, res: ServerResponse, status: number, type: string, body: Buffer, extra: Record<string, string> = {}): void {
     const headers: Record<string, string> = {
       'content-type': type,
-      'x-content-type-options': 'nosniff',
-      'referrer-policy': 'strict-origin-when-cross-origin',
+      // One place, every response: CSP, nosniff, referrer policy, framing, permissions, HSTS when
+      // the request actually arrived over TLS. A new route cannot forget them.
+      ...securityHeaders(req, env),
       ...extra,
     };
     let out = body;
@@ -184,6 +192,74 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
     req.resume();
   }
 
+  /**
+   * `POST /api/session` — the one place a credential is allowed to arrive from a form, and the last
+   * time the browser ever holds it. The token is verified exactly as a Bearer token is, then traded
+   * for an opaque id in an `HttpOnly` cookie; the response carries the principal, never the token.
+   *
+   * `DELETE /api/session` — revoke the server-side session *and* clear the cookie with the same
+   * name and attributes. Clearing without revoking would leave a replayable id behind.
+   */
+  async function handleSession(
+    req: IncomingMessage,
+    res: ServerResponse,
+    requestId: string,
+    method: string,
+  ): Promise<void> {
+    const secure = sessionCookieSecure(env);
+    const presented = sessionIdFromRequest(req, env);
+    if (presented) {
+      const refusal = originRefusal(req, env);
+      if (refusal) {
+        discardBody(req);
+        json(req, res, 403, { error: refusal, requestId }, requestId);
+        return;
+      }
+    }
+    if (method === 'DELETE') {
+      const revoked = presented ? sessions.revoke(presented) : false;
+      res.setHeader('set-cookie', clearedSessionCookie(secure));
+      json(req, res, 200, { signedOut: revoked, ...(auth.enabled ? {} : { demo: true }) }, requestId);
+      return;
+    }
+    if (!auth.enabled) {
+      discardBody(req);
+      json(req, res, 400, {
+        error: 'this server runs in open demo mode — there is no token to exchange for a session',
+        requestId,
+      }, requestId);
+      return;
+    }
+    const body = await readBody(req); // throws HttpError(413)
+    let token = '';
+    if (body.trim() !== '') {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        throw new RequestValidationError('request body is not valid JSON');
+      }
+      assertPayloadObject(parsed);
+      const claimed = (parsed as Record<string, unknown>)['token'];
+      if (typeof claimed !== 'string' || claimed.trim() === '') {
+        throw new RequestValidationError('a session needs the access token as { "token": "…" }');
+      }
+      token = claimed;
+    }
+    const principal = token ? principalForToken(auth, token) : undefined;
+    if (!principal) {
+      // Deliberately identical for "missing" and "wrong": the answer must not confirm a token.
+      json(req, res, 401, { error: 'that access token is not valid', requestId }, requestId);
+      return;
+    }
+    const session = sessions.issue(principal);
+    res.setHeader('set-cookie', sessionCookie(session.id, { secure, maxAgeSeconds: sessions.ttlSeconds }));
+    json(req, res, 200, {
+      principal: { name: principal.name, roles: principal.roles },
+      expiresAt: new Date(session.expiresAt).toISOString(),
+    }, requestId);
+  }
+
   async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL, requestId: string): Promise<boolean> {
     const path = url.pathname.replace(/^\/api/, '');
     const method = req.method ?? 'GET';
@@ -191,7 +267,8 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
     const publicHealth = method === 'GET' && path === '/health';
     // Authenticated early and cheaply: the principal names the rate-limit bucket, so a flood
     // is counted against whoever is sending it before any body byte is parsed.
-    const principal = publicHealth ? undefined : authenticate(auth, req);
+    const authResult = publicHealth ? undefined : authenticate(auth, req, sessions, env);
+    const principal = authResult?.principal;
 
     // 1) Rate limit — first, cheapest, and the only check an unauthenticated flood ever pays
     // for. Health is exempt: a load balancer probing a throttled process must still learn
@@ -220,12 +297,31 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
       }
     }
 
-    // 2) Authentication, then 3) the Bloom filter + negative cache. Auth still precedes the
+    // 2) Browser sign-in/sign-out. Handled here, in the HTTP layer, so the domain dispatcher, its
+    // route catalogue, the Bloom gate and the generated API reference are untouched by it.
+    if (path === '/session' && (method === 'POST' || method === 'DELETE')) {
+      await handleSession(req, res, requestId, method);
+      return true;
+    }
+
+    // 3) Authentication, then 4) the Bloom filter + negative cache. Auth still precedes the
     // route gate, so an unauthenticated caller cannot use 404-vs-401 as a route oracle.
     if (!publicHealth) {
       if (!principal) {
-        json(req, res, 401, { error: 'authentication required (Authorization: Bearer …)', requestId }, requestId);
+        json(req, res, 401, { error: 'authentication required (sign in for a session, or send Authorization: Bearer …)', requestId }, requestId);
         return true;
+      }
+      // A cookie is attached by the browser automatically, so a state-changing call must prove it
+      // came from this origin. Bearer calls keep their incidental protection: a cross-site caller
+      // cannot set the header without a preflight, and CORS refuses one.
+      if (authResult?.via === 'cookie') {
+        const refusal = originRefusal(req, env);
+        if (refusal) {
+          discardBody(req);
+          res.setHeader('x-request-guard', 'cross-origin');
+          json(req, res, 403, { error: refusal, requestId }, requestId);
+          return true;
+        }
       }
       if (guard) {
         const query = url.searchParams.toString();
@@ -361,7 +457,7 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
       res.writeHead(204, {
         ...(cors ? { 'access-control-allow-origin': cors, 'vary': 'Origin' } : {}),
         'access-control-allow-headers': 'content-type, authorization, idempotency-key',
-        'access-control-allow-methods': 'GET,POST,OPTIONS',
+        'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
         'x-request-id': requestId,
       });
       res.end();
