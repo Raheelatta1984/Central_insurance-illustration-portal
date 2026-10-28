@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-28T10:54:09.254Z",
+  "capturedAt": "2026-10-28T10:58:34.084Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -32081,7 +32081,7 @@
                 "facts": [
                   "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                   "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                  "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+                  "16 filed entries, latest dated 2026-10-28. Each says why, what changed and what you need to do."
                 ],
                 "tone": "info",
                 "curated": true
@@ -34175,7 +34175,7 @@
             "whats-new": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
               "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-              "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+              "16 filed entries, latest dated 2026-10-28. Each says why, what changed and what you need to do."
             ],
             "warehouse": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
@@ -37008,6 +37008,21 @@
         "whatsNew": {
           "entries": [
             {
+              "id": "WN-PR-44",
+              "at": "2026-10-28",
+              "title": "Move browser credentials to a session cookie, add headers and guards",
+              "category": "security",
+              "source": "PR #44 · opened 2026-10-28 · auto-filed",
+              "why": "The console kept an operator's access token in sessionStorage/localStorage and rebuilt an Authorization: Bearer header from it on every call (src/ui/api.ts:19, src/ui/partner-portal.tsx:200). Anything able to run script in the page — one XSS bug, or one compromised front-end dependency in a single 2.2 MB bundle — could read that token and post it anywhere. It is a static value from PORTAL_AUTH_TOKENS with no expiry and no server-side revocation, so a leak is permanent until every token is rotated.",
+              "what": "**Tier A — the credential leaves the browser's reach.** src/server/auth.ts: a SessionStore of opaque 256-bit ids (stored as SHA-256 digests, 12 h TTL, capped) and POST /api/session / DELETE /api/session in src/server/main.ts. The browser exchanges the token **once** for __Host-portal_session=…; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=43200. Sign-out revokes the session server-side *and* clears the cookie with identical attributes. src/ui/api.ts: stops reading the token, purges the legacy key from sessionStorage **and** localStorage once on load, sends credentials: 'same-origin' (never include), and carries the status on ApiError so a 401 returns the operator to the sign-in form instead of a dead console. src/ui/partner-portal.tsx: the token form now signs in; a \"Sign out\" control ends the session. **CSRF, because a cookie is ambient.** SameSite=Lax is not a defence on its own, so every unsafe method on a cookie-authenticated request is also Origin (fallback Referer) checked against the request host and PORTAL_CORS_ORIGIN; Origin: null is refused. The mandatory custom header stays, so Bearer callers keep their incidental preflight protection. Machine clients are unchanged. SameSite=Lax, not Strict: the portal is linked from external systems and Strict would arrive logged out. **Tier B — defence in depth, set in one place.** src/server/security.ts, used by sendBuffer() s…",
+              "whatYouNeedToDo": "In review — not shipped yet. Review the change with your data-protection owner, rotate any affected secret from your secret store, and re-validate the connection before the next sync.",
+              "area": "Access & DOA",
+              "risk": "high",
+              "stage": "proposed",
+              "pr": 44,
+              "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/44"
+            },
+            {
               "id": "WN-PR-42",
               "at": "2026-10-27",
               "title": "Publish release notes automatically from PRs",
@@ -37192,14 +37207,14 @@
             }
           ],
           "categories": [
-            "feature",
             "security",
+            "feature",
             "fix",
             "improvement",
             "data"
           ],
-          "latestAt": "2026-10-27",
-          "pending": 0,
+          "latestAt": "2026-10-28",
+          "pending": 1,
           "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
         },
         "emailConfig": {
@@ -63302,6 +63317,21 @@
       "body": {
         "entries": [
           {
+            "id": "WN-PR-44",
+            "at": "2026-10-28",
+            "title": "Move browser credentials to a session cookie, add headers and guards",
+            "category": "security",
+            "source": "PR #44 · opened 2026-10-28 · auto-filed",
+            "why": "The console kept an operator's access token in sessionStorage/localStorage and rebuilt an Authorization: Bearer header from it on every call (src/ui/api.ts:19, src/ui/partner-portal.tsx:200). Anything able to run script in the page — one XSS bug, or one compromised front-end dependency in a single 2.2 MB bundle — could read that token and post it anywhere. It is a static value from PORTAL_AUTH_TOKENS with no expiry and no server-side revocation, so a leak is permanent until every token is rotated.",
+            "what": "**Tier A — the credential leaves the browser's reach.** src/server/auth.ts: a SessionStore of opaque 256-bit ids (stored as SHA-256 digests, 12 h TTL, capped) and POST /api/session / DELETE /api/session in src/server/main.ts. The browser exchanges the token **once** for __Host-portal_session=…; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=43200. Sign-out revokes the session server-side *and* clears the cookie with identical attributes. src/ui/api.ts: stops reading the token, purges the legacy key from sessionStorage **and** localStorage once on load, sends credentials: 'same-origin' (never include), and carries the status on ApiError so a 401 returns the operator to the sign-in form instead of a dead console. src/ui/partner-portal.tsx: the token form now signs in; a \"Sign out\" control ends the session. **CSRF, because a cookie is ambient.** SameSite=Lax is not a defence on its own, so every unsafe method on a cookie-authenticated request is also Origin (fallback Referer) checked against the request host and PORTAL_CORS_ORIGIN; Origin: null is refused. The mandatory custom header stays, so Bearer callers keep their incidental preflight protection. Machine clients are unchanged. SameSite=Lax, not Strict: the portal is linked from external systems and Strict would arrive logged out. **Tier B — defence in depth, set in one place.** src/server/security.ts, used by sendBuffer() s…",
+            "whatYouNeedToDo": "In review — not shipped yet. Review the change with your data-protection owner, rotate any affected secret from your secret store, and re-validate the connection before the next sync.",
+            "area": "Access & DOA",
+            "risk": "high",
+            "stage": "proposed",
+            "pr": 44,
+            "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/44"
+          },
+          {
             "id": "WN-PR-42",
             "at": "2026-10-27",
             "title": "Publish release notes automatically from PRs",
@@ -63486,14 +63516,14 @@
           }
         ],
         "categories": [
-          "feature",
           "security",
+          "feature",
           "fix",
           "improvement",
           "data"
         ],
-        "latestAt": "2026-10-27",
-        "pending": 0,
+        "latestAt": "2026-10-28",
+        "pending": 1,
         "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
       }
     },
@@ -66200,7 +66230,7 @@
               "facts": [
                 "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                 "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+                "16 filed entries, latest dated 2026-10-28. Each says why, what changed and what you need to do."
               ],
               "tone": "info",
               "curated": true
@@ -68294,7 +68324,7 @@
           "whats-new": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
             "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-            "15 filed entries, latest dated 2026-10-27. Each says why, what changed and what you need to do."
+            "16 filed entries, latest dated 2026-10-28. Each says why, what changed and what you need to do."
           ],
           "warehouse": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
