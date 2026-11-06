@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-06T07:38:33.300Z",
+  "capturedAt": "2026-11-06T07:48:29.607Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -32434,7 +32434,7 @@
                 "facts": [
                   "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                   "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                  "17 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
+                  "18 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
                 ],
                 "tone": "info",
                 "curated": true
@@ -34625,7 +34625,7 @@
             "whats-new": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
               "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-              "17 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
+              "18 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
             ],
             "warehouse": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
@@ -37458,6 +37458,21 @@
         "whatsNew": {
           "entries": [
             {
+              "id": "WN-PR-48",
+              "at": "2026-11-06",
+              "title": "Financial completion: durable book, demo safety and approval gates (high risk)",
+              "category": "improvement",
+              "source": "PR #48 · opened 2026-11-06 · auto-filed",
+              "why": "PR #46 merged incomplete, high-risk financial groundwork while its What's New entry implied low risk/no action. Issue #47 still has no authorized charge rates, approval provenance, or authoritative legacy distribution source. This PR makes the demo/durable boundary explicit, adds a PostgreSQL-backed financial book with atomic/idempotent commands and approval gates, and corrects the shipped What's New record. It does **not** approve live financial use.",
+              "what": "Demo safety: financial demo POSTs require Idempotency-Key; listed demo financial mutations run through an order-preserving snapshot/rollback wrapper; authenticated legacy financial mutations are refused unless PORTAL_ALLOW_DEMO=1 is explicit; batch output is labelled simulated-posted with no voucher reference. Durable financial book: private PostgreSQL schema, checksummed explicit migrations, empty-book init, singleton row-lock unit of work, append-only command receipts, replay/key-conflict detection, integrity/reconciliation pre-checks, and pre-commit rollback. /finance/* never falls back to the demo world. Financial service: role gates; provider/source checks before evidence parsing; verified cash before allocation; scoped/effective-dated rules; durable P1 configuration requests with null rates; second-person approval (self-approval refused); monthly catch-up scheduler with versioned keys; read-only statement/reconciliation/configuration views; round-up provider-token gates. Policy/statement correctness: distribution validation/evidence helpers, structured new policy IDs without rewriting existing IDs, inception-to-current fund history with missing NAV unavailable, and separately recorded recommendations displayed for 5 seconds. Evidence/ops: docs/30-FINANCIAL-COMPLETION-CONTRACT.md, reports/FIN-COMPLETION-0001/verification.md, ledger rows, finance migration/init CLIs, and a…",
+              "whatYouNeedToDo": "In review — not shipped yet. **Do not merge or deploy live yet.** This is high-risk money/units/NAV work. Required before merge: (1) independent verifier-agent re-run/report, (2) Raheel Atta (Raheelatta1984) approval of the exact tested commit, and (3) green CI including native financial-postgres. Required before live use: authorized rates/provenance and legacy source records in issue #47, configured payment/card/source adapters and credentials, backup/restore, and operational scheduler qualification. Demo fixtures are synthetic only.",
+              "area": "Overview",
+              "risk": "low",
+              "stage": "proposed",
+              "pr": 48,
+              "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/48"
+            },
+            {
               "id": "WN-PR-46",
               "at": "2026-11-06",
               "title": "Unit-linked statements and round-up demo (work in progress)",
@@ -37679,7 +37694,7 @@
             "data"
           ],
           "latestAt": "2026-11-06",
-          "pending": 1,
+          "pending": 2,
           "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
         },
         "emailConfig": {
@@ -65053,6 +65068,21 @@
       "body": {
         "entries": [
           {
+            "id": "WN-PR-48",
+            "at": "2026-11-06",
+            "title": "Financial completion: durable book, demo safety and approval gates (high risk)",
+            "category": "improvement",
+            "source": "PR #48 · opened 2026-11-06 · auto-filed",
+            "why": "PR #46 merged incomplete, high-risk financial groundwork while its What's New entry implied low risk/no action. Issue #47 still has no authorized charge rates, approval provenance, or authoritative legacy distribution source. This PR makes the demo/durable boundary explicit, adds a PostgreSQL-backed financial book with atomic/idempotent commands and approval gates, and corrects the shipped What's New record. It does **not** approve live financial use.",
+            "what": "Demo safety: financial demo POSTs require Idempotency-Key; listed demo financial mutations run through an order-preserving snapshot/rollback wrapper; authenticated legacy financial mutations are refused unless PORTAL_ALLOW_DEMO=1 is explicit; batch output is labelled simulated-posted with no voucher reference. Durable financial book: private PostgreSQL schema, checksummed explicit migrations, empty-book init, singleton row-lock unit of work, append-only command receipts, replay/key-conflict detection, integrity/reconciliation pre-checks, and pre-commit rollback. /finance/* never falls back to the demo world. Financial service: role gates; provider/source checks before evidence parsing; verified cash before allocation; scoped/effective-dated rules; durable P1 configuration requests with null rates; second-person approval (self-approval refused); monthly catch-up scheduler with versioned keys; read-only statement/reconciliation/configuration views; round-up provider-token gates. Policy/statement correctness: distribution validation/evidence helpers, structured new policy IDs without rewriting existing IDs, inception-to-current fund history with missing NAV unavailable, and separately recorded recommendations displayed for 5 seconds. Evidence/ops: docs/30-FINANCIAL-COMPLETION-CONTRACT.md, reports/FIN-COMPLETION-0001/verification.md, ledger rows, finance migration/init CLIs, and a…",
+            "whatYouNeedToDo": "In review — not shipped yet. **Do not merge or deploy live yet.** This is high-risk money/units/NAV work. Required before merge: (1) independent verifier-agent re-run/report, (2) Raheel Atta (Raheelatta1984) approval of the exact tested commit, and (3) green CI including native financial-postgres. Required before live use: authorized rates/provenance and legacy source records in issue #47, configured payment/card/source adapters and credentials, backup/restore, and operational scheduler qualification. Demo fixtures are synthetic only.",
+            "area": "Overview",
+            "risk": "low",
+            "stage": "proposed",
+            "pr": 48,
+            "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/48"
+          },
+          {
             "id": "WN-PR-46",
             "at": "2026-11-06",
             "title": "Unit-linked statements and round-up demo (work in progress)",
@@ -65274,7 +65304,7 @@
           "data"
         ],
         "latestAt": "2026-11-06",
-        "pending": 1,
+        "pending": 2,
         "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
       }
     },
@@ -68008,7 +68038,7 @@
               "facts": [
                 "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                 "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                "17 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
+                "18 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
               ],
               "tone": "info",
               "curated": true
@@ -70199,7 +70229,7 @@
           "whats-new": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
             "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-            "17 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
+            "18 filed entries, latest dated 2026-11-06. Each says why, what changed and what you need to do."
           ],
           "warehouse": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
