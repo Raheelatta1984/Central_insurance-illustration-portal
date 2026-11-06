@@ -3,6 +3,21 @@
   "lastMergedAt": "2026-10-28T11:01:11Z",
   "entries": [
     {
+      "id": "WN-PR-46",
+      "at": "2026-11-06",
+      "title": "Unit-linked statements and round-up demo (work in progress)",
+      "category": "improvement",
+      "source": "PR #46 · opened 2026-11-06 · auto-filed",
+      "why": "This improves day-to-day operation: unit-linked statements and round-up demo (work in progress).",
+      "what": "Unit-linked statements and round-up demo (work in progress). Filed automatically from PR #46; the pull request had no \"What changed\" section, so read the linked PR for the full diff.",
+      "whatYouNeedToDo": "In review — not shipped yet. No action required. Open the named area if you want to see the change in place.",
+      "area": "Overview",
+      "risk": "low",
+      "stage": "proposed",
+      "pr": 46,
+      "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/46"
+    },
+    {
       "id": "WN-PR-44",
       "at": "2026-10-28",
       "title": "Move browser credentials to a session cookie, add headers and guards",
