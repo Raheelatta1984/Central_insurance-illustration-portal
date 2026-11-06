@@ -12,13 +12,13 @@ export const AUTO_WHATS_NEW_ENTRIES: ReadonlyArray<WhatsNewEntry> = [
     "at": "2026-11-06",
     "title": "Render live financial wiring and Pages publishing fix",
     "category": "improvement",
-    "source": "PR #49 · opened 2026-11-06 · auto-filed",
+    "source": "PR #49 · merged 2026-11-06 · auto-filed",
     "why": "This improves day-to-day operation: render live financial wiring and pages publishing fix.",
     "what": "**Render live financial deployment path**: added render.yaml (Node web service + PostgreSQL 16), idempotent finance:bootstrap pre-deploy step, and environment-configured HTTPS payment/card/source adapters wired into the durable financial runtime. **Pages workflow fix**: root cause of the failed Pages runs was actions/configure-pages with enablement: true trying to create a Pages site with a token that can deploy but not create (Resource not accessible by integration). The workflow now preflights the Pages API, removes the forbidden auto-create attempt, assembles via tools/demo-site.mjs, and publishes after pushes/successful What's New runs. If Pages is not enabled yet it warns and skips instead of leaving main red. **CI**: native PostgreSQL job now exercises finance:bootstrap idempotence and environment-mismatch refusal. **Docs/evidence**: docs/31-RENDER-LIVE-OPERATIONS.md, updated financial contract status, reports/FIN-RENDER-0001/verification.md, ledger rows.",
-    "whatYouNeedToDo": "In review — not shipped yet. No action required. Open the named area if you want to see the change in place.",
+    "whatYouNeedToDo": "No action required. Open the named area if you want to see the change in place.",
     "area": "Overview",
     "risk": "high",
-    "stage": "proposed",
+    "stage": "shipped",
     "pr": 49,
     "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/49"
   },
@@ -84,4 +84,4 @@ export const AUTO_WHATS_NEW_ENTRIES: ReadonlyArray<WhatsNewEntry> = [
   }
 ];
 
-export const WHATS_NEW_FEED_WATERMARK = "2026-11-06T09:59:40Z";
+export const WHATS_NEW_FEED_WATERMARK = "2026-11-06T10:39:10Z";
