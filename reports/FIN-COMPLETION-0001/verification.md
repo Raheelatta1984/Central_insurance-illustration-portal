@@ -2,7 +2,7 @@
 
 Contract: `docs/30-FINANCIAL-COMPLETION-CONTRACT.md`
 Risk: **high** (money, units, NAV, charges, sweeps). Named human approver: **Raheel Atta (Raheelatta1984)**.
-Status: **local automated checks and PR CI passed; independent verifier-agent approval and named human approval are NOT yet recorded. Do not merge/deploy live.**
+Status: **local automated checks, PR CI, verifier-role re-run, and owner merge approval recorded. Live deployment/financial operations remain blocked.**
 
 ## Local evidence (implementer re-run)
 
@@ -39,9 +39,13 @@ No local PostgreSQL server was available; PGlite is not a substitute for the nat
 - Missing configuration creates durable P1 request with null rate; approval is separate and cannot be self-approved.
 - Scheduler catch-up/restart posts each due cycle once; blocked cycles retry after rule version bump.
 
-## Outstanding gates
+## Owner approval and verifier-role re-run
 
-1. Independent verifier-agent re-run and report (different role from implementer).
-2. Raheel Atta's approval of the exact tested commit/PR.
-3. Issue #47 authorized rates/provenance and authoritative legacy distribution source before any live configuration/backfill.
-4. Live provider adapters/credentials, backup/restore and operational scheduler qualification before live deployment.
+- Owner approval was given in the Arena session: “Yes please you have ny approval ans no further review required.” It applies to the open PRs; the only open PR was #48. Recorded at https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/48#issuecomment-6682060887.
+- Verifier-role re-run at PR head `39846e05b39c066981863b08306f34e2f44b9e56`: `npm run verify` passed (103 files / 1,129 tests; coverage 84.53% statements / 68.36% branches / 90.12% functions / 88.84% lines); What's New check, security guard, and security audit passed. GitHub checks on that head were green.
+- The owner explicitly requested no further review before merge. This approval authorizes merge only; it does not authorize live financial operations.
+
+## Outstanding live-use gates
+
+1. Issue #47 authorized rates/provenance and authoritative legacy distribution source before any live configuration/backfill.
+2. Live provider adapters/credentials, backup/restore and operational scheduler qualification before live deployment.

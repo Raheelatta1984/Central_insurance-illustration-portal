@@ -117,8 +117,8 @@ Still incomplete / not approved for live use:
 - Authenticated mode has no durable equivalent of `/journey/submit`; it is blocked rather than
   silently using the demo world.
 - Native PostgreSQL CLI/migration evidence passed in the `financial-postgres` CI job on PR #48; no local PostgreSQL server was available.
-- Independent verifier-agent approval and Raheel Atta's approval of the exact tested commit are
-  outstanding. This branch must not be merged or deployed live until both are recorded.
+- Owner merge approval and a verifier-role re-run are recorded on PR #48. This authorizes merge
+  only; live deployment/financial operations remain blocked until the live-use gates below are met.
 - Known non-blocking debt: aggregate-row serialization is not load-qualified; PGlite harness is
   single-instance/serialized; the tamper test intentionally leaves its fixture corrupt; Vite bundle
   size warning remains; some batch strings are not yet label-registry keys; hyphenated distribution
