@@ -83,7 +83,7 @@ describe('http server (demo mode)', () => {
 
   it('maps a domain refusal to 409 with its sentence', async () => {
     const res = await fetch(`${base}/api/claims/settle`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ claimId: 'CLM-NOPE' }),
+      method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': 'domain-refusal-key-1' }, body: JSON.stringify({ claimId: 'CLM-NOPE' }),
     });
     expect([400, 409]).toContain(res.status);
     const body = (await res.json()) as { error: string };
@@ -215,6 +215,7 @@ describe('production guardrails', () => {
     expect(productionRefusals({ NODE_ENV: 'production' }).length).toBeGreaterThan(0);
     expect(productionRefusals({ NODE_ENV: 'production', PORTAL_ALLOW_DEMO: '1' })).toEqual([]);
     expect(productionRefusals({})).toEqual([]);
-    expect(productionRefusals({ NODE_ENV: 'production', PORTAL_API_TOKEN: 't', PII_VAULT_SECRET: 'a-real-secret-from-kms' })).toEqual([]);
+    expect(productionRefusals({ NODE_ENV: 'production', PORTAL_API_TOKEN: 't', PII_VAULT_SECRET: 'a-real-secret-from-kms' })).toEqual(expect.arrayContaining([expect.stringContaining('FINANCE_DATABASE_URL'), expect.stringContaining('FINANCE_APPROVER_NAME')]));
+    expect(productionRefusals({ NODE_ENV: 'production', PORTAL_API_TOKEN: 't', PII_VAULT_SECRET: 'a-real-secret-from-kms', FINANCE_DATABASE_URL: 'postgresql://configured', FINANCE_APPROVER_NAME: 'Raheel Atta' })).toEqual([]);
   });
 });

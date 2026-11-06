@@ -46,10 +46,14 @@ import {
   RequestShield, loadRequestGuardConfig, rateLimitClientKey, requestShieldFromConfig,
 } from '../core/requestguard.js';
 import { API_ROUTE_KEYS } from '../core/route-catalogue.js';
+import { FinancialService } from '../core/financial/service.js';
+import { FinancialError } from '../core/financial/model.js';
+import { createFinancialRuntime } from './financial/runtime.js';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '0.0.0.0';
 const MAX_BODY_BYTES = 5_000_000;
+const LEGACY_DEMO_FINANCIAL_MUTATIONS = new Set(['/policies/create', '/policies/convert', '/policies/premium', '/policies/alter/financial', '/roundup/settings', '/roundup/card', '/roundup/purchase', '/roundup/sweep', '/batch/run', '/batch/setup', '/funds/create', '/funds/market-price', '/funds/instrument', '/funds/lifecycle', '/super-funds/create', '/super-funds/units', '/cover/wallet/topup', '/claims/settle', '/takaful/contribute', '/takaful/distribute', '/journey/submit', '/unit-linked/pay', '/unit-linked/allocations', '/unit-linked/switch', '/unit-linked/deduct', '/unit-linked/settle']);
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -75,6 +79,7 @@ export interface PortalServerOptions {
   readonly guard?: RequestShield;
   /** Browser-session store. Tests inject one; deployments get the default in-memory store. */
   readonly sessions?: SessionStore;
+  readonly financial?: FinancialService;
 }
 
 export function createPortalServer(options: PortalServerOptions = {}): Server {
@@ -88,6 +93,7 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
   const guardConfig = loadRequestGuardConfig(env);
   const guard: RequestShield | undefined = options.guard ?? requestShieldFromConfig(guardConfig, API_ROUTE_KEYS);
   const sessions: SessionStore = options.sessions ?? new SessionStore();
+  const financial = options.financial;
 
   /**
    * The key a mutating call arrived under, for the length of that call. Every route answers
@@ -396,7 +402,7 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
       }
       try {
         const handled = await idempotency.run({ key, request, requestId }, () =>
-          handleApiKeyed(req, res, url, path, payload, requestId, method),
+          handleApiKeyed(req, res, url, path, payload, requestId, method, principal),
         );
         if (!handled) {
           state.keys.abort(key);
@@ -418,7 +424,7 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
         return true;
       }
     }
-    return handleApiKeyed(req, res, url, path, payload, requestId, method);
+    return handleApiKeyed(req, res, url, path, payload, requestId, method, principal);
   }
 
   async function handleApiKeyed(
@@ -429,7 +435,34 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
     payload: Record<string, unknown>,
     requestId: string,
     method: string,
+    principal?: { name: string; roles: readonly string[] },
   ): Promise<boolean> {
+    if (path.startsWith('/finance/')) {
+      if (!financial || !auth.enabled || !principal) {
+        json(req, res, 503, { error: 'durable financial book and authenticated financial roles are required; demo mutations are never accepted here', code: 'FINANCE_UNAVAILABLE', requestId }, requestId);
+        return true;
+      }
+      const keyHeader = req.headers['idempotency-key'];
+      try {
+        const answer = await financial.dispatch(principal, method, path.slice('/finance'.length), url.searchParams, payload, Array.isArray(keyHeader) ? keyHeader[0] : keyHeader);
+        if (answer.replayed) res.setHeader('idempotent-replay', 'true');
+        if (answer.version !== undefined) res.setHeader('x-finance-version', String(answer.version));
+        json(req, res, answer.status, answer.body, requestId);
+      } catch (error) {
+        if (error instanceof FinancialError) json(req, res, error.status, { error: error.message, code: error.code, requestId }, requestId);
+        else { log(`[finance] request ${requestId} failed: ${error instanceof Error ? error.message : String(error)}`); json(req, res, 503, { error: 'financial storage unavailable; retry the same Idempotency-Key to resolve the outcome', code: 'OUTCOME_UNKNOWN', requestId }, requestId); }
+      }
+      return true;
+    }
+    const demoMutationsAllowed = !auth.enabled || env['PORTAL_ALLOW_DEMO'] === '1';
+    if (demoMutationsAllowed && method === 'POST' && LEGACY_DEMO_FINANCIAL_MUTATIONS.has(path) && !req.headers['idempotency-key']) {
+      json(req, res, 400, { error: 'Idempotency-Key is required for demo financial mutations; retries must replay the original request', code: 'IDEMPOTENCY_REQUIRED', requestId }, requestId);
+      return true;
+    }
+    if (auth.enabled && env['PORTAL_ALLOW_DEMO'] !== '1' && method === 'POST' && LEGACY_DEMO_FINANCIAL_MUTATIONS.has(path)) {
+      json(req, res, 403, { error: 'legacy in-memory financial mutation is disabled; use the durable /finance API', code: 'DEMO_MUTATION_DISABLED', requestId }, requestId);
+      return true;
+    }
     const result = await dispatchApiRoute(state, method, path, url.searchParams, payload);
     if (!result.handled) {
       // A Bloom false positive, or a method the path does not take: remember the 404 so the
@@ -480,8 +513,11 @@ export function createPortalServer(options: PortalServerOptions = {}): Server {
 
 /** Production guardrails: no silent demo posture. Returns refusal sentences (empty = safe). */
 export function productionRefusals(env: NodeJS.ProcessEnv = process.env): string[] {
-  if (env['NODE_ENV'] !== 'production' || env['PORTAL_ALLOW_DEMO'] === '1') return [];
+  if (env['NODE_ENV'] !== 'production') return [];
+  if (env['PORTAL_ALLOW_DEMO'] === '1') return []; // explicit demo is permitted, but never described as durable/live
   const refusals: string[] = [];
+  if (!env['FINANCE_DATABASE_URL']?.trim()) refusals.push('FINANCE_DATABASE_URL is required; run the explicit financial migration and initialization before startup');
+  if (!env['FINANCE_APPROVER_NAME']?.trim()) refusals.push('FINANCE_APPROVER_NAME must name the designated human approver');
   if (!loadAuthConfig(env).enabled) {
     refusals.push('authentication is not configured (set PORTAL_AUTH_TOKENS, or PORTAL_ALLOW_DEMO=1 to run the open demo on purpose)');
   }
@@ -507,7 +543,8 @@ if (isMain) {
   }
   const auth = loadAuthConfig();
   const state = createRuntimeState(1, undefined, process.env);
-  const server = createPortalServer({ auth, state });
+  const financialRuntime = await createFinancialRuntime(process.env);
+  const server = createPortalServer({ auth, state, financial: financialRuntime?.service });
   server.listen(PORT, HOST, () => {
     console.log(`Insurance ERP API listening on http://${HOST}:${PORT}`);
     console.log(auth.enabled
@@ -522,11 +559,12 @@ if (isMain) {
     console.log(mail.configured
       ? `Quotation email: LIVE via ${mail.transport} from ${mail.from}.`
       : `Quotation email: NOT DELIVERED (${mail.transport}) — ${mail.reason} Set MAIL_FROM and the GOOGLE_* credentials to send for real.`);
-    console.log('State: in-memory demo world (rebuilt on every boot).');
+    console.log(financialRuntime ? 'Console state: in-memory demo world. Financial API: PostgreSQL durable book (explicitly migrated; no demo fallback).' : 'State: EXPLICIT DEMO ONLY — in-memory, simulated financial mutations; no durable postings.');
+    financialRuntime?.startScheduler();
   });
   const shutdown = (signal: string) => {
     console.log(`${signal} received — closing…`);
-    server.close(() => process.exit(0));
+    server.close(() => { void financialRuntime?.close().finally(() => process.exit(0)); });
     setTimeout(() => process.exit(0), 5_000).unref();
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));

@@ -602,14 +602,14 @@ export function buildUnitLinkedStatement(w: World, policyId: string): UnitLinked
   });
 
   const selectedFunds = funds.filter((fund) => fund.standingTargetBps > 0 || w.unitLinked.unitsOf(policy.policyId, fund.fundId) > 0n);
-  const historyDates = [...new Set(selectedFunds.flatMap((fund) => w.nav.valuationHistory(fund.fundId)
+  const historyDates = [...new Set([policy.commencement, ...selectedFunds.flatMap((fund) => w.nav.valuationHistory(fund.fundId)
     .map((valuation) => valuation.valuationDate)
-    .filter((date) => date >= policy.commencement && date <= valDate)))].sort();
+    .filter((date) => date >= policy.commencement && date <= valDate))])].sort();
   const fundHistory = historyDates.map((date) => ({
     date,
     daysSinceCommencement: Math.floor((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${policy.commencement}T00:00:00Z`)) / 86_400_000),
     funds: selectedFunds.map((fund) => {
-      const units = txns.filter((txn) => txn.fundId === fund.fundId && txn.dealingPoint.valuationDate <= date)
+      const units = txns.filter((txn) => txn.fundId === fund.fundId && txn.instructionAt.slice(0, 10) <= date)
         .reduce((sum, txn) => sum + txn.units, 0n);
       const valuations = w.nav.valuationHistory(fund.fundId).filter((entry) => entry.valuationDate <= date);
       const latestDate = valuations.reduce((latest, entry) => entry.valuationDate > latest ? entry.valuationDate : latest, '');
@@ -617,11 +617,13 @@ export function buildUnitLinkedStatement(w: World, policyId: string): UnitLinked
       return { fundId: fund.fundId, units: unitsToDecimal(units), value: latest ? formatAmount(valueOfUnits(units, latest.pricePerUnit)) : null };
     }),
   }));
-  const recommendedFunds = policy.recommendedWeights?.map((weight) => ({
+  const rec = policy.recommendationRecord;
+  const recordedRecommendation = rec && rec.funds.length > 0 && (rec.funds.length !== (policy.targetWeights?.length ?? 0) || rec.funds.some((r) => !policy.targetWeights?.some((t) => t.fundId === r.fundId && t.weightBps === r.weightBps)));
+  const recommendedFunds = recordedRecommendation ? rec.funds.map((weight) => ({
     fundId: weight.fundId,
     fundName: w.nav.fund(weight.fundId).name,
     weightPct: `${(weight.weightBps / 100).toFixed(2)}%`,
-  })) ?? null;
+  })) : null;
 
   const availableFunds = allCurrencyFunds.map((f) => {
     const latest = w.nav.latestValuation(f.id);

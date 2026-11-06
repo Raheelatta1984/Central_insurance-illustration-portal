@@ -18,6 +18,7 @@ import { Money, add, applyBps, compare, formatAmount, money, parseAmount, scaleO
 import { unitsFromDecimal, unitsToDecimal } from './units.js';
 import { DEFAULT_CALENDAR, FundDef, Instrument, isBusinessDay, nextBusinessDay, singlePriceFund } from './fund.js';
 import { ChargeSchedule, PolicyMeta } from './unitlinked.js';
+import { formatPolicyId, validateDistribution, type PolicyDistribution } from './policy-distribution.js';
 import { TakafulProductConfig } from './takaful.js';
 import { DecisionOutcome, OccupationClass, ProductLine, ProductRules, RiskProfile } from './underwriting.js';
 import { Authority, ClaimCause, RecoveryType } from './claims.js';
@@ -158,10 +159,12 @@ export interface ErpPolicy {
   beneficiary: { name: string; relationship: string; sharePct: number };
   readonly applicationId?: string;
   /** Only populated from an explicitly recorded partner journey; absent means unknown. */
-  distribution?: Readonly<PartnerScope & { sourceJourneyCaseId: string }>;
+  distribution?: Readonly<PolicyDistribution & { sourceJourneyCaseId?: string; demoAttribution?: boolean }>;
   targetWeights?: ReadonlyArray<{ fundId: string; weightBps: number }>;
   /** A separately recorded recommendation, never inferred from the customer's choices. */
   recommendedWeights?: ReadonlyArray<{ fundId: string; weightBps: number }>;
+  /** A separately recorded recommendation artifact; selection alone is never a recommendation. */
+  recommendationRecord?: { readonly recordedBy: string; readonly recordedAt: string; readonly sourceReference: string; readonly funds: ReadonlyArray<{ fundId: string; weightBps: number }> };
   autoRebalanceMonths?: number;
 }
 
@@ -490,6 +493,7 @@ export class ErpManager {
       beneficiary: { name: 'Mariam Al Mansoori', relationship: 'spouse', sharePct: 100 },
       applicationId: 'UW-000001',
       targetWeights: [{ fundId: 'FGLOBAL', weightBps: 7000 }, { fundId: 'FBAL', weightBps: 3000 }],
+      recommendationRecord: { recordedBy: 'demo-adviser', recordedAt: '2026-09-28T10:00:00+04:00', sourceReference: 'SYNTHETIC-DEMO-RECOMMENDATION', funds: [{ fundId: 'FGLOBAL', weightBps: 6000 }, { fundId: 'FBAL', weightBps: 4000 }] },
       autoRebalanceMonths: 6,
     });
     this.policies.set('MTR-0441', {
@@ -1131,6 +1135,7 @@ export class ErpManager {
     targetWeights?: Array<{ fundId: string; weightBps: number }>;
     initialPremium?: string | number;
     initialFundId?: string;
+    distribution?: PolicyDistribution;
     by?: string;
     at?: string;
   }): { policy: ErpPolicy; initialReceipt?: PremiumReceipt } {
@@ -1174,11 +1179,9 @@ export class ErpManager {
       rules: w.underwriting.rulesFor(app.productId),
     };
 
-    const prefix = prod.category === 'unit-linked' ? 'UL'
-      : prod.category === 'takaful' ? 'TK'
-      : prod.category === 'motor-payg' ? 'MTR'
-      : 'POL';
-    const policyId = input.policyId?.trim() || `${prefix}-${String(++this.policySeq).padStart(6, '0')}`;
+    const distribution = validateDistribution(input.distribution ?? partnerCase?.distribution ?? { channelCode: 'DEMO_DIRECT', subChannelCode: 'NA', partnerId: 'NA' });
+    if (distribution.subChannelCode === null || distribution.partnerId === null) throw new ErpError('issuance requires explicit NA or known sub-channel and partner');
+    const policyId = input.policyId?.trim() || formatPolicyId(prod.category.toUpperCase().replace(/-/g, '_'), distribution, BigInt(++this.policySeq));
     if (this.policies.has(policyId)) throw new ErpError(`policy ${policyId} already exists`);
 
     const party = w.parties.get(app.partyId);
@@ -1211,7 +1214,7 @@ export class ErpManager {
         sharePct: 100,
       },
       applicationId: app.id,
-      ...(partnerCase?.distribution ? { distribution: Object.freeze({ ...partnerCase.distribution, sourceJourneyCaseId: partnerCase.caseId }) } : {}),
+      distribution: Object.freeze({ ...distribution, ...(partnerCase ? { sourceJourneyCaseId: partnerCase.caseId } : { demoAttribution: true }) }),
       ...(defaultWeights ? { targetWeights: defaultWeights, autoRebalanceMonths: 6 } : {}),
     };
 
@@ -1303,6 +1306,7 @@ export class ErpManager {
     beneficiaryRelationship?: string;
     initialPremium?: string | number;
     initialFundId?: string;
+    distribution?: PolicyDistribution;
     at?: string;
   }): { policy: ErpPolicy; initialReceipt?: PremiumReceipt } {
     const prod = this.products.get(input.productId);
@@ -1318,11 +1322,9 @@ export class ErpManager {
       ? parseAmount(String(input.annualPremium), 'AED')
       : computedPremium;
 
-    const prefix = prod.category === 'unit-linked' ? 'UL'
-      : prod.category === 'takaful' ? 'TK'
-      : prod.category === 'motor-payg' ? 'MTR'
-      : 'POL';
-    const policyId = input.policyId?.trim() || `${prefix}-${String(++this.policySeq).padStart(6, '0')}`;
+    const distribution = validateDistribution(input.distribution ?? { channelCode: 'DEMO_DIRECT', subChannelCode: 'NA', partnerId: 'NA' });
+    if (distribution.subChannelCode === null || distribution.partnerId === null) throw new ErpError('issuance requires explicit NA or known sub-channel and partner');
+    const policyId = input.policyId?.trim() || formatPolicyId(prod.category.toUpperCase().replace(/-/g, '_'), distribution, BigInt(++this.policySeq));
     if (this.policies.has(policyId)) throw new ErpError(`policy ${policyId} already exists`);
 
     const commencement = (input.at ?? w.asOf).slice(0, 10);
@@ -1351,6 +1353,7 @@ export class ErpManager {
         relationship: input.beneficiaryRelationship?.trim() || 'family',
         sharePct: 100,
       },
+      distribution: Object.freeze({ ...distribution, demoAttribution: true }),
       ...(defaultWeights ? { targetWeights: defaultWeights, autoRebalanceMonths: 6 } : {}),
     };
 

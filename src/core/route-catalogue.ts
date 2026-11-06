@@ -12,6 +12,22 @@
  */
 
 export const API_ROUTE_KEYS: readonly string[] = [
+  'GET /finance/configuration-requests',
+  'GET /finance/policies',
+  'GET /finance/reconciliation',
+  'GET /finance/roundup',
+  'GET /finance/statement',
+  'POST /finance/distribution/backfill',
+  'POST /finance/monthly/run',
+  'POST /finance/nav',
+  'POST /finance/payments',
+  'POST /finance/policies',
+  'POST /finance/roundup/cards',
+  'POST /finance/roundup/events',
+  'POST /finance/roundup/settings',
+  'POST /finance/rules/approve',
+  'POST /finance/rules/propose',
+  'POST /finance/servicing',
   'GET /batch',
   'GET /claims',
   'GET /distribution/config',

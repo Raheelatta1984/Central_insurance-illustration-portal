@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-06T07:38:33.300Z",
+  "capturedAt": "2026-11-06T07:40:25.734Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -37453,7 +37453,8 @@
             "matured",
             "claimed-out"
           ],
-          "rule": "Every event needs a filed debit/credit setup before it can run. A quotation or policy is processed only while alive: lapse, full withdrawal, surrender, maturity, claim-out, expired or declined stops all later batches (reported as skipped-terminal). Clawback is the exception — it targets leavers to recover commission. Re-running a period is safe: job + period + subject is the idempotency key."
+          "simulated": true,
+          "rule": "DEMO SIMULATION ONLY. Every event needs a filed debit/credit setup before it can run. A quotation or policy is processed only while alive: lapse, full withdrawal, surrender, maturity, claim-out, expired or declined stops all later batches (reported as skipped-terminal). Clawback is the exception — it targets leavers to recover commission. Re-running a period is safe: job + period + subject is the idempotency key."
         },
         "whatsNew": {
           "entries": [
@@ -37462,13 +37463,13 @@
               "at": "2026-11-06",
               "title": "Unit-linked statements and round-up demo (work in progress)",
               "category": "improvement",
-              "source": "PR #46 · opened 2026-11-06 · auto-filed",
+              "source": "PR #46 · merged 2026-11-06 · auto-filed",
               "why": "PR #46 was merged while still marked work in progress. Its shipped What's New entry understated the risk and implied no operator action. This correction records what actually shipped and what remains unsafe/incomplete.",
               "what": "Shipped unit-linked statement/history and a time-limited recorded recommendation display, plus simulated round-up settings/preview. These are demo surfaces, not live bank integration or tokenisation. Shipped a calendar-only monthly anniversary calculator and distribution capture/backfill groundwork. The batch remained a simulation; no durable scheduler or postings were shipped. The follow-up financial completion work (durable PostgreSQL book, atomic/idempotent commands, configuration requests/approval, scheduler, provider gates, legacy mutation lockdown) is tracked in the financial completion PR and docs/30-FINANCIAL-COMPLETION-CONTRACT.md. It is not approved for live use by this entry.",
-              "whatYouNeedToDo": "In review — not shipped yet. Treat PR #46 as high-risk, incomplete financial groundwork. Do not enable live payments, round-up collection, batch posting, or charge configuration from it. Use only explicitly identified demo/test fixtures. Read docs/30-FINANCIAL-COMPLETION-CONTRACT.md and issue #47; obtain approved rates/source records, independent verification, and Raheel Atta's approval of the exact tested commit before any live financial use.",
+              "whatYouNeedToDo": "Treat PR #46 as high-risk, incomplete financial groundwork. Do not enable live payments, round-up collection, batch posting, or charge configuration from it. Use only explicitly identified demo/test fixtures. Read docs/30-FINANCIAL-COMPLETION-CONTRACT.md and issue #47; obtain approved rates/source records, independent verification, and Raheel Atta's approval of the exact tested commit before any live financial use.",
               "area": "Overview",
               "risk": "high",
-              "stage": "proposed",
+              "stage": "shipped",
               "pr": 46,
               "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/46"
             },
@@ -37679,7 +37680,7 @@
             "data"
           ],
           "latestAt": "2026-11-06",
-          "pending": 1,
+          "pending": 0,
           "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
         },
         "emailConfig": {
@@ -50294,7 +50295,18 @@
                 "closingValue": "0.00 AED"
               }
             ],
-            "recommendedFunds": null,
+            "recommendedFunds": [
+              {
+                "fundId": "FGLOBAL",
+                "fundName": "Global Growth Fund",
+                "weightPct": "60.00%"
+              },
+              {
+                "fundId": "FBAL",
+                "fundName": "Balanced Income Fund",
+                "weightPct": "40.00%"
+              }
+            ],
             "fundHistory": [
               {
                 "date": "2026-09-29",
@@ -50318,13 +50330,13 @@
                 "funds": [
                   {
                     "fundId": "FGLOBAL",
-                    "units": "108839.947354",
-                    "value": "11,428.87 AED"
+                    "units": "80389.155558",
+                    "value": "8,441.36 AED"
                   },
                   {
                     "fundId": "FBAL",
-                    "units": "108760.391984",
-                    "value": "11,400.00 AED"
+                    "units": "137065.572146",
+                    "value": "14,366.88 AED"
                   }
                 ]
               },
@@ -50334,13 +50346,13 @@
                 "funds": [
                   {
                     "fundId": "FGLOBAL",
-                    "units": "78610.98107",
-                    "value": "8,289.15 AED"
+                    "units": "64452.918572",
+                    "value": "6,796.25 AED"
                   },
                   {
                     "fundId": "FBAL",
-                    "units": "127296.949362",
-                    "value": "13,356.99 AED"
+                    "units": "141437.514387",
+                    "value": "14,840.73 AED"
                   }
                 ]
               },
@@ -65045,7 +65057,8 @@
           "matured",
           "claimed-out"
         ],
-        "rule": "Every event needs a filed debit/credit setup before it can run. A quotation or policy is processed only while alive: lapse, full withdrawal, surrender, maturity, claim-out, expired or declined stops all later batches (reported as skipped-terminal). Clawback is the exception — it targets leavers to recover commission. Re-running a period is safe: job + period + subject is the idempotency key."
+        "simulated": true,
+        "rule": "DEMO SIMULATION ONLY. Every event needs a filed debit/credit setup before it can run. A quotation or policy is processed only while alive: lapse, full withdrawal, surrender, maturity, claim-out, expired or declined stops all later batches (reported as skipped-terminal). Clawback is the exception — it targets leavers to recover commission. Re-running a period is safe: job + period + subject is the idempotency key."
       }
     },
     "GET /api/whats-new": {
@@ -65057,13 +65070,13 @@
             "at": "2026-11-06",
             "title": "Unit-linked statements and round-up demo (work in progress)",
             "category": "improvement",
-            "source": "PR #46 · opened 2026-11-06 · auto-filed",
+            "source": "PR #46 · merged 2026-11-06 · auto-filed",
             "why": "PR #46 was merged while still marked work in progress. Its shipped What's New entry understated the risk and implied no operator action. This correction records what actually shipped and what remains unsafe/incomplete.",
             "what": "Shipped unit-linked statement/history and a time-limited recorded recommendation display, plus simulated round-up settings/preview. These are demo surfaces, not live bank integration or tokenisation. Shipped a calendar-only monthly anniversary calculator and distribution capture/backfill groundwork. The batch remained a simulation; no durable scheduler or postings were shipped. The follow-up financial completion work (durable PostgreSQL book, atomic/idempotent commands, configuration requests/approval, scheduler, provider gates, legacy mutation lockdown) is tracked in the financial completion PR and docs/30-FINANCIAL-COMPLETION-CONTRACT.md. It is not approved for live use by this entry.",
-            "whatYouNeedToDo": "In review — not shipped yet. Treat PR #46 as high-risk, incomplete financial groundwork. Do not enable live payments, round-up collection, batch posting, or charge configuration from it. Use only explicitly identified demo/test fixtures. Read docs/30-FINANCIAL-COMPLETION-CONTRACT.md and issue #47; obtain approved rates/source records, independent verification, and Raheel Atta's approval of the exact tested commit before any live financial use.",
+            "whatYouNeedToDo": "Treat PR #46 as high-risk, incomplete financial groundwork. Do not enable live payments, round-up collection, batch posting, or charge configuration from it. Use only explicitly identified demo/test fixtures. Read docs/30-FINANCIAL-COMPLETION-CONTRACT.md and issue #47; obtain approved rates/source records, independent verification, and Raheel Atta's approval of the exact tested commit before any live financial use.",
             "area": "Overview",
             "risk": "high",
-            "stage": "proposed",
+            "stage": "shipped",
             "pr": 46,
             "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/46"
           },
@@ -65274,7 +65287,7 @@
           "data"
         ],
         "latestAt": "2026-11-06",
-        "pending": 1,
+        "pending": 0,
         "howEntriesAreMade": "Entries are published automatically from pull requests: opening a PR files a proposed entry and merging it into main ships it with the merge date. The PR title, labels, and its Why / What changed / What you need to do sections become the operator note; label an internal PR whats-new:skip to leave it out. Older releases remain in the curated seed. Entries filed using this screen are temporary and do not survive a restart."
       }
     },
@@ -84487,7 +84500,18 @@
               "closingValue": "0.00 AED"
             }
           ],
-          "recommendedFunds": null,
+          "recommendedFunds": [
+            {
+              "fundId": "FGLOBAL",
+              "fundName": "Global Growth Fund",
+              "weightPct": "60.00%"
+            },
+            {
+              "fundId": "FBAL",
+              "fundName": "Balanced Income Fund",
+              "weightPct": "40.00%"
+            }
+          ],
           "fundHistory": [
             {
               "date": "2026-09-29",
@@ -84511,13 +84535,13 @@
               "funds": [
                 {
                   "fundId": "FGLOBAL",
-                  "units": "108839.947354",
-                  "value": "11,428.87 AED"
+                  "units": "80389.155558",
+                  "value": "8,441.36 AED"
                 },
                 {
                   "fundId": "FBAL",
-                  "units": "108760.391984",
-                  "value": "11,400.00 AED"
+                  "units": "137065.572146",
+                  "value": "14,366.88 AED"
                 }
               ]
             },
@@ -84527,13 +84551,13 @@
               "funds": [
                 {
                   "fundId": "FGLOBAL",
-                  "units": "78610.98107",
-                  "value": "8,289.15 AED"
+                  "units": "64452.918572",
+                  "value": "6,796.25 AED"
                 },
                 {
                   "fundId": "FBAL",
-                  "units": "127296.949362",
-                  "value": "13,356.99 AED"
+                  "units": "141437.514387",
+                  "value": "14,840.73 AED"
                 }
               ]
             },
