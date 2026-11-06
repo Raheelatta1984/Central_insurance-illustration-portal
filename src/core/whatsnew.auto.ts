@@ -12,13 +12,13 @@ export const AUTO_WHATS_NEW_ENTRIES: ReadonlyArray<WhatsNewEntry> = [
     "at": "2026-11-06",
     "title": "Unit-linked statements and round-up demo (work in progress)",
     "category": "improvement",
-    "source": "PR #46 · opened 2026-11-06 · auto-filed",
+    "source": "PR #46 · merged 2026-11-06 · auto-filed",
     "why": "This improves day-to-day operation: unit-linked statements and round-up demo (work in progress).",
     "what": "Unit-linked statements and round-up demo (work in progress). Filed automatically from PR #46; the pull request had no \"What changed\" section, so read the linked PR for the full diff.",
-    "whatYouNeedToDo": "In review — not shipped yet. No action required. Open the named area if you want to see the change in place.",
+    "whatYouNeedToDo": "No action required. Open the named area if you want to see the change in place.",
     "area": "Overview",
     "risk": "low",
-    "stage": "proposed",
+    "stage": "shipped",
     "pr": 46,
     "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/46"
   },
@@ -54,4 +54,4 @@ export const AUTO_WHATS_NEW_ENTRIES: ReadonlyArray<WhatsNewEntry> = [
   }
 ];
 
-export const WHATS_NEW_FEED_WATERMARK = "2026-10-28T11:01:11Z";
+export const WHATS_NEW_FEED_WATERMARK = "2026-11-06T04:00:23Z";
