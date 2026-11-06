@@ -34,6 +34,7 @@
     "infra:check": "node tools/dataplane.mjs --check",
     "finance:migrate": "npm run build:server && node tools/financial-migrate.mjs",
     "finance:init": "npm run build:server && node tools/financial-init.mjs",
+    "finance:bootstrap": "npm run build:server && node tools/financial-bootstrap.mjs",
     "recon:migrate": "npm run build:server && node tools/reconciliation-migrate.mjs",
     "test:e2e:whats-new": "node tools/whats-new-e2e.mjs",
     "whats-new:sync": "npm run build:server && node tools/whats-new-sync.mjs",

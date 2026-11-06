@@ -1,10 +1,12 @@
-# Publish the demo to GitHub Pages: a landing page, the offline console (the real application with
-# the engine's recorded answers) and the module gallery. Nothing here needs a server, a port, a
-# tunnel or an access token — a plain HTTPS page a customer can open from any browser.
+# Publish the committed static demo to GitHub Pages.
 #
-# The console and the gallery are built and committed by `npm run demo:pack`, `npm run demo:offline`
-# and `npm run demo:gallery`; this workflow only assembles and publishes them, so what is online is
-# always exactly what the repository holds.
+# GitHub's workflow token can deploy to an existing Pages site, but it cannot create the site.
+# The old `configure-pages: enablement=true` step therefore failed with:
+#   Create Pages site failed: Resource not accessible by integration
+# This workflow now preflights the Pages API. If the site has not been enabled yet it records a
+# warning and skips deployment instead of leaving main permanently red. One-time repository setting:
+#   Settings -> Pages -> Build and deployment -> Source: GitHub Actions
+# After that setting exists, pushes and completed What's New runs publish the same committed demo.
 name: Pages
 
 on:
@@ -12,7 +14,13 @@ on:
     branches: [main]
     paths:
       - 'demo/**'
+      - 'docs/07-TOUR.md'
+      - 'tools/demo-site.mjs'
       - '.github/workflows/pages.yml'
+  workflow_run:
+    workflows: ["What's New"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -26,37 +34,61 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.pages.outputs.enabled }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+
+      - name: Preflight GitHub Pages
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if build_type="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type' 2>/tmp/pages-error)"; then
+            if [ "$build_type" = "workflow" ]; then
+              echo 'enabled=true' >> "$GITHUB_OUTPUT"
+              echo 'GitHub Pages is enabled for GitHub Actions; publishing the committed demo.'
+              exit 0
+            fi
+            hint="GitHub Pages exists but its source is '${build_type}', not GitHub Actions. Set Settings -> Pages -> Source: GitHub Actions."
+          elif grep -q '404' /tmp/pages-error; then
+            hint='GitHub Pages is not enabled yet. Set Settings -> Pages -> Build and deployment -> Source: GitHub Actions, then re-run this workflow.'
+          else
+            cat /tmp/pages-error >&2
+            exit 1
+          fi
+          echo 'enabled=false' >> "$GITHUB_OUTPUT"
+          echo "::warning title=GitHub Pages not enabled::${hint}"
+          printf '%s\n' "$hint" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify the demo files are present
+        if: steps.pages.outputs.enabled == 'true'
         run: |
           set -e
-          for f in demo/site/index.html demo/offline.html demo/index.html; do
+          for f in demo/site/index.html demo/offline.html demo/index.html docs/07-TOUR.md; do
             test -s "$f" || { echo "missing $f — run npm run demo:pack && npm run demo:offline && npm run demo:gallery"; exit 1; }
           done
-          ls -l demo/site/index.html demo/offline.html demo/index.html
 
       - name: Assemble the site
-        run: |
-          mkdir -p _site
-          cp demo/site/index.html _site/index.html
-          cp demo/offline.html _site/console.html
-          cp demo/index.html _site/gallery.html
-          cp docs/07-TOUR.md _site/tour.md
-          du -sh _site
+        if: steps.pages.outputs.enabled == 'true'
+        run: node tools/demo-site.mjs
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
-        with:
-          enablement: true
+        if: steps.pages.outputs.enabled == 'true'
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        if: steps.pages.outputs.enabled == 'true'
         with:
-          path: _site
+          path: site
 
   deploy:
     needs: build
+    if: needs.build.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
