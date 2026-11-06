@@ -17,6 +17,7 @@
  */
 
 import { TOTAL_WEIGHT_BPS } from './allocation.js';
+import { resolveDealingPoint } from './fund.js';
 import { requirePolicyChargeRules } from './policy-charge-rules.js';
 import type { World } from './demo.js';
 import type { ErpPolicy, PaymentFrequency } from './erp.js';
@@ -832,6 +833,40 @@ export function executeUnitLinkedInvestmentPayment(w: World, input: UnitLinkedPa
   const at = input.at ?? `${w.asOf}T10:30:00+04:00`;
   const by = input.by ?? 'policy-servicing';
 
+  let gross: Money;
+  if (input.amount !== undefined && String(input.amount).trim() !== '') {
+    gross = parseAmount(String(input.amount).trim(), policy.currency);
+  } else if (input.paymentKind === 'scheduled-premium') {
+    const freq = input.billingFrequency ?? policy.paymentFrequency;
+    gross = instalmentForFrequency(policy.annualPremium, freq);
+  } else {
+    throw new UnitLinkedStatementError('Amount is required for ad-hoc investment payments');
+  }
+  if (gross.minor <= 0n) {
+    throw new UnitLinkedStatementError('Payment amount must be greater than zero');
+  }
+
+  const rawWeights = input.allocations && input.allocations.length > 0
+    ? input.allocations
+    : (policy.targetWeights && policy.targetWeights.length > 0
+      ? policy.targetWeights
+      : [{ fundId: w.nav.listFunds()[0]?.id ?? 'FBAL', weightBps: 10_000 }]);
+
+  const normalized = normalizeWeights(w, policy.currency, rawWeights);
+  const legs = splitMoneyByWeights(gross, normalized).filter((l) => l.amount.minor > 0n);
+  if (legs.length === 0) {
+    throw new UnitLinkedStatementError('Payment amount is too small to split across selected funds');
+  }
+
+  // Resolve every dealing price before changing policy settings or posting the first leg.
+  // This prevents a missing NAV on a later fund from leaving an earlier leg posted. It is
+  // not a substitute for durable atomicity or idempotency when any later posting fails.
+  for (const leg of legs) {
+    const fund = w.nav.fund(leg.fundId);
+    const dealingPoint = resolveDealingPoint(fund.dealingRule, at, fund.calendar);
+    w.nav.priceAt(leg.fundId, dealingPoint.valuationDate);
+  }
+
   if (input.billingFrequency && input.updatePolicyFrequency) {
     const beforeFreq = policy.paymentFrequency;
     if (beforeFreq !== input.billingFrequency) {
@@ -853,26 +888,6 @@ export function executeUnitLinkedInvestmentPayment(w: World, input: UnitLinkedPa
     }
   }
 
-  let gross: Money;
-  if (input.amount !== undefined && String(input.amount).trim() !== '') {
-    gross = parseAmount(String(input.amount).trim(), policy.currency);
-  } else if (input.paymentKind === 'scheduled-premium') {
-    const freq = input.billingFrequency ?? policy.paymentFrequency;
-    gross = instalmentForFrequency(policy.annualPremium, freq);
-  } else {
-    throw new UnitLinkedStatementError('Amount is required for ad-hoc investment payments');
-  }
-  if (gross.minor <= 0n) {
-    throw new UnitLinkedStatementError('Payment amount must be greater than zero');
-  }
-
-  const rawWeights = input.allocations && input.allocations.length > 0
-    ? input.allocations
-    : (policy.targetWeights && policy.targetWeights.length > 0
-      ? policy.targetWeights
-      : [{ fundId: w.nav.listFunds()[0]?.id ?? 'FBAL', weightBps: 10_000 }]);
-
-  const normalized = normalizeWeights(w, policy.currency, rawWeights);
   if (input.saveAsStandingAllocations) {
     const nextWeights = normalized.map((nw) => ({ fundId: nw.fundId, weightBps: nw.bps }));
     const before = (policy.targetWeights ?? []).map((t) => `${t.fundId}:${(t.weightBps / 100).toFixed(1)}%`).join(', ') || 'none';
@@ -893,11 +908,6 @@ export function executeUnitLinkedInvestmentPayment(w: World, input: UnitLinkedPa
       by,
       reason: 'Saved new allocation percentages during investment payment',
     });
-  }
-
-  const legs = splitMoneyByWeights(gross, normalized).filter((l) => l.amount.minor > 0n);
-  if (legs.length === 0) {
-    throw new UnitLinkedStatementError('Payment amount is too small to split across selected funds');
   }
 
   const createdTxns: UnitTransaction[] = [];
