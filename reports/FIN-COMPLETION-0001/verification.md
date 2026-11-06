@@ -2,7 +2,7 @@
 
 Contract: `docs/30-FINANCIAL-COMPLETION-CONTRACT.md`
 Risk: **high** (money, units, NAV, charges, sweeps). Named human approver: **Raheel Atta (Raheelatta1984)**.
-Status: **local automated checks passed; independent verifier-agent approval and named human approval are NOT yet recorded. Do not merge/deploy live.**
+Status: **local automated checks and PR CI passed; independent verifier-agent approval and named human approval are NOT yet recorded. Do not merge/deploy live.**
 
 ## Local evidence (implementer re-run)
 
@@ -21,7 +21,14 @@ Status: **local automated checks passed; independent verifier-agent approval and
 - `financial-postgres` job: native PostgreSQL 16, explicit `finance:migrate up`, `finance:init`, overwrite refusal, fact-bearing rollback refusal, then native atomicity/replay/reconciliation/service tests.
 - `reconciliation-postgres` job unchanged.
 
-CI results must be linked here once available. No local PostgreSQL server was available; PGlite is not a substitute for the native job.
+CI on code commit `cded8e419683a2b02b9fb3ecab2b1c67e2823cd5` passed:
+
+- verify: https://github.com/Raheelatta1984/Central_insurance-illustration-portal/actions/runs/42183967989/job/127779804112
+- financial-postgres (native PostgreSQL 16, including explicit migration/init CLI refusal steps): https://github.com/Raheelatta1984/Central_insurance-illustration-portal/actions/runs/42183967989/job/127779803757
+- reconciliation-postgres: https://github.com/Raheelatta1984/Central_insurance-illustration-portal/actions/runs/42183967989/job/127779804133
+- What's New sync: https://github.com/Raheelatta1984/Central_insurance-illustration-portal/actions/runs/42183964480
+
+No local PostgreSQL server was available; PGlite is not a substitute for the native job. The native job is the PostgreSQL evidence.
 
 ## Mutation / failure evidence
 

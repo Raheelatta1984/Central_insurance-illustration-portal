@@ -116,7 +116,7 @@ Still incomplete / not approved for live use:
   and source access are approved and configured.
 - Authenticated mode has no durable equivalent of `/journey/submit`; it is blocked rather than
   silently using the demo world.
-- Native PostgreSQL CLI/migration evidence depends on CI; no local PostgreSQL server was available.
+- Native PostgreSQL CLI/migration evidence passed in the `financial-postgres` CI job on PR #48; no local PostgreSQL server was available.
 - Independent verifier-agent approval and Raheel Atta's approval of the exact tested commit are
   outstanding. This branch must not be merged or deployed live until both are recorded.
 - Known non-blocking debt: aggregate-row serialization is not load-qualified; PGlite harness is
