@@ -12,13 +12,13 @@ export const AUTO_WHATS_NEW_ENTRIES: ReadonlyArray<WhatsNewEntry> = [
     "at": "2026-11-06",
     "title": "Financial completion: durable book, demo safety and approval gates (high risk)",
     "category": "improvement",
-    "source": "PR #48 · opened 2026-11-06 · auto-filed",
+    "source": "PR #48 · merged 2026-11-06 · auto-filed",
     "why": "PR #46 merged incomplete, high-risk financial groundwork while its What's New entry implied low risk/no action. Issue #47 still has no authorized charge rates, approval provenance, or authoritative legacy distribution source. This PR makes the demo/durable boundary explicit, adds a PostgreSQL-backed financial book with atomic/idempotent commands and approval gates, and corrects the shipped What's New record. It does **not** approve live financial use.",
     "what": "Demo safety: financial demo POSTs require Idempotency-Key; listed demo financial mutations run through an order-preserving snapshot/rollback wrapper; authenticated legacy financial mutations are refused unless PORTAL_ALLOW_DEMO=1 is explicit; batch output is labelled simulated-posted with no voucher reference. Durable financial book: private PostgreSQL schema, checksummed explicit migrations, empty-book init, singleton row-lock unit of work, append-only command receipts, replay/key-conflict detection, integrity/reconciliation pre-checks, and pre-commit rollback. /finance/* never falls back to the demo world. Financial service: role gates; provider/source checks before evidence parsing; verified cash before allocation; scoped/effective-dated rules; durable P1 configuration requests with null rates; second-person approval (self-approval refused); monthly catch-up scheduler with versioned keys; read-only statement/reconciliation/configuration views; round-up provider-token gates. Policy/statement correctness: distribution validation/evidence helpers, structured new policy IDs without rewriting existing IDs, inception-to-current fund history with missing NAV unavailable, and separately recorded recommendations displayed for 5 seconds. Evidence/ops: docs/30-FINANCIAL-COMPLETION-CONTRACT.md, reports/FIN-COMPLETION-0001/verification.md, ledger rows, finance migration/init CLIs, and a…",
-    "whatYouNeedToDo": "In review — not shipped yet. Owner approval to merge is recorded on this PR. **Do not deploy live or enable live financial operations** until issue #47 authorized rates/provenance and legacy source records, approved provider/source adapters and credentials, backup/restore, and operational scheduler qualification are supplied. Demo fixtures are synthetic only.",
+    "whatYouNeedToDo": "Owner approval to merge is recorded on this PR. **Do not deploy live or enable live financial operations** until issue #47 authorized rates/provenance and legacy source records, approved provider/source adapters and credentials, backup/restore, and operational scheduler qualification are supplied. Demo fixtures are synthetic only.",
     "area": "Overview",
     "risk": "high",
-    "stage": "proposed",
+    "stage": "shipped",
     "pr": 48,
     "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/48"
   },
@@ -69,4 +69,4 @@ export const AUTO_WHATS_NEW_ENTRIES: ReadonlyArray<WhatsNewEntry> = [
   }
 ];
 
-export const WHATS_NEW_FEED_WATERMARK = "2026-11-06T04:00:23Z";
+export const WHATS_NEW_FEED_WATERMARK = "2026-11-06T09:59:40Z";
