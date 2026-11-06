@@ -161,7 +161,7 @@ describe('signed application and fallback review', () => {
     expect(routed.accepted, routed.reason).toBe(true);
     const converted = await call(state, 'POST', '/journey/submit', { caseId, stageId: 'conversion', answers: ANSWERS['conversion'] });
     expect(converted.accepted, converted.reason).toBe(true);
-    expect(converted.detail.policyId).toMatch(/^UL-/);
+    expect(converted.detail.policyId).toMatch(/^UNIT_LINKED-/);
     expect(state.world.erp.getPolicy(converted.detail.policyId)?.distribution).toEqual({ ...scope, sourceJourneyCaseId: caseId });
     expect(state.world.erp.snapshot(state.world).policies.find((p) => p.policyId === converted.detail.policyId)?.distribution).toEqual({ ...scope, sourceJourneyCaseId: caseId });
     expect(state.world.ledger.proof(state.world.conventionalEntity).balanced).toBe(true);

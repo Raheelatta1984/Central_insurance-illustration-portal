@@ -56,3 +56,32 @@ jobs:
         env:
           RECON_TEST_DATABASE_URL: postgresql://postgres:recon_ci_only@127.0.0.1:5432/postgres
         run: npx vitest run src/server/reconciliation/postgres.test.ts --reporter=verbose
+  financial-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: finance_ci_only, POSTGRES_DB: postgres }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - name: Explicit financial migration/init CLIs (empty book; overwrite and fact-bearing rollback refused)
+        env:
+          FINANCE_MIGRATION_DATABASE_URL: postgresql://postgres:finance_ci_only@127.0.0.1:5432/postgres
+          FINANCE_ENVIRONMENT: demo
+        run: |
+          npm run finance:migrate -- up
+          npm run finance:init
+          npm run finance:migrate -- up
+          if npm run finance:init; then echo 'expected overwrite refusal'; exit 1; fi
+          if npm run finance:migrate -- down; then echo 'expected fact-bearing rollback refusal'; exit 1; fi
+      - name: Native PostgreSQL financial atomicity, replay and reconciliation tests
+        env:
+          FINANCE_TEST_DATABASE_URL: postgresql://postgres:finance_ci_only@127.0.0.1:5432/postgres
+        run: npx vitest run src/server/financial/postgres.test.ts src/server/financial/service.test.ts --reporter=verbose

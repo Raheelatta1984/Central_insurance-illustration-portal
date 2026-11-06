@@ -67,6 +67,7 @@ import { PartnerAccessError, PartnerPortalError, SERVICE_KINDS } from './partner
 import type { PartnerScope, PartnerReviewer } from './partner-portal.js';
 import type { IdentityField } from './reconciliation/column-mapping.js';
 import { listUnitLinkedStatements } from './unitlinked-statement.js';
+import { withDemoFinancialTransaction } from './demo-transaction.js';
 
 export interface RuntimeState {
   world: World;
@@ -306,7 +307,14 @@ function distributionInput(payload: Record<string, unknown>): DistributionConfig
   };
 }
 
-export async function dispatchApiRoute(
+const DEMO_FINANCIAL_MUTATIONS = new Set(['/policies/create', '/policies/convert', '/policies/premium', '/policies/alter/financial', '/roundup/settings', '/roundup/card', '/roundup/purchase', '/roundup/sweep', '/journey/submit', '/unit-linked/pay', '/unit-linked/allocations', '/unit-linked/switch', '/unit-linked/deduct', '/unit-linked/settle']);
+/** Demo boundary: financial legs roll back together; this is not durable storage or provider tokenisation. */
+export async function dispatchApiRoute(state: RuntimeState, method: string, path: string, searchParams: URLSearchParams, payload: Record<string, unknown>, onReset?: () => void): Promise<ApiDispatchResult> {
+  if (method === 'POST' && DEMO_FINANCIAL_MUTATIONS.has(path)) return withDemoFinancialTransaction(state.world, () => dispatchApiRouteInner(state, method, path, searchParams, payload, onReset));
+  return dispatchApiRouteInner(state, method, path, searchParams, payload, onReset);
+}
+
+async function dispatchApiRouteInner(
   state: RuntimeState,
   method: string,
   path: string,
@@ -318,6 +326,23 @@ export async function dispatchApiRoute(
   const fail = (status: number, body: unknown): ApiDispatchResult => ({ handled: true, status, body });
 
   switch (`${method} ${path}`) {
+    case 'GET /finance/policies':
+    case 'GET /finance/statement':
+    case 'GET /finance/reconciliation':
+    case 'GET /finance/configuration-requests':
+    case 'GET /finance/roundup':
+    case 'POST /finance/policies':
+    case 'POST /finance/payments':
+    case 'POST /finance/servicing':
+    case 'POST /finance/rules/propose':
+    case 'POST /finance/rules/approve':
+    case 'POST /finance/monthly/run':
+    case 'POST /finance/distribution/backfill':
+    case 'POST /finance/nav':
+    case 'POST /finance/roundup/cards':
+    case 'POST /finance/roundup/settings':
+    case 'POST /finance/roundup/events':
+      return fail(503, { error: 'the durable financial API is served only by the authenticated PostgreSQL server, never the offline demo', code: 'FINANCE_UNAVAILABLE' });
     case 'GET /health':
       return ok({ ok: true, version: state.version, asOf: state.world.asOf, persistence: 'in-memory (demo world, rebuilt on boot)' });
 
@@ -898,6 +923,7 @@ export async function dispatchApiRoute(
         ...(payload['beneficiaryRelationship'] ? { beneficiaryRelationship: String(payload['beneficiaryRelationship']) } : {}),
         ...(payload['initialPremium'] !== undefined ? { initialPremium: String(payload['initialPremium']) } : {}),
         ...(payload['initialFundId'] ? { initialFundId: String(payload['initialFundId']) } : {}),
+        ...(payload['distribution'] ? { distribution: payload['distribution'] as never } : {}),
         ...(payload['at'] ? { at: String(payload['at']) } : {}),
       });
       return ok({

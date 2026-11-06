@@ -78,13 +78,16 @@ export interface BatchLine {
   readonly subjectId: string;
   readonly eventType: BatchEventType;
   readonly period: string;
-  readonly status: 'posted' | 'skipped-terminal' | 'skipped-not-due' | 'duplicate-skipped' | 'failed';
+  readonly status: 'simulated-posted' | 'skipped-terminal' | 'skipped-not-due' | 'duplicate-skipped' | 'failed';
   readonly reason: string;
   readonly amountMinor: string;
   readonly currency: string;
   readonly debitAccount: string;
   readonly creditAccount: string;
   readonly voucherRef: string | null;
+  /** Present only for a demo simulation; never an actual accounting voucher. */
+  readonly simulationRef?: string;
+  readonly simulated?: boolean;
 }
 
 export interface BatchRun {
@@ -100,6 +103,8 @@ export interface BatchRun {
   readonly duplicates: number;
   readonly failed: number;
   readonly totalMinorByCurrency: Readonly<Record<string, string>>;
+  readonly simulated: true;
+  readonly postingNotice: string;
   readonly idempotencyKey: string;
 }
 
@@ -208,18 +213,19 @@ export class BatchRegistry {
       this.processed.add(key);
       const voucherRef = `BVCH-${String(++this.voucherSeq).padStart(7, '0')}`;
       totals.set(subject.currency, (totals.get(subject.currency) ?? 0n) + amount);
-      lines.push({ subjectId: subject.id, eventType: def.eventType, period: input.period, status: 'posted', reason: def.accounting.descriptionTemplate.replace('{{subjectId}}', subject.id).replace('{{period}}', input.period).replace('{{event}}', def.eventType), amountMinor: amount.toString(), currency: subject.currency, debitAccount: def.accounting.debitAccount, creditAccount: def.accounting.creditAccount, voucherRef });
+      lines.push({ subjectId: subject.id, eventType: def.eventType, period: input.period, status: 'simulated-posted', reason: `SIMULATED ONLY — no journal or bank posting. ${def.accounting.descriptionTemplate.replace('{{subjectId}}', subject.id).replace('{{period}}', input.period).replace('{{event}}', def.eventType)}`, amountMinor: amount.toString(), currency: subject.currency, debitAccount: def.accounting.debitAccount, creditAccount: def.accounting.creditAccount, voucherRef: null, simulationRef: voucherRef, simulated: true });
     }
 
     const run: BatchRun = {
       id: `BRUN-${String(++this.runSeq).padStart(6, '0')}`, jobId, eventType: def.eventType, period: input.period, at, by,
       lines,
-      posted: lines.filter((l) => l.status === 'posted').length,
+      posted: lines.filter((l) => l.status === 'simulated-posted').length,
       skipped: lines.filter((l) => l.status === 'skipped-terminal' || l.status === 'skipped-not-due').length,
       duplicates: lines.filter((l) => l.status === 'duplicate-skipped').length,
       failed: lines.filter((l) => l.status === 'failed').length,
       totalMinorByCurrency: Object.fromEntries([...totals.entries()].map(([c, v]) => [c, v.toString()])),
       idempotencyKey: `${jobId}:${input.period}`,
+      simulated: true, postingNotice: 'DEMO SIMULATION — counters and BVCH references are not actual postings; durable financial processing uses /finance/monthly/run.',
     };
     this.runs.push(run);
     return run;
@@ -233,7 +239,8 @@ export class BatchRegistry {
       runs: this.listRuns(),
       subjects,
       terminalStatuses: TERMINAL_SUBJECT_STATUSES,
-      rule: 'Every event needs a filed debit/credit setup before it can run. A quotation or policy is processed only while alive: lapse, full withdrawal, surrender, maturity, claim-out, expired or declined stops all later batches (reported as skipped-terminal). Clawback is the exception — it targets leavers to recover commission. Re-running a period is safe: job + period + subject is the idempotency key.',
+      simulated: true as const,
+      rule: 'DEMO SIMULATION ONLY. Every event needs a filed debit/credit setup before it can run. A quotation or policy is processed only while alive: lapse, full withdrawal, surrender, maturity, claim-out, expired or declined stops all later batches (reported as skipped-terminal). Clawback is the exception — it targets leavers to recover commission. Re-running a period is safe: job + period + subject is the idempotency key.',
     };
   }
 

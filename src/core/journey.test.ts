@@ -406,7 +406,7 @@ describe('the whole sequence, end to end', () => {
     expect(artefacts.quotationId).toMatch(/^QTN-/);
     expect(artefacts.emailMessageId).toMatch(/^MSG-/);
     expect(artefacts.paymentId).toMatch(/^PAY-/);
-    expect(artefacts.policyId).toMatch(/^UL-/);
+    expect(artefacts.policyId).toMatch(/^UNIT_LINKED-/);
 
     const quotation = w.journey.quotations.get(artefacts.quotationId!);
     expect(quotation.pdf.opens).toBe(true);
@@ -499,7 +499,7 @@ describe('money that has not arrived', () => {
     submit(w, caze.caseId, 'routing', answersFor('routing'));
     const converted = submit(w, caze.caseId, 'conversion', answersFor('conversion'));
     expect(converted.accepted, converted.reason).toBe(true);
-    expect(converted.detail['policyId']).toMatch(/^UL-/);
+    expect(String(converted.detail['policyId'])).toMatch(/^UNIT_LINKED-/);
   });
 });
 

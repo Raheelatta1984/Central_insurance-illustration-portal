@@ -36,7 +36,10 @@ describe('batch processing', () => {
     // 9 bps of 1,000,000.00 AED = 900.00 AED = 90000 minor
     expect(line.amountMinor).toBe('90000');
     expect(line.debitAccount).toBe('5100-MORTALITY-CHARGE');
-    expect(line.voucherRef).toMatch(/^BVCH-/);
+    expect(line.voucherRef).toBeNull();
+    expect(line.simulationRef).toMatch(/^BVCH-/);
+    expect(line.simulated).toBe(true);
+    expect(run.postingNotice).toMatch(/not actual postings/);
   });
 
   it('stops all batches at lapse, full withdrawal and surrender — except clawback, which targets leavers', () => {

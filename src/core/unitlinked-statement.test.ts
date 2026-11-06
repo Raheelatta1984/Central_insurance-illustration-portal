@@ -49,7 +49,7 @@ describe('unit-linked statement and allocations', () => {
     expect(world.unitLinked.reproduce('UL-000123').ok).toBe(true);
     const times = statement.lines.map((line) => Date.parse(line.at));
     expect(times).toEqual([...times].sort((a, b) => a - b));
-    expect(statement.recommendedFunds).toBeNull();
+    expect(statement.recommendedFunds).toEqual([{ fundId: 'FGLOBAL', fundName: expect.any(String), weightPct: '60.00%' }, { fundId: 'FBAL', fundName: expect.any(String), weightPct: '40.00%' }]);
     expect(statement.fundHistory[0]).toMatchObject({ date: '2026-09-29', daysSinceCommencement: 0 });
     expect(statement.fundHistory.at(-1)?.funds.map((fund) => fund.fundId).sort()).toEqual(['FBAL', 'FGLOBAL']);
     expect(() => buildUnitLinkedStatement(world, 'MTR-0441')).toThrow();

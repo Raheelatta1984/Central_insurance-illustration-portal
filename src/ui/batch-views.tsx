@@ -36,7 +36,7 @@ export const BatchPanel: React.FC<{ data: WorldSnapshot; onReload: () => Promise
   const runBatch = () => void run('Batch run', async () => {
     const result = await api<{ run: Run }>('/batch/run', 'POST', { eventType, period, by: 'batch-operator' });
     setLastRun(result.run);
-    setNotice(`Batch run ${result.run.id}: ${result.run.posted} posted · ${result.run.skipped} skipped · ${result.run.duplicates} duplicate-skipped · ${result.run.failed} failed. Totals ${JSON.stringify(result.run.totalMinorByCurrency)} (minor units).`);
+    setNotice(`Batch run ${result.run.id}: ${result.run.posted} simulated · ${result.run.skipped} skipped · ${result.run.duplicates} duplicate-skipped · ${result.run.failed} failed. Totals ${JSON.stringify(result.run.totalMinorByCurrency)} (minor units).`);
   });
 
   const saveSetup = () => void run('Event setup saved', () => api('/batch/setup', 'POST', {
@@ -105,14 +105,15 @@ export const BatchPanel: React.FC<{ data: WorldSnapshot; onReload: () => Promise
 
       {lastRun && (
         <section className="card" style={{ gridColumn: '1 / -1' }}>
+          <p className="muted small">{lastRun.postingNotice}</p>
           <h4>Latest run {lastRun.id} — {lastRun.eventType} · {lastRun.period} · by {lastRun.by}</h4>
-          <div className="pills">{pill('ok', `${lastRun.posted} posted`)}{pill('warn', `${lastRun.skipped} skipped`)}{pill('info', `${lastRun.duplicates} duplicate-skipped`)}{pill(lastRun.failed ? 'bad' : 'info', `${lastRun.failed} failed`)}</div>
-          <div className="tableWrap"><table className="gridTable autoFit"><thead><tr><th>Subject</th><th>Status</th><th>Amount (minor)</th><th>Debit</th><th>Credit</th><th>Voucher</th><th>Reason</th></tr></thead><tbody>
+          <div className="pills">{pill('ok', `${lastRun.posted} simulated`)}{pill('warn', `${lastRun.skipped} skipped`)}{pill('info', `${lastRun.duplicates} duplicate-skipped`)}{pill(lastRun.failed ? 'bad' : 'info', `${lastRun.failed} failed`)}</div>
+          <div className="tableWrap"><table className="gridTable autoFit"><thead><tr><th>Subject</th><th>Status</th><th>Amount (minor)</th><th>Debit</th><th>Credit</th><th>Simulation ref (not posted)</th><th>Reason</th></tr></thead><tbody>
             {lastRun.lines.map((l, i) => (
               <tr key={i}><td>{l.subjectId}</td>
-                <td>{l.status === 'posted' ? pill('ok', l.status) : l.status === 'failed' ? pill('bad', l.status) : pill('warn', l.status)}</td>
+                <td>{l.status === 'simulated-posted' ? pill('ok', l.status) : l.status === 'failed' ? pill('bad', l.status) : pill('warn', l.status)}</td>
                 <td>{l.amountMinor} {l.currency}</td><td className="small">{l.debitAccount}</td><td className="small">{l.creditAccount}</td>
-                <td>{l.voucherRef ?? '—'}</td><td className="small muted">{l.reason}</td></tr>
+                <td>{l.simulationRef ?? '—'}</td><td className="small muted">{l.reason}</td></tr>
             ))}
           </tbody></table></div>
         </section>
@@ -120,7 +121,7 @@ export const BatchPanel: React.FC<{ data: WorldSnapshot; onReload: () => Promise
 
       <section className="card" style={{ gridColumn: '1 / -1' }}>
         <h4>Run history</h4>
-        <div className="tableWrap"><table className="gridTable autoFit"><thead><tr><th>Run</th><th>Event</th><th>Period</th><th>Posted</th><th>Skipped</th><th>Duplicates</th><th>Failed</th><th>Totals (minor)</th><th>By</th></tr></thead><tbody>
+        <div className="tableWrap"><table className="gridTable autoFit"><thead><tr><th>Run</th><th>Event</th><th>Period</th><th>Simulated</th><th>Skipped</th><th>Duplicates</th><th>Failed</th><th>Totals (minor)</th><th>By</th></tr></thead><tbody>
           {batch.runs.map((r) => <tr key={r.id}><td><button className="ghost" onClick={() => setLastRun(r)}>{r.id}</button></td><td>{r.eventType}</td><td>{r.period}</td><td>{r.posted}</td><td>{r.skipped}</td><td>{r.duplicates}</td><td>{r.failed}</td><td className="small">{JSON.stringify(r.totalMinorByCurrency)}</td><td>{r.by}</td></tr>)}
           {batch.runs.length === 0 && <tr><td colSpan={9} className="muted">No runs yet — pick an event and period above and run the first batch. Running the same period twice is safe: the second run reports duplicate-skipped.</td></tr>}
         </tbody></table></div>

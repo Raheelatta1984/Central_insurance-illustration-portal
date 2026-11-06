@@ -205,7 +205,7 @@ describe('End-to-End Insurance ERP Management Solution', () => {
     });
     expect(convRes.status).toBe(200);
     const newPolicyId = convRes.body.policyId;
-    expect(newPolicyId).toMatch(/^UL-/);
+    expect(newPolicyId).toMatch(/^UNIT_LINKED-[A-Z0-9_-]+-[A-Z0-9_-]+-[A-Z0-9_-]+-\d{8}$/);
     expect(convRes.body.category).toBe('unit-linked');
     expect(convRes.body.status).toBe('in force');
     expect(convRes.body.initialReceipt?.amount).toBe('10,000.00 AED');
