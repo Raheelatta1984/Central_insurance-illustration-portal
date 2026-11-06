@@ -1,19 +1,19 @@
 {
   "version": 1,
-  "lastMergedAt": "2026-11-06T10:39:10Z",
+  "lastMergedAt": "2026-11-06T11:20:12Z",
   "entries": [
     {
       "id": "WN-PR-50",
       "at": "2026-11-06",
       "title": "Add filtered unit-linked statement movement totals",
       "category": "improvement",
-      "source": "PR #50 · opened 2026-11-06 · auto-filed",
+      "source": "PR #50 · merged 2026-11-06 · auto-filed",
       "why": "This improves day-to-day operation: add filtered unit-linked statement movement totals.",
       "what": "Add filtered unit-linked statement movement totals. Filed automatically from PR #50; the pull request had no \"What changed\" section, so read the linked PR for the full diff.",
-      "whatYouNeedToDo": "In review — not shipped yet. No action required. Open the named area if you want to see the change in place.",
+      "whatYouNeedToDo": "No action required. Open the named area if you want to see the change in place.",
       "area": "Overview",
       "risk": "low",
-      "stage": "proposed",
+      "stage": "shipped",
       "pr": 50,
       "url": "https://github.com/Raheelatta1984/Central_insurance-illustration-portal/pull/50"
     },
