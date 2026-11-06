@@ -111,9 +111,19 @@ export const TAB_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze({
   },
   policyholder: {
     headline: 'Look through the policy into the instruments it holds',
-    body: 'Not just fund accounting: genuine look-through into what each fund owns, with a price and a price date on every exposure, and a transaction log where each movement carries the dealing rule that priced it. The policyholder view is the same data in the customer\u2019s own vocabulary.',
-    doThis: ['Read the fund value and the units per fund, then the penetration table behind them.', 'Scroll the transactions and read the dealing rule under each one.', 'Switch the language to see the same screen in the takaful window\u2019s regulated vocabulary.'],
+    body: 'Not just fund accounting: genuine look-through into what each fund owns, with a price and a price date on every exposure, a dedicated Unit-Linked Investment Statement & Dealing Desk for unit-linked policies, and a transaction log where each movement carries the dealing rule that priced it. The policyholder view is the same data in the customer\u2019s own vocabulary.',
+    doThis: ['Read the fund value and the units per fund, then the penetration table behind them.', 'Open the Unit-Linked Fund Investment Statement & Dealing Desk to trace funds receipt, allocations, COI & admin deductions, unit conversions, switches and settlements.', 'Switch the language to see the same screen in the takaful window\u2019s regulated vocabulary.'],
     watch: 'Market prices are shown for information only and may be delayed; the illustration is an illustration, never a forecast.',
+  },
+  roundup: {
+    headline: 'Everyday debit-card spare change redirected straight into fund units',
+    body: 'Customers attach a debit card under a tokenised SCA mandate (masked PAN + SHA-256 fingerprint, CVV never stored) and pick their preferred round-up step — for example rounding a 4.50 purchase to 5.00 so 0.50 is collected and converted straight into segregated unit-linked fund units.',
+    doThis: [
+      'Attach or inspect a customer debit card and verify that only the masked PAN and fingerprint are stored.',
+      'Configure the round-up figure (nearest 1, 5, 10 or custom whole unit), multiplier, monthly cap and fund allocation weights.',
+      'Record a card purchase or batch feed and watch the spare change convert immediately into 6-decimal units on the policy statement.',
+    ],
+    watch: 'Raw PAN and CVV are never persisted. Spare-change collections post balanced double-entry journals directly into segregated participant fund accounts.',
   },
   decisions: {
     headline: 'Price the decision before the customer takes it',
@@ -427,6 +437,30 @@ export const SECTION_GUIDES: Readonly<Record<string, GuideSeed>> = Object.freeze
   'distribution-subchannels:product-assignment': { headline: 'Sub-products at the desk level', body: 'The most specific row can narrow the product shelf to the varieties a desk, branch, feed or embedded journey actually sells.', doThis: ['Pick the product type and product.', 'Select only the sub-products this desk sells.'], watch: 'A product variety outside the selected line is refused.' },
   'distribution-subchannels:commercial-terms': { headline: 'Sub-channel terms win last', body: 'Pricing, commission and clawback probes resolve this row before partner or channel terms when a sub-channel is supplied.', doThis: ['File commission and premium uplift percentages.', 'State the commission disbursement terms.'], watch: 'The sub-channel commission override, when filed, is the ceiling.' },
   'distribution-subchannels:clawback-rules': { headline: 'Clawback for the narrowest book', body: 'A desk-specific clawback schedule overrides a partner or channel clawback plan for policies attributed to this sub-channel partner.', doThis: ['Choose the trigger and basis.', 'File the recovery schedule percentages.'], watch: 'The same trigger and basis are used by commission and clawback probes.' },
+  'policyholder:unitlinked-statement': {
+    headline: 'Complete unit-linked investment process flow, statement and live dealing',
+    body: 'Exclusively for unit-linked investment policies: traces every dirham and 6-decimal unit from regular (monthly, quarterly, annual), ad-hoc and round-up receipt through entry charge deduction, NAV unit conversion, mortality (COI) and admin unit cancellation, fund switches and withdrawal settlements.',
+    doThis: ['Inspect the 6-stage process flow and chronological unit statement.', 'Execute a scheduled or ad-hoc multi-fund investment, update allocation percentages/amounts, or switch between funds.', 'Run COI/admin unit deductions or a partial withdrawal settlement and verify reproduced unit holdings.'],
+    watch: 'Non-unit-linked policies are strictly excluded from unit-linked dealing and segregated fund statements.',
+  },
+  'roundup:cards': {
+    headline: 'Tokenised customer debit cards — Luhn checked, SHA-256 fingerprinted, CVV never stored',
+    body: 'Attaches customer Visa/Mastercard/Mada/Meeza/UnionPay debit cards under an SCA direct-debit micro-collection mandate linked to a unit-linked policy.',
+    doThis: ['Enter cardholder details, debit card PAN and expiry to attach a tokenised mandate.', 'Pause, resume or revoke an attached card at any time with an audit trail.'],
+    watch: 'Only masked PAN, last-4 digits and a one-way fingerprint are stored; CVV is never accepted or persisted.',
+  },
+  'roundup:settings': {
+    headline: 'Spare-change rounding rules, booster multipliers and fund redirect weights',
+    body: 'Controls how each debit card purchase rounds up (nearest 1, 5, 10, 50, 100 or custom unit), exact-match handling, optional multiplier, monthly cap, immediate vs threshold-sweep redirect and fund split.',
+    doThis: ['Pick the round-up figure and preview how any purchase amount rounds.', 'Choose policy standing fund weights or custom round-up fund allocation percentages and save.'],
+    watch: 'Custom round-up fund weights must sum to 100.00% (10,000 bps) in the policy currency.',
+  },
+  'roundup:feed': {
+    headline: 'Everyday card purchases collected straight into segregated fund units',
+    body: 'Processes single or batch debit-card purchases, collects the spare-change amount on the active mandate and converts it directly into unit-linked fund units with double-entry ledger postings.',
+    doThis: ['Record a purchase (for example 4.50) and inspect the spare change collected and units bought.', 'Follow the journal IDs directly into the Unit-Linked policy statement and Books tab.'],
+    watch: 'Purchases exceeding an active monthly cap are capped or skipped automatically rather than over-collected.',
+  },
 });
 
 /* ------------------------------------------------------------------ composing a note */
@@ -611,7 +645,14 @@ export function worldFacts(w: World): Record<string, string[]> {
       `${w.emailConfig.stats().accounts} sending account(s), ${w.emailConfig.stats().enabledAccounts} enabled, across ${w.emailConfig.stats().departments} department(s).`,
       `${w.emailConfig.stats().events} business events configured; ${w.emailConfig.stats().enabledEvents} resolve to a ready route and ${w.emailConfig.stats().blockedEvents} are blocked.`,
     ],
-    policyholder: [...shared, `${funds.length} funds, each with look-through into the instruments it holds and a price date per exposure.`],
+    policyholder: [...shared, `${funds.length} funds, each with look-through into the instruments it holds and a price date per exposure.`, `${erp.listUnitLinkedPolicies().length} unit-linked policy/policies carry dedicated fund investment statements and dealing controls.`],
+    roundup: (() => {
+      const ru = w.roundUp.snapshot(w).summary;
+      return [
+        ...shared,
+        `${ru.attachedCardsCount} attached debit card(s) (${ru.activeCardsCount} active), ${ru.activeMandatesCount} active spare-change mandate(s) and ${ru.investedEventsCount} round-up collection(s) invested (${ru.totalSpareChangeInvested} -> ${ru.totalUnitsConverted} units).`,
+      ];
+    })(),
     decisions: [...shared, 'Previews are priced by the same engine as live transactions: nothing on this screen has moved money.'],
     cover: [...shared, 'Micro-duration cover charges only between an explicit start and stop; auto-start is off unless it was elected.'],
     funds: [...shared, `${funds.length} funds published; ${funds.filter((f) => f.shariahScreened).length} of them Shariah-screened.`],

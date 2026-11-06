@@ -42,6 +42,8 @@ import { DistributionConfigurationPanel } from './distribution-config-views';
 import { ADMIN_ONLY_TAB_IDS } from '../core/rbac';
 import { DISTRIBUTION_CONFIG_TAB_IDS, type DistributionScopeKind } from '../core/tour';
 import { PartnerPortalApp } from './partner-portal';
+import { UnitLinkedStatementPanel } from './unitlinked-policy-views';
+import { RoundUpPanel } from './roundup-views';
 
 type Tab = ConsoleTab;
 
@@ -193,6 +195,7 @@ function Policyholder({ data, onReload }: { data: WorldSnapshot; onReload: () =>
   return (
     <div className="grid">
       <PolicyAdministrationPanel data={data} onReload={onReload} />
+      <UnitLinkedStatementPanel data={data} />
       <Card title={t('fund.value')} subtitle={`${data.policy.id} · ${t('policy.holder')}: ${data.policy.holderName} · valuation ${data.days[data.days.length - 1]}`} wide>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div className="pills">
@@ -1152,6 +1155,7 @@ function App() {
       case 'distribution-subchannels': return distributionPanel('sub-channel-partner');
       case 'email': return <EmailConfigurationPanel data={data} onReload={load} />;
       case 'policyholder': return <Policyholder data={data} onReload={load} />;
+      case 'roundup': return <RoundUpPanel data={data} onReload={load} readOnly={Boolean(activeSecurityProfile && !activeSecurityProfile.unrestricted && activeSecurityProfile.tabAccess['roundup'] !== 'full')} />;
       case 'decisions': return <Decisions data={data} />;
       case 'cover': return <Cover data={data} onReload={load} />;
       case 'funds': return <Funds data={data} onReload={load} />;

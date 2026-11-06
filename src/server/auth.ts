@@ -315,6 +315,9 @@ export function authorize(
     return null; // operation-specific authority and record scope are checked by the dispatcher
   }
   if (method === 'GET' || method === 'OPTIONS') return null;
+  if (path !== '/roundup/preview' && (path.startsWith('/roundup/') || path.startsWith('/unit-linked/')) && !has(principal, ['supervisor', 'retention-officer', 'retention-manager', 'endorsement-officer', 'endorsement-supervisor'])) {
+    return 'unit-linked servicing requires an authorised servicing role';
+  }
   if (path === '/reset' && !principal.roles.includes('admin') && !principal.roles.includes('administration')) {
     return 'resetting the world requires an admin principal';
   }

@@ -41,6 +41,7 @@ export const CONSOLE_TABS = [
   { id: DISTRIBUTION_CONFIG_TAB_IDS['sub-channel-partner'], label: 'Sub-channel partners', icon: '⑂' },
   { id: 'email', label: 'Email configuration', icon: '✉' },
   { id: 'policyholder', label: 'Policyholder', icon: '◉' },
+  { id: 'roundup', label: 'Card Round-Ups', icon: '◍' },
   { id: 'decisions', label: 'Decision theatre', icon: '⇄' },
   { id: 'cover', label: 'Cover control', icon: '⏻' },
   { id: 'funds', label: 'Funds & NAV', icon: '≣' },
@@ -361,7 +362,7 @@ export const TOUR: TourStep[] = [
     api: ['GET /api/whats-new', 'POST /api/whats-new', 'POST /api/whats-new/from-commits'],
   },
   {
-    at: '00:57', minutes: 2, tab: 'durability', title: 'Prove the books, and the reporting registers, can be restored',
+    at: '00:57', minutes: 1, tab: 'durability', title: 'Prove the books, and the reporting registers, can be restored',
     why: 'A demo that cannot survive a restart is not an ERP. This seals the books into a canonical, fingerprinted snapshot and rebuilds a fresh ledger from that text — and does the same for the reporting registers: the returns, rule decisions, letters and filings are sealed together, replayed into a fresh world and checked one by one, with a hash-chained outbox proving nothing was dropped between snapshots.',
     doThis: [
       'Read the snapshot summary: accounts, journals, size, fingerprint.',
@@ -376,6 +377,20 @@ export const TOUR: TourStep[] = [
       'Every reporting register replays: each return keeps its fingerprint, each rule decision follows again from its own facts, each letter regenerates from its own facts, and each filing carries the answer it got — with the outbox chaining from the beginning.', 'The actions the registers took come back too: the catastrophe recovery is claimed again through the reinsurance register and posts the same journal, and the books return journal for journal, not just to the same totals.',
     ],
     api: ['GET /api/state', 'POST /api/state/drill', 'GET /api/state/registers', 'POST /api/state/registers/drill'],
+  },
+  {
+    at: '00:58', minutes: 1, tab: 'roundup', title: 'Attach a debit card and invest everyday spare change straight into units',
+    why: 'Micro-investing only works when card tokenisation, spare-change rounding rules and segregated unit-linked fund dealing share one auditable pipeline — so a 4.50 purchase rounds to 5.00 and redirects 0.50 straight into fund units.',
+    doThis: [
+      'Inspect the attached customer debit card mandate (masked PAN, SHA-256 fingerprint, CVV never stored).',
+      'Preview or change the round-up figure (nearest 1, 5, 10 or custom step, multiplier, monthly cap and fund weights).',
+      'Record a card purchase (for example 4.50) and inspect the immediate unit conversion on the policy statement.',
+    ],
+    expect: [
+      'A 4.50 purchase with step 1 rounds to 5.00, collects 0.50 spare change and converts straight into 6-decimal fund units.',
+      'Every spare-change collection posts balanced double-entry journals and appears in the Unit-Linked policy statement.',
+    ],
+    api: ['GET /api/roundup', 'POST /api/roundup/cards', 'POST /api/roundup/settings', 'POST /api/roundup/purchase'],
   },
   {
     at: '00:59', minutes: 1, tab: 'overview', title: 'The remainder of the hour: the fabric around the money',

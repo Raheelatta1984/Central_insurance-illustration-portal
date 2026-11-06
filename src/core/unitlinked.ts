@@ -8,7 +8,7 @@
 import { Ledger, posting } from './ledger.js';
 import { Chart } from './chart.js';
 import { Money, add, applyBps, compare, money, multiply, sub, zero, formatAmount } from './money.js';
-import { Price, UNITS_SCALE, unitsForAmount, unitsToRealise, unitsToDecimal, valueOfUnits } from './units.js';
+import { Price, UNITS_SCALE, unitsForAmount, unitsToRealise, unitsToDecimal, priceToDecimal, valueOfUnits } from './units.js';
 import { DealingPoint, NavEngine, resolveDealingPoint } from './fund.js';
 
 export type UnitTxnType =
@@ -31,6 +31,10 @@ export interface UnitTransaction {
   readonly journalIds: readonly string[];
   /** The single instruction id a multi-leg transaction (for example a switch) belongs to. */
   readonly instructionId?: string;
+  /** Investment inflow origin when the movement creates units from customer money. */
+  readonly channel?: 'scheduled-premium' | 'ad-hoc-topup' | 'debit-card-roundup';
+  /** Gross cash received before entry charge deduction, when applicable. */
+  readonly grossAmount?: Money;
   readonly note: string;
 }
 
@@ -146,6 +150,21 @@ export class UnitLinkedEngine {
 
   /* ------------------------------------------------------------ journals */
 
+  private ensureFundLedgerAccounts(entityId: string, fundId: string, currency: string): void {
+    const inv = this.chart.fundInvestments(fundId);
+    if (!this.ledger.hasAccount(inv)) {
+      this.ledger.defineAccount({ id: inv, name: `Fund investments — ${fundId}`, type: 'asset', entityId, fundId, currency });
+    }
+    const part = this.chart.participantLiability(fundId);
+    if (!this.ledger.hasAccount(part)) {
+      this.ledger.defineAccount({ id: part, name: `Participants' funds — ${fundId}`, type: 'liability', entityId, fundId, currency });
+    }
+    const res = this.chart.fundResidual(fundId);
+    if (!this.ledger.hasAccount(res)) {
+      this.ledger.defineAccount({ id: res, name: `Rounding residual — ${fundId}`, type: 'equity', entityId, fundId, currency });
+    }
+  }
+
   private post(id: string, entityId: string, at: string, sourceRef: string, description: string, fundId: string | undefined, lines: Array<{ accountId: string; side: 'debit' | 'credit'; amount: Money; memo?: string }>): string {
     const entry = this.ledger.post({
       id, entityId, at, source: 'unitlinked', sourceRef, description, ...(fundId ? { fundId } : {}),
@@ -160,6 +179,8 @@ export class UnitLinkedEngine {
   payPremium(input: { policyId: string; premium: Money; fundId: string; instructionAt: string; allocationChargeBps?: number }): UnitTransaction {
     const meta = this.policy(input.policyId);
     const fund = this.nav.fund(input.fundId);
+    this.ensureFundHolding(input.policyId, input.fundId);
+    this.ensureFundLedgerAccounts(meta.entityId, input.fundId, fund.currency);
     const dp = resolveDealingPoint(fund.dealingRule, input.instructionAt, fund.calendar);
     const price = this.nav.priceAt(input.fundId, dp.valuationDate);
     const bps = input.allocationChargeBps ?? this.charges.allocationChargeBps;
@@ -191,7 +212,70 @@ export class UnitLinkedEngine {
       id: this.nextId('T'), policyId: input.policyId, type: 'allocation', fundId: input.fundId,
       units, pricePerUnit: price, value, charges: [{ code: 'allocation', amount: charge, basis: `${bps} bps of premium` }],
       instructionAt: at, dealingPoint: dp, journalIds: ids,
+      channel: 'scheduled-premium', grossAmount: input.premium,
       note: `Allocated ${unitsToDecimal(units)} units at ${unitsToDecimal(price.micro)} (${dp.explanation})`,
+    };
+    this.applyTxn(txn);
+    return txn;
+  }
+
+  /**
+   * Allocate an ad-hoc top-up payment or debit-card spare-change round-up into a fund, net of top-up
+   * charge (default `topupChargeBps`, or `0` for fee-free micro-investment round-ups), converting into units.
+   */
+  payTopUp(input: {
+    policyId: string;
+    amount: Money;
+    fundId: string;
+    instructionAt: string;
+    topupChargeBps?: number;
+    channel?: 'ad-hoc-topup' | 'debit-card-roundup';
+    instructionId?: string;
+    notePrefix?: string;
+  }): UnitTransaction {
+    if (input.amount.minor <= 0n) throw new UnitLinkedError('top-up amount must be greater than zero');
+    const meta = this.policy(input.policyId);
+    const fund = this.nav.fund(input.fundId);
+    this.ensureFundHolding(input.policyId, input.fundId);
+    this.ensureFundLedgerAccounts(meta.entityId, input.fundId, fund.currency);
+    const dp = resolveDealingPoint(fund.dealingRule, input.instructionAt, fund.calendar);
+    const price = this.nav.priceAt(input.fundId, dp.valuationDate);
+    const bps = input.topupChargeBps ?? this.charges.topupChargeBps;
+    const charge = applyBps(input.amount, bps);
+    const net = sub(input.amount, charge);
+    const units = unitsForAmount(net, price);
+    const value = valueOfUnits(units, price);
+    const at = input.instructionAt;
+    const entity = meta.entityId;
+    const channel = input.channel ?? 'ad-hoc-topup';
+    const label = channel === 'debit-card-roundup' ? 'Debit-card spare-change round-up' : 'Ad-hoc top-up';
+    const ids = [
+      this.post(this.nextId('J'), entity, at, input.policyId, `${label} received ${formatAmount(input.amount)}`, undefined, [
+        { accountId: this.chart.cash(), side: 'debit', amount: input.amount, memo: `${label.toLowerCase()} received` },
+        { accountId: this.chart.fundClearing(), side: 'credit', amount: input.amount, memo: 'into fund clearing' },
+      ]),
+      this.post(this.nextId('J'), entity, at, input.policyId, `${label} allocation to ${input.fundId} ${formatAmount(net)}`, input.fundId, [
+        { accountId: this.chart.fundClearing(), side: 'debit', amount: net, memo: 'from clearing' },
+        { accountId: this.chart.participantLiability(input.fundId), side: 'credit', amount: net, memo: 'participants funds' },
+      ]),
+      ...(charge.minor > 0n ? [this.post(this.nextId('J'), entity, at, input.policyId, `Top-up charge ${formatAmount(charge)}`, undefined, [
+        { accountId: this.chart.fundClearing(), side: 'debit', amount: charge, memo: 'charge retained' },
+        { accountId: this.chart.feeIncome('topup'), side: 'credit', amount: charge, memo: 'top-up charge' },
+      ])] : []),
+      this.post(this.nextId('J'), entity, at, input.policyId, `Invest ${formatAmount(net)} in ${input.fundId}`, input.fundId, [
+        { accountId: this.chart.fundInvestments(input.fundId), side: 'debit', amount: net, memo: 'fund investments' },
+        { accountId: this.chart.cash(), side: 'credit', amount: net, memo: 'cash invested' },
+      ]),
+    ];
+    const prefix = input.notePrefix ? `${input.notePrefix} — ` : `${label}: `;
+    const txn: UnitTransaction = {
+      id: this.nextId('T'), policyId: input.policyId, type: 'topup', fundId: input.fundId,
+      units, pricePerUnit: price, value,
+      charges: charge.minor > 0n ? [{ code: 'topup', amount: charge, basis: `${bps} bps of ${channel === 'debit-card-roundup' ? 'round-up' : 'top-up'}` }] : [],
+      instructionAt: at, dealingPoint: dp, journalIds: ids,
+      ...(input.instructionId ? { instructionId: input.instructionId } : {}),
+      channel, grossAmount: input.amount,
+      note: `${prefix}converted ${formatAmount(net)} into ${unitsToDecimal(units)} units at ${priceToDecimal(price)} (${dp.explanation})`,
     };
     this.applyTxn(txn);
     return txn;
@@ -239,6 +323,10 @@ export class UnitLinkedEngine {
     if (input.fromFundId === input.toFundId) throw new UnitLinkedError('switch target must differ from source');
     const fromFund = this.nav.fund(input.fromFundId);
     const toFund = this.nav.fund(input.toFundId);
+    this.ensureFundHolding(input.policyId, input.fromFundId);
+    this.ensureFundHolding(input.policyId, input.toFundId);
+    this.ensureFundLedgerAccounts(meta.entityId, input.fromFundId, fromFund.currency);
+    this.ensureFundLedgerAccounts(meta.entityId, input.toFundId, toFund.currency);
     const dpFrom = resolveDealingPoint(fromFund.dealingRule, input.instructionAt, fromFund.calendar);
     const dpTo = resolveDealingPoint(toFund.dealingRule, input.instructionAt, toFund.calendar);
     const priceFrom = this.nav.priceAt(input.fromFundId, dpFrom.valuationDate);
@@ -290,6 +378,33 @@ export class UnitLinkedEngine {
     this.applyTxn(out);
     this.applyTxn(inn);
     return { out, in: inn, instructionId };
+  }
+
+  /** Switch a percentage (in basis points, 1..10,000) of a fund's unit holding into another fund. */
+  switchByPercentage(input: {
+    policyId: string;
+    fromFundId: string;
+    toFundId: string;
+    percentageBps: number;
+    instructionAt: string;
+    switchingFeeBps?: number;
+  }): { out: UnitTransaction; in: UnitTransaction; instructionId: string } {
+    const bps = Math.round(Number(input.percentageBps));
+    if (!Number.isFinite(bps) || bps <= 0 || bps > 10_000) {
+      throw new UnitLinkedError(`switch percentage must be between 1 and 10,000 bps (0.01%–100%), got ${input.percentageBps}`);
+    }
+    const held = this.unitsOf(input.policyId, input.fromFundId);
+    if (held <= 0n) throw new UnitLinkedError(`no units held in ${input.fromFundId} to switch`);
+    const units = bps === 10_000 ? held : (held * BigInt(bps)) / 10_000n;
+    if (units <= 0n) throw new UnitLinkedError('switch percentage resolves to zero units');
+    return this.switchFund({
+      policyId: input.policyId,
+      fromFundId: input.fromFundId,
+      toFundId: input.toFundId,
+      units,
+      instructionAt: input.instructionAt,
+      ...(input.switchingFeeBps !== undefined ? { switchingFeeBps: input.switchingFeeBps } : {}),
+    });
   }
 
   /** Partial withdrawal: units cancelled to realise the requested cash, charges taken, cover impact reported. */

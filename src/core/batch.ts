@@ -124,6 +124,7 @@ export const DEFAULT_BATCH_EVENTS: ReadonlyArray<Omit<BatchEventDefinition, 'id'
 
 function isAnniversaryDue(subject: BatchSubject, period: string): boolean {
   // period is YYYY-MM or YYYY-MM-DD; monthly jobs are due in that month on the anniversary day.
+  if (!Number.isInteger(subject.anniversaryDay) || subject.anniversaryDay < 1 || subject.anniversaryDay > 31) return false;
   const day = period.length > 7 ? Number(period.slice(8, 10)) : subject.anniversaryDay;
   return day === subject.anniversaryDay;
 }
@@ -184,6 +185,10 @@ export class BatchRegistry {
       }
       if (!def.appliesToStatuses.includes(subject.status)) {
         lines.push({ subjectId: subject.id, eventType: def.eventType, period: input.period, status: 'skipped-terminal', reason: `status ${subject.status} is not in the setup's applicable statuses (${def.appliesToStatuses.join(', ')})`, amountMinor: '0', currency: subject.currency, debitAccount: def.accounting.debitAccount, creditAccount: def.accounting.creditAccount, voucherRef: null });
+        continue;
+      }
+      if (def.eventType.startsWith('anniversary-') && !clawbackRun && (!Number.isInteger(subject.anniversaryDay) || subject.anniversaryDay < 1 || subject.anniversaryDay > 31)) {
+        lines.push({ subjectId: subject.id, eventType: def.eventType, period: input.period, status: 'failed', reason: 'policy commencement date is missing or invalid; anniversary cannot be determined', amountMinor: '0', currency: subject.currency, debitAccount: def.accounting.debitAccount, creditAccount: def.accounting.creditAccount, voucherRef: null });
         continue;
       }
       if (def.eventType.startsWith('anniversary-') && !clawbackRun && !isAnniversaryDue(subject, input.period)) {
@@ -258,12 +263,19 @@ export function batchSubjectsFromWorld(erp: { policies: ReadonlyArray<Record<str
     if (s.includes('paid-up') || s.includes('paid up')) return 'paid-up';
     return 'in-force';
   };
-  const subjects: BatchSubject[] = erp.policies.map((p, i) => ({
-    id: String(p['policyId']), kind: 'policy' as const, status: statusOf(String(p['status'])),
-    productId: String(p['productId']), currency: String(p['currency'] ?? 'AED'),
-    basisMinor: parseMinor(p['sumAssured']), anniversaryDay: (i % 28) + 1,
-    fundId: 'FGLOBAL',
-  }));
+  const subjects: BatchSubject[] = erp.policies.map((p) => {
+    // Missing commencement is never replaced by an invented anniversary date.
+    const commencement = String(p['commencement'] ?? '');
+    const match = /^\d{4}-\d{2}-(\d{2})$/.exec(commencement);
+    const parsed = match ? new Date(`${commencement}T00:00:00Z`) : null;
+    const day = parsed && !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === commencement ? Number(match![1]) : 0;
+    return {
+      id: String(p['policyId']), kind: 'policy' as const, status: statusOf(String(p['status'])),
+      productId: String(p['productId']), currency: String(p['currency'] ?? 'AED'),
+      basisMinor: parseMinor(p['sumAssured']), anniversaryDay: day,
+      fundId: 'FGLOBAL',
+    };
+  });
   for (const q of erp.proposals) {
     subjects.push({
       id: `QT-${String(q['applicationId'])}`, kind: 'quotation', status: q['decided'] ? 'quotation-open' : 'quotation-open',

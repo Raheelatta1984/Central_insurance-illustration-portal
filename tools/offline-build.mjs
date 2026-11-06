@@ -29,6 +29,8 @@ if (existsSync(routesServerPath)) {
     '/world',
     '/distribution/config',
     '/reconciliation',
+    '/roundup',
+    '/unit-linked/statements',
     '/security/rbac',
     '/master/age-calculation',
     '/themes',

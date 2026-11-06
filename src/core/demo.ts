@@ -50,6 +50,8 @@ import { SecurityGovernanceRegistry } from './rbac.js';
 import { PartnerPortal } from './partner-portal.js';
 import { ReconciliationFoundationWorkspace } from './reconciliation/workspace.js';
 import { DistributionConfigurationRegistry } from './distribution-configuration.js';
+import { RoundUpRegistry } from './roundup.js';
+import { executeUnitLinkedInvestmentPayment, listUnitLinkedStatements } from './unitlinked-statement.js';
 
 export interface World {
   readonly tenant: { id: string; name: string };
@@ -113,6 +115,8 @@ export interface World {
   readonly reconciliation: ReconciliationFoundationWorkspace;
   /** Channel, partner and sub-channel-partner product shelves and commercial terms. */
   readonly distributionConfig: DistributionConfigurationRegistry;
+  /** Customer debit-card mandates and everyday spare-change round-up micro-investment engine. */
+  readonly roundUp: RoundUpRegistry;
 }
 
 const DAYS = ['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05'];
@@ -790,6 +794,7 @@ export function buildWorld(): World {
   const rbac = new SecurityGovernanceRegistry();
   const reconciliation = new ReconciliationFoundationWorkspace('2026-10-05T09:00:00Z');
   const distributionConfig = new DistributionConfigurationRegistry();
+  const roundUp = new RoundUpRegistry();
 
   const baseWorld = {
     registers,
@@ -803,10 +808,23 @@ export function buildWorld(): World {
     decider: new DecisionTheatre(nav, unitLinked, DEFAULT_CHARGES),
     asOf: '2026-10-05', conventionalEntity, takafulEntity, malaysiaEntity, groupPeriodStart: '2026-09-01',
     consentId: consent.id, onboarding: { chip, ocr }, quotes,
-    fundsAccounting, superFunds, warehouse, themes, rbac, reconciliation, distributionConfig,
+    fundsAccounting, superFunds, warehouse, themes, rbac, reconciliation, distributionConfig, roundUp,
   } as unknown as World;
   const erp = new ErpManager(baseWorld);
   const withErp: World = { ...baseWorld, erp } as World;
+
+  // Seed one multi-fund ad-hoc investment payment and two everyday debit-card spare-change round-ups
+  // on UL-000123 after ErpManager has indexed the baseline journal history.
+  executeUnitLinkedInvestmentPayment(withErp, {
+    policyId: 'UL-000123',
+    paymentKind: 'ad-hoc-topup',
+    amount: '1500.00',
+    at: '2026-10-05T11:15:00+04:00',
+    by: 'customer-portal',
+    paymentMethod: 'instant-bank-transfer',
+    note: 'Ad-hoc extra allocation across standing funds',
+  });
+  roundUp.seedDemo(withErp);
 
   // The lifecycle desk: quotations, payments and the underwriting route are its own books, so a
   // journey that reaches them produces documents, receipts and routing decisions that outlive it.
@@ -826,7 +844,7 @@ export function buildWorld(): World {
   // The guide is a desk, not a screen: it holds the switch and its audit trail, and reads the world
   // when it composes notes, so the figures inside a note are the engine's and never a typed string.
   const guide = new GuideDesk({ at: `${withErp.asOf}T12:00:00Z`, by: 'console-default' });
-  return { ...withErp, journey, partnerPortal: new PartnerPortal(), guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig, rbac, reconciliation, distributionConfig };
+  return { ...withErp, journey, partnerPortal: new PartnerPortal(), guide, fundsAccounting, superFunds, warehouse, themes, batch, whatsNew, emailConfig, rbac, reconciliation, distributionConfig, roundUp };
 }
 
 /**
@@ -1550,6 +1568,8 @@ export function worldSnapshot(w: World) {
     security: w.rbac.snapshot(),
     reconciliation: w.reconciliation.snapshot(),
     distributionConfig: w.distributionConfig.snapshot(),
+    unitLinkedStatements: listUnitLinkedStatements(w),
+    roundUp: w.roundUp.snapshot(w),
     days: DAYS,
     // The demo world's business date at midday in its operating zone — deliberately not wall
     // time, so the snapshot (and the recorded offline demo built from it) is reproducible.
