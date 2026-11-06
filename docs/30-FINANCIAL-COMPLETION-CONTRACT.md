@@ -107,18 +107,21 @@ Evidence: `reports/FIN-COMPLETION-0001/verification.md`, `src/core/financial/boo
 `src/core/demo-transaction.test.ts`, `src/core/policy-distribution.test.ts`,
 `src/core/unitlinked-statement.test.ts`, `src/server/main.test.ts`, `.github/workflows/ci.yml`.
 
-Still incomplete / not approved for live use:
+Configuration / source / provider work continuing under the owner's live-operations authorization:
 
 - Issue #47 contains no authorized charge rates, approval provenance or authoritative legacy
   distribution records. Demo fixtures are synthetic and labelled; no live fallback was invented.
-- No configured live `paymentVerifier`, `cardProvider` or distribution `sourceReader` is shipped;
-  live payments, round-up collection and backfill therefore return 503 until adapters/credentials
-  and source access are approved and configured.
+- Environment-configured `paymentVerifier`, `cardProvider` and distribution `sourceReader` adapters
+  are shipped and wired into the runtime (`docs/31-RENDER-LIVE-OPERATIONS.md`). Live payments,
+  round-up collection and backfill use them when their Render environment URLs/credentials are set;
+  unset adapters still fail closed with 503 and never fall back to demo data.
 - Authenticated mode has no durable equivalent of `/journey/submit`; it is blocked rather than
   silently using the demo world.
 - Native PostgreSQL CLI/migration evidence passed in the `financial-postgres` CI job on PR #48; no local PostgreSQL server was available.
-- Owner merge approval and a verifier-role re-run are recorded on PR #48. This authorizes merge
-  only; live deployment/financial operations remain blocked until the live-use gates below are met.
+- Owner merge approval and a verifier-role re-run are recorded on PR #48. The owner has since
+  authorized live financial operations and directed the work to continue through configuration,
+  source and provider wiring on Render. The Render blueprint, idempotent bootstrap and
+  environment-configured adapters are specified in `docs/31-RENDER-LIVE-OPERATIONS.md`.
 - Known non-blocking debt: aggregate-row serialization is not load-qualified; PGlite harness is
   single-instance/serialized; the tamper test intentionally leaves its fixture corrupt; Vite bundle
   size warning remains; some batch strings are not yet label-registry keys; hyphenated distribution

@@ -143,6 +143,7 @@ See [`docs/16-MULTI-COUNTRY-PROVIDERS-AND-EMAIL.md`](docs/16-MULTI-COUNTRY-PROVI
 | [`docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md`](docs/13-BATCH-WHATSNEW-WAREHOUSE-SECURITY-AND-THEME.md) | Batch processing (quotation/illustration/issuance + monthly-anniversary mortality, premium/commission accrual, clawback, fund charges, dividends) with event-based accounting setups and the lapse/withdrawal/surrender stop rule; What's New generated from commits and published automatically from PRs; Snowflake/Excel/Access warehouse connections with breach agreement, fingerprint-only secrets and rotating one-way PII masking; the Application theme tab |
 | [`docs/28-AUTOMATIC-WHATS-NEW.md`](docs/28-AUTOMATIC-WHATS-NEW.md) | Why and how the What's New feed is published automatically on PR creation and merge into `main`, including the workflow, generator, PR-body conventions, security model and recovery |
 | [`docs/30-FINANCIAL-COMPLETION-CONTRACT.md`](docs/30-FINANCIAL-COMPLETION-CONTRACT.md) | Financial completion contract for PR #46 / issue #47: demo vs durable boundary, invariants, required release evidence, delivered status and live-use gaps |
+| [`docs/31-RENDER-LIVE-OPERATIONS.md`](docs/31-RENDER-LIVE-OPERATIONS.md) | Render live financial deployment blueprint, idempotent bootstrap, provider/source adapters and the GitHub Pages publishing fix |
 | [`docs/06-QA-REPORT.md`](docs/06-QA-REPORT.md) | What is verified today, the bugs QA found and fixed, and what is still open |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The live CI pipeline (typecheck → lint → tests with coverage → build → generated-artefact / What’s New feed sync checks → a small fleet pass). |
 | [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every one of the 259 API endpoints plus the transport contract (errors, idempotency, auth) — generated from the dispatcher by `npm run docs:api`. |
@@ -211,6 +212,11 @@ refused rather than silently discarding value.
 **Do not put this artifact on Vercel.** The server holds mutable state in a module-level `let state` — including the idempotency-key table and the append-only reporting store. Vercel's serverless model runs many short-lived instances, so a journey like `POST /claims/register` → `/claims/approve` → `/claims/settle` can land on three instances that never saw each other's writes, and settle returns `409` for an approval that does exist elsewhere. Reads still look perfect, because the demo world is deterministic — which is exactly what makes the failure quiet.
 
 Render (or Railway, or Fly) gives the process the persistence its design assumes. The free tier spins down when idle, which is harmless here: the world rebuilds deterministically in about 36 ms.
+
+The repository now ships [`render.yaml`](render.yaml) for the live financial portal: one Node web service,
+one PostgreSQL 16 database, an idempotent `finance:bootstrap` pre-deploy step, and environment-configured
+payment/card/source adapters. See [`docs/31-RENDER-LIVE-OPERATIONS.md`](docs/31-RENDER-LIVE-OPERATIONS.md).
+Vercel remains a static-demo host only and is out of scope for live financial operations.
 
 ### Letting the server email a customer
 

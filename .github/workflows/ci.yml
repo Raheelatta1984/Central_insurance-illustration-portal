@@ -80,6 +80,8 @@ jobs:
           npm run finance:init
           npm run finance:migrate -- up
           if npm run finance:init; then echo 'expected overwrite refusal'; exit 1; fi
+          npm run finance:bootstrap
+          if FINANCE_ENVIRONMENT=live npm run finance:bootstrap; then echo 'expected environment-mismatch refusal'; exit 1; fi
           if npm run finance:migrate -- down; then echo 'expected fact-bearing rollback refusal'; exit 1; fi
       - name: Native PostgreSQL financial atomicity, replay and reconciliation tests
         env:

@@ -1,0 +1,66 @@
+# Render blueprint for the live financial portal.
+# Vercel is intentionally out of scope for this deployment path.
+services:
+  - type: web
+    name: central-insurance-portal
+    runtime: node
+    plan: starter
+    region: singapore
+    branch: main
+    autoDeploy: true
+    numInstances: 1
+    healthCheckPath: /api/health
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npm run finance:bootstrap
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: FINANCE_ENVIRONMENT
+        value: live
+      - key: FINANCE_APPROVER_NAME
+        value: Raheel Atta
+      - key: FINANCE_SCHEDULER
+        value: "1"
+      - key: FINANCE_POOL_SIZE
+        value: "4"
+      - key: FINANCE_PROVIDER_TIMEOUT_MS
+        value: "10000"
+      - key: FINANCE_DATABASE_URL
+        fromDatabase:
+          name: central-insurance-finance
+          property: connectionString
+      - key: FINANCE_MIGRATION_DATABASE_URL
+        fromDatabase:
+          name: central-insurance-finance
+          property: connectionString
+      - key: PII_VAULT_SECRET
+        generateValue: true
+      - key: PORTAL_AUTH_TOKENS
+        sync: false
+      - key: PORTAL_CORS_ORIGIN
+        sync: false
+      - key: FINANCE_PAYMENT_VERIFIER_URL
+        sync: false
+      - key: FINANCE_PAYMENT_VERIFIER_TOKEN
+        sync: false
+      - key: FINANCE_CARD_PROVIDER_URL
+        sync: false
+      - key: FINANCE_CARD_PROVIDER_TOKEN
+        sync: false
+      - key: FINANCE_SOURCE_READER_URL
+        sync: false
+      - key: FINANCE_SOURCE_READER_TOKEN
+        sync: false
+
+databases:
+  - name: central-insurance-finance
+    databaseName: central_insurance_finance
+    user: central_insurance_finance
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+    ipAllowList: []
