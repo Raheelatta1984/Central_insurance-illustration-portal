@@ -33,6 +33,8 @@ import {
 import { RegionalDesk, RegionalError, RegionalSnapshot, countryPack, defaultRegional } from './regional.js';
 import { RatePrice, RateRow, RateTables } from './rating.js';
 import { OmniChannelRegistry } from './channels.js';
+import type { PartnerScope } from './partner-portal.js';
+import { requirePolicyChargeRules } from './policy-charge-rules.js';
 import { toDecimalString } from './money.js';
 import { DistributionGovernance, MARSH_EXAMPLE } from './providers.js';
 import {
@@ -155,6 +157,8 @@ export interface ErpPolicy {
   status: PolicyStatus;
   beneficiary: { name: string; relationship: string; sharePct: number };
   readonly applicationId?: string;
+  /** Only populated from an explicitly recorded partner journey; absent means unknown. */
+  distribution?: Readonly<PartnerScope & { sourceJourneyCaseId: string }>;
   targetWeights?: ReadonlyArray<{ fundId: string; weightBps: number }>;
   /** A separately recorded recommendation, never inferred from the customer's choices. */
   recommendedWeights?: ReadonlyArray<{ fundId: string; weightBps: number }>;
@@ -287,6 +291,7 @@ export class ErpManager {
   private alterationSeq = 0;
   private policySeq = 100;
   private journalSeq = 0;
+  private distributionBackfillAudit: Array<{ policyId: string; sourceJourneyCaseId: string; at: string; by: string }> = [];
 
   constructor(w: World) {
     this.tenantSettings = {
@@ -624,6 +629,47 @@ export class ErpManager {
 
   listUnitLinkedPolicies(): ErpPolicy[] {
     return [...this.policies.values()].filter((p) => p.category === 'unit-linked');
+  }
+
+  /**
+   * Backfill only exact, unambiguous journey-to-policy links. Unknown and conflicting records are
+   * reported for review, never inferred from an identifier or changed to "not applicable". This
+   * is an in-memory demo operation, not a migration of an external policy database.
+   */
+  backfillPolicyDistribution(w: World, input: { by: string; at: string }): {
+    updated: string[]; unknown: string[]; conflicts: string[];
+  } {
+    if (!input.by.trim() || !input.at.trim()) throw new ErpError('distribution backfill requires an actor and timestamp');
+    const updated: string[] = [];
+    const unknown: string[] = [];
+    const conflicts: string[] = [];
+    const journeys = w.journey.list();
+    for (const policy of this.policies.values()) {
+      const matches = journeys.filter((c) => c.artefacts.policyId === policy.policyId);
+      if (matches.length > 1 || (matches.length === 1 && policy.applicationId && matches[0]!.artefacts.applicationId !== policy.applicationId)) {
+        conflicts.push(policy.policyId);
+        continue;
+      }
+      const journey = matches[0];
+      if (!journey?.distribution) {
+        if (!policy.distribution) unknown.push(policy.policyId);
+        continue;
+      }
+      const scope = journey.distribution;
+      if (policy.distribution) {
+        const current = policy.distribution;
+        if (current.channelCode !== scope.channelCode || current.subChannelCode !== scope.subChannelCode || current.partnerId !== scope.partnerId || current.sourceJourneyCaseId !== journey.caseId) conflicts.push(policy.policyId);
+        continue;
+      }
+      policy.distribution = Object.freeze({ ...scope, sourceJourneyCaseId: journey.caseId });
+      this.distributionBackfillAudit.push({ policyId: policy.policyId, sourceJourneyCaseId: journey.caseId, at: input.at, by: input.by.trim() });
+      updated.push(policy.policyId);
+    }
+    return { updated, unknown, conflicts };
+  }
+
+  policyDistributionAudit() {
+    return this.distributionBackfillAudit.map((entry) => ({ ...entry }));
   }
 
   recordReceiptRecord(input: Omit<PremiumReceipt, 'id'> & { creditTotalPremiumPaid?: boolean }): PremiumReceipt {
@@ -1089,7 +1135,9 @@ export class ErpManager {
     at?: string;
   }): { policy: ErpPolicy; initialReceipt?: PremiumReceipt } {
     const app = w.underwriting.application(input.applicationId);
-    const partnerCase = w.journey?.list().find((c) => c.artefacts.applicationId === app.id && c.distribution);
+    const partnerCases = w.journey?.list().filter((c) => c.artefacts.applicationId === app.id && c.distribution) ?? [];
+    if (partnerCases.length > 1) throw new ErpError('multiple partner journeys are linked to this application; resolve attribution before conversion');
+    const partnerCase = partnerCases[0];
     if (partnerCase) {
       if (input.partnerJourneyCaseId !== partnerCase.caseId) throw new ErpError('partner applications must be converted through their approved customer journey');
       const route = w.journey.context(w, partnerCase).routing;
@@ -1163,6 +1211,7 @@ export class ErpManager {
         sharePct: 100,
       },
       applicationId: app.id,
+      ...(partnerCase?.distribution ? { distribution: Object.freeze({ ...partnerCase.distribution, sourceJourneyCaseId: partnerCase.caseId }) } : {}),
       ...(defaultWeights ? { targetWeights: defaultWeights, autoRebalanceMonths: 6 } : {}),
     };
 
@@ -1741,6 +1790,7 @@ export class ErpManager {
       }
 
       case 'policy-charge': {
+        requirePolicyChargeRules(policy.policyId);
         if (!w.unitLinked.hasPolicy(policy.policyId)) {
           throw new ErpError(`policy ${policy.policyId} is not a unit-linked policy`);
         }
@@ -2947,6 +2997,7 @@ export class ErpManager {
         beneficiarySharePct: p.beneficiary.sharePct,
         alterationCount: this.alterations.filter((a) => a.policyId === p.policyId).length,
         applicationId: p.applicationId ?? null,
+        distribution: p.distribution ? { ...p.distribution } : null,
         targetWeights: p.targetWeights ? p.targetWeights.map((t) => ({ ...t })) : [],
         autoRebalanceMonths: p.autoRebalanceMonths ?? null,
         fundValue: fundValueLabel,

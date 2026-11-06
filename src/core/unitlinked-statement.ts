@@ -17,6 +17,7 @@
  */
 
 import { TOTAL_WEIGHT_BPS } from './allocation.js';
+import { requirePolicyChargeRules } from './policy-charge-rules.js';
 import type { World } from './demo.js';
 import type { ErpPolicy, PaymentFrequency } from './erp.js';
 import {
@@ -1189,6 +1190,7 @@ export interface UnitLinkedDeductionInput {
 
 export function executeUnitLinkedDeduction(w: World, input: UnitLinkedDeductionInput) {
   const policy = assertUnitLinkedPolicy(w, input.policyId);
+  requirePolicyChargeRules(policy.policyId);
   if (policy.status === 'cancelled' || policy.status === 'surrendered') {
     throw new UnitLinkedStatementError(`Policy ${policy.policyId} is ${policy.status} and cannot take unit deductions`);
   }

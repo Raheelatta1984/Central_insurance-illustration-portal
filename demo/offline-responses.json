@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-06T02:32:23.032Z",
+  "capturedAt": "2026-11-06T02:36:43.265Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -13087,6 +13087,7 @@
               "beneficiarySharePct": 100,
               "alterationCount": 2,
               "applicationId": "UW-000001",
+              "distribution": null,
               "targetWeights": [
                 {
                   "fundId": "FGLOBAL",
@@ -13145,6 +13146,7 @@
               "beneficiarySharePct": 100,
               "alterationCount": 0,
               "applicationId": null,
+              "distribution": null,
               "targetWeights": [],
               "autoRebalanceMonths": null,
               "fundValue": null,
@@ -13177,6 +13179,7 @@
               "beneficiarySharePct": 100,
               "alterationCount": 0,
               "applicationId": null,
+              "distribution": null,
               "targetWeights": [],
               "autoRebalanceMonths": null,
               "fundValue": null,
