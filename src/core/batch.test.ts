@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BatchRegistry, type BatchSubject } from './batch.js';
+import { BatchRegistry, batchSubjectsFromWorld, type BatchSubject } from './batch.js';
 import { PiiMasker, sha256Hex } from './pii-masking.js';
 import { AUTO_WHATS_NEW_ENTRIES } from './whatsnew.auto.js';
 import { WHATS_NEW_SEED, WhatsNewRegistry, generateFromCommits, categoriseCommit } from './whatsnew.js';
@@ -9,6 +9,16 @@ const policy = (id: string, status: BatchSubject['status'], basisMinor = 1_000_0
 });
 
 describe('batch processing', () => {
+  it('uses policy commencement rather than a fabricated anniversary and skips missing dates', () => {
+    const subjects = batchSubjectsFromWorld({ policies: [
+      { policyId: 'P1', status: 'in force', productId: 'P', currency: 'AED', sumAssured: '1.00 AED', commencement: '2020-01-23' },
+      { policyId: 'P2', status: 'in force', productId: 'P', currency: 'AED', sumAssured: '1.00 AED' },
+    ], proposals: [] }).filter((subject) => subject.id === 'P1' || subject.id === 'P2');
+    expect(subjects.map((subject) => subject.anniversaryDay)).toEqual([23, 0]);
+    const batch = new BatchRegistry(); batch.bootstrapDefaults();
+    expect(batch.run({ eventType: 'anniversary-mortality', period: '2026-10', subjects }).lines.find((line) => line.subjectId === 'P2')?.status).toBe('failed');
+  });
+
   it('requires event-based accounting setup and refuses disabled or unknown events', () => {
     const batch = new BatchRegistry();
     expect(() => batch.run({ eventType: 'anniversary-mortality', period: '2026-10', subjects: [] })).toThrow(/no batch event setup/);

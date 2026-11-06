@@ -24,7 +24,7 @@ export function UnitLinkedStatementPanel({ data }: { data: WorldSnapshot }) {
       <p>{statement.productName} · {statement.status} · Valuation {statement.valuationAsOf} · {statement.reproducedFromLog ? 'Units reconciled to log' : 'Unit reconciliation mismatch'}</p>
       <div className="row"><div className="stat"><span>Fund value</span><b>{statement.summary.closingFundValue}</b></div><div className="stat"><span>Funds received</span><b>{statement.summary.totalFundsReceivedGross}</b></div><div className="stat"><span>Units held</span><b>{statement.summary.closingUnitsTotal}</b></div></div>
       <h4>{t('unitlinked.selectedFunds')}</h4>
-      <p>{statement.funds.filter((fund) => fund.standingTargetBps > 0 || fund.closingUnits !== '0').map((fund) => `${fund.fundName}: ${fund.closingValue} (${fund.actualWeightPct})`).join(' · ') || t('unitlinked.noSelectedFunds')}</p>
+      <p>{statement.funds.filter((fund) => fund.standingTargetBps > 0 || !/^0+(?:\.0+)?$/.test(fund.closingUnits)).map((fund) => `${fund.fundName}: ${fund.closingValue} (${fund.actualWeightPct})`).join(' · ') || t('unitlinked.noSelectedFunds')}</p>
       {statement.recommendedFunds === null ? <p>{t('unitlinked.recommendationUnavailable')}</p> :
         statement.recommendedFunds.length === statement.funds.filter((fund) => fund.standingTargetBps > 0).length &&
         statement.recommendedFunds.every((rec) => statement.funds.some((fund) => fund.fundId === rec.fundId && fund.standingTargetPct === rec.weightPct))
