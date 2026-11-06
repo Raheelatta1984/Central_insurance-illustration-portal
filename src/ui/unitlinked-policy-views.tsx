@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import type { WorldSnapshot } from '../core/demo';
+import { filteredMovementTotals } from '../core/statement-filter';
 
 /** Read-only statement. Transactions are drawn from the engine's reproducible unit log. */
 export function UnitLinkedStatementPanel({ data }: { data: WorldSnapshot }) {
   const statements = data.unitLinkedStatements;
   const [selected, setSelected] = useState(statements[0]?.policyId ?? '');
+  const [fundFilter, setFundFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [showRecommendation, setShowRecommendation] = useState(false);
   const statement = statements.find((item) => item.policyId === selected);
   const t = (key: string) => data.labels.en[key] ?? key;
@@ -13,7 +16,8 @@ export function UnitLinkedStatementPanel({ data }: { data: WorldSnapshot }) {
     const timer = setTimeout(() => setShowRecommendation(false), 5000);
     return () => clearTimeout(timer);
   }, [showRecommendation]);
-  useEffect(() => { setShowRecommendation(false); }, [selected]);
+  useEffect(() => { setShowRecommendation(false); setFundFilter(''); setTypeFilter(''); }, [selected]);
+  const filtered = statement ? filteredMovementTotals(statement.lines, statement.currency, fundFilter, typeFilter) : null;
   if (!statements.length) return null;
   return <section className="card" style={{ gridColumn: '1 / -1' }}>
     <header><h3>Unit-linked policy statement</h3><p>Investment movements, deductions and holdings from the unit transaction log.</p></header>
@@ -23,6 +27,11 @@ export function UnitLinkedStatementPanel({ data }: { data: WorldSnapshot }) {
     {statement && <>
       <p>{statement.productName} · {statement.status} · Valuation {statement.valuationAsOf} · {statement.reproducedFromLog ? 'Units reconciled to log' : 'Unit reconciliation mismatch'}</p>
       <div className="row"><div className="stat"><span>Fund value</span><b>{statement.summary.closingFundValue}</b></div><div className="stat"><span>Funds received</span><b>{statement.summary.totalFundsReceivedGross}</b></div><div className="stat"><span>Units held</span><b>{statement.summary.closingUnitsTotal}</b></div></div>
+      <p>{t('unitlinked.closingNote')}</p>
+      <h4>{t('unitlinked.movementSummary')}</h4>
+      <label>{t('unitlinked.filterFund')} <select value={fundFilter} onChange={(event) => setFundFilter(event.target.value)}><option value="">{t('unitlinked.allFunds')}</option>{[...new Map(statement.lines.map((line) => [line.fundId, line.fundName])).entries()].map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select></label>{' '}
+      <label>{t('unitlinked.filterMovement')} <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="">{t('unitlinked.allMovements')}</option>{[...new Map(statement.lines.map((line) => [line.movementKind, line.movementLabel])).entries()].map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select></label>
+      {filtered && <><p>{t('unitlinked.movementTotalsNote')}</p><div className="row"><div className="stat"><span>{t('unitlinked.movementCount')}</span><b>{filtered.count}</b></div><div className="stat"><span>{t('unitlinked.grossLegs')}</span><b>{filtered.gross}</b></div><div className="stat"><span>{t('unitlinked.deductions')}</span><b>{filtered.deductions}</b></div><div className="stat"><span>{t('unitlinked.netCashLegs')}</span><b>{filtered.netCash}</b></div><div className="stat"><span>{t('unitlinked.netUnits')}</span><b>{filtered.units}</b></div></div></>}
       <h4>{t('unitlinked.selectedFunds')}</h4>
       <p>{statement.funds.filter((fund) => fund.standingTargetBps > 0 || !/^0+(?:\.0+)?$/.test(fund.closingUnits)).map((fund) => `${fund.fundName}: ${fund.closingValue} (${fund.actualWeightPct})`).join(' · ') || t('unitlinked.noSelectedFunds')}</p>
       {statement.recommendedFunds === null ? <p>{t('unitlinked.recommendationUnavailable')}</p> :
@@ -44,8 +53,8 @@ export function UnitLinkedStatementPanel({ data }: { data: WorldSnapshot }) {
       </tbody></table></div>
       <h4>Movements</h4>
       <div className="tableWrap"><table><thead><tr><th>Date</th><th>Movement</th><th>Fund</th><th>Gross</th><th>Deduction</th><th>Units</th><th>Fund units after</th></tr></thead><tbody>
-        {statement.lines.map((line) => <tr key={line.transactionId}><td>{line.at}</td><td>{line.movementLabel}</td><td>{line.fundName}</td><td>{line.grossAmount}</td><td>{line.deductionAmount}</td><td>{line.unitsDelta}</td><td>{line.runningFundUnits}</td></tr>)}
-      </tbody></table></div>
+        {filtered?.lines.map((line) => <tr key={line.transactionId}><td>{line.at}</td><td>{line.movementLabel}</td><td>{line.fundName}</td><td>{line.grossAmount}</td><td>{line.deductionAmount}</td><td>{line.unitsDelta}</td><td>{line.runningFundUnits}</td></tr>)}
+      </tbody>{filtered && <tfoot><tr><th colSpan={3}>{t('unitlinked.movementTotals')}</th><td>{filtered.gross}</td><td>{filtered.deductions}</td><td>{filtered.units}</td><td>—</td></tr></tfoot>}</table></div>
     </>}
   </section>;
 }
