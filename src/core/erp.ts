@@ -156,6 +156,8 @@ export interface ErpPolicy {
   beneficiary: { name: string; relationship: string; sharePct: number };
   readonly applicationId?: string;
   targetWeights?: ReadonlyArray<{ fundId: string; weightBps: number }>;
+  /** A separately recorded recommendation, never inferred from the customer's choices. */
+  recommendedWeights?: ReadonlyArray<{ fundId: string; weightBps: number }>;
   autoRebalanceMonths?: number;
 }
 
@@ -612,6 +614,41 @@ export class ErpManager {
         reason: 'Customer partial encashment request',
       },
     );
+  }
+
+  /* ============================================= POLICY & RECEIPT ACCESSORS */
+
+  getPolicy(policyId: string): ErpPolicy | undefined {
+    return this.policies.get(policyId);
+  }
+
+  listUnitLinkedPolicies(): ErpPolicy[] {
+    return [...this.policies.values()].filter((p) => p.category === 'unit-linked');
+  }
+
+  recordReceiptRecord(input: Omit<PremiumReceipt, 'id'> & { creditTotalPremiumPaid?: boolean }): PremiumReceipt {
+    const policy = this.policies.get(input.policyId);
+    if (!policy) throw new ErpError(`Unknown policy ${input.policyId}`);
+    if (input.creditTotalPremiumPaid !== false) {
+      policy.totalPremiumPaid = add(policy.totalPremiumPaid, input.amount);
+    }
+    const { creditTotalPremiumPaid: _omit, ...rest } = input;
+    void _omit;
+    const receipt: PremiumReceipt = {
+      id: `RCP-${String(++this.receiptSeq).padStart(5, '0')}`,
+      ...rest,
+    };
+    this.receipts.push(receipt);
+    return receipt;
+  }
+
+  recordAlterationRecord(input: Omit<PolicyAlteration, 'id'>): PolicyAlteration {
+    const rec: PolicyAlteration = {
+      id: `ALT-${String(++this.alterationSeq).padStart(5, '0')}`,
+      ...input,
+    };
+    this.alterations.push(rec);
+    return rec;
   }
 
   /* ========================================================= 1. CUSTOMERS */

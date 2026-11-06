@@ -66,6 +66,7 @@ import { dataPlaneReport, mintIds } from './dataplane.js';
 import { PartnerAccessError, PartnerPortalError, SERVICE_KINDS } from './partner-portal.js';
 import type { PartnerScope, PartnerReviewer } from './partner-portal.js';
 import type { IdentityField } from './reconciliation/column-mapping.js';
+import { listUnitLinkedStatements } from './unitlinked-statement.js';
 
 export interface RuntimeState {
   world: World;
@@ -340,6 +341,44 @@ export async function dispatchApiRoute(
 
     case 'GET /world':
       return ok(worldSnapshot(state.world));
+
+    case 'GET /unit-linked/statements':
+      return ok(listUnitLinkedStatements(state.world));
+
+    case 'GET /unit-linked/statement': {
+      const policyId = searchParams.get('policyId')?.trim();
+      if (!policyId) return fail(400, { error: 'policyId is required' });
+      const statement = listUnitLinkedStatements(state.world).find((item) => item.policyId === policyId);
+      return statement ? ok(statement) : fail(404, { error: 'Unit-linked policy not found' });
+    }
+
+    case 'GET /roundup':
+      return ok(state.world.roundUp.snapshot(state.world));
+
+    // This configures the local demo only. It does not create a bank mandate or collect a payment.
+    case 'POST /roundup/settings': {
+      const input = {
+        policyId: reqString(payload, 'policyId'),
+        ...(payload['enabled'] !== undefined ? { enabled: reqBool(payload, 'enabled') } : {}),
+        ...(payload['cardId'] !== undefined ? { cardId: payload['cardId'] === null ? null : reqString(payload, 'cardId') } : {}),
+        ...(payload['roundStepMajor'] !== undefined ? { roundStepMajor: reqInt(payload, 'roundStepMajor', { min: 1, max: 10000 }) } : {}),
+        ...(payload['multiplier'] !== undefined ? { multiplier: reqInt(payload, 'multiplier', { min: 1, max: 10 }) } : {}),
+        ...(payload['exactMatchRule'] !== undefined ? { exactMatchRule: reqEnum(payload, 'exactMatchRule', ['skip-zero', 'add-full-step'] as const) } : {}),
+        ...(payload['redirectMode'] !== undefined ? { redirectMode: reqEnum(payload, 'redirectMode', ['immediate', 'threshold-sweep'] as const) } : {}),
+        ...(payload['sweepThreshold'] !== undefined ? { sweepThreshold: reqString(payload, 'sweepThreshold') } : {}),
+        ...(payload['monthlyCap'] !== undefined ? { monthlyCap: payload['monthlyCap'] === null ? null : reqString(payload, 'monthlyCap') } : {}),
+        by: optString(payload, 'by') ?? 'demo-operator',
+      };
+      state.world.roundUp.configureSettings(state.world, input);
+      return ok(state.world.roundUp.snapshot(state.world));
+    }
+
+    case 'POST /roundup/preview': {
+      return ok(state.world.roundUp.previewRoundUp(state.world, {
+        policyId: reqString(payload, 'policyId'),
+        purchaseAmount: reqString(payload, 'purchaseAmount'),
+      }));
+    }
 
     /* ------------------------------------------- previews & decision theatre */
     case 'POST /preview/switch': {
