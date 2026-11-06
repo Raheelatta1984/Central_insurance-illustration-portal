@@ -1,8 +1,8 @@
 /**
  * Calendar-only monthly policy anniversaries. The caller supplies dates in the policy's local
- * calendar; this module does not infer a timezone or post charges. A missing day (29–31) falls on
- * the first of the following month, as selected by the business. The cycle remains the intended
- * month, so a moved anniversary and the following month's anniversary cannot share a key.
+ * calendar; this module does not infer a timezone or post charges. Use the commencement day in
+ * each month, or that month's last day when the commencement day does not exist. The original
+ * commencement day is retained, so a February adjustment does not shift subsequent months.
  */
 export class PolicyAnniversaryError extends Error {}
 
@@ -30,8 +30,7 @@ export function monthlyPolicyAnniversaries(commencement: string, from: string, t
   const first = start.year * 12 + start.month - 1;
   const fromParts = dateParts(from);
   const toParts = dateParts(through);
-  // Include the preceding cycle since its missing anniversary can fall on the first of this month.
-  const minCycle = Math.max(first + 1, fromParts.year * 12 + fromParts.month - 2);
+  const minCycle = Math.max(first + 1, fromParts.year * 12 + fromParts.month - 1);
   const maxCycle = toParts.year * 12 + toParts.month - 1;
   if (maxCycle - minCycle > 12000) throw new PolicyAnniversaryError('Date range is too large');
   const output: PolicyAnniversary[] = [];
@@ -39,7 +38,7 @@ export function monthlyPolicyAnniversaries(commencement: string, from: string, t
     const year = Math.floor(cycleMonth / 12);
     const month = cycleMonth % 12 + 1;
     const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-    const due = start.day <= lastDay ? new Date(Date.UTC(year, month - 1, start.day)) : new Date(Date.UTC(year, month, 1));
+    const due = new Date(Date.UTC(year, month - 1, Math.min(start.day, lastDay)));
     const dueDate = due.toISOString().slice(0, 10);
     if (dueDate >= from && dueDate <= through) output.push({ cycle: `${year}-${String(month).padStart(2, '0')}`, dueDate });
   }
