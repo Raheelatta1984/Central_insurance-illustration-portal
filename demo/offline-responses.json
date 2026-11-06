@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-06T11:17:12.029Z",
+  "capturedAt": "2026-11-06T11:18:09.587Z",
   "base": "http://127.0.0.1:8787",
   "note": "Recorded from the live engine by tools/offline-record.mjs. The offline console replays these responses so the product can be demonstrated without a server. Refreshed with the guided customer journey (GET /api/journey and the whole POST /api/journey/submit sequence) on 2026-10-18T17:38:11.943Z.",
   "responses": {
@@ -6286,6 +6286,19 @@
             "roundup.preview": "Preview",
             "roundup.previewAmount": "Estimated round-up",
             "roundup.settingsSaved": "Demo settings saved.",
+            "unitlinked.closingNote": "Closing balances above are for the entire policy and are not affected by movement filters.",
+            "unitlinked.movementSummary": "Filtered movement summary",
+            "unitlinked.filterFund": "Fund",
+            "unitlinked.allFunds": "All funds",
+            "unitlinked.filterMovement": "Movement type",
+            "unitlinked.allMovements": "All movement types",
+            "unitlinked.movementTotalsNote": "Totals sum displayed transaction legs; switch legs may count the same transfer twice. These are not policy receipts or closing balances. Units across different funds are not interchangeable.",
+            "unitlinked.movementCount": "Movement count",
+            "unitlinked.grossLegs": "Gross movement legs",
+            "unitlinked.deductions": "Deductions on legs",
+            "unitlinked.netCashLegs": "Net cash legs",
+            "unitlinked.netUnits": "Net unit movement",
+            "unitlinked.movementTotals": "Filtered movement totals",
             "unitlinked.selectedFunds": "Customer-selected fund summary",
             "unitlinked.noSelectedFunds": "No funds selected or held",
             "unitlinked.recommendationUnavailable": "No fund recommendation is recorded for this policy.",
@@ -6674,6 +6687,19 @@
             "roundup.preview": "معاينة",
             "roundup.previewAmount": "التقريب التقديري",
             "roundup.settingsSaved": "تم حفظ إعدادات العرض التجريبي.",
+            "unitlinked.closingNote": "Closing balances above are for the entire policy and are not affected by movement filters.",
+            "unitlinked.movementSummary": "Filtered movement summary",
+            "unitlinked.filterFund": "Fund",
+            "unitlinked.allFunds": "All funds",
+            "unitlinked.filterMovement": "Movement type",
+            "unitlinked.allMovements": "All movement types",
+            "unitlinked.movementTotalsNote": "Totals sum displayed transaction legs; switch legs may count the same transfer twice. These are not policy receipts or closing balances. Units across different funds are not interchangeable.",
+            "unitlinked.movementCount": "Movement count",
+            "unitlinked.grossLegs": "Gross movement legs",
+            "unitlinked.deductions": "Deductions on legs",
+            "unitlinked.netCashLegs": "Net cash legs",
+            "unitlinked.netUnits": "Net unit movement",
+            "unitlinked.movementTotals": "Filtered movement totals",
             "unitlinked.selectedFunds": "ملخص الصناديق التي اختارها العميل",
             "unitlinked.noSelectedFunds": "لا توجد صناديق مختارة أو محتفظ بها",
             "unitlinked.recommendationUnavailable": "لا توجد توصية صناديق مسجلة لهذه الوثيقة.",
@@ -7062,6 +7088,19 @@
             "roundup.preview": "Preview",
             "roundup.previewAmount": "Estimated round-up",
             "roundup.settingsSaved": "Demo settings saved.",
+            "unitlinked.closingNote": "Closing balances above are for the entire policy and are not affected by movement filters.",
+            "unitlinked.movementSummary": "Filtered movement summary",
+            "unitlinked.filterFund": "Fund",
+            "unitlinked.allFunds": "All funds",
+            "unitlinked.filterMovement": "Movement type",
+            "unitlinked.allMovements": "All movement types",
+            "unitlinked.movementTotalsNote": "Totals sum displayed transaction legs; switch legs may count the same transfer twice. These are not policy receipts or closing balances. Units across different funds are not interchangeable.",
+            "unitlinked.movementCount": "Movement count",
+            "unitlinked.grossLegs": "Gross movement legs",
+            "unitlinked.deductions": "Deductions on legs",
+            "unitlinked.netCashLegs": "Net cash legs",
+            "unitlinked.netUnits": "Net unit movement",
+            "unitlinked.movementTotals": "Filtered movement totals",
             "unitlinked.selectedFunds": "Customer-selected fund summary",
             "unitlinked.noSelectedFunds": "No funds selected or held",
             "unitlinked.recommendationUnavailable": "No fund recommendation is recorded for this policy.",
@@ -7516,8 +7555,21 @@
           ],
           "coverageAr": {
             "covered": 98,
-            "total": 386,
+            "total": 399,
             "missing": [
+              "unitlinked.closingNote",
+              "unitlinked.movementSummary",
+              "unitlinked.filterFund",
+              "unitlinked.allFunds",
+              "unitlinked.filterMovement",
+              "unitlinked.allMovements",
+              "unitlinked.movementTotalsNote",
+              "unitlinked.movementCount",
+              "unitlinked.grossLegs",
+              "unitlinked.deductions",
+              "unitlinked.netCashLegs",
+              "unitlinked.netUnits",
+              "unitlinked.movementTotals",
               "partner.workspace",
               "partner.openPortal",
               "partner.brand",
@@ -32330,7 +32382,7 @@
                 "facts": [
                   "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                   "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                  "Arabic coverage 98 of 386 default keys; 10 rename(s) on the audit trail."
+                  "Arabic coverage 98 of 399 default keys; 10 rename(s) on the audit trail."
                 ],
                 "tone": "info",
                 "curated": true
@@ -34690,7 +34742,7 @@
             "labels": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
               "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-              "Arabic coverage 98 of 386 default keys; 10 rename(s) on the audit trail."
+              "Arabic coverage 98 of 399 default keys; 10 rename(s) on the audit trail."
             ],
             "durability": [
               "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
@@ -68007,7 +68059,7 @@
               "facts": [
                 "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
                 "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-                "Arabic coverage 98 of 386 default keys; 10 rename(s) on the audit trail."
+                "Arabic coverage 98 of 399 default keys; 10 rename(s) on the audit trail."
               ],
               "tone": "info",
               "curated": true
@@ -70367,7 +70419,7 @@
           "labels": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
             "Calendar: United Arab Emirates (Dubai), Asia/Dubai UTC+04:00, dates printed as DD/MM/YYYY and times as a 24-hour clock.",
-            "Arabic coverage 98 of 386 default keys; 10 rename(s) on the audit trail."
+            "Arabic coverage 98 of 399 default keys; 10 rename(s) on the audit trail."
           ],
           "durability": [
             "Tenant Al Khaleej Insurance Group · filing entities ALK-CONV and ALK-TKF, plus ALK-MY consolidated in the group · local currency AED.",
